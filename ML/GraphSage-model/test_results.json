@@ -1,0 +1,10 @@
+{
+  "accuracy": 0.9771693416874088,
+  "weighted_f1": 0.9775782917194142,
+  "auc_roc": 0.9963152353022791,
+  "targets_met": {
+    "accuracy": true,
+    "f1": true,
+    "auc": true
+  }
+}
