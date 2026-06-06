@@ -47,8 +47,8 @@ class InferenceService:
         source = Path(settings.model_source_path)
         candidates = [source]
         if not source.is_absolute():
-            root = Path(__file__).resolve().parents[3]
-            candidates.append((root / settings.model_source_path).resolve())
+            backend_dir = Path(__file__).resolve().parent.parent.parent
+            candidates.append((backend_dir / source).resolve())
 
         for candidate in candidates:
             if (candidate / "model.py").exists():

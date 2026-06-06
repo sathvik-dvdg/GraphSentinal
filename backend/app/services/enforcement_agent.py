@@ -1,8 +1,9 @@
 # [WSL2]
 from __future__ import annotations
 
+import json
 import logging
-import subprocess
+import socket
 from datetime import datetime, timezone
 from ipaddress import ip_address, ip_network
 
@@ -55,27 +56,32 @@ class EnforcementAgent:
         self.mode = mode or settings.enforcement_mode
         self.last_error: str | None = None
 
+    def _send_to_daemon(self, payload: dict) -> dict:
+        sock_path = settings.enforcement_agent_socket
+        try:
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
+                s.settimeout(3.0)
+                s.connect(sock_path)
+                s.sendall(json.dumps(payload).encode("utf-8"))
+                response = s.recv(4096)
+                if not response:
+                    raise RuntimeError("Empty response from daemon")
+                return json.loads(response.decode("utf-8"))
+        except Exception as exc:
+            raise EnforcementError(f"Daemon communication failed: {exc}") from exc
+
     def block_ip(self, ip: str) -> str:
         clean_ip = validate_mininet_ip(ip)
         if self.mode != "ovs":
             _audit_log.info("BLOCK %s — mode=simulated (no OVS action)", clean_ip)
             return "simulated"
         try:
-            subprocess.run(
-                [
-                    "sudo",
-                    "ovs-ofctl",
-                    "add-flow",
-                    self.switch,
-                    f"priority=1000,ip,nw_src={clean_ip},actions=drop",
-                ],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=3,
-            )
+            payload = {"action": "block", "ip": clean_ip, "switch": self.switch}
+            res = self._send_to_daemon(payload)
+            if res.get("status") != "success":
+                raise EnforcementError(res.get("error", "Unknown error from daemon"))
             self.last_error = None
-            _audit_log.info("BLOCK %s — OVS rule applied on %s ✓", clean_ip, self.switch)
+            _audit_log.info("BLOCK %s — OVS rule applied on %s via daemon ✓", clean_ip, self.switch)
             return "enforced"
         except Exception as exc:
             self.last_error = str(exc)
@@ -88,15 +94,12 @@ class EnforcementAgent:
             _audit_log.info("UNBLOCK %s — mode=simulated (no OVS action)", clean_ip)
             return "simulated"
         try:
-            subprocess.run(
-                ["sudo", "ovs-ofctl", "del-flows", self.switch, f"ip,nw_src={clean_ip}"],
-                check=True,
-                capture_output=True,
-                text=True,
-                timeout=3,
-            )
+            payload = {"action": "unblock", "ip": clean_ip, "switch": self.switch}
+            res = self._send_to_daemon(payload)
+            if res.get("status") != "success":
+                raise EnforcementError(res.get("error", "Unknown error from daemon"))
             self.last_error = None
-            _audit_log.info("UNBLOCK %s — OVS rule removed from %s ✓", clean_ip, self.switch)
+            _audit_log.info("UNBLOCK %s — OVS rule removed from %s via daemon ✓", clean_ip, self.switch)
             return "removed"
         except Exception as exc:
             self.last_error = str(exc)

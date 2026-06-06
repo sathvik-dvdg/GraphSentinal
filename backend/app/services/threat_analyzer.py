@@ -144,6 +144,6 @@ class ThreatAnalyzer:
     @staticmethod
     def _idempotency_key(ip: str, attack_type: str, score: float) -> str:
         bucket = datetime.now(timezone.utc).strftime("%Y%m%d%H%M")
-        raw = f"{ip}|{attack_type}|{int(score * 10)}|{bucket}"
+        raw = f"{ip}|{attack_type}|{round(score, 2)}|{score_to_severity_label(score)}|{bucket}"
         return sha256(raw.encode("utf-8")).hexdigest()
 

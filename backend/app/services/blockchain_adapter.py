@@ -25,12 +25,15 @@ class BlockchainAdapter:
         self._connect()
 
     def _connect(self) -> None:
-        root = Path(__file__).resolve().parents[3]
-        bridge = root / "blockchain" / "web3_bridge"
-        if not bridge.exists():
-            self.error = f"Bridge path not found: {bridge}"
+        bridge_path = Path(settings.blockchain_bridge_path)
+        if not bridge_path.is_absolute():
+            backend_dir = Path(__file__).resolve().parent.parent.parent
+            bridge_path = (backend_dir / bridge_path).resolve()
+            
+        if not bridge_path.exists():
+            self.error = f"Bridge path not found: {bridge_path}"
             return
-        sys.path.insert(0, str(bridge))
+        sys.path.insert(0, str(bridge_path))
         try:
             from web3_client import BlockchainClient
 

@@ -14,6 +14,7 @@ class Settings(BaseSettings):
 
     weights_path: str = "../ML/GraphSage-model/graphsage_weights.pt"
     model_source_path: str = "../ml/src"
+    blockchain_bridge_path: str = "../blockchain/web3_bridge"
     node_feature_count: int = 7
     require_ml_model: bool = False
     demo_allow_mock_ml: bool = True
@@ -47,24 +48,12 @@ class Settings(BaseSettings):
 
     @property
     def resolved_weights_candidates(self) -> list[Path]:
-        root = Path(__file__).resolve().parents[2]
         configured = Path(self.weights_path)
-        candidates = [configured]
-        if not configured.is_absolute():
-            candidates.append((root / self.weights_path).resolve())
-        candidates.extend(
-            [
-                (root / "../ML/GraphSage-model/graphsage_weights.pt").resolve(),
-                (root / "../ml/models/graphsage_weights.pt").resolve(),
-                (root / "ML/GraphSage-model/graphsage_weights.pt").resolve(),
-                (root / "ml/models/graphsage_weights.pt").resolve(),
-            ]
-        )
-        unique: list[Path] = []
-        for candidate in candidates:
-            if candidate not in unique:
-                unique.append(candidate)
-        return unique
+        if configured.is_absolute():
+            return [configured]
+        # Resolve strictly relative to the backend directory (where config.py lives)
+        backend_dir = Path(__file__).resolve().parent.parent
+        return [(backend_dir / configured).resolve()]
 
 
 @lru_cache

@@ -1,15 +1,17 @@
 # [WSL2]
 from __future__ import annotations
 
-from collections import defaultdict, deque
+from collections import deque
 from time import monotonic
 
+from cachetools import TTLCache
 from fastapi import Header, HTTPException, Request, status
 
 from app.config import settings
 
 
-_requests: dict[str, deque[float]] = defaultdict(deque)
+# TTL Cache to prevent memory leaks from inactive IPs
+_requests: TTLCache = TTLCache(maxsize=10000, ttl=300)
 
 
 def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
@@ -21,9 +23,14 @@ def check_analyze_rate_limit(request: Request) -> None:
     client = request.client.host if request.client else "unknown"
     now = monotonic()
     window = 60.0
+    
+    if client not in _requests:
+        _requests[client] = deque()
+        
     queue = _requests[client]
     while queue and now - queue[0] > window:
         queue.popleft()
+        
     if len(queue) >= settings.analyze_rate_limit_per_minute:
         raise HTTPException(status_code=status.HTTP_429_TOO_MANY_REQUESTS, detail="Analyze rate limit exceeded")
     queue.append(now)

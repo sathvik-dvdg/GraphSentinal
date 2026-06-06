@@ -109,3 +109,82 @@ def test_ganache_timeout_does_not_block():
         assert elapsed < 2.0  # Finished fast despite the 10s mock
     finally:
         settings.blockchain_tx_timeout_seconds = original_timeout
+
+
+def test_path_traversal_rejection():
+    """Path traversal attempt in IP block should fail validation."""
+    with pytest.raises(ValueError, match="Invalid IP address"):
+        validate_mininet_ip("../../etc/passwd")
+
+
+def test_sqlite_concurrency_locking():
+    """Simulate 50 simultaneous requests to /analyze to ensure no SQLITE_BUSY crash."""
+    import concurrent.futures
+
+    flows = [
+        {
+            "src_ip": "10.0.0.2",
+            "dst_ip": "10.0.0.1",
+            "src_port": 12345,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "packet_count": 10,
+            "byte_count": 1000,
+            "duration_sec": 1.0,
+            "tcp_flags": 2
+        }
+    ]
+    headers = {"X-API-Key": settings.backend_api_token}
+
+    def make_request():
+        return client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
+
+    # 50 requests concurrently
+    with concurrent.futures.ThreadPoolExecutor(max_workers=50) as executor:
+        futures = [executor.submit(make_request) for _ in range(50)]
+        for f in concurrent.futures.as_completed(futures):
+            resp = f.result()
+            # It might rate limit (429) or succeed (200), but should NEVER be a 500 SQLITE_BUSY
+            assert resp.status_code in [200, 429]
+
+
+def test_model_shape_mismatch_fails_gracefully():
+    """If graph_builder produces 8 features instead of 7, InferenceService degrades gracefully."""
+    from app.services.inference_service import InferenceService
+    
+    # Reset instance for testing
+    InferenceService._instance = None
+    service = InferenceService.get_instance()
+    
+    flows = [
+        FlowRecord(
+            src_ip="10.0.0.2",
+            dst_ip="10.0.0.1",
+            src_port=12345,
+            dst_port=80,
+            protocol="TCP",
+            packet_count=10,
+            byte_count=1000,
+            duration_sec=1.0,
+            tcp_flags=2
+        )
+    ]
+    
+    with patch("app.services.inference_service.build_pyg_graph") as mock_build:
+        # Mock graph returning x with 8 features
+        import torch
+        class MockGraph:
+            x = torch.zeros((1, 8))
+            edge_index = torch.zeros((2, 0), dtype=torch.long)
+            flow_sources = ["10.0.0.2"]
+            flow_destinations = ["10.0.0.1"]
+            
+        mock_build.return_value = MockGraph()
+        
+        # Should not crash; should degrade and fall back to heuristic
+        result = service.predict(flows)
+        
+        # If it was in model mode, shape mismatch will trigger fallback to degraded mode
+        # If it was already in degraded mode, heuristic predicts successfully
+        assert "flow_scores" in result
+        assert len(result["flow_scores"]) == 1
