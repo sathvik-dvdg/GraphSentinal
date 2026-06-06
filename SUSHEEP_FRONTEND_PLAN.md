@@ -464,7 +464,7 @@ export default function NetworkGraph3D({
 import { motion } from 'framer-motion'
 
 export default function StatsBar({ stats, isMockMode }) {
-  // TODO: stats → from GET /api/v1/stats (Sairaj needs to add this endpoint)
+  // TODO: stats → from GET /api/v1/stats (provided by Sairaj backend)
   // Or derive from graphData: count nodes by status
 
   const healthColor = stats.system_health >= 80 ? '#00ff88' :
@@ -638,7 +638,7 @@ import {
 
 export default function ThreatTimeline({ data }) {
   // TODO: Replace data prop with real timeline:
-  //   GET /api/v1/timeline?last=60min (Sairaj needs to add this endpoint)
+  //   GET /api/v1/timeline?last=60min (provided by Sairaj backend)
   //   Or aggregate from alert events received via WebSocket
 
   return (

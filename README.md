@@ -125,11 +125,16 @@ graphsentinel/
 | Method | Endpoint | Description | Owner |
 |--------|----------|-------------|-------|
 | `GET` | `/api/v1/graph` | Current network graph | Sairaj |
+| `GET` | `/api/v1/stats` | Dashboard counters and health | Sairaj |
+| `GET` | `/api/v1/timeline` | Threat/block timeline buckets | Sairaj |
 | `GET` | `/api/v1/alerts` | Recent threat alerts | Sairaj |
 | `GET` | `/api/v1/blocked` | Currently blocked IPs | Sairaj |
 | `POST` | `/api/v1/block` | Block/unblock IP manually | Sairaj |
 | `GET` | `/api/v1/forensics` | SQLite + blockchain records | Sairaj+Skanda |
 | `POST` | `/api/v1/blockchain/store` | Write incident to chain | Sairaj+Skanda |
+
+Mutating backend endpoints require `X-API-Key: <BACKEND_API_TOKEN>`.
+Sairaj's self-healing path validates IPs and uses OVS drop flows for Mininet enforcement.
 
 **WebSocket events** (all emitted by backend):
 - `graph_update` — full graph every 5 seconds
@@ -219,10 +224,15 @@ Copy `.env.shared.example` to `.env` in each subdirectory and fill in values:
 ```bash
 # Required in backend/.env
 WEIGHTS_PATH=../ml/models/graphsage_weights.pt
-SCALER_PATH=../ml/models/scaler.pkl
+SCALER_PATH=../ml/models/scaler.pkl  # preprocessing artifact only; not used for 7-feature inference
+REQUIRE_ML_MODEL=true
+DEMO_ALLOW_MOCK_ML=false
 CONTRACT_ADDRESS=<from Skanda's deploy.js>
 GANACHE_URL=http://127.0.0.1:8545
 THREAT_THRESHOLD=0.75
+BACKEND_API_TOKEN=<local-demo-token>
+MAX_ANALYZE_FLOWS=5000
+ENFORCEMENT_MODE=ovs
 
 # Required in frontend/.env
 VITE_BACKEND_URL=http://localhost:8000

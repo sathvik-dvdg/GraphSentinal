@@ -387,6 +387,8 @@ npx hardhat run scripts/deploy.js --network localhost    # Terminal 2
 
 ## 👤 SECTION 5 — SAIRAJ: BACKEND IMPLEMENTATION PLAN
 
+> **Current Sairaj backend contract:** use `SAIRAJ_BACKEND_PLAN.md` as the source of truth for backend implementation. The latest hardening update requires flow-node PyG graphs, no inference-time scaler, explicit ML degraded mode, API-token protection for mutating endpoints, IP validation with `ipaddress`, and OVS drop-flow enforcement through a narrow agent. Do not copy older iptables/root-server patterns.
+
 ### 5.1 Environment Setup [WSL2]
 
 ```bash
@@ -462,25 +464,21 @@ flow_parser.py
        │
        ▼
 graph_builder.py
-  • Uses NetworkX to build DiGraph
-  • Nodes = unique IPs (src + dst)
-  • Edges = (src_ip, dst_ip) with flow features as edge attrs
-  • Computes node features:
-      - degree (in + out)
-      - avg_packet_size = bytes / packets
-      - connection_rate = packets / duration
-      - port_entropy (Shannon entropy of dst_ports contacted)
-      - unique_destinations
-  • Converts to PyG HeteroData / Data object
-  • Output: PyG Data with x (node features), edge_index, edge_attr
+  • Builds a PyG Data object with one node per flow, not one node per IP
+  • Adds temporal edges flow[i] -> flow[i+1]
+  • Adds same-destination-port edges from prior matching flow -> current flow
+  • Computes exactly the 7 features in backend/NODE_FEATURES.md
+  • Applies per-window z-score normalization inside graph_builder.py
+  • Output: PyG Data with x=(N,7), edge_index, flow_sources, flow_destinations
        │
        ▼
 inference_service.py
   • Loads graphsage_weights.pt at startup (singleton)
-  • Loads scaler.pkl for feature normalization
+  • Does NOT apply scaler.pkl to the 7 inference features
+  • Missing weights fail startup unless DEMO_ALLOW_MOCK_ML=true
   • Runs model.eval() forward pass — no_grad()
-  • Returns per-node: { ip, probability, predicted_class }
-  • Output: Dict[str, PredictionResult]
+  • Returns flow_scores and IP-aggregated threat scores for frontend graph/healing
+  • Output: { flow_scores: [...], ip_scores: { ip: score } }
        │
        ▼
 threat_analyzer.py
@@ -492,13 +490,15 @@ threat_analyzer.py
   ┌────┴──────────────────────────────────────────────────┐
   ▼                        ▼                              ▼
 self_healing.py        SQLite Logger              blockchain_adapter.py
-  • Uses Mininet CLI       • Writes to              • Calls Skanda's
-  • mn.get(src_ip).         incidents table           web3_client.py
-    cmd("iptables -A         via SQLAlchemy           • logIncident()
-    INPUT -s {ip}                                      on smart contract
-    -j DROP")                                        • Stores tx hash
+  • Validates IPs with     • Writes to              • Calls Skanda's
+    ipaddress              incidents table           web3_client.py
+  • Uses OVS drop flows     via SQLAlchemy           • logIncident()
+    through enforcement                              on smart contract
+    agent                                            • Stores tx hash
   • Updates                                          • Returns tx_hash
     blocked_ips table
+  • Reconciles SQLite
+    block state with OVS
        │                                                    │
        └────────────────────────────────────────────────────┘
                                 │
@@ -534,12 +534,15 @@ app.add_middleware(
 )
 
 # ── Routers ────────────────────────────────────────────
-from app.api.v1 import analyze, alerts, blocked, forensics, blockchain_log
-app.include_router(analyze.router,       prefix="/api/v1")
-app.include_router(alerts.router,        prefix="/api/v1")
-app.include_router(blocked.router,       prefix="/api/v1")
-app.include_router(forensics.router,     prefix="/api/v1")
-app.include_router(blockchain_log.router, prefix="/api/v1")
+from app.api.v1 import analyze, graph, stats, timeline, alerts, blocked, forensics, blockchain
+app.include_router(analyze.router,    prefix="/api/v1")
+app.include_router(graph.router,      prefix="/api/v1")
+app.include_router(stats.router,      prefix="/api/v1")
+app.include_router(timeline.router,   prefix="/api/v1")
+app.include_router(alerts.router,     prefix="/api/v1")
+app.include_router(blocked.router,    prefix="/api/v1")
+app.include_router(forensics.router,  prefix="/api/v1")
+app.include_router(blockchain.router, prefix="/api/v1")
 
 # ── Background task: Mininet polling ───────────────────
 from app.mininet_monitor.monitor import MininetMonitor
@@ -552,7 +555,7 @@ async def lifespan(app: FastAPI):
     yield
     monitor.stop()
 
-# Start with: uvicorn app.main:app --reload --host 0.0.0.0 --port 8000
+# Start with: uvicorn app.main:socket_app --reload --host 0.0.0.0 --port 8000
 ```
 
 ### 5.4 Module Implementation Details

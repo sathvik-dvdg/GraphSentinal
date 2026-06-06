@@ -179,14 +179,24 @@ class GraphSAGEClassifier(nn.Module):
         aggr:            str   = 'mean'
     ): ...
 
+# Graph builder contract (FROZEN):
+# Nodes are FLOWS, not IP addresses.
+# Edge type 1: temporal chain flow[i] -> flow[i+1]
+# Edge type 2: previous flow with same destination port -> current flow
+#
 # Node feature vector (FROZEN — 7 features in this exact order):
-# [0] out_degree
-# [1] in_degree
-# [2] avg_packet_size       = total_bytes / (total_packets + 1e-6)
-# [3] connection_rate       = total_packets / (window_duration_sec + 1e-6)
-# [4] port_entropy          = Shannon entropy of destination ports (base 2)
-# [5] byte_asymmetry        = (sent_bytes - recv_bytes) / (total_bytes + 1e-6)
-# [6] syn_ratio             = syn_packets / (total_packets + 1e-6)
+# [0] fwd_ratio        = fwd_packets / (fwd_packets + bwd_packets + 1e-6)
+# [1] avg_packet_size  = (fwd_bytes + bwd_bytes) / (total_packets + 1e-6)
+# [2] connection_rate  = log1p(total_packets / flow_duration_sec)
+# [3] port_norm        = destination_port / 65535.0
+# [4] byte_asymmetry   = (fwd_bytes - bwd_bytes) / (total_bytes + 1e-6)
+# [5] syn_ratio        = syn_flag_count / (total_packets + 1e-6), capped at 1.0
+# [6] bytes_rate_norm  = log1p(min(flow_bytes_per_s, 3e8)) / log1p(3e8)
+#
+# Scaling:
+# Per-window z-score normalization happens inside graph_builder.py.
+# scaler.pkl is a preprocessing artifact and is NOT applied to these 7
+# inference features.
 ```
 
 ---
@@ -255,7 +265,7 @@ EOF
 **Sathvik creates:**
 ```
 ml/models/graphsage_weights.pt   ← trained model weights (state_dict)
-ml/models/scaler.pkl             ← fitted StandardScaler
+ml/models/scaler.pkl             ← preprocessing artifact only; backend does not apply it to 7-feature inference
 ml/src/model.py                  ← GraphSAGEClassifier class definition
 ml/docs/NODE_FEATURES.md         ← exact feature list + order
 ```
@@ -281,12 +291,7 @@ with torch.no_grad():
 
 print(f"✅ Model output shape: {out.shape}")          # Should be (10, 2)
 print(f"✅ Probability range: {probs.min():.3f} – {probs.max():.3f}")
-print(f"✅ Scaler fitted on {scaler.n_features_in_} features")  # Must be 7
-
-# Verify scaler works on (N, 7) input
-sample = torch.randn(5, 7).numpy()
-scaled = scaler.transform(sample)
-assert scaled.shape == (5, 7), "Scaler output shape wrong!"
+print("✅ NOTE: scaler.pkl is preprocessing-only and is not applied by backend graph_builder.py")
 print("✅ Handoff B verification PASSED — safe to give to Sairaj")
 ```
 
@@ -313,14 +318,7 @@ model.load_state_dict(torch.load(weights_path, map_location="cpu"))
 model.eval()
 print(f"✅ Weights loaded from {weights_path}")
 
-# Test 3: Can load scaler?
-import pickle
-with open("../ml/models/scaler.pkl", "rb") as f:
-    scaler = pickle.load(f)
-print(f"✅ Scaler loaded — expects {scaler.n_features_in_} features")
-assert scaler.n_features_in_ == 7, "MISMATCH: scaler expects != 7 features"
-
-# Test 4: End-to-end mock inference
+# Test 3: End-to-end mock inference
 import numpy as np
 from app.services.graph_builder import build_pyg_graph
 
@@ -332,14 +330,15 @@ mock_flows = [
      "protocol":"TCP","packet_count":30,"byte_count":9000,
      "duration_sec":0.5,"tcp_flags":0},
 ]
-pyg_data = build_pyg_graph(mock_flows, scaler)
+pyg_data = build_pyg_graph(mock_flows)
+assert pyg_data.x.shape[1] == 7, "MISMATCH: graph_builder must output 7 features"
 with torch.no_grad():
     out = model(pyg_data.x, pyg_data.edge_index)
     probs = torch.softmax(out, dim=1)[:, 1]
 
 print(f"✅ End-to-end inference OK")
 print(f"   Nodes: {pyg_data.x.shape[0]} | Features: {pyg_data.x.shape[1]}")
-print(f"   Predictions: { {ip: round(float(p),3) for ip, p in zip(pyg_data.node_ips, probs)} }")
+print(f"   Flow predictions: {[round(float(p), 3) for p in probs]}")
 print("\n✅ HANDOFF B COMPLETE — inference_service.py ready to load real weights")
 EOF
 ```
@@ -369,7 +368,15 @@ curl -s http://localhost:8000/api/v1/graph | python3 -m json.tool
 curl -s http://localhost:8000/api/v1/alerts | python3 -m json.tool
 # Expected: {"alerts": [...], "total": N}
 
-# Test 4: CORS works from browser origin
+# Test 4: Stats endpoint for Susheep's StatsBar
+curl -s http://localhost:8000/api/v1/stats | python3 -m json.tool
+# Expected: {"total_nodes": 10, "active_threats": N, "blocked_ips": N, ...}
+
+# Test 5: Timeline endpoint for Susheep's ThreatTimeline
+curl -s "http://localhost:8000/api/v1/timeline?last=60min" | python3 -m json.tool
+# Expected: {"window": "60min", "bucket_minutes": 5, "data_points": [...]}
+
+# Test 6: CORS works from browser origin
 curl -s -H "Origin: http://localhost:5173" \
   -H "Access-Control-Request-Method: GET" \
   -X OPTIONS http://localhost:8000/api/v1/graph -I

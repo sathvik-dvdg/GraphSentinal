@@ -1,0 +1,126 @@
+# [WSL2]
+"""OVS ↔ SQLite reconciliation.
+
+Every 10 seconds, compare `blocked_ips` rows with `ovs-ofctl dump-flows`.
+- If SQLite says blocked but OVS rule is missing → reapply the rule.
+- If OVS has a GraphSentinel drop rule with no SQLite row → remove it.
+"""
+from __future__ import annotations
+
+import re
+import subprocess
+import threading
+import time
+from typing import Any
+
+from app.config import settings
+from app.database import SessionLocal
+from app.models.incident import BlockedIP
+
+
+_RECONCILE_INTERVAL = 10  # seconds
+
+
+def _parse_blocked_from_ovs(switch: str) -> set[str]:
+    """Parse OVS dump-flows output for GraphSentinel drop rules (priority=1000)."""
+    try:
+        result = subprocess.run(
+            ["sudo", "ovs-ofctl", "dump-flows", switch],
+            capture_output=True,
+            text=True,
+            timeout=3,
+        )
+    except Exception:
+        return set()
+
+    blocked: set[str] = set()
+    for line in result.stdout.splitlines():
+        if "priority=1000" not in line or "actions=drop" not in line:
+            continue
+        match = re.search(r"nw_src=([0-9.]+)", line)
+        if match:
+            blocked.add(match.group(1))
+    return blocked
+
+
+def _sqlite_blocked_ips() -> set[str]:
+    db = SessionLocal()
+    try:
+        return {row.ip_address for row in db.query(BlockedIP).all()}
+    finally:
+        db.close()
+
+
+def reconcile_once(switch: str | None = None) -> dict[str, Any]:
+    """Run a single reconciliation pass. Returns a summary dict."""
+    switch = switch or settings.enforcement_switch
+    if settings.enforcement_mode != "ovs":
+        return {"status": "skipped", "reason": "enforcement_mode is not ovs"}
+
+    ovs_blocked = _parse_blocked_from_ovs(switch)
+    db_blocked = _sqlite_blocked_ips()
+
+    reapplied: list[str] = []
+    removed: list[str] = []
+
+    # SQLite says blocked but OVS rule is missing → reapply
+    for ip in db_blocked - ovs_blocked:
+        try:
+            subprocess.run(
+                [
+                    "sudo", "ovs-ofctl", "add-flow", switch,
+                    f"priority=1000,ip,nw_src={ip},actions=drop",
+                ],
+                check=True, capture_output=True, text=True, timeout=3,
+            )
+            reapplied.append(ip)
+            print(f"[Reconcile] Reapplied OVS rule for {ip}")
+        except Exception as exc:
+            print(f"[Reconcile] Failed to reapply OVS rule for {ip}: {exc}")
+
+    # OVS has a drop rule but no SQLite row → remove stale rule
+    for ip in ovs_blocked - db_blocked:
+        try:
+            subprocess.run(
+                ["sudo", "ovs-ofctl", "del-flows", switch, f"ip,nw_src={ip}"],
+                check=True, capture_output=True, text=True, timeout=3,
+            )
+            removed.append(ip)
+            print(f"[Reconcile] Removed stale OVS rule for {ip}")
+        except Exception as exc:
+            print(f"[Reconcile] Failed to remove stale OVS rule for {ip}: {exc}")
+
+    return {
+        "status": "ok",
+        "reapplied": reapplied,
+        "removed": removed,
+        "db_blocked": len(db_blocked),
+        "ovs_blocked": len(ovs_blocked),
+    }
+
+
+class ReconciliationWorker:
+    """Background thread that runs OVS ↔ SQLite reconciliation periodically."""
+
+    def __init__(self, interval: int = _RECONCILE_INTERVAL):
+        self.interval = interval
+        self._stop_event = threading.Event()
+        self._thread = threading.Thread(target=self._run, daemon=True)
+        self.last_result: dict[str, Any] = {}
+
+    def start(self) -> None:
+        self._thread.start()
+        print(f"[Reconcile] Worker started, interval={self.interval}s")
+
+    def stop(self) -> None:
+        self._stop_event.set()
+        self._thread.join(timeout=2)
+
+    def _run(self) -> None:
+        while not self._stop_event.is_set():
+            try:
+                self.last_result = reconcile_once()
+            except Exception as exc:
+                self.last_result = {"status": "error", "error": str(exc)}
+                print(f"[Reconcile] Error: {exc}")
+            time.sleep(self.interval)

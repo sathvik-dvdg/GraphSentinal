@@ -14,6 +14,13 @@ All API calls from the frontend go through the Vite proxy:
 '/api': { target: 'http://localhost:8000', changeOrigin: true }
 ```
 
+### Backend Security Rules
+
+- Mutating endpoints require `X-API-Key: <BACKEND_API_TOKEN>`.
+- `POST /api/v1/analyze` must reject oversized flow windows and invalid numeric values.
+- Sairaj's backend validates all manually supplied IP addresses before self-healing enforcement.
+- Severity is a string in frontend-facing alert APIs and an integer only at the SQLite/blockchain boundary.
+
 ---
 
 ## REST ENDPOINTS
@@ -64,6 +71,62 @@ All API calls from the frontend go through the Vite proxy:
 - `attack_type`: MUST be one of: `"DDoS"` | `"PortScan"` | `"SSHBrute"` | `"Botnet"` | `"DoSHulk"` | `null`
 - `threat_score`: float between 0.0 and 1.0
 - `value` (link): threat weight float between 0.0 and 1.0
+
+---
+
+### `GET /api/v1/stats`
+**Owner:** Sairaj  
+**Called by:** Susheep (StatsBar)  
+**Purpose:** Returns top-level dashboard counters derived from the current graph, incidents, and block state.
+
+**Request:** No body, no params
+
+**Response 200:**
+```json
+{
+  "total_nodes": 10,
+  "active_threats": 2,
+  "blocked_ips": 1,
+  "system_health": 86,
+  "total_packets": 15230,
+  "total_bytes": 5129000,
+  "last_updated": "2026-06-06T16:30:00Z"
+}
+```
+
+**Field Contracts:**
+- `system_health`: integer from 0 to 100.
+- `active_threats`: count of nodes with status `"malicious"` or `"suspicious"`.
+- `blocked_ips`: count from SQLite `blocked_ips`.
+
+---
+
+### `GET /api/v1/timeline`
+**Owner:** Sairaj  
+**Called by:** Susheep (ThreatTimeline)  
+**Purpose:** Returns Recharts-ready threat and block counts by time bucket.
+
+**Query params:**
+- `last` (optional, default: `60min`) — supported demo value: `60min`
+
+**Request:** `GET /api/v1/timeline?last=60min`
+
+**Response 200:**
+```json
+{
+  "window": "60min",
+  "bucket_minutes": 5,
+  "data_points": [
+    { "time": "14:25", "threats": 0, "blocked": 0 },
+    { "time": "14:30", "threats": 2, "blocked": 1 }
+  ]
+}
+```
+
+**Field Contracts:**
+- `time`: local display label in `HH:mm` format.
+- `threats`: incidents created in that bucket.
+- `blocked`: block events active or created in that bucket.
 
 ---
 
@@ -138,6 +201,11 @@ All API calls from the frontend go through the Vite proxy:
 **Owner:** Sairaj  
 **Called by:** Susheep (manual block/unblock button in UI)
 
+**Headers:**
+```http
+X-API-Key: <BACKEND_API_TOKEN>
+```
+
 **Request body:**
 ```json
 {
@@ -150,6 +218,7 @@ All API calls from the frontend go through the Vite proxy:
 **Field Contracts:**
 - `action`: `"block"` | `"unblock"` (defaults to `"block"` if omitted)
 - `reason`: string, free text but prefer: `"GNN_DETECTED"` | `"MANUAL_OVERRIDE"`
+- `ip`: must be a valid Mininet IP in `10.0.0.0/24`; invalid strings are rejected before enforcement
 
 **Response 200 (block):**
 ```json
@@ -226,6 +295,11 @@ All API calls from the frontend go through the Vite proxy:
 **Owner:** Sairaj (calls this internally, not exposed to frontend)  
 **Called by:** Backend's own threat_analyzer after incident is written to SQLite
 
+**Headers:**
+```http
+X-API-Key: <BACKEND_API_TOKEN>
+```
+
 **Request body:**
 ```json
 {
@@ -240,6 +314,7 @@ All API calls from the frontend go through the Vite proxy:
 **Field Contracts:**
 - `severity`: integer 1–10 (not float, not string)
 - `sqlite_incident_id`: must match a real incident in the SQLite DB
+- Backend maps frontend-facing severity strings to this integer before writing to chain
 
 **Response 200:**
 ```json
@@ -257,6 +332,11 @@ All API calls from the frontend go through the Vite proxy:
 **Owner:** Sairaj  
 **Called by:** Internal (Mininet monitor calls this automatically)  
 **Note:** Frontend does NOT call this directly — it receives results via WebSocket
+
+**Headers when called over HTTP:**
+```http
+X-API-Key: <BACKEND_API_TOKEN>
+```
 
 **Request body:**
 ```json
@@ -289,6 +369,11 @@ All API calls from the frontend go through the Vite proxy:
   "graph_snapshot":     { "nodes": [], "links": [], "metadata": {} }
 }
 ```
+
+**Field Contracts:**
+- Backend must reject flow windows above `MAX_ANALYZE_FLOWS`.
+- Backend must reject NaN, negative packet counts, negative byte counts, and non-positive durations.
+- Mininet monitor may call the same service layer directly instead of making an HTTP request.
 
 ---
 
@@ -401,6 +486,25 @@ class GraphResponse(BaseModel):
     links:    List[LinkData]
     metadata: dict
 
+class StatsResponse(BaseModel):
+    total_nodes:    int
+    active_threats: int
+    blocked_ips:    int
+    system_health:  int
+    total_packets:  int
+    total_bytes:    int
+    last_updated:   str
+
+class TimelinePoint(BaseModel):
+    time:    str
+    threats: int
+    blocked: int
+
+class TimelineResponse(BaseModel):
+    window:         str
+    bucket_minutes: int
+    data_points:    List[TimelinePoint]
+
 # ── /api/v1/alerts ────────────────────────────────────────────────
 class AlertRecord(BaseModel):
     id:             str
@@ -499,6 +603,28 @@ export interface GraphState {
   }
 }
 
+export interface StatsResponse {
+  total_nodes:    number
+  active_threats: number
+  blocked_ips:    number
+  system_health:  number
+  total_packets:  number
+  total_bytes:    number
+  last_updated:   string
+}
+
+export interface TimelinePoint {
+  time:    string
+  threats: number
+  blocked: number
+}
+
+export interface TimelineResponse {
+  window:         string
+  bucket_minutes: number
+  data_points:    TimelinePoint[]
+}
+
 export interface AlertRecord {
   id:            string
   timestamp:     string
@@ -556,5 +682,6 @@ export interface BlockedIPRecord {
 | Version | Date | Change | Approved By |
 |---------|------|--------|------------|
 | v1.0 | Week 2 | Initial freeze | Sairaj, Susheep, Skanda, Sathvik |
+| v1.1 | Week 6 | Added Sairaj-owned stats/timeline support and backend security constraints | Sairaj |
 
 > **To propose a change:** Open a PR, add entry to this table, get all 4 approvals.
