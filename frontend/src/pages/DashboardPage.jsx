@@ -99,41 +99,34 @@ export default function DashboardPage() {
     onDisconnect: () => setConnected(false),
   })
 
-  // Ctrl+F demo shortcut
-  useEffect(() => {
-    const handle = (e) => {
-      if (e.key === 'f' && e.ctrlKey) {
-        e.preventDefault()
-        const demoAlert = {
-          id: `demo-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          source_ip: '10.0.0.2',
-          attack_type: 'DDoS',
-          severity: 'critical',
-          threat_score: 0.94,
-          description: 'DEMO: DDoS attack from 10.0.0.2',
-          is_blocked: false,
-          blockchain_tx: null,
-        }
-        handleAlert(demoAlert)
-        setTimeout(() => {
-          handleHealingTriggered({
-            id: `heal-${Date.now()}`,
-            timestamp: new Date().toISOString(),
-            ip: '10.0.0.2',
-            action: 'ISOLATED',
-            attack_type: 'DDoS',
-            trigger_score: 0.94,
-            edges_severed: 6,
-            duration_ms: 312,
-            network_stability_before: 76,
-            network_stability_after: 94,
-          })
-        }, 2000)
-      }
+  // Demo simulation — triggered by the SIMULATE button in StatsBar
+  const simulateAttack = useCallback(() => {
+    const demoAlert = {
+      id: `demo-${Date.now()}`,
+      timestamp: new Date().toISOString(),
+      source_ip: '10.0.0.2',
+      attack_type: 'DDoS',
+      severity: 'critical',
+      threat_score: 0.94,
+      description: 'DEMO: DDoS attack from 10.0.0.2',
+      is_blocked: false,
+      blockchain_tx: null,
     }
-    window.addEventListener('keydown', handle)
-    return () => window.removeEventListener('keydown', handle)
+    handleAlert(demoAlert)
+    setTimeout(() => {
+      handleHealingTriggered({
+        id: `heal-${Date.now()}`,
+        timestamp: new Date().toISOString(),
+        ip: '10.0.0.2',
+        action: 'ISOLATED',
+        attack_type: 'DDoS',
+        trigger_score: 0.94,
+        edges_severed: 6,
+        duration_ms: 312,
+        network_stability_before: 76,
+        network_stability_after: 94,
+      })
+    }, 2000)
   }, [handleAlert, handleHealingTriggered])
 
   const handleLogout = () => {
@@ -161,6 +154,7 @@ export default function DashboardPage() {
         isConnected={isConnected}
         onForensicsClick={() => setForensicsOpen(true)}
         onLogout={handleLogout}
+        onSimulate={simulateAttack}
       />
 
       {/* Main Content */}
@@ -203,17 +197,6 @@ export default function DashboardPage() {
               {isConnected ? '● LIVE' : '● SIM'} · Updates every 5s
             </span>
           </div>
-
-          {/* Node Detail Panel */}
-          <AnimatePresence>
-            {selectedNode && (
-              <NodeDetailPanel
-                node={selectedNode}
-                onClose={() => setSelectedNode(null)}
-                onBlock={handleBlock}
-              />
-            )}
-          </AnimatePresence>
         </div>
 
         {/* Right: Control Column */}
@@ -234,6 +217,17 @@ export default function DashboardPage() {
       <div className="h-28 border-t border-gs-border px-2 pb-1 shrink-0">
         <ThreatTimeline data={timeline} />
       </div>
+
+      {/* Node Detail Panel — fixed overlay so Three.js canvas cannot block it */}
+      <AnimatePresence>
+        {selectedNode && (
+          <NodeDetailPanel
+            node={selectedNode}
+            onClose={() => setSelectedNode(null)}
+            onBlock={handleBlock}
+          />
+        )}
+      </AnimatePresence>
 
       {/* Forensics Modal */}
       <ForensicsModal isOpen={forensicsOpen} onClose={() => setForensicsOpen(false)} />

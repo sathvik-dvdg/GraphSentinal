@@ -15,7 +15,9 @@ from app.services.reconciliation import ReconciliationWorker
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=["http://localhost:5173", "http://localhost:3000"],
+    cors_allowed_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    # ADDED another entry 
+
 )
 
 

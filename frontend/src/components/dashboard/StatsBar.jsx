@@ -4,7 +4,7 @@ import { motion } from 'framer-motion'
 import { LogOut, Search } from 'lucide-react'
 import SimBadge from '../shared/SimBadge'
 
-export default function StatsBar({ stats, isMockMode, isConnected, onForensicsClick, onLogout }) {
+export default function StatsBar({ stats, isMockMode, isConnected, onForensicsClick, onLogout, onSimulate }) {
   const [time, setTime] = useState(new Date().toLocaleTimeString())
 
   useEffect(() => {
@@ -57,6 +57,14 @@ export default function StatsBar({ stats, isMockMode, isConnected, onForensicsCl
           </motion.span>
         </div>
         <span className="text-gray-600">{time}</span>
+        {onSimulate && (
+          <button
+            onClick={onSimulate}
+            className="flex items-center gap-1.5 text-yellow-400 border border-yellow-500/50 hover:border-yellow-400 transition-colors px-2 py-1 rounded font-mono"
+          >
+            [ ⚡ SIMULATE ]
+          </button>
+        )}
         <button
           onClick={onForensicsClick}
           className="flex items-center gap-1.5 text-gs-chain hover:text-gs-accent transition-colors px-2 py-1 rounded border border-gs-border hover:border-gs-accent"

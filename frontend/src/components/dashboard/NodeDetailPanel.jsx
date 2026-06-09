@@ -14,13 +14,19 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
   }
 
   return (
-    <motion.div
-      initial={{ x: 320, opacity: 0 }}
-      animate={{ x: 0, opacity: 1 }}
-      exit={{ x: 320, opacity: 0 }}
-      transition={{ type: 'spring', damping: 25 }}
-      className="absolute top-0 right-0 w-72 h-full bg-gs-card border-l border-gs-border z-20 p-4 overflow-auto"
-    >
+    <>
+      {/* Backdrop — clicking outside closes the panel */}
+      <div
+        className="fixed inset-0 z-30 bg-black/40"
+        onClick={onClose}
+      />
+      <motion.div
+        initial={{ x: 320, opacity: 0 }}
+        animate={{ x: 0, opacity: 1 }}
+        exit={{ x: 320, opacity: 0 }}
+        transition={{ type: 'spring', damping: 25 }}
+        className="fixed top-0 right-0 w-72 h-full bg-gs-card border-l border-gs-border z-40 p-4 overflow-auto"
+      >
       {/* Close button */}
       <button
         onClick={onClose}
@@ -92,6 +98,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
         )}
       </div>
     </motion.div>
+    </>
   )
 }
 

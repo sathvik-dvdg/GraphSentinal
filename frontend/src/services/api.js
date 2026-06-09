@@ -29,7 +29,13 @@ export const getBlocked = () => api.get('/api/v1/blocked')
 export const getForensics = () => api.get('/api/v1/forensics')
 export const getTimeline = (last = '60min') =>
   api.get('/api/v1/timeline', { params: { last } })
-export const blockIP = (ip, action = 'block', reason = 'MANUAL_OVERRIDE') =>
-  api.post('/api/v1/block', { ip, action, reason })
+export const blockIP = (ip, action = 'block', reason = 'MANUAL_OVERRIDE') => {
+  const token = import.meta.env.VITE_BACKEND_API_TOKEN || 'change-me-for-demo'
+  return api.post('/api/v1/block', { ip, action, reason }, {
+    headers: {
+      'X-API-Key': token,
+    },
+  })
+}
 
 export default api
