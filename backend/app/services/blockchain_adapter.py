@@ -25,6 +25,8 @@ class BlockchainAdapter:
         self._connect()
 
     def _connect(self) -> None:
+        import os
+
         bridge_path = Path(settings.blockchain_bridge_path)
         if not bridge_path.is_absolute():
             backend_dir = Path(__file__).resolve().parent.parent.parent
@@ -34,6 +36,14 @@ class BlockchainAdapter:
             self.error = f"Bridge path not found: {bridge_path}"
             return
         sys.path.insert(0, str(bridge_path))
+
+        # Inject pydantic settings into os.environ so web3_client's
+        # os.getenv() calls can find CONTRACT_ADDRESS and GANACHE_URL.
+        if settings.contract_address:
+            os.environ.setdefault("CONTRACT_ADDRESS", settings.contract_address)
+        if settings.ganache_url:
+            os.environ.setdefault("GANACHE_URL", settings.ganache_url)
+
         try:
             from web3_client import BlockchainClient
 

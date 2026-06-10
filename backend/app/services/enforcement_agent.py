@@ -81,7 +81,7 @@ class EnforcementAgent:
             if res.get("status") != "success":
                 raise EnforcementError(res.get("error", "Unknown error from daemon"))
             self.last_error = None
-            _audit_log.info("BLOCK %s — OVS rule applied on %s via daemon ✓", clean_ip, self.switch)
+            _audit_log.info("BLOCK %s — OVS rule applied on %s via daemon [OK]", clean_ip, self.switch)
             return "enforced"
         except Exception as exc:
             self.last_error = str(exc)
@@ -99,7 +99,7 @@ class EnforcementAgent:
             if res.get("status") != "success":
                 raise EnforcementError(res.get("error", "Unknown error from daemon"))
             self.last_error = None
-            _audit_log.info("UNBLOCK %s — OVS rule removed from %s via daemon ✓", clean_ip, self.switch)
+            _audit_log.info("UNBLOCK %s — OVS rule removed from %s via daemon [OK]", clean_ip, self.switch)
             return "removed"
         except Exception as exc:
             self.last_error = str(exc)

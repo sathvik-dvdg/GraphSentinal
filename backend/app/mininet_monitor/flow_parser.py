@@ -9,9 +9,13 @@ from app.config import settings
 
 
 def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
+    import sys
     try:
+        cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
+        if sys.platform == "win32":
+            cmd = ["wsl"] + cmd
         result = subprocess.run(
-            ["sudo", "ovs-ofctl", "dump-flows", switch],
+            cmd,
             capture_output=True,
             text=True,
             timeout=3,
