@@ -4,9 +4,10 @@ import { motion, AnimatePresence } from 'framer-motion'
 export default function BlockchainPanel({ transactions }) {
   return (
     <div className="bg-gs-card rounded-lg p-3 border border-gs-border h-full flex flex-col">
-      <div className="flex items-center justify-between mb-2 shrink-0">
+      {/* Header — title and subtitle on separate lines to prevent overlap */}
+      <div className="mb-2 shrink-0">
         <h3 className="text-purple-400 font-mono text-xs font-bold">⛓️ BLOCKCHAIN LEDGER</h3>
-        <span className="text-gray-600 text-xs font-mono">Ganache · Chain 1337</span>
+        <span className="text-gray-600 text-[10px] font-mono">Ganache · Chain 1337 · Immutable Audit Trail</span>
       </div>
 
       <div className="flex-1 overflow-auto space-y-1.5">
@@ -38,9 +39,9 @@ export default function BlockchainPanel({ transactions }) {
               {/* Details row */}
               <div className="flex items-center gap-2 text-xs font-mono text-gray-400">
                 <span className="text-red-400">{tx.attack_type}</span>
-                <span>|</span>
+                <span className="text-gray-600">|</span>
                 <span>{tx.source_ip}</span>
-                <span>|</span>
+                <span className="text-gray-600">|</span>
                 <span>Block #{tx.block_number}</span>
               </div>
 
@@ -62,8 +63,12 @@ export default function BlockchainPanel({ transactions }) {
         </AnimatePresence>
 
         {transactions.length === 0 && (
-          <div className="text-gray-700 text-xs text-center py-4 font-mono">
-            No blockchain records yet.
+          <div className="text-center py-6">
+            <div className="text-gray-700 text-2xl mb-2">⛓️</div>
+            <div className="text-gray-600 text-xs font-mono">No blockchain records yet.</div>
+            <div className="text-gray-700 text-[10px] font-mono mt-1">
+              Records appear when incidents are verified on-chain.
+            </div>
           </div>
         )}
       </div>
@@ -71,7 +76,7 @@ export default function BlockchainPanel({ transactions }) {
       {transactions.length > 0 && (
         <div className="mt-2 pt-2 border-t border-gs-border text-center shrink-0">
           <span className="text-gray-600 text-xs font-mono">
-            Contract: {transactions[0]?.tx_hash?.slice(0, 8)}...
+            {transactions.length} record{transactions.length !== 1 ? 's' : ''} on-chain
           </span>
         </div>
       )}

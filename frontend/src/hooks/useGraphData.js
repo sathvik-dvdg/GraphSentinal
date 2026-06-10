@@ -15,6 +15,7 @@ export function useGraphData() {
     updateStats,
     setMockMode,
     setTimeline,
+    isSimulating,
   } = useGraphStore()
 
   const fetchAll = useCallback(async () => {
@@ -32,9 +33,14 @@ export function useGraphData() {
         ])
 
       if (graphRes.status === 'fulfilled') {
-        setGraphData(graphRes.value)
         setMockMode(false)
+        if (!isSimulating) {
+          setGraphData(graphRes.value)
+        }
       }
+
+      if (isSimulating) return
+
       if (alertsRes.status === 'fulfilled') {
         setAlerts(alertsRes.value.alerts)
       }
@@ -53,7 +59,7 @@ export function useGraphData() {
     } catch (e) {
       console.warn('[useGraphData] Backend unavailable — keeping mock data')
     }
-  }, [])
+  }, [isSimulating])
 
   useEffect(() => {
     fetchAll()

@@ -25,6 +25,7 @@ const useGraphStore = create((set, get) => ({
   use3D: true,
   selectedNode: null,
   forensicsOpen: false,
+  isSimulating: false,
 
   setGraphData: (data) => set({ graphData: data }),
 
@@ -67,6 +68,7 @@ const useGraphStore = create((set, get) => ({
   setBlockedIPs: (ips) => set({ blockedIPs: ips }),
   setChainTxs: (txs) => set({ chainTxs: txs }),
   setTimeline: (data) => set({ timeline: data }),
+  setSimulating: (isSimulating) => set({ isSimulating }),
 }))
 
 export default useGraphStore

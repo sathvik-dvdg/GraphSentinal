@@ -23,9 +23,13 @@ _RECONCILE_INTERVAL = 10  # seconds
 
 def _parse_blocked_from_ovs(switch: str) -> set[str]:
     """Parse OVS dump-flows output for GraphSentinel drop rules (priority=1000)."""
+    import sys
     try:
+        cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
+        if sys.platform == "win32":
+            cmd = ["wsl"] + cmd
         result = subprocess.run(
-            ["sudo", "ovs-ofctl", "dump-flows", switch],
+            cmd,
             capture_output=True,
             text=True,
             timeout=3,
@@ -64,13 +68,17 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
     removed: list[str] = []
 
     # SQLite says blocked but OVS rule is missing → reapply
+    import sys
     for ip in db_blocked - ovs_blocked:
         try:
+            cmd = [
+                "sudo", "ovs-ofctl", "add-flow", switch,
+                f"priority=1000,ip,nw_src={ip},actions=drop",
+            ]
+            if sys.platform == "win32":
+                cmd = ["wsl"] + cmd
             subprocess.run(
-                [
-                    "sudo", "ovs-ofctl", "add-flow", switch,
-                    f"priority=1000,ip,nw_src={ip},actions=drop",
-                ],
+                cmd,
                 check=True, capture_output=True, text=True, timeout=3,
             )
             reapplied.append(ip)
@@ -81,8 +89,11 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
     # OVS has a drop rule but no SQLite row → remove stale rule
     for ip in ovs_blocked - db_blocked:
         try:
+            cmd = ["sudo", "ovs-ofctl", "del-flows", switch, f"ip,nw_src={ip}"]
+            if sys.platform == "win32":
+                cmd = ["wsl"] + cmd
             subprocess.run(
-                ["sudo", "ovs-ofctl", "del-flows", switch, f"ip,nw_src={ip}"],
+                cmd,
                 check=True, capture_output=True, text=True, timeout=3,
             )
             removed.append(ip)
