@@ -14,7 +14,7 @@ export default function Navbar() {
       <Link to="/" className="flex items-center gap-2 no-underline">
         <span className="text-2xl">🛡️</span>
         <span className="text-gs-accent font-bold text-lg font-mono tracking-wider">
-          SAIRAJ GANDU
+          GRAPHSENTINEL
         </span>
       </Link>
 

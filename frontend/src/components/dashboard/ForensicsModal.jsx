@@ -7,12 +7,21 @@ import { getForensics } from '../../services/api'
 export default function ForensicsModal({ isOpen, onClose }) {
   const [tab, setTab] = useState('incidents')
   const [data, setData] = useState({ incidents: [], blockchain_records: [], total_incidents: 0, total_on_chain: 0, contract_address: null })
+  const [loading, setLoading] = useState(false)
+
+  const refresh = () => {
+    setLoading(true)
+    getForensics()
+      .then((res) => setData(res))
+      .catch(() => {})
+      .finally(() => setLoading(false))
+  }
 
   useEffect(() => {
     if (isOpen) {
-      getForensics()
-        .then((res) => setData(res))
-        .catch(() => {})
+      refresh()
+      const interval = setInterval(refresh, 3000)
+      return () => clearInterval(interval)
     }
   }, [isOpen])
 
@@ -45,10 +54,16 @@ export default function ForensicsModal({ isOpen, onClose }) {
                 </span>
               )}
               <span className="text-xs text-gray-600 font-mono">Chain ID: 1337</span>
+              {loading && <span className="text-xs text-gs-accent font-mono animate-pulse">⟳ REFRESHING...</span>}
             </div>
-            <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
-              <X size={18} />
-            </button>
+            <div className="flex items-center gap-2">
+              <button onClick={refresh} className="text-xs text-gray-500 hover:text-gs-accent font-mono px-2 py-1 border border-gs-border rounded hover:border-gs-accent transition-colors">
+                ⟳ REFRESH
+              </button>
+              <button onClick={onClose} className="text-gray-500 hover:text-white transition-colors">
+                <X size={18} />
+              </button>
+            </div>
           </div>
 
           {/* Tabs */}

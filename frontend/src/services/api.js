@@ -38,4 +38,11 @@ export const blockIP = (ip, action = 'block', reason = 'MANUAL_OVERRIDE') => {
   })
 }
 
+export const analyzeFlows = (flows) => {
+  const token = import.meta.env.VITE_BACKEND_API_TOKEN || 'change-me-for-demo'
+  return api.post('/api/v1/analyze', { flows }, {
+    headers: { 'X-API-Key': token },
+  })
+}
+
 export default api

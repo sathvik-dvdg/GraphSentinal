@@ -1,4 +1,5 @@
 # [WSL2]
+from datetime import timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
@@ -32,7 +33,7 @@ async def get_forensics(db: Session = Depends(get_db)):
                 "severity": row.severity,
                 "is_blocked": row.is_blocked,
                 "blockchain_tx": row.blockchain_tx,
-                "created_at": row.created_at.isoformat(),
+                "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),
                 "enforcement_status": row.enforcement_status,
             }
             for row in incidents

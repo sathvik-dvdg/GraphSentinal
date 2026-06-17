@@ -6,7 +6,7 @@ import useAuthStore from '../store/useAuthStore'
 import useGraphStore from '../store/useGraphStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useGraphData } from '../hooks/useGraphData'
-import { blockIP } from '../services/api'
+import { blockIP, analyzeFlows } from '../services/api'
 
 import StatsBar from '../components/dashboard/StatsBar'
 import NetworkGraph3D from '../components/dashboard/NetworkGraph3D'
@@ -191,6 +191,23 @@ export default function DashboardPage() {
     if (isSimulating) return
     setSimulating(true)
 
+    // ── POST real flows to backend so Forensics / DB / Blockchain get populated ──
+    const runId = Date.now()
+    const packetBase = 8000 + Math.floor(Math.random() * 4000) // vary so idempotency key differs
+    const demoFlows = Array.from({ length: 20 }, (_, i) => ({
+      src_ip: '10.0.0.2',
+      dst_ip: i % 2 === 0 ? '10.0.0.1' : '10.0.0.3',
+      src_port: 49152 + i,
+      dst_port: 80,
+      protocol: 'TCP',
+      packet_count: packetBase + i * 300,
+      byte_count: 9_000_000 + runId % 1_000_000 + i * 100_000,
+      duration_sec: 2.5,
+      tcp_flags: 2,
+      flow_id: `demo-flow-${runId}-${i}`,
+    }))
+    analyzeFlows(demoFlows).catch(() => {}) // best-effort; UI sim still runs
+
     // Reset 10.0.0.2 to normal at the start of simulation so we can see the full cycle
     const resetGraph = {
       ...graphData,
@@ -249,10 +266,10 @@ export default function DashboardPage() {
           true
         )
 
-        // Reset simulating state in 12 seconds
+        // Reset simulating state in 30 seconds (longer lock prevents backend poll from overwriting blocked state)
         setTimeout(() => {
           setSimulating(false)
-        }, 12000)
+        }, 30000)
       }, 3000)
     }, 1000)
   }, [
