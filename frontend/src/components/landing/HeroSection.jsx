@@ -1,151 +1,71 @@
-// [Windows] GraphSentinel — Susheep
-import { Link } from 'react-router-dom'
-import { motion } from 'framer-motion'
-import { useEffect, useState } from 'react'
-
-const TERMINAL_LINES = [
-  '> Mininet topology: 10 nodes active',
-  '> GraphSAGE GNN: threat detection online',
-  '> Self-healing engine: armed',
-  '> Blockchain ledger: Ganache local chain connected',
-  '> System status: OPERATIONAL',
-]
+import React from 'react';
+import { motion } from 'framer-motion';
+import Shield3D from './Shield3D';
 
 export default function HeroSection() {
-  const [visibleLines, setVisibleLines] = useState(0)
-
-  useEffect(() => {
-    const timer = setInterval(() => {
-      setVisibleLines((prev) => {
-        if (prev >= TERMINAL_LINES.length) {
-          clearInterval(timer)
-          return prev
-        }
-        return prev + 1
-      })
-    }, 600)
-    return () => clearInterval(timer)
-  }, [])
-
   return (
-    <section className="relative min-h-screen flex items-center justify-center overflow-hidden cyber-grid">
-      {/* Background decorative elements */}
-      <div className="absolute inset-0 overflow-hidden pointer-events-none">
-        {[...Array(6)].map((_, i) => (
-          <motion.div
-            key={i}
-            className="absolute rounded-full"
-            style={{
-              width: `${80 + i * 60}px`,
-              height: `${80 + i * 60}px`,
-              border: '1px solid rgba(0, 255, 136, 0.06)',
-              left: `${60 + i * 5}%`,
-              top: `${20 + i * 10}%`,
-            }}
-            animate={{
-              rotate: [0, 360],
-              scale: [1, 1.05, 1],
-            }}
-            transition={{
-              rotate: { duration: 20 + i * 5, repeat: Infinity, ease: 'linear' },
-              scale: { duration: 4, repeat: Infinity, delay: i * 0.5 },
-            }}
-          />
-        ))}
+    <section className="flex flex-col items-center text-center gap-8 relative mt-16 pt-16">
+      {/* Shield Visualizer */}
+      <div className="relative w-64 h-64 flex items-center justify-center mb-4 group cursor-default">
+        {/* Outer glowing rings */}
+        <div className="absolute inset-0 rounded-full border border-primary-container/20 animate-[spin_10s_linear_infinite]" />
+        <div className="absolute inset-4 rounded-full border border-primary-container/40 border-dashed animate-[spin_15s_linear_infinite_reverse]" />
+        <div className="absolute inset-8 rounded-full bg-primary-container/5 blur-xl group-hover:bg-primary-container/10 transition-colors duration-500" />
+        
+        {/* Core Shield 3D */}
+        <Shield3D />
+        
+        {/* Decorative data points */}
+        <div className="absolute w-2 h-2 bg-primary-container top-0 left-1/2 -translate-x-1/2 shadow-[0_0_8px_#00f2ff]" />
+        <div className="absolute w-2 h-2 bg-primary-container bottom-0 left-1/2 -translate-x-1/2 shadow-[0_0_8px_#00f2ff]" />
       </div>
 
-      <div className="relative z-10 max-w-5xl mx-auto px-6 text-center">
-        {/* Eyebrow */}
-        <motion.p
+      {/* Hero Copy */}
+      <div className="flex flex-col gap-4 max-w-2xl z-10 relative">
+        <motion.div 
+          initial={{ opacity: 0, y: 10 }}
+          animate={{ opacity: 1, y: 0 }}
+          transition={{ duration: 0.5 }}
+          className="inline-flex items-center justify-center gap-2 px-3 py-1 rounded-full border border-primary-container/30 bg-surface-container/50 backdrop-blur-sm mx-auto mb-2"
+        >
+          <span className="w-2 h-2 rounded-full bg-primary-container animate-pulse shadow-[0_0_5px_#00f2ff]" />
+          <span className="font-mono text-[12px] text-primary-container uppercase tracking-wider">System Status: Optimal</span>
+        </motion.div>
+
+        <motion.h1 
           initial={{ opacity: 0, y: 20 }}
           animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.2 }}
-          className="text-gs-accent text-xs tracking-[0.3em] font-mono mb-6 uppercase"
+          transition={{ duration: 0.6, delay: 0.1 }}
+          className="text-[28px] md:text-[48px] md:leading-[56px] font-bold text-on-surface text-glow"
         >
-          Major Project — Cyber Defense AI
-        </motion.p>
-
-        {/* Main heading */}
-        <motion.h1
-          initial={{ opacity: 0, y: 30 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 0.4, duration: 0.8 }}
-          className="text-6xl md:text-7xl font-bold mb-6 bg-gradient-to-r from-white via-gs-accent to-white bg-clip-text text-transparent"
-          style={{ backgroundSize: '200% auto', animation: 'gradient-shift 4s ease infinite' }}
-        >
-          GraphSentinel
+          Your Digital Fortress,<br/>Secured.
         </motion.h1>
 
-        {/* Tagline */}
-        <motion.p
+        <motion.p 
           initial={{ opacity: 0 }}
           animate={{ opacity: 1 }}
-          transition={{ delay: 0.8 }}
-          className="text-lg md:text-xl text-gray-400 max-w-3xl mx-auto mb-10 leading-relaxed"
+          transition={{ duration: 0.6, delay: 0.2 }}
+          className="text-[16px] leading-[24px] text-on-surface-variant max-w-xl mx-auto"
         >
-          Self-Healing Cyber Defense using Graph Deep Learning
-          <br />& Immutable Audit Trails
+          Deploy uncompromising protection with our advanced zero-trust architecture. Monitor threats in real-time across your entire infrastructure.
         </motion.p>
-
-        {/* Terminal box */}
-        <motion.div
-          initial={{ opacity: 0, y: 20 }}
-          animate={{ opacity: 1, y: 0 }}
-          transition={{ delay: 1 }}
-          className="mx-auto max-w-lg bg-gs-bg/80 border border-gs-accent/30 rounded-lg p-4 mb-10 text-left"
-        >
-          <div className="flex items-center gap-2 mb-3 border-b border-gs-accent/20 pb-2">
-            <div className="w-3 h-3 rounded-full bg-red-500/80" />
-            <div className="w-3 h-3 rounded-full bg-yellow-500/80" />
-            <div className="w-3 h-3 rounded-full bg-green-500/80" />
-            <span className="text-xs text-gray-600 ml-2 font-mono">graphsentinel-terminal</span>
-          </div>
-          {TERMINAL_LINES.map((line, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0, x: -10 }}
-              animate={i < visibleLines ? { opacity: 1, x: 0 } : {}}
-              transition={{ duration: 0.3 }}
-              className="text-gs-accent text-sm font-mono mb-1"
-            >
-              {line}
-              {i === visibleLines - 1 && (
-                <span className="blink-cursor ml-0.5 text-gs-accent">█</span>
-              )}
-            </motion.div>
-          ))}
-          {visibleLines === 0 && (
-            <span className="blink-cursor text-gs-accent text-sm font-mono">█</span>
-          )}
-        </motion.div>
-
-        {/* CTAs */}
-        <motion.div
-          initial={{ opacity: 0 }}
-          animate={{ opacity: 1 }}
-          transition={{ delay: 1.4 }}
-          className="flex items-center justify-center gap-4"
-        >
-          <Link
-            to="/login"
-            className="bg-gs-accent text-gs-bg px-8 py-3 rounded-lg font-mono font-bold text-sm
-                       hover:shadow-[0_0_30px_rgba(0,255,136,0.4)] transition-all duration-300 no-underline
-                       hover:scale-105"
-          >
-            ENTER SYSTEM
-          </Link>
-          <a
-            href="#system-flow"
-            className="border border-gray-600 text-gray-400 px-8 py-3 rounded-lg font-mono text-sm
-                       hover:border-gs-accent hover:text-gs-accent transition-all duration-300 no-underline"
-          >
-            VIEW DEMO ↓
-          </a>
-        </motion.div>
       </div>
 
-      {/* Bottom gradient fade */}
-      <div className="absolute bottom-0 left-0 right-0 h-32 bg-gradient-to-t from-gs-mid to-transparent pointer-events-none" />
+      {/* Primary CTA */}
+      <motion.div 
+        initial={{ opacity: 0, scale: 0.95 }}
+        animate={{ opacity: 1, scale: 1 }}
+        transition={{ duration: 0.5, delay: 0.3 }}
+        className="flex flex-col sm:flex-row gap-4 mt-4 z-10 relative"
+      >
+        <button className="bg-primary-container text-on-primary-container font-mono text-[12px] px-8 py-4 rounded-lg font-bold tracking-wider hover:bg-primary transition-all active:scale-95 glow-accent uppercase">
+          Start Protection
+        </button>
+        <button className="bg-transparent border border-primary-container text-primary-container font-mono text-[12px] px-8 py-4 rounded-lg hover:bg-primary-container/10 transition-all active:scale-95 uppercase flex items-center justify-center gap-2">
+          <span className="material-symbols-outlined text-[18px]">terminal</span>
+          View Docs
+        </button>
+      </motion.div>
     </section>
-  )
+  );
 }

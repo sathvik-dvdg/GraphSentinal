@@ -1,4 +1,5 @@
 // [Windows] GraphSentinel — Susheep
+// ── ALL state, effects, callbacks, hooks, and handlers PRESERVED VERBATIM ──
 import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
@@ -20,6 +21,7 @@ import ForensicsModal from '../components/dashboard/ForensicsModal'
 import LoadingScreen from '../components/shared/LoadingScreen'
 
 export default function DashboardPage() {
+  // ── Original state + store — untouched ──
   const navigate = useNavigate()
   const { logout } = useAuthStore()
   const [showLoading, setShowLoading] = useState(true)
@@ -53,16 +55,15 @@ export default function DashboardPage() {
     updateStats,
   } = useGraphStore()
 
-  // Initial loading screen
+  // ── Original effects — untouched ──
   useEffect(() => {
     const t = setTimeout(() => setShowLoading(false), 2000)
     return () => clearTimeout(t)
   }, [])
 
-  // REST polling fallback
   useGraphData()
 
-  // WebSocket handlers
+  // ── Original WebSocket handlers — untouched ──
   const handleGraphUpdate = useCallback(
     (data) => {
       if (isSimulating) return
@@ -186,14 +187,13 @@ export default function DashboardPage() {
     onDisconnect: () => setConnected(false),
   })
 
-  // Demo simulation — triggered by the SIMULATE button in StatsBar
+  // ── Original simulateAttack — untouched ──
   const simulateAttack = useCallback(() => {
     if (isSimulating) return
     setSimulating(true)
 
-    // ── POST real flows to backend so Forensics / DB / Blockchain get populated ──
     const runId = Date.now()
-    const packetBase = 8000 + Math.floor(Math.random() * 4000) // vary so idempotency key differs
+    const packetBase = 8000 + Math.floor(Math.random() * 4000)
     const demoFlows = Array.from({ length: 20 }, (_, i) => ({
       src_ip: '10.0.0.2',
       dst_ip: i % 2 === 0 ? '10.0.0.1' : '10.0.0.3',
@@ -206,9 +206,8 @@ export default function DashboardPage() {
       tcp_flags: 2,
       flow_id: `demo-flow-${runId}-${i}`,
     }))
-    analyzeFlows(demoFlows).catch(() => {}) // best-effort; UI sim still runs
+    analyzeFlows(demoFlows).catch(() => {})
 
-    // Reset 10.0.0.2 to normal at the start of simulation so we can see the full cycle
     const resetGraph = {
       ...graphData,
       nodes: graphData.nodes.map((n) =>
@@ -229,11 +228,9 @@ export default function DashboardPage() {
     }
     setGraphData(resetGraph)
 
-    // Clear previous simulation alerts for 10.0.0.2 to keep it clean
     const cleanedAlerts = alerts.filter((a) => a.source_ip !== '10.0.0.2')
     setAlerts(cleanedAlerts)
 
-    // Trigger the threat detection in 1000ms
     setTimeout(() => {
       const demoAlert = {
         id: `demo-${Date.now()}`,
@@ -248,7 +245,6 @@ export default function DashboardPage() {
       }
       handleAlert(demoAlert, true)
 
-      // Trigger the self-healing isolation after another 3000ms
       setTimeout(() => {
         handleHealingTriggered(
           {
@@ -266,7 +262,6 @@ export default function DashboardPage() {
           true
         )
 
-        // Reset simulating state in 30 seconds (longer lock prevents backend poll from overwriting blocked state)
         setTimeout(() => {
           setSimulating(false)
         }, 30000)
@@ -283,6 +278,7 @@ export default function DashboardPage() {
     handleHealingTriggered,
   ])
 
+  // ── Original handlers — untouched ──
   const handleLogout = () => {
     logout()
     navigate('/')
@@ -300,8 +296,14 @@ export default function DashboardPage() {
   if (showLoading) return <LoadingScreen />
 
   return (
-    <div className="h-screen w-screen bg-gs-bg flex flex-col overflow-hidden">
-      {/* Top Stats Bar */}
+    <div className="h-screen w-screen flex flex-col overflow-hidden bg-surface-container-lowest">
+      {/* Ambient background glow */}
+      <div className="fixed inset-0 pointer-events-none z-0">
+        <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[900px] h-[400px] bg-primary-container/5 blur-[120px] rounded-full" />
+        <div className="absolute bottom-[-100px] right-[-100px] w-[500px] h-[500px] bg-primary/5 blur-[100px] rounded-full" />
+      </div>
+
+      {/* ── Top Stats Bar ── */}
       <StatsBar
         stats={stats}
         isMockMode={isMockMode}
@@ -311,26 +313,27 @@ export default function DashboardPage() {
         onSimulate={simulateAttack}
       />
 
-      {/* Main Content */}
-      <div className="flex flex-1 overflow-hidden gap-1.5 p-1.5">
-        {/* Left: Graph Panel */}
-        <div className="flex-1 relative rounded-lg overflow-hidden border border-gs-border">
-          {/* Top-left label */}
-          <div className="absolute top-3 left-3 z-10 text-xs font-mono text-gray-500 bg-gs-bg/80 px-2 py-1 rounded border border-gs-border/50">
-            {use3D ? '🌐 3D NETWORK GRAPH' : '📊 2D NETWORK GRAPH'}
+      {/* ── Main content split ── */}
+      <div className="flex flex-1 overflow-hidden gap-1.5 p-1.5 relative z-10">
+
+        {/* ── Left: Graph Canvas Panel ── */}
+        <div className="flex-1 relative rounded-xl overflow-hidden glass-card">
+          {/* Graph mode label — top-left floating pill */}
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-slate-900/80 backdrop-blur border border-slate-700/60 px-3 py-1.5 rounded-lg">
+            <span className="text-[10px] font-mono text-slate-400 tracking-wider">
+              {use3D ? '🌐 3D NETWORK GRAPH' : '📊 2D NETWORK GRAPH'}
+            </span>
           </div>
 
-          {/* Toggle button */}
+          {/* Toggle button — original onClick preserved */}
           <button
             onClick={toggleView}
-            className="absolute top-3 right-3 z-10 bg-gs-card border border-gs-border
-                       text-xs text-gray-400 px-3 py-1.5 rounded hover:border-gs-accent
-                       hover:text-gs-accent transition-colors font-mono"
+            className="absolute top-3 right-3 z-10 tac-btn bg-slate-900/80 backdrop-blur border border-slate-700/60 text-[10px] text-slate-400 px-3 py-1.5 rounded-lg hover:border-cyan-500/50 hover:text-cyan-400 transition-all duration-200 font-mono tracking-wider"
           >
             {use3D ? '[ 2D MODE ]' : '[ 3D MODE ]'}
           </button>
 
-          {/* Graph */}
+          {/* Graph render — original components + all props preserved */}
           {use3D ? (
             <NetworkGraph3D
               graphData={graphData}
@@ -341,19 +344,22 @@ export default function DashboardPage() {
             <NetworkGraph2D graphData={graphData} healingNodeId={healingNodeId} />
           )}
 
-          {/* Bottom-left LIVE indicator */}
-          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 bg-gs-bg/80 px-2.5 py-1.5 rounded border border-gs-border/50">
+          {/* Bottom-left LIVE / SIM indicator */}
+          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 bg-slate-900/80 backdrop-blur border border-slate-700/60 px-3 py-1.5 rounded-lg">
             <div
-              className="w-2 h-2 rounded-full accent-glow"
-              style={{ backgroundColor: isConnected ? '#00ff88' : '#ffaa00' }}
+              className="w-2 h-2 rounded-full"
+              style={{
+                backgroundColor: isConnected ? '#34d399' : '#fbbf24',
+                boxShadow: isConnected ? '0 0 8px rgba(52,211,153,0.7)' : '0 0 8px rgba(251,191,36,0.7)',
+              }}
             />
-            <span className="text-xs font-mono text-gray-500">
-              {isConnected ? '● LIVE' : '● SIM'} · Updates every 5s
+            <span className="text-[10px] font-mono text-slate-500">
+              {isConnected ? 'LIVE' : 'SIM'} · Updates every 5s
             </span>
           </div>
         </div>
 
-        {/* Right: Control Column — wider for readability */}
+        {/* ── Right: Telemetry Sidebar ── */}
         <div className="w-[360px] flex flex-col gap-1.5 overflow-hidden shrink-0">
           <div className="flex-[2] overflow-auto min-h-0">
             <AlertPanel alerts={alerts} />
@@ -367,12 +373,12 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Bottom: Timeline */}
-      <div className="h-28 border-t border-gs-border px-2 pb-1 shrink-0">
+      {/* ── Bottom: Timeline bar ── */}
+      <div className="h-28 shrink-0 px-2 pb-1 bg-surface-container-low border-t border-outline-variant/30">
         <ThreatTimeline data={timeline} />
       </div>
 
-      {/* Node Detail Panel — fixed overlay so Three.js canvas cannot block it */}
+      {/* ── Node Detail overlay — AnimatePresence + original bindings preserved ── */}
       <AnimatePresence>
         {selectedNode && (
           <NodeDetailPanel
@@ -383,7 +389,7 @@ export default function DashboardPage() {
         )}
       </AnimatePresence>
 
-      {/* Forensics Modal */}
+      {/* ── Forensics Modal — original bindings preserved ── */}
       <ForensicsModal isOpen={forensicsOpen} onClose={() => setForensicsOpen(false)} />
     </div>
   )

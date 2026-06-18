@@ -144,7 +144,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
   const getParticleW = useCallback((link) => (link.value > 0.75 ? 3 : 2), [])
 
   return (
-    <div className="w-full h-full bg-gs-bg">
+    <div className="w-full h-full bg-transparent">
       <ForceGraph3D
         ref={fgRef}
         graphData={graphData}
@@ -156,7 +156,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
         linkDirectionalParticleWidth={getParticleW}
         linkDirectionalParticleSpeed={0.007}
         linkDirectionalParticleColor={getLinkColor}
-        backgroundColor="#0a0e1a"
+        backgroundColor="rgba(0,0,0,0)"
         enableNodeDrag={true}
         enableNavigationControls={true}
         showNavInfo={false}

@@ -1,0 +1,242 @@
+<!DOCTYPE html>
+
+<html class="dark" lang="en"><head>
+<meta charset="utf-8"/>
+<meta content="width=device-width, initial-scale=1.0" name="viewport"/>
+<title>FORTRESS_OS Services</title>
+<script src="https://cdn.tailwindcss.com?plugins=forms,container-queries"></script>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com" rel="preconnect"/>
+<link crossorigin="" href="https://fonts.gstatic.com" rel="preconnect"/>
+<link href="https://fonts.googleapis.com/css2?family=Geist:wght@100..900&amp;family=Inter:ital,opsz,wght@0,14..32,100..900;1,14..32,100..900&amp;family=JetBrains+Mono:ital,wght@0,100..800;1,100..800&amp;display=swap" rel="stylesheet"/>
+<link href="https://fonts.googleapis.com/css2?family=Material+Symbols+Outlined:wght,FILL@100..700,0..1&amp;display=swap" rel="stylesheet"/>
+<script id="tailwind-config">
+        tailwind.config = {
+            darkMode: "class",
+            theme: {
+                extend: {
+                    "colors": {
+                        "tertiary": "#f7f6ff",
+                        "on-surface": "#d4e4fa",
+                        "on-secondary-fixed": "#111c2d",
+                        "on-background": "#d4e4fa",
+                        "secondary": "#bcc7de",
+                        "surface-container": "#122131",
+                        "on-primary-fixed": "#002022",
+                        "background": "#051424",
+                        "error-container": "#93000a",
+                        "inverse-primary": "#00696f",
+                        "on-error-container": "#ffdad6",
+                        "secondary-fixed-dim": "#bcc7de",
+                        "on-tertiary-container": "#5b5f6e",
+                        "outline": "#849495",
+                        "surface": "#051424",
+                        "secondary-container": "#3e495d",
+                        "tertiary-container": "#d7daec",
+                        "on-surface-variant": "#b9cacb",
+                        "on-secondary-container": "#aeb9d0",
+                        "tertiary-fixed": "#dfe2f3",
+                        "tertiary-fixed-dim": "#c3c6d7",
+                        "on-primary-fixed-variant": "#004f54",
+                        "surface-dim": "#051424",
+                        "surface-container-high": "#1c2b3c",
+                        "primary-fixed-dim": "#00dbe7",
+                        "surface-container-lowest": "#010f1f",
+                        "on-primary": "#00363a",
+                        "on-error": "#690005",
+                        "primary-fixed": "#74f5ff",
+                        "inverse-on-surface": "#233143",
+                        "error": "#ffb4ab",
+                        "outline-variant": "#3a494b",
+                        "secondary-fixed": "#d8e3fb",
+                        "surface-container-low": "#0d1c2d",
+                        "surface-container-highest": "#273647",
+                        "on-secondary-fixed-variant": "#3c475a",
+                        "surface-tint": "#00dbe7",
+                        "on-tertiary-fixed-variant": "#434654",
+                        "on-tertiary-fixed": "#171b28",
+                        "on-tertiary": "#2c303d",
+                        "surface-variant": "#273647",
+                        "inverse-surface": "#d4e4fa",
+                        "on-secondary": "#263143",
+                        "surface-bright": "#2c3a4c",
+                        "primary": "#e1fdff",
+                        "primary-container": "#00f2ff",
+                        "on-primary-container": "#006a71"
+                    },
+                    "borderRadius": {
+                        "DEFAULT": "0.125rem",
+                        "lg": "0.25rem",
+                        "xl": "0.5rem",
+                        "full": "0.75rem"
+                    },
+                    "spacing": {
+                        "stack-sm": "8px",
+                        "gutter": "16px",
+                        "stack-md": "16px",
+                        "stack-lg": "32px",
+                        "container-margin": "20px"
+                    },
+                    "fontFamily": {
+                        "body-sm": ["Inter"],
+                        "body-lg": ["Inter"],
+                        "headline-lg": ["Geist"],
+                        "headline-md": ["Geist"],
+                        "headline-lg-mobile": ["Geist"],
+                        "label-mono": ["JetBrains Mono"]
+                    },
+                    "fontSize": {
+                        "body-sm": ["14px", { "lineHeight": "20px", "letterSpacing": "0", "fontWeight": "400" }],
+                        "body-lg": ["16px", { "lineHeight": "24px", "letterSpacing": "0", "fontWeight": "400" }],
+                        "headline-lg": ["32px", { "lineHeight": "40px", "letterSpacing": "-0.02em", "fontWeight": "700" }],
+                        "headline-md": ["24px", { "lineHeight": "32px", "letterSpacing": "-0.01em", "fontWeight": "600" }],
+                        "headline-lg-mobile": ["28px", { "lineHeight": "36px", "fontWeight": "700" }],
+                        "label-mono": ["12px", { "lineHeight": "16px", "letterSpacing": "0.05em", "fontWeight": "500" }]
+                    }
+                }
+            }
+        }
+    </script>
+<style>
+        .grid-bg {
+            background-image: linear-gradient(to right, rgba(0, 219, 231, 0.02) 1px, transparent 1px),
+                              linear-gradient(to bottom, rgba(0, 219, 231, 0.02) 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+        .glow-border {
+            position: relative;
+        }
+        .glow-border::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            border-radius: inherit;
+            padding: 1px;
+            background: linear-gradient(135deg, rgba(0, 242, 255, 0.5), transparent 80%);
+            -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
+            -webkit-mask-composite: xor;
+            mask-composite: exclude;
+            pointer-events: none;
+        }
+        .neon-glow {
+            box-shadow: 0 0 15px rgba(0, 242, 255, 0.1);
+        }
+        .hover-neon-glow:hover {
+            box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
+            transform: translateY(-2px);
+            transition: all 0.3s ease;
+        }
+    </style>
+<style>
+    body {
+      min-height: max(884px, 100dvh);
+    }
+  </style>
+  </head>
+<body class="bg-background text-on-background grid-bg min-h-screen flex flex-col font-body-lg">
+<!-- TopAppBar -->
+<header class="fixed top-0 w-full z-50 bg-surface-container-low/80 backdrop-blur-xl border-b border-outline-variant/30 shadow-[0_0_15px_rgba(0,219,231,0.1)] flex items-center justify-between px-container-margin h-16 hidden md:flex">
+<div class="flex items-center gap-2">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">shield</span>
+<span class="font-label-mono text-label-mono tracking-widest text-primary-container">FORTRESS_OS</span>
+</div>
+<nav class="flex gap-8">
+<a class="text-on-surface-variant font-label-mono text-label-mono hover:text-primary transition-colors active:scale-95 transition-transform" href="#">Home</a>
+<a class="text-primary-container font-label-mono text-label-mono hover:text-primary transition-colors active:scale-95 transition-transform" href="#">Services</a>
+<a class="text-on-surface-variant font-label-mono text-label-mono hover:text-primary transition-colors active:scale-95 transition-transform" href="#">Shield</a>
+<a class="text-on-surface-variant font-label-mono text-label-mono hover:text-primary transition-colors active:scale-95 transition-transform" href="#">About</a>
+</nav>
+<div class="flex items-center">
+<span class="material-symbols-outlined text-on-surface-variant hover:text-primary transition-colors active:scale-95 transition-transform cursor-pointer">account_circle</span>
+</div>
+</header>
+<!-- Main Content Canvas -->
+<main class="flex-1 flex flex-col items-center pt-24 pb-24 md:pb-8 px-container-margin w-full max-w-7xl mx-auto z-10 relative">
+<div class="w-full mb-stack-lg text-center md:text-left mt-8">
+<h1 class="font-headline-lg-mobile md:font-headline-lg text-headline-lg-mobile md:text-headline-lg text-primary mb-stack-sm">Core Services</h1>
+<p class="text-on-surface-variant max-w-2xl">Enterprise-grade security modules designed to fortify your digital infrastructure against evolving threat vectors.</p>
+</div>
+<!-- Bento Grid Services -->
+<div class="grid grid-cols-1 md:grid-cols-3 gap-stack-md w-full">
+<!-- Card 1: Threat Detection -->
+<div class="bg-surface-container-high/40 backdrop-blur-md rounded-xl p-6 glow-border neon-glow hover-neon-glow flex flex-col h-full relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-container to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center gap-4 mb-stack-md">
+<div class="w-12 h-12 rounded-lg bg-surface flex items-center justify-center glow-border">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">radar</span>
+</div>
+<div>
+<span class="font-label-mono text-label-mono text-primary-container tracking-widest block mb-1">MODULE_01</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Threat Detection</h2>
+</div>
+</div>
+<p class="text-on-surface-variant mb-stack-lg flex-1">
+                    Continuous monitoring and heuristic analysis to identify and neutralize anomalous behavior before compromise occurs. Real-time telemetry via global sensor network.
+                </p>
+<a class="flex items-center justify-between mt-auto group/link" href="#">
+<span class="font-label-mono text-label-mono text-primary group-hover/link:text-primary-container transition-colors">INITIATE_SCAN</span>
+<span class="material-symbols-outlined text-primary group-hover/link:text-primary-container group-hover/link:translate-x-1 transition-all">arrow_forward</span>
+</a>
+</div>
+<!-- Card 2: Cloud Security -->
+<div class="bg-surface-container-high/40 backdrop-blur-md rounded-xl p-6 glow-border neon-glow hover-neon-glow flex flex-col h-full relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-container to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center gap-4 mb-stack-md">
+<div class="w-12 h-12 rounded-lg bg-surface flex items-center justify-center glow-border">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">cloud_lock</span>
+</div>
+<div>
+<span class="font-label-mono text-label-mono text-primary-container tracking-widest block mb-1">MODULE_02</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Cloud Security</h2>
+</div>
+</div>
+<p class="text-on-surface-variant mb-stack-lg flex-1">
+                    Zero-trust architecture enforcement across multi-cloud environments. Automated compliance auditing and encrypted transit protocols for sovereign data control.
+                </p>
+<a class="flex items-center justify-between mt-auto group/link" href="#">
+<span class="font-label-mono text-label-mono text-primary group-hover/link:text-primary-container transition-colors">VIEW_ARCHITECTURE</span>
+<span class="material-symbols-outlined text-primary group-hover/link:text-primary-container group-hover/link:translate-x-1 transition-all">arrow_forward</span>
+</a>
+</div>
+<!-- Card 3: Endpoint Protection -->
+<div class="bg-surface-container-high/40 backdrop-blur-md rounded-xl p-6 glow-border neon-glow hover-neon-glow flex flex-col h-full relative overflow-hidden group">
+<div class="absolute top-0 left-0 w-full h-1 bg-gradient-to-r from-primary-container to-transparent opacity-50 group-hover:opacity-100 transition-opacity"></div>
+<div class="flex items-center gap-4 mb-stack-md">
+<div class="w-12 h-12 rounded-lg bg-surface flex items-center justify-center glow-border">
+<span class="material-symbols-outlined text-primary-container" style="font-variation-settings: 'FILL' 1;">computer</span>
+</div>
+<div>
+<span class="font-label-mono text-label-mono text-primary-container tracking-widest block mb-1">MODULE_03</span>
+<h2 class="font-headline-md text-headline-md text-on-surface">Endpoint Protection</h2>
+</div>
+</div>
+<p class="text-on-surface-variant mb-stack-lg flex-1">
+                    Agent-based fortress protocols deployed to all perimeter devices. Automated quarantine procedures and forensic data capture upon detection of hostile binaries.
+                </p>
+<a class="flex items-center justify-between mt-auto group/link" href="#">
+<span class="font-label-mono text-label-mono text-primary group-hover/link:text-primary-container transition-colors">DEPLOY_AGENT</span>
+<span class="material-symbols-outlined text-primary group-hover/link:text-primary-container group-hover/link:translate-x-1 transition-all">arrow_forward</span>
+</a>
+</div>
+</div>
+</main>
+<!-- BottomNavBar (Mobile) -->
+<nav class="fixed bottom-0 w-full z-50 bg-surface-container-lowest/90 backdrop-blur-lg border-t border-primary/20 shadow-[0_-4px_12px_rgba(0,219,231,0.15)] flex justify-around items-center h-20 px-4 md:hidden">
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 active:scale-90 transition-all duration-300 w-16" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">home</span>
+<span class="font-label-mono text-label-mono mt-1 text-[10px]">Home</span>
+</a>
+<a class="flex flex-col items-center justify-center text-primary-container bg-primary-container/10 rounded-xl p-1 active:scale-90 transition-all duration-300 w-16" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 1;">grid_view</span>
+<span class="font-label-mono text-label-mono mt-1 text-[10px]">Services</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 active:scale-90 transition-all duration-300 w-16" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">security</span>
+<span class="font-label-mono text-label-mono mt-1 text-[10px]">Shield</span>
+</a>
+<a class="flex flex-col items-center justify-center text-on-surface-variant opacity-60 hover:opacity-100 active:scale-90 transition-all duration-300 w-16" href="#">
+<span class="material-symbols-outlined" style="font-variation-settings: 'FILL' 0;">info</span>
+<span class="font-label-mono text-label-mono mt-1 text-[10px]">About</span>
+</a>
+</nav>
+</body></html>
