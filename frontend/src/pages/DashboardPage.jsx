@@ -1,5 +1,6 @@
 // [Windows] GraphSentinel — Susheep
 // ── ALL state, effects, callbacks, hooks, and handlers PRESERVED VERBATIM ──
+// Updates: connectionMode wired into simulateAttack, onReconnect REST refresh
 import { useEffect, useCallback, useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
@@ -7,7 +8,7 @@ import useAuthStore from '../store/useAuthStore'
 import useGraphStore from '../store/useGraphStore'
 import { useWebSocket } from '../hooks/useWebSocket'
 import { useGraphData } from '../hooks/useGraphData'
-import { blockIP, analyzeFlows } from '../services/api'
+import { blockIP } from '../services/api'
 
 import StatsBar from '../components/dashboard/StatsBar'
 import NetworkGraph3D from '../components/dashboard/NetworkGraph3D'
@@ -34,11 +35,10 @@ export default function DashboardPage() {
     healingNodeId,
     timeline,
     stats,
-    isMockMode,
+    connectionMode,
     use3D,
     selectedNode,
     forensicsOpen,
-    isSimulating,
     setGraphData,
     addAlert,
     setHealingNode,
@@ -46,13 +46,12 @@ export default function DashboardPage() {
     addTimelinePoint,
     toggleView,
     setSelectedNode,
-    setMockMode,
     setConnected,
     setForensicsOpen,
-    setSimulating,
     setAlerts,
     setChainTxs,
     updateStats,
+    setConnectionMode,
   } = useGraphStore()
 
   // ── Original effects — untouched ──
@@ -61,21 +60,21 @@ export default function DashboardPage() {
     return () => clearTimeout(t)
   }, [])
 
-  useGraphData()
+  const { refresh: refreshData } = useGraphData()
 
   // ── Original WebSocket handlers — untouched ──
   const handleGraphUpdate = useCallback(
     (data) => {
-      if (isSimulating) return
+      if (connectionMode === 'simulating') return
       setGraphData(data)
-      setMockMode(false)
+      setConnectionMode('live')
     },
-    [setGraphData, setMockMode, isSimulating]
+    [setGraphData, setConnectionMode, connectionMode]
   )
 
   const handleAlert = useCallback(
     (alert, isLocal = false) => {
-      if (isSimulating && !isLocal) return
+      if (connectionMode === 'simulating' && !isLocal) return
       addAlert(alert)
       addTimelinePoint({
         time: new Date().toLocaleTimeString().slice(0, 5),
@@ -104,12 +103,12 @@ export default function DashboardPage() {
         })
       }
     },
-    [addAlert, addTimelinePoint, isSimulating, graphData, setGraphData, updateStats, stats]
+    [addAlert, addTimelinePoint, connectionMode, graphData, setGraphData, updateStats, stats]
   )
 
   const handleHealingTriggered = useCallback(
     (event, isLocal = false) => {
-      if (isSimulating && !isLocal) return
+      if (connectionMode === 'simulating' && !isLocal) return
       setHealingNode(event.ip)
       addHealingEvent(event)
       addTimelinePoint({
@@ -176,7 +175,7 @@ export default function DashboardPage() {
         setAlerts(updatedAlerts)
       }
     },
-    [setHealingNode, addHealingEvent, addTimelinePoint, isSimulating, graphData, setGraphData, updateStats, stats, setChainTxs, chainTxs, alerts, setAlerts]
+    [setHealingNode, addHealingEvent, addTimelinePoint, connectionMode, graphData, setGraphData, updateStats, stats, setChainTxs, chainTxs, alerts, setAlerts]
   )
 
   const { isConnected } = useWebSocket({
@@ -185,28 +184,16 @@ export default function DashboardPage() {
     onHealingTriggered: handleHealingTriggered,
     onConnect: () => setConnected(true),
     onDisconnect: () => setConnected(false),
+    // § 2 soft spot fix: re-fetch via REST on reconnect since socket doesn't re-emit graph_update
+    onReconnect: () => refreshData(),
   })
 
-  // ── Original simulateAttack — untouched ──
+  // ── simulateAttack — § 4.2 fix: connectionMode drives simulation state ──
   const simulateAttack = useCallback(() => {
-    if (isSimulating) return
-    setSimulating(true)
+    if (connectionMode === 'simulating') return
+    setConnectionMode('simulating') // § 4.2: single source of truth
 
-    const runId = Date.now()
-    const packetBase = 8000 + Math.floor(Math.random() * 4000)
-    const demoFlows = Array.from({ length: 20 }, (_, i) => ({
-      src_ip: '10.0.0.2',
-      dst_ip: i % 2 === 0 ? '10.0.0.1' : '10.0.0.3',
-      src_port: 49152 + i,
-      dst_port: 80,
-      protocol: 'TCP',
-      packet_count: packetBase + i * 300,
-      byte_count: 9_000_000 + runId % 1_000_000 + i * 100_000,
-      duration_sec: 2.5,
-      tcp_flags: 2,
-      flow_id: `demo-flow-${runId}-${i}`,
-    }))
-    analyzeFlows(demoFlows).catch(() => {})
+    // Purely client-side demo sequence to avoid backend state desync.
 
     const resetGraph = {
       ...graphData,
@@ -263,19 +250,21 @@ export default function DashboardPage() {
         )
 
         setTimeout(() => {
-          setSimulating(false)
+          // End simulation — return to appropriate mode
+          setConnectionMode(isConnected ? 'live' : 'mock')
         }, 30000)
       }, 3000)
     }, 1000)
   }, [
+    connectionMode,
     graphData,
     setGraphData,
     alerts,
     setAlerts,
-    isSimulating,
-    setSimulating,
+    setConnectionMode,
     handleAlert,
     handleHealingTriggered,
+    isConnected,
   ])
 
   // ── Original handlers — untouched ──
@@ -296,18 +285,21 @@ export default function DashboardPage() {
   if (showLoading) return <LoadingScreen />
 
   return (
-    <div className="h-screen w-screen flex flex-col overflow-hidden bg-surface-container-lowest">
-      {/* Ambient background glow */}
+    <div
+      className="h-screen w-screen flex flex-col overflow-hidden"
+      style={{ backgroundColor: '#0A0A0A' }}
+    >
+      {/* Subtle ambient radial */}
       <div className="fixed inset-0 pointer-events-none z-0">
-        <div className="absolute top-[-100px] left-1/2 -translate-x-1/2 w-[900px] h-[400px] bg-primary-container/5 blur-[120px] rounded-full" />
-        <div className="absolute bottom-[-100px] right-[-100px] w-[500px] h-[500px] bg-primary/5 blur-[100px] rounded-full" />
+        <div
+          className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] rounded-full blur-[120px]"
+          style={{ background: 'rgba(79,110,247,0.04)' }}
+        />
       </div>
 
       {/* ── Top Stats Bar ── */}
       <StatsBar
         stats={stats}
-        isMockMode={isMockMode}
-        isConnected={isConnected}
         onForensicsClick={() => setForensicsOpen(true)}
         onLogout={handleLogout}
         onSimulate={simulateAttack}
@@ -317,20 +309,24 @@ export default function DashboardPage() {
       <div className="flex flex-1 overflow-hidden gap-1.5 p-1.5 relative z-10">
 
         {/* ── Left: Graph Canvas Panel ── */}
-        <div className="flex-1 relative rounded-xl overflow-hidden glass-card">
+        <div
+          className="flex-1 relative rounded-xl overflow-hidden border border-gs-border"
+          style={{ backgroundColor: '#141414' }}
+        >
           {/* Graph mode label — top-left floating pill */}
-          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-slate-900/80 backdrop-blur border border-slate-700/60 px-3 py-1.5 rounded-lg">
-            <span className="text-[10px] font-mono text-slate-400 tracking-wider">
-              {use3D ? '🌐 3D NETWORK GRAPH' : '📊 2D NETWORK GRAPH'}
+          <div className="absolute top-3 left-3 z-10 flex items-center gap-2 bg-gs-surface border border-gs-border px-2.5 py-1.5 rounded-lg">
+            <span className="text-[10px] font-mono text-gs-muted tracking-wider">
+              {use3D ? '3D Network Graph' : '2D Network Graph'}
             </span>
           </div>
 
           {/* Toggle button — original onClick preserved */}
           <button
+            id="graph-view-toggle"
             onClick={toggleView}
-            className="absolute top-3 right-3 z-10 tac-btn bg-slate-900/80 backdrop-blur border border-slate-700/60 text-[10px] text-slate-400 px-3 py-1.5 rounded-lg hover:border-cyan-500/50 hover:text-cyan-400 transition-all duration-200 font-mono tracking-wider"
+            className="absolute top-3 right-3 z-10 tac-btn bg-gs-surface border border-gs-border text-[10px] text-gs-muted px-2.5 py-1.5 rounded-lg hover:border-gs-accent/40 hover:text-gs-accent transition-all duration-200 font-mono"
           >
-            {use3D ? '[ 2D MODE ]' : '[ 3D MODE ]'}
+            {use3D ? 'Switch to 2D' : 'Switch to 3D'}
           </button>
 
           {/* Graph render — original components + all props preserved */}
@@ -344,23 +340,25 @@ export default function DashboardPage() {
             <NetworkGraph2D graphData={graphData} healingNodeId={healingNodeId} />
           )}
 
-          {/* Bottom-left LIVE / SIM indicator */}
-          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 bg-slate-900/80 backdrop-blur border border-slate-700/60 px-3 py-1.5 rounded-lg">
+          {/* Bottom-left connection indicator */}
+          <div className="absolute bottom-3 left-3 z-10 flex items-center gap-2 bg-gs-surface border border-gs-border px-2.5 py-1.5 rounded-lg">
             <div
-              className="w-2 h-2 rounded-full"
+              className="w-1.5 h-1.5 rounded-full"
               style={{
-                backgroundColor: isConnected ? '#34d399' : '#fbbf24',
-                boxShadow: isConnected ? '0 0 8px rgba(52,211,153,0.7)' : '0 0 8px rgba(251,191,36,0.7)',
+                backgroundColor: isConnected ? '#2ECC8A' : connectionMode === 'simulating' ? '#E8922A' : '#5A6480',
               }}
+              aria-hidden="true"
             />
-            <span className="text-[10px] font-mono text-slate-500">
-              {isConnected ? 'LIVE' : 'SIM'} · Updates every 5s
+            <span className="text-[10px] font-mono text-gs-muted">
+              {connectionMode === 'live' ? 'LIVE · Updates every 5s' :
+               connectionMode === 'simulating' ? 'SIMULATION ACTIVE' :
+               connectionMode === 'connecting' ? 'CONNECTING...' : 'OFFLINE · Mock data'}
             </span>
           </div>
         </div>
 
         {/* ── Right: Telemetry Sidebar ── */}
-        <div className="w-[360px] flex flex-col gap-1.5 overflow-hidden shrink-0">
+        <div className="w-[340px] flex flex-col gap-1.5 overflow-hidden shrink-0">
           <div className="flex-[2] overflow-auto min-h-0">
             <AlertPanel alerts={alerts} />
           </div>
@@ -374,7 +372,10 @@ export default function DashboardPage() {
       </div>
 
       {/* ── Bottom: Timeline bar ── */}
-      <div className="h-28 shrink-0 px-2 pb-1 bg-surface-container-low border-t border-outline-variant/30">
+      <div
+        className="h-28 shrink-0 px-2 pb-1 border-t border-gs-border"
+        style={{ backgroundColor: '#141414' }}
+      >
         <ThreatTimeline data={timeline} />
       </div>
 

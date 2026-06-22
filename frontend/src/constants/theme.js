@@ -1,51 +1,78 @@
 // [Windows] GraphSentinel — Susheep
-// Theme constants — frozen design system
+// Theme constants — updated design system
 
+// Node status colors — new semantic tokens
 export const STATUS_COLORS = {
-  normal: '#00ff88',
-  suspicious: '#ffaa00',
-  malicious: '#ff4444',
-  blocked: '#0066ff',
+  normal:     '#8B8B8B',  // gs-normal gray
+  suspicious: '#F5A623',  // gs-warn amber
+  malicious:  '#FF453A',  // gs-threat red
+  blocked:    '#5E5CE6',  // gs-heal indigo
 }
 
+// Node status icons/shapes — used alongside color for accessibility
+export const STATUS_ICONS = {
+  normal:     '●',  // filled circle
+  suspicious: '◆',  // filled diamond
+  malicious:  '▲',  // filled triangle (warning shape)
+  blocked:    '⬡',  // hexagon (cage/containment)
+}
+
+export const STATUS_LABELS = {
+  normal:     'Normal',
+  suspicious: 'Suspicious',
+  malicious:  'Malicious',
+  blocked:    'Blocked',
+}
+
+// Attack type colors
 export const ATTACK_COLORS = {
-  DDoS: '#ff4444',
-  SSHBrute: '#ff8800',
-  PortScan: '#ffff00',
-  Botnet: '#aa44ff',
-  DoSHulk: '#ff2266',
-  null: '#1e3a5f',
+  DDoS:     '#FF453A',
+  SSHBrute: '#F5A623',
+  PortScan: '#E8CC2A',
+  Botnet:   '#8B5CF6',
+  DoSHulk:  '#EC4899',
+  null:     '#2A2A2A',
 }
 
+// Severity styles — color + icon for accessibility
 export const SEVERITY_STYLES = {
   critical: {
-    border: 'border-red-500/40',
-    badge: 'bg-red-500/20 text-red-400',
-    dot: '#ff4444',
+    border:    'border-gs-threat/40',
+    badge:     'bg-gs-threat-soft text-gs-threat border-gs-threat/25',
+    dot:       '#FF453A',
+    icon:      '⬛',  // square — distinct shape
+    label:     'CRITICAL',
+    textColor: 'text-gs-threat',
   },
   warning: {
-    border: 'border-yellow-500/30',
-    badge: 'bg-yellow-500/20 text-yellow-400',
-    dot: '#ffaa00',
+    border:    'border-gs-warn/30',
+    badge:     'bg-gs-warn-soft text-gs-warn border-gs-warn/25',
+    dot:       '#F5A623',
+    icon:      '◆',  // diamond
+    label:     'WARNING',
+    textColor: 'text-gs-warn',
   },
   info: {
-    border: 'border-blue-500/20',
-    badge: 'bg-blue-500/20 text-blue-400',
-    dot: '#0099ff',
+    border:    'border-gs-accent/20',
+    badge:     'bg-gs-accent-soft text-gs-accent border-gs-accent/20',
+    dot:       '#EAEAEA',
+    icon:      '●',  // circle
+    label:     'INFO',
+    textColor: 'text-gs-accent',
   },
 }
 
 export const THEME = {
-  bg: '#0a0e1a',
-  card: '#111827',
-  mid: '#0d1424',
-  accent: '#00ff88',
-  alert: '#ff4444',
-  warn: '#ffaa00',
-  info: '#0066ff',
-  chain: '#9945ff',
-  border: '#1f2937',
-  textPrimary: '#e2e8f0',
-  textMuted: '#6b7280',
-  textFaint: '#374151',
+  base:      '#0A0A0A',
+  surface:   '#141414',
+  raised:    '#1E1E1E',
+  border:    '#2A2A2A',
+  accent:    '#EAEAEA',
+  threat:    '#FF453A',
+  warn:      '#F5A623',
+  heal:      '#5E5CE6',
+  chain:     '#8B5CF6',
+  textPrimary: '#EAEAEA',
+  textMuted:   '#8B8B8B',
+  textFaint:   '#4D4D4D',
 }

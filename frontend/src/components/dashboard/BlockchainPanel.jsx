@@ -1,61 +1,61 @@
 // [Windows] GraphSentinel — Susheep
+// BlockchainPanel — redesigned with new token system
 // ── All props and data bindings preserved verbatim ──
+// § 4.6: blockchain_records: [] renders explicit empty state, not an error
 import { motion, AnimatePresence } from 'framer-motion'
-import { Link2, Loader2 } from 'lucide-react'
+import { Link2, Loader2, CheckCircle } from 'lucide-react'
 
 export default function BlockchainPanel({ transactions }) {
   return (
-    <div className="glass-card border-purple-500/15 h-full flex flex-col overflow-hidden">
+    <div className="gs-panel border-gs-chain/15 h-full flex flex-col overflow-hidden">
       {/* Header */}
-      <div className="flex items-center justify-between px-3 pt-3 pb-2.5 shrink-0 border-b border-outline-variant/30">
+      <div className="flex items-center justify-between px-3 pt-3 pb-2.5 shrink-0 border-b border-gs-border">
         <div className="flex items-center gap-2">
-          <Link2 size={13} className="text-purple-400" />
-          <span className="text-purple-400 font-mono text-xs font-bold tracking-widest uppercase">
+          <Link2 size={13} className="text-gs-chain" aria-hidden="true" />
+          <span className="text-gs-chain font-mono text-[11px] font-semibold tracking-widest uppercase">
             Blockchain Ledger
           </span>
         </div>
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-on-surface-variant text-[9px] font-mono tracking-wider">Ganache · Chain 1337</span>
-          <span className="text-on-surface-variant/70 text-[9px] font-mono">Immutable Audit Trail</span>
+          <span className="text-gs-muted text-[9px] font-mono">Ganache · Chain 1337</span>
+          <span className="text-gs-faint text-[9px] font-mono">Immutable Audit Trail</span>
         </div>
       </div>
 
       {/* Transaction list */}
-      <div className="flex-1 overflow-auto p-2.5 space-y-2">
+      <div className="flex-1 overflow-auto p-2 space-y-1.5" role="log" aria-label="Blockchain records">
         <AnimatePresence initial={false}>
           {transactions.map((tx, i) => (
             <motion.div
               key={tx.id}
-              initial={{ opacity: 0, y: 12 }}
+              initial={{ opacity: 0, y: 10 }}
               animate={{ opacity: 1, y: 0 }}
-              transition={{ delay: i * 0.08 }}
-              className="relative rounded-lg overflow-hidden cursor-default transition-all duration-200 hover:brightness-110"
+              transition={{ delay: i * 0.06 }}
+              className="rounded-lg overflow-hidden cursor-default transition-all duration-150 hover:brightness-105"
               style={{
-                background: 'rgba(5, 20, 36, 0.45)',
-                border: '1px solid rgba(168,85,247,0.15)',
-                boxShadow: 'inset 0 1px 0 rgba(168,85,247,0.05)',
+                background: '#1E1E1E',
+                border: '1px solid rgba(139,92,246,0.15)',
               }}
             >
               <div className="p-2.5">
                 {/* TX Hash row */}
                 <div className="flex items-center justify-between mb-2 gap-2">
                   <div className="flex items-center gap-1.5 min-w-0">
-                    {/* Chain link icon + hash */}
-                    <span className="text-purple-500/60 text-[10px] font-mono shrink-0">⛓</span>
-                    <span className="text-purple-300 text-[10px] font-mono truncate">
-                      {tx.tx_hash.slice(0, 16)}…{tx.tx_hash.slice(-6)}
+                    <span className="text-gs-chain/60 text-[10px] font-mono shrink-0" aria-hidden="true">⛓</span>
+                    <span className="text-gs-chain text-[10px] font-mono truncate tabular-nums">
+                      {tx.tx_hash.slice(0, 16)}…{tx.tx_hash.slice(-4)}
                     </span>
                   </div>
 
-                  {/* Status pill */}
+                  {/* Status pill — color + icon + text */}
                   {tx.status === 'confirmed' ? (
-                    <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary-container/10 text-primary-container border border-primary-container/25 shrink-0">
-                      <span className="w-1.5 h-1.5 rounded-full bg-primary-container" />
-                      Immutable
+                    <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-gs-heal-soft text-gs-heal border border-gs-heal/20 shrink-0">
+                      <CheckCircle size={8} aria-hidden="true" />
+                      Confirmed
                     </span>
                   ) : (
-                    <span className="flex items-center gap-1 text-[10px] font-mono px-2 py-0.5 rounded-full bg-primary-fixed/10 text-primary-fixed border border-primary-fixed/25 shrink-0">
-                      <Loader2 size={9} className="spin-slow" />
+                    <span className="flex items-center gap-1 text-[10px] font-mono px-1.5 py-0.5 rounded-md bg-gs-warn-soft text-gs-warn border border-gs-warn/20 shrink-0">
+                      <Loader2 size={8} className="spin-slow" aria-hidden="true" />
                       Pending
                     </span>
                   )}
@@ -63,52 +63,51 @@ export default function BlockchainPanel({ transactions }) {
 
                 {/* Details row */}
                 <div className="flex items-center gap-2 text-[10px] font-mono mb-2 flex-wrap">
-                  <span className="text-error font-bold">{tx.attack_type}</span>
-                  <span className="text-outline-variant/60">│</span>
-                  <span className="text-on-surface">{tx.source_ip}</span>
-                  <span className="text-outline-variant/60">│</span>
-                  <span className="text-primary-fixed/70">#{tx.block_number}</span>
+                  <span className="text-gs-threat font-semibold">{tx.attack_type}</span>
+                  <span className="text-gs-faint">│</span>
+                  <span className="text-gs-text tabular-nums">{tx.source_ip}</span>
+                  <span className="text-gs-faint">│</span>
+                  <span className="text-gs-muted tabular-nums">#{tx.block_number}</span>
                 </div>
 
-                {/* Severity bar */}
-                <div className="flex items-center gap-1.5 mb-1.5">
+                {/* Severity bar — segmented */}
+                <div className="flex items-center gap-0.5 mb-1.5" role="meter" aria-valuenow={tx.severity} aria-valuemin={0} aria-valuemax={10} aria-label={`Severity ${tx.severity}/10`}>
                   {Array.from({ length: 10 }, (_, j) => (
                     <div
                       key={j}
-                      className="flex-1 h-1.5 rounded-sm transition-colors duration-300"
+                      className="flex-1 rounded-sm"
                       style={{
+                        height: 3,
                         backgroundColor:
                           j < tx.severity
-                            ? j < 6
-                              ? '#fbbf2450'
-                              : '#f43f5e80'
-                            : 'rgba(119, 141, 169, 0.2)',
+                            ? j < 5 ? '#E8922A60' : '#E03C3C80'
+                            : '#262D3F',
                       }}
                     />
                   ))}
-                  <span className="text-on-surface-variant text-[9px] font-mono ml-1 shrink-0">
-                    Sev {tx.severity}/10
+                  <span className="text-gs-muted text-[9px] font-mono ml-1.5 shrink-0 tabular-nums">
+                    {tx.severity}/10
                   </span>
                 </div>
 
                 {/* Gas used */}
-                <div className="flex items-center justify-between text-[9px] font-mono text-on-surface-variant/70">
-                  <span>Gas Used</span>
-                  <span className="text-on-surface-variant tabular-nums">{tx.gas_used?.toLocaleString()}</span>
+                <div className="flex items-center justify-between text-[9px] font-mono text-gs-faint">
+                  <span>Gas</span>
+                  <span className="text-gs-muted tabular-nums">{tx.gas_used?.toLocaleString()}</span>
                 </div>
               </div>
             </motion.div>
           ))}
         </AnimatePresence>
 
-        {/* Empty state */}
+        {/* § 4.6: Explicit empty state — blockchain_records: [] is valid, not an error */}
         {transactions.length === 0 && (
-          <div className="flex flex-col items-center justify-center py-8 text-center">
-            <div className="w-10 h-10 rounded-xl bg-purple-500/5 border border-purple-500/20 flex items-center justify-center mb-3">
-              <Link2 size={18} className="text-purple-500/40" />
+          <div className="flex flex-col items-center justify-center py-8 text-center" role="status">
+            <div className="w-10 h-10 rounded-xl bg-gs-chain-soft border border-gs-chain/20 flex items-center justify-center mb-3">
+              <Link2 size={18} className="text-gs-chain/40" aria-hidden="true" />
             </div>
-            <p className="text-on-surface-variant text-xs font-mono">No blockchain records.</p>
-            <p className="text-on-surface-variant/70 text-[10px] font-mono mt-1">
+            <p className="text-gs-muted text-[11px] font-mono">No blockchain records.</p>
+            <p className="text-gs-faint text-[10px] font-mono mt-1">
               Records appear when incidents are verified on-chain.
             </p>
           </div>
@@ -117,14 +116,14 @@ export default function BlockchainPanel({ transactions }) {
 
       {/* Footer count */}
       {transactions.length > 0 && (
-        <div className="px-3 py-2 border-t border-outline-variant/30 shrink-0">
+        <div className="px-3 py-2 border-t border-gs-border shrink-0">
           <div className="flex items-center justify-between">
-            <span className="text-on-surface-variant/70 text-[10px] font-mono">
+            <span className="text-gs-faint text-[10px] font-mono">
               {transactions.length} record{transactions.length !== 1 ? 's' : ''} on-chain
             </span>
             <div className="flex items-center gap-1">
-              <div className="w-1 h-1 rounded-full bg-primary-container animate-pulse" />
-              <span className="text-primary-container/60 text-[9px] font-mono">Ganache</span>
+              <div className="w-1.5 h-1.5 rounded-full bg-gs-heal animate-pulse" aria-hidden="true" />
+              <span className="text-gs-heal/60 text-[9px] font-mono">Ganache</span>
             </div>
           </div>
         </div>

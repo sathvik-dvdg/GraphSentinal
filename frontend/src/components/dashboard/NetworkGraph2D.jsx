@@ -1,4 +1,6 @@
 // [Windows] GraphSentinel — Susheep
+// NetworkGraph2D — updated with healing animation and new token colors
+// Status is differentiated by: color + border style + node size (not color alone)
 import { useRef, useEffect, useMemo } from 'react'
 import cytoscape from 'cytoscape'
 import { STATUS_COLORS } from '../../constants/theme'
@@ -9,13 +11,20 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
 
   const elements = useMemo(() => {
     const nodes = graphData.nodes.map((n) => ({
-      data: { id: n.id, label: n.label, status: n.status, threat: n.threat_score },
+      data: {
+        id: n.id,
+        label: n.label,
+        status: n.status,
+        threat: n.threat_score,
+        is_blocked: n.is_blocked,
+      },
     }))
     const edges = graphData.links.map((l) => ({
       data: {
         id: `${typeof l.source === 'object' ? l.source.id : l.source}-${typeof l.target === 'object' ? l.target.id : l.target}`,
         source: typeof l.source === 'object' ? l.source.id : l.source,
         target: typeof l.target === 'object' ? l.target.id : l.target,
+        value: l.value || 0.5,
       },
     }))
     return [...nodes, ...edges]
@@ -26,7 +35,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
 
     // Destroy previous instance
     if (cyRef.current) {
-      try { cyRef.current.destroy() } catch {}
+      try { cyRef.current.destroy() } catch { /* ignore */ }
       cyRef.current = null
     }
 
@@ -34,43 +43,78 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
       container: containerRef.current,
       elements,
       style: [
+        // Base node style — shape encodes status (accessibility: not color alone)
         {
           selector: 'node',
           style: {
-            'background-color': (ele) => STATUS_COLORS[ele.data('status')] || '#ffffff',
+            'background-color': (ele) => STATUS_COLORS[ele.data('status')] || '#4F6EF7',
             label: 'data(label)',
-            color: '#e2e8f0',
-            'font-size': '10px',
-            'font-family': 'monospace',
+            color: '#8A95B0',
+            'font-size': '9px',
+            'font-family': '"DM Mono", monospace',
             'text-valign': 'bottom',
-            'text-margin-y': 4,
-            width: 30,
-            height: 30,
+            'text-margin-y': 5,
+            'text-outline-width': 0,
+            width: 24,
+            height: 24,
+            shape: 'ellipse', // default: circle = normal
+            'border-width': 1.5,
+            'border-color': (ele) => STATUS_COLORS[ele.data('status')] + '40' || '#262D3F',
           },
         },
+        // Normal — circle (default above)
+
+        // Suspicious — diamond shape
+        {
+          selector: 'node[status="suspicious"]',
+          style: {
+            shape: 'diamond',
+            width: 28,
+            height: 28,
+            'border-color': '#E8922A',
+            'border-width': 2,
+          },
+        },
+
+        // Malicious — triangle (warning shape)
         {
           selector: 'node[status="malicious"]',
           style: {
-            'border-color': '#ff0000',
-            'border-width': 3,
-            width: 40,
-            height: 40,
+            shape: 'triangle',
+            width: 36,
+            height: 36,
+            'border-color': '#E03C3C',
+            'border-width': 2.5,
           },
         },
+
+        // Blocked — hexagon (containment shape) with dashed border
         {
           selector: 'node[status="blocked"]',
           style: {
-            'border-color': '#0066ff',
-            'border-width': 3,
+            shape: 'hexagon',
+            width: 30,
+            height: 30,
+            'border-color': '#4F6EF7',
+            'border-width': 2,
             'border-style': 'dashed',
+            opacity: 0.8,
           },
         },
+
+        // Edges
         {
           selector: 'edge',
           style: {
-            width: 1.5,
-            'line-color': '#334466',
-            'target-arrow-color': '#334466',
+            width: (ele) => {
+              const v = ele.data('value') || 0.5
+              return v > 0.75 ? 2.5 : v > 0.5 ? 1.5 : 1
+            },
+            'line-color': (ele) => {
+              const v = ele.data('value') || 0.5
+              return v > 0.75 ? '#E03C3C55' : v > 0.5 ? '#E8922A44' : '#262D3F'
+            },
+            'target-arrow-color': '#3D4560',
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
           },
@@ -83,16 +127,47 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
 
     return () => {
       if (cyRef.current) {
-        try { cyRef.current.destroy() } catch {}
+        try { cyRef.current.destroy() } catch { /* ignore */ }
         cyRef.current = null
       }
     }
   }, [elements])
 
+  // Healing animation: highlight the healing node with a pulsing style
+  useEffect(() => {
+    if (!cyRef.current || !healingNodeId) return
+
+    const node = cyRef.current.getElementById(healingNodeId)
+    if (!node || node.empty()) return
+
+    // Add healing highlight class
+    node.addClass('healing')
+
+    // Override style temporarily
+    node.style({
+      'border-color': '#4F6EF7',
+      'border-width': 4,
+      'border-style': 'solid',
+      'background-color': '#4F6EF780',
+    })
+
+    const t = setTimeout(() => {
+      if (cyRef.current && !cyRef.current.destroyed()) {
+        node.removeStyle()
+        node.removeClass('healing')
+      }
+    }, 3000)
+
+    return () => clearTimeout(t)
+  }, [healingNodeId])
+
   return (
     <div
       ref={containerRef}
-      style={{ width: '100%', height: '100%', background: '#0a0e1a' }}
+      className="w-full h-full"
+      style={{ background: '#141414' }}
+      role="img"
+      aria-label="2D network graph showing node connections and threat status"
     />
   )
 }

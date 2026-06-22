@@ -1,94 +1,104 @@
 // [Windows] GraphSentinel — Susheep
-import { useState } from "react";
-import { motion } from "framer-motion";
-import useAuthStore from "../../store/useAuthStore";
+// § 4.1 Fix: Honest demo framing — not fake "Operator Authentication"
+import { useState } from 'react'
+import { motion } from 'framer-motion'
+import useAuthStore from '../../store/useAuthStore'
 
 export default function LoginForm({ onSuccess }) {
-  const [username, setUsername] = useState("");
-  const [password, setPassword] = useState("");
-  const [error, setError] = useState("");
-  const [loading, setLoading] = useState(false);
-  const { login } = useAuthStore();
+  const [username, setUsername] = useState('')
+  const [password, setPassword] = useState('')
+  const [error, setError]       = useState('')
+  const [loading, setLoading]   = useState(false)
+  const { login } = useAuthStore()
 
   const handleSubmit = async (e) => {
-    e.preventDefault();
-    setError("");
+    e.preventDefault()
+    setError('')
 
-    if (!username.trim()) {
-      setError("Operator ID required");
-      return;
-    }
-    if (!password.trim()) {
-      setError("Access code required");
-      return;
-    }
+    if (!username.trim()) { setError('Username required'); return }
+    if (!password.trim()) { setError('Password required'); return }
 
-    setLoading(true);
+    setLoading(true)
+    // Simulated delay for UX — no real backend round-trip
+    await new Promise((r) => setTimeout(r, 800))
 
-    // Fake 1.5s auth delay for demo effect
-    await new Promise((r) => setTimeout(r, 1500));
-
-    const success = login(username.trim(), password);
+    const success = login(username.trim(), password)
     if (success) {
-      onSuccess();
+      onSuccess()
     } else {
-      setError("Authentication failed — invalid credentials");
-      setLoading(false);
+      setError('Both fields must be non-empty')
+      setLoading(false)
     }
-  };
+  }
 
   return (
     <motion.div
-      initial={{ opacity: 0, y: 20 }}
+      initial={{ opacity: 0, y: 16 }}
       animate={{ opacity: 1, y: 0 }}
-      transition={{ delay: 0.3 }}
-      className="bg-gs-card border border-gs-accent/20 rounded-xl p-8 w-full max-w-md"
+      transition={{ delay: 0.2, duration: 0.4 }}
+      className="login-form-container"
     >
-      {/* Logo */}
-      <div className="text-center mb-8">
-        <div className="text-4xl mb-3">🛡️</div>
-        <h2 className="text-xl font-bold text-white font-mono">
-          GRAPHSENTINEL
-        </h2>
-        <p className="text-xs text-gray-500 font-mono tracking-[0.2em] mt-1 uppercase">
-          Operator Authentication
+      {/* Header */}
+      <div className="login-header">
+        <div className="login-brand">
+          <div className="login-brand-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+              <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" />
+            </svg>
+          </div>
+          <div>
+            <h1 className="login-brand-name">GraphSentinel</h1>
+            <p className="login-brand-sub">Dashboard Access</p>
+          </div>
+        </div>
+
+        <h2 className="login-title">Enter Dashboard</h2>
+        <p className="login-subtitle">
+          Sign in to access the monitoring console.
         </p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-5">
+      {/* § 4.1 Demo disclaimer — prominent, not hidden */}
+      <div className="login-demo-notice">
+        <span className="login-demo-icon">◆</span>
+        <p className="login-demo-text">
+          <span className="login-demo-label">LOCAL DEMO MODE</span>
+          {' '}— Any username and password grants access. This is not production authentication.
+        </p>
+      </div>
+
+      <form onSubmit={handleSubmit} className="login-form" id="login-form">
         {/* Username */}
-        <div>
-          <label className="text-xs text-gray-500 font-mono block mb-1.5 uppercase tracking-wider">
-            Operator ID
+        <div className="login-field">
+          <label htmlFor="login-username" className="login-label">
+            Username
           </label>
           <input
+            id="login-username"
             type="text"
             value={username}
             onChange={(e) => setUsername(e.target.value)}
             placeholder="admin"
             disabled={loading}
-            className="w-full bg-gs-bg border border-gs-border rounded-lg px-4 py-3 text-sm font-mono
-                       text-white placeholder-gray-600 outline-none transition-all duration-300
-                       focus:border-gs-accent focus:shadow-[0_0_12px_rgba(0,255,136,0.15)]
-                       disabled:opacity-50"
+            autoComplete="username"
+            className="login-input"
           />
         </div>
 
         {/* Password */}
-        <div>
-          <label className="text-xs text-gray-500 font-mono block mb-1.5 uppercase tracking-wider">
-            Access Code
+        <div className="login-field">
+          <label htmlFor="login-password" className="login-label">
+            Password
           </label>
           <input
+            id="login-password"
             type="password"
             value={password}
             onChange={(e) => setPassword(e.target.value)}
             placeholder="••••••••"
             disabled={loading}
-            className="w-full bg-gs-bg border border-gs-border rounded-lg px-4 py-3 text-sm font-mono
-                       text-white placeholder-gray-600 outline-none transition-all duration-300
-                       focus:border-gs-accent focus:shadow-[0_0_12px_rgba(0,255,136,0.15)]
-                       disabled:opacity-50"
+            autoComplete="current-password"
+            className="login-input"
           />
         </div>
 
@@ -97,34 +107,30 @@ export default function LoginForm({ onSuccess }) {
           <motion.p
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
-            className="text-gs-alert text-xs font-mono"
+            className="login-error"
+            role="alert"
           >
-            ⚠ {error}
+            <span>▲</span> {error}
           </motion.p>
         )}
 
         {/* Submit */}
         <button
+          id="login-submit"
           type="submit"
           disabled={loading}
-          className={`w-full py-3 rounded-lg font-mono font-bold text-sm transition-all duration-300
-            ${
-              loading
-                ? "bg-gs-accent/40 text-gs-bg cursor-wait"
-                : "bg-gs-accent text-gs-bg hover:shadow-[0_0_24px_rgba(0,255,136,0.4)] hover:scale-[1.02]"
-            }`}
+          className="login-submit-btn"
         >
-          {loading ? "Verifying credentials..." : "AUTHENTICATE →"}
+          {loading ? (
+            <span className="login-loading">
+              <svg className="spin-slow" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth={2}>
+                <path strokeLinecap="round" strokeLinejoin="round" d="M12 2v4M12 18v4M4.93 4.93l2.83 2.83M16.24 16.24l2.83 2.83M2 12h4M18 12h4M4.93 19.07l2.83-2.83M16.24 7.76l2.83-2.83" />
+              </svg>
+              Opening...
+            </span>
+          ) : 'Open Dashboard →'}
         </button>
       </form>
-
-      {/* Demo hint */}
-      <div className="mt-6 pt-4 border-t border-gs-border">
-        <p className="text-xs text-gray-600 font-mono text-center">
-          Temporary access: any operator ID and access code will open the
-          dashboard.
-        </p>
-      </div>
     </motion.div>
-  );
+  )
 }

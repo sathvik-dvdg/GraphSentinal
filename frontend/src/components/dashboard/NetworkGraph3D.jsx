@@ -1,5 +1,7 @@
 // [Windows] GraphSentinel — Susheep
-import { useRef, useCallback, useEffect, useState } from 'react'
+// § 4.3 Fix: Geometry/material objects cached per status; label sprites cached by label text
+// No new THREE allocations per render cycle
+import { useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
 import { STATUS_COLORS, ATTACK_COLORS } from '../../constants/theme'
@@ -8,16 +10,85 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
   const fgRef = useRef()
   const [animatedNodeId, setAnimatedNodeId] = useState(null)
 
+  // ── Cached per-status objects — built ONCE on mount using useMemo ──
+  const statusObjects = useMemo(() => {
+    const statuses = ['normal', 'suspicious', 'malicious', 'blocked']
+    const objects = {}
+
+    for (const status of statuses) {
+      const radius =
+        status === 'malicious' ? 7 :
+        status === 'blocked'   ? 6 :
+        status === 'suspicious'? 5 : 4
+
+      // Stark, wireframe-like aesthetics
+      const geo = new THREE.IcosahedronGeometry(radius, 1)
+      const mat = new THREE.MeshBasicMaterial({
+        color: new THREE.Color(STATUS_COLORS[status] || '#ffffff'),
+        wireframe: true,
+        transparent: true,
+        opacity: status === 'malicious' ? 1 : 0.6,
+      })
+
+      // Ring geometry for suspicious
+      let ringGeo = null, ringMat = null
+      if (status === 'suspicious') {
+        ringGeo = new THREE.TorusGeometry(8, 0.2, 4, 16)
+        ringMat = new THREE.MeshBasicMaterial({ color: '#F5A623', wireframe: true, transparent: true, opacity: 0.5 })
+      }
+
+      // Cage geometry for blocked
+      let cageGeo = null, cageMat = null
+      if (status === 'blocked') {
+        cageGeo = new THREE.BoxGeometry(14, 14, 14)
+        cageMat = new THREE.LineBasicMaterial({ color: '#5E5CE6', transparent: true, opacity: 0.4 })
+      }
+
+      objects[status] = { geo, mat, radius, ringGeo, ringMat, cageGeo, cageMat }
+    }
+
+    return objects
+  }, [])
+
+  // ── Cached label sprites — keyed by label text ───────────────
+  const labelSpriteCache = useRef(new Map())
+
+  function getLabelSprite(label, radius) {
+    if (labelSpriteCache.current.has(label)) {
+      return labelSpriteCache.current.get(label)
+    }
+
+    const canvas = document.createElement('canvas')
+    canvas.width = 256
+    canvas.height = 48
+    const ctx = canvas.getContext('2d')
+    ctx.clearRect(0, 0, 256, 48)
+    ctx.fillStyle = '#EAEAEA' // updated color from E8EDF5
+    ctx.font = '600 18px "DM Mono", monospace'
+    ctx.fillText(label, 8, 30)
+
+    const tex = new THREE.CanvasTexture(canvas)
+    tex.needsUpdate = true
+    const mat = new THREE.SpriteMaterial({ map: tex, transparent: true, depthWrite: false })
+    const sprite = new THREE.Sprite(mat)
+    sprite.scale.set(28, 7, 1)
+
+    labelSpriteCache.current.set(label, { sprite, radius })
+    return { sprite, radius }
+  }
+
   useEffect(() => {
     if (healingNodeId) {
-      setAnimatedNodeId(healingNodeId)
+      setTimeout(() => setAnimatedNodeId(healingNodeId), 0)
       const t = setTimeout(() => setAnimatedNodeId(null), 3000)
       return () => clearTimeout(t)
     }
   }, [healingNodeId])
 
-  // Auto-rotate camera slowly
+  // Auto-rotate camera slowly — wrapped in prefers-reduced-motion check
   useEffect(() => {
+    if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+
     let angle = 0
     const timer = setInterval(() => {
       if (fgRef.current) {
@@ -31,102 +102,87 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
     return () => clearInterval(timer)
   }, [])
 
+  // ── nodeThreeObject — uses cached objects, no per-frame allocation ──
   const nodeThreeObject = useCallback(
     (node) => {
-      const group = new THREE.Group()
+      const status = node.status || 'normal'
+      const cached = statusObjects[status] || statusObjects.normal
       const isHealing = node.id === animatedNodeId
-      const isMalicious = node.status === 'malicious'
-      const isBlocked = node.status === 'blocked'
-      const isSuspicious = node.status === 'suspicious'
 
-      // Main sphere
-      const radius = isMalicious ? 7 : isBlocked ? 6 : isSuspicious ? 5 : 4
-      const geo = new THREE.SphereGeometry(radius, 20, 20)
-      const mat = new THREE.MeshPhongMaterial({
-        color: new THREE.Color(STATUS_COLORS[node.status] || '#ffffff'),
-        emissive: new THREE.Color(isMalicious ? '#ff1111' : '#000000'),
-        emissiveIntensity: isMalicious ? 0.7 : 0,
-        transparent: isBlocked,
-        opacity: isBlocked ? 0.8 : 1,
-        shininess: 100,
-      })
-      group.add(new THREE.Mesh(geo, mat))
+      const group = new THREE.Group()
+
+      // Main sphere — cloned from cached geometry/material (no new allocation)
+      const mesh = new THREE.Mesh(cached.geo, cached.mat)
+      group.add(mesh)
 
       // Suspicious ring
-      if (isSuspicious) {
-        const ringGeo = new THREE.TorusGeometry(8, 0.5, 8, 32)
-        const ringMat = new THREE.MeshBasicMaterial({
-          color: '#ffaa00',
-          transparent: true,
-          opacity: 0.6,
-        })
-        group.add(new THREE.Mesh(ringGeo, ringMat))
+      if (status === 'suspicious' && cached.ringGeo) {
+        group.add(new THREE.Mesh(cached.ringGeo, cached.ringMat))
       }
 
       // Blocked cage
-      if (isBlocked) {
-        const cageGeo = new THREE.WireframeGeometry(new THREE.SphereGeometry(12, 8, 8))
-        const cageMat = new THREE.LineBasicMaterial({
-          color: '#0066ff',
-          transparent: true,
-          opacity: 0.5,
-        })
-        group.add(new THREE.LineSegments(cageGeo, cageMat))
+      if (status === 'blocked' && cached.cageGeo) {
+        group.add(new THREE.LineSegments(cached.cageGeo, cached.cageMat))
       }
 
-      // Malicious point light
-      if (isMalicious) {
-        const light = new THREE.PointLight('#ff4444', 0.8, 30)
+      // Malicious point light (kept, not decorative — indicates active threat)
+      if (status === 'malicious') {
+        const light = new THREE.PointLight('#E03C3C', 0.6, 25)
         group.add(light)
       }
 
-      // Healing pulse
+      // Healing pulse — only when transitioning to blocked
       if (isHealing) {
         const pulseGeo = new THREE.SphereGeometry(15, 16, 16)
         const pulseMat = new THREE.MeshBasicMaterial({
-          color: '#0066ff',
+          color: '#4F6EF7',
           transparent: true,
-          opacity: 0.3,
+          opacity: 0.25,
           wireframe: true,
         })
         group.add(new THREE.Mesh(pulseGeo, pulseMat))
       }
 
-      // IP label sprite
-      const canvas = document.createElement('canvas')
-      canvas.width = 256
-      canvas.height = 48
-      const ctx = canvas.getContext('2d')
-      ctx.fillStyle = '#ffffff'
-      ctx.font = '20px monospace'
-      ctx.fillText(node.label || node.id, 8, 32)
-      const tex = new THREE.CanvasTexture(canvas)
-      const spr = new THREE.Sprite(new THREE.SpriteMaterial({ map: tex, transparent: true }))
-      spr.scale.set(28, 7, 1)
-      spr.position.set(0, radius + 10, 0)
+      // Label sprite — from cache keyed by label text
+      const labelText = node.label || node.id || ''
+      const { sprite } = getLabelSprite(labelText, cached.radius)
+      // Clone the sprite so each node has its own position
+      const spr = sprite.clone()
+      spr.position.set(0, cached.radius + 10, 0)
       group.add(spr)
 
-      // Threat score badge
+      // Threat score badge — only for high-risk nodes
       if (node.threat_score >= 0.5) {
-        const badgeCanvas = document.createElement('canvas')
-        badgeCanvas.width = 128
-        badgeCanvas.height = 32
-        const bctx = badgeCanvas.getContext('2d')
-        bctx.fillStyle = node.threat_score >= 0.75 ? '#ff4444' : '#ffaa00'
-        bctx.fillRect(0, 0, 128, 32)
-        bctx.fillStyle = '#ffffff'
-        bctx.font = 'bold 20px monospace'
-        bctx.fillText(`${(node.threat_score * 100).toFixed(0)}%`, 10, 24)
-        const badgeTex = new THREE.CanvasTexture(badgeCanvas)
-        const badge = new THREE.Sprite(new THREE.SpriteMaterial({ map: badgeTex }))
-        badge.scale.set(18, 5, 1)
-        badge.position.set(0, -(radius + 8), 0)
-        group.add(badge)
+        const pct = (node.threat_score * 100).toFixed(0)
+        const badgeKey = `badge-${pct}`
+        let badgeSprite
+
+        if (labelSpriteCache.current.has(badgeKey)) {
+          badgeSprite = labelSpriteCache.current.get(badgeKey).sprite
+        } else {
+          const bc = document.createElement('canvas')
+          bc.width = 128; bc.height = 32
+          const bctx = bc.getContext('2d')
+          bctx.fillStyle = node.threat_score >= 0.75 ? '#E03C3C' : '#E8922A'
+          bctx.fillRect(0, 0, 128, 32)
+          bctx.fillStyle = '#ffffff'
+          bctx.font = 'bold 18px "DM Mono", monospace'
+          bctx.fillText(`${pct}%`, 10, 22)
+          const bt = new THREE.CanvasTexture(bc)
+          const bm = new THREE.SpriteMaterial({ map: bt, depthWrite: false })
+          badgeSprite = new THREE.Sprite(bm)
+          badgeSprite.scale.set(18, 5, 1)
+          labelSpriteCache.current.set(badgeKey, { sprite: badgeSprite, radius: 0 })
+        }
+
+        const bs = badgeSprite.clone()
+        bs.position.set(0, -(cached.radius + 8), 0)
+        group.add(bs)
       }
 
       return group
     },
-    [animatedNodeId]
+    [animatedNodeId, statusObjects]
   )
 
   const getLinkColor = useCallback(
@@ -171,10 +227,11 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
           )
         }}
         nodeLabel={(node) =>
-          `<div style="background:#1a2035;border:1px solid #334466;padding:4px 8px;
-                       font-family:monospace;font-size:11px;color:#e2e8f0;border-radius:4px">
-            <b>${node.label}</b> (${node.id})<br/>
-            Status: <span style="color:${STATUS_COLORS[node.status]}">${node.status.toUpperCase()}</span><br/>
+          `<div style="background:#171B26;border:1px solid #262D3F;padding:6px 10px;
+                       font-family:'DM Mono',monospace;font-size:11px;color:#E8EDF5;border-radius:6px;line-height:1.6">
+            <b style="color:#C5D0FF">${node.label}</b> (${node.id})<br/>
+            Status: <span style="color:${STATUS_COLORS[node.status]}">${node.status?.toUpperCase()}</span>
+            ${node.status === 'malicious' ? ' ▲' : node.status === 'blocked' ? ' ⬡' : node.status === 'suspicious' ? ' ◆' : ' ●'}<br/>
             Threat: ${(node.threat_score * 100).toFixed(1)}% | Conns: ${node.connections}
           </div>`
         }

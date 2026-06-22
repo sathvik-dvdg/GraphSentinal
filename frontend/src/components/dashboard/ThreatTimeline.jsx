@@ -1,4 +1,5 @@
 // [Windows] GraphSentinel — Susheep
+// ThreatTimeline — updated chart colors to new token system
 // ── All props and data bindings preserved verbatim ──
 import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid,
@@ -7,19 +8,21 @@ import {
 
 export default function ThreatTimeline({ data }) {
   return (
-    <div className="h-full flex flex-col px-1 pt-1.5">
+    <div className="h-full flex flex-col px-1 pt-2">
       {/* Header */}
       <div className="flex items-center gap-2 mb-1.5 shrink-0">
-        <span className="text-[9px] font-mono text-slate-600 tracking-widest uppercase">Threat Timeline</span>
-        <div className="h-px flex-1 bg-gradient-to-r from-slate-800 to-transparent" />
+        <span className="text-[9px] font-mono text-gs-faint tracking-widest uppercase">
+          Threat Timeline
+        </span>
+        <div className="h-px flex-1 bg-gs-border" />
         <div className="flex items-center gap-3">
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-1 rounded-full bg-rose-500/60" />
-            <span className="text-[9px] font-mono text-slate-600">Threats</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-1 rounded-full" style={{ backgroundColor: '#E03C3C80' }} />
+            <span className="text-[9px] font-mono text-gs-muted">Threats</span>
           </div>
-          <div className="flex items-center gap-1">
-            <div className="w-2 h-1 rounded-full bg-cyan-500/60" />
-            <span className="text-[9px] font-mono text-slate-600">Blocked</span>
+          <div className="flex items-center gap-1.5">
+            <div className="w-2 h-1 rounded-full" style={{ backgroundColor: '#2ECC8A80' }} />
+            <span className="text-[9px] font-mono text-gs-muted">Blocked</span>
           </div>
         </div>
       </div>
@@ -31,50 +34,49 @@ export default function ThreatTimeline({ data }) {
             <defs>
               {/* Original gradient IDs preserved */}
               <linearGradient id="threats-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#f43f5e" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#f43f5e" stopOpacity={0} />
+                <stop offset="5%"  stopColor="#E03C3C" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#E03C3C" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="blocked-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#06b6d4" stopOpacity={0.35} />
-                <stop offset="95%" stopColor="#06b6d4" stopOpacity={0} />
+                <stop offset="5%"  stopColor="#2ECC8A" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#2ECC8A" stopOpacity={0} />
               </linearGradient>
             </defs>
 
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="rgba(30,41,59,0.6)"
+              stroke="rgba(38,45,63,0.8)"
               vertical={false}
             />
             <XAxis
               dataKey="time"
-              tick={{ fill: '#475569', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
-              axisLine={{ stroke: 'rgba(30,41,59,0.5)' }}
+              tick={{ fill: '#3D4560', fontSize: 9, fontFamily: '"DM Mono", monospace' }}
+              axisLine={{ stroke: 'rgba(38,45,63,0.6)' }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fill: '#475569', fontSize: 9, fontFamily: 'JetBrains Mono, monospace' }}
+              tick={{ fill: '#3D4560', fontSize: 9, fontFamily: '"DM Mono", monospace' }}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip
               contentStyle={{
-                background: 'rgba(15,23,42,0.92)',
-                border: '1px solid rgba(30,41,59,0.8)',
+                background: '#1E1E1E',
+                border: '1px solid #262D3F',
                 borderRadius: '8px',
-                fontFamily: 'JetBrains Mono, monospace',
+                fontFamily: '"DM Mono", monospace',
                 fontSize: '10px',
-                color: '#e2e8f0',
-                boxShadow: '0 8px 32px rgba(0,0,0,0.5)',
-                backdropFilter: 'blur(12px)',
+                color: '#E8EDF5',
+                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
               }}
-              itemStyle={{ color: '#94a3b8' }}
-              cursor={{ stroke: 'rgba(6,182,212,0.3)', strokeDasharray: '3 3' }}
+              itemStyle={{ color: '#8A95B0' }}
+              cursor={{ stroke: 'rgba(79,110,247,0.3)', strokeDasharray: '3 3' }}
             />
             {/* Original Area components — dataKey, stroke, fill preserved */}
             <Area
               type="monotone"
               dataKey="threats"
-              stroke="#f43f5e"
+              stroke="#E03C3C"
               fill="url(#threats-grad)"
               strokeWidth={1.5}
               dot={false}
@@ -83,7 +85,7 @@ export default function ThreatTimeline({ data }) {
             <Area
               type="monotone"
               dataKey="blocked"
-              stroke="#06b6d4"
+              stroke="#2ECC8A"
               fill="url(#blocked-grad)"
               strokeWidth={1.5}
               dot={false}

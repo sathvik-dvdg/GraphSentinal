@@ -1,4 +1,4 @@
-// [Windows] GraphSentinel — Susheep
+// [Windows] GraphSentinel - Susheep
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './store/useAuthStore'
 import LandingPage from './pages/LandingPage'
@@ -13,7 +13,12 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <BrowserRouter>
+    <BrowserRouter
+      future={{
+        v7_startTransition: true,
+        v7_relativeSplatPath: true,
+      }}
+    >
       <Routes>
         <Route path="/" element={<LandingPage />} />
         <Route path="/login" element={<LoginPage />} />

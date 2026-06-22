@@ -1,5 +1,6 @@
 // [Windows] GraphSentinel — Susheep
 // REST polling hook — fallback when WebSocket is down
+// § 4.5: Sets connectionMode instead of isMockMode
 import { useEffect, useCallback } from 'react'
 import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline } from '../services/api'
 import useGraphStore from '../store/useGraphStore'
@@ -13,13 +14,19 @@ export function useGraphData() {
     setBlockedIPs,
     setChainTxs,
     updateStats,
-    setMockMode,
+    setConnectionMode,
     setTimeline,
-    isSimulating,
+    connectionMode,
   } = useGraphStore()
 
   const fetchAll = useCallback(async () => {
-    if (USE_MOCK) return
+    if (USE_MOCK) {
+      setConnectionMode('mock')
+      return
+    }
+
+    // Don't overwrite data during an active simulation
+    if (connectionMode === 'simulating') return
 
     try {
       const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes] =
@@ -33,33 +40,45 @@ export function useGraphData() {
         ])
 
       if (graphRes.status === 'fulfilled') {
-        setMockMode(false)
-        if (!isSimulating) {
+        // At least one successful response — we're live
+        if (connectionMode !== 'simulating') {
+          setConnectionMode('live')
           setGraphData(graphRes.value)
+        }
+      } else {
+        // Graph endpoint failed — switch to mock if not already live via socket
+        if (connectionMode === 'connecting') {
+          setConnectionMode('mock')
         }
       }
 
-      if (isSimulating) return
+      // Only update remaining fields if not simulating
+      if (connectionMode === 'simulating') return
 
-      if (alertsRes.status === 'fulfilled') {
-        setAlerts(alertsRes.value.alerts)
-      }
-      if (blockedRes.status === 'fulfilled') {
-        setBlockedIPs(blockedRes.value.blocked_ips)
-      }
+      if (alertsRes.status === 'fulfilled') setAlerts(alertsRes.value.alerts)
+      if (blockedRes.status === 'fulfilled') setBlockedIPs(blockedRes.value.blocked_ips)
       if (forensicsRes.status === 'fulfilled') {
-        setChainTxs(forensicsRes.value.blockchain_records)
+        // § 4.6: blockchain_records is [] when Ganache is offline — not null
+        setChainTxs(forensicsRes.value.blockchain_records ?? [])
       }
-      if (statsRes.status === 'fulfilled') {
-        updateStats(statsRes.value)
+      if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
+      if (timelineRes.status === 'fulfilled') setTimeline(timelineRes.value.data_points)
+    } catch {
+      console.warn('[useGraphData] Backend unavailable — switching to mock mode')
+      if (connectionMode === 'connecting') {
+        setConnectionMode('mock')
       }
-      if (timelineRes.status === 'fulfilled') {
-        setTimeline(timelineRes.value.data_points)
-      }
-    } catch (e) {
-      console.warn('[useGraphData] Backend unavailable — keeping mock data')
     }
-  }, [isSimulating])
+  }, [
+    connectionMode,
+    setGraphData,
+    setAlerts,
+    setBlockedIPs,
+    setChainTxs,
+    updateStats,
+    setConnectionMode,
+    setTimeline
+  ])
 
   useEffect(() => {
     fetchAll()

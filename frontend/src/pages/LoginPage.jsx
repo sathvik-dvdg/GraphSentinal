@@ -4,18 +4,18 @@ import { motion } from 'framer-motion'
 import LoginForm from '../components/auth/LoginForm'
 import useAuthStore from '../store/useAuthStore'
 
+// System status lines shown in the terminal panel
 const TERMINAL_LINES = [
-  'GRAPHSENTINEL SECURITY NODE v1.0.0',
-  '─────────────────────────────────',
-  '> system status: OPERATIONAL',
-  '> backend: localhost:8000 ✓',
-  '> blockchain: ganache:8545 ✓',
-  '> gnn model: graphsage_v1 ✓',
-  '> active nodes: 10',
-  '> threat level: ELEVATED',
-  '> last incident: 00:02:31 ago',
-  '─────────────────────────────────',
-  'Awaiting operator authentication...',
+  { text: 'GRAPHSENTINEL v1.0.0',        cls: 'terminal-heading' },
+  { text: '────────────────────────',     cls: 'terminal-divider' },
+  { text: '> system status: OPERATIONAL', cls: 'terminal-ok' },
+  { text: '> backend: localhost:8000',    cls: 'terminal-dim' },
+  { text: '> blockchain: ganache:8545',   cls: 'terminal-dim' },
+  { text: '> gnn model: graphsage_v1',    cls: 'terminal-dim' },
+  { text: '> active nodes: 10',           cls: 'terminal-dim' },
+  { text: '> threat level: ELEVATED',     cls: 'terminal-warn' },
+  { text: '────────────────────────',     cls: 'terminal-divider' },
+  { text: 'Awaiting operator...',         cls: 'terminal-faint' },
 ]
 
 export default function LoginPage() {
@@ -27,60 +27,74 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen bg-gs-bg flex hex-bg">
-      {/* Left Panel — Terminal decoration (hidden on mobile) */}
-      <div className="hidden lg:flex flex-1 items-center justify-center p-12">
-        <motion.div
-          initial={{ opacity: 0, x: -30 }}
-          animate={{ opacity: 1, x: 0 }}
-          transition={{ duration: 0.6 }}
-          className="bg-gs-bg/80 border border-gs-accent/20 rounded-xl p-6 max-w-md w-full font-mono"
-        >
-          {TERMINAL_LINES.map((line, i) => (
-            <motion.div
-              key={i}
-              initial={{ opacity: 0 }}
-              animate={{ opacity: 1 }}
-              transition={{ delay: 0.5 + i * 0.12 }}
-              className={`text-sm mb-0.5 ${
-                line.startsWith('>')
-                  ? 'text-gs-accent'
-                  : line.includes('──')
-                  ? 'text-gs-accent/40'
-                  : line.includes('v1.0.0')
-                  ? 'text-white font-bold'
-                  : 'text-gray-500'
-              }`}
-            >
-              {line}
-            </motion.div>
-          ))}
-          <motion.span
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            transition={{ delay: 2.2 }}
-            className="text-gs-accent blink-cursor"
-          >
-            █
-          </motion.span>
-        </motion.div>
-      </div>
+    <div className="login-page">
+      {/* Mesh grid background — matches landing page */}
+      <div className="login-grid-bg" />
 
-      {/* Right Panel — Login form */}
-      <div className="flex-1 flex items-center justify-center p-6">
-        <div className="w-full max-w-md">
+      {/* Subtle radial glow behind form */}
+      <div className="login-radial-glow" />
+
+      <div className="login-layout">
+        {/* Left Panel — Terminal decoration */}
+        <motion.div
+          initial={{ opacity: 0, x: -24 }}
+          animate={{ opacity: 1, x: 0 }}
+          transition={{ duration: 0.5 }}
+          className="login-terminal-panel"
+        >
+          <div className="terminal-window">
+            {/* Title bar */}
+            <div className="terminal-title-bar">
+              <div className="terminal-dots">
+                <span className="dot dot-red" />
+                <span className="dot dot-yellow" />
+                <span className="dot dot-green" />
+              </div>
+              <span className="terminal-title-text">graphsentinel — terminal</span>
+            </div>
+
+            {/* Terminal content */}
+            <div className="terminal-body">
+              {TERMINAL_LINES.map((line, i) => (
+                <motion.div
+                  key={i}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  transition={{ delay: 0.4 + i * 0.08 }}
+                  className={`terminal-line ${line.cls}`}
+                >
+                  {line.text}
+                </motion.div>
+              ))}
+              <motion.span
+                initial={{ opacity: 0 }}
+                animate={{ opacity: 1 }}
+                transition={{ delay: 1.4 }}
+                className="terminal-cursor blink-cursor"
+              >
+                █
+              </motion.span>
+            </div>
+          </div>
+
+          {/* Version note */}
+          <p className="terminal-footer">
+            GraphSentinel · Autonomous Cyber Defense System
+          </p>
+        </motion.div>
+
+        {/* Right Panel — Login form */}
+        <div className="login-form-panel">
           <LoginForm onSuccess={() => navigate('/dashboard')} />
+
           <motion.div
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
-            transition={{ delay: 1 }}
-            className="text-center mt-6"
+            transition={{ delay: 0.8 }}
+            className="login-back-link-wrapper"
           >
-            <Link
-              to="/"
-              className="text-xs text-gray-600 font-mono hover:text-gs-accent transition-colors no-underline"
-            >
-              ← Return to overview
+            <Link to="/" className="login-back-link">
+              ← Back to overview
             </Link>
           </motion.div>
         </div>

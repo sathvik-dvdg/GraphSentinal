@@ -10,11 +10,11 @@ from ipaddress import ip_address, ip_network
 from app.config import settings
 
 
-_audit_log = logging.getLogger("graphsentinel.enforcement")
+_audit_log = logging.getLogger('graphsentinel.enforcement')
 _audit_log.setLevel(logging.INFO)
 if not _audit_log.handlers:
     handler = logging.StreamHandler()
-    handler.setFormatter(logging.Formatter("[%(asctime)s] [ENFORCEMENT] %(message)s"))
+    handler.setFormatter(logging.Formatter('[%(asctime)s] [ENFORCEMENT] %(message)s'))
     _audit_log.addHandler(handler)
 
 
@@ -34,19 +34,20 @@ def validate_mininet_ip(value: str) -> str:
     try:
         parsed = ip_address(value)
     except ValueError as exc:
-        _audit_log.warning("REJECTED invalid IP input: %r — %s", value, exc)
-        raise ValueError(f"Invalid IP address: {value}") from exc
+        _audit_log.warning('REJECTED invalid IP input: %r - %s', value, exc)
+        raise ValueError(f'Invalid IP address: {value}') from exc
+
+    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified:
+        _audit_log.warning('REJECTED IP %s - non-enforceable class', parsed)
+        raise ValueError(f'IP {value} is not enforceable')
 
     network = ip_network(settings.mininet_cidr, strict=False)
     if parsed not in network:
-        _audit_log.warning("REJECTED IP %s — outside %s", parsed, network)
-        raise ValueError(f"IP {value} is outside {network}")
+        _audit_log.warning('REJECTED IP %s - outside %s', parsed, network)
+        raise ValueError(f'IP {value} is outside {network}')
     if parsed in {network.network_address, network.broadcast_address}:
-        _audit_log.warning("REJECTED IP %s — network/broadcast address", parsed)
-        raise ValueError(f"IP {value} is not a host address")
-    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified:
-        _audit_log.warning("REJECTED IP %s — non-enforceable class", parsed)
-        raise ValueError(f"IP {value} is not enforceable")
+        _audit_log.warning('REJECTED IP %s - network/broadcast address', parsed)
+        raise ValueError(f'IP {value} is not a host address')
     return str(parsed)
 
 
@@ -59,51 +60,58 @@ class EnforcementAgent:
     def _send_to_daemon(self, payload: dict) -> dict:
         sock_path = settings.enforcement_agent_socket
         try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as s:
-                s.settimeout(3.0)
-                s.connect(sock_path)
-                s.sendall(json.dumps(payload).encode("utf-8"))
-                response = s.recv(4096)
+            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+                sock.settimeout(3.0)
+                sock.connect(sock_path)
+                sock.sendall(json.dumps(payload).encode('utf-8'))
+                response = sock.recv(4096)
                 if not response:
-                    raise RuntimeError("Empty response from daemon")
-                return json.loads(response.decode("utf-8"))
+                    raise RuntimeError('Empty response from daemon')
+                return json.loads(response.decode('utf-8'))
         except Exception as exc:
-            raise EnforcementError(f"Daemon communication failed: {exc}") from exc
+            raise EnforcementError(f'Daemon communication failed: {exc}') from exc
 
     def block_ip(self, ip: str) -> str:
         clean_ip = validate_mininet_ip(ip)
-        if self.mode != "ovs":
-            _audit_log.info("BLOCK %s — mode=simulated (no OVS action)", clean_ip)
-            return "simulated"
+        if self.mode != 'ovs':
+            _audit_log.info('BLOCK %s - mode=simulated (no OVS action)', clean_ip)
+            return 'simulated'
         try:
-            payload = {"action": "block", "ip": clean_ip, "switch": self.switch}
-            res = self._send_to_daemon(payload)
-            if res.get("status") != "success":
-                raise EnforcementError(res.get("error", "Unknown error from daemon"))
+            payload = {'action': 'block', 'ip': clean_ip, 'switch': self.switch}
+            result = self._send_to_daemon(payload)
+            if result.get('status') != 'success':
+                raise EnforcementError(result.get('error', 'Unknown error from daemon'))
             self.last_error = None
-            _audit_log.info("BLOCK %s — OVS rule applied on %s via daemon [OK]", clean_ip, self.switch)
-            return "enforced"
+            _audit_log.info('BLOCK %s - OVS rule applied on %s via daemon [OK]', clean_ip, self.switch)
+            return 'enforced'
         except Exception as exc:
             self.last_error = str(exc)
-            _audit_log.error("BLOCK %s — FAILED: %s", clean_ip, exc)
+            _audit_log.error('BLOCK %s - FAILED: %s', clean_ip, exc)
             raise EnforcementError(str(exc)) from exc
 
     def unblock_ip(self, ip: str) -> str:
         clean_ip = validate_mininet_ip(ip)
-        if self.mode != "ovs":
-            _audit_log.info("UNBLOCK %s — mode=simulated (no OVS action)", clean_ip)
-            return "simulated"
+        if self.mode != 'ovs':
+            _audit_log.info('UNBLOCK %s - mode=simulated (no OVS action)', clean_ip)
+            return 'simulated'
         try:
-            payload = {"action": "unblock", "ip": clean_ip, "switch": self.switch}
-            res = self._send_to_daemon(payload)
-            if res.get("status") != "success":
-                raise EnforcementError(res.get("error", "Unknown error from daemon"))
+            payload = {'action': 'unblock', 'ip': clean_ip, 'switch': self.switch}
+            result = self._send_to_daemon(payload)
+            if result.get('status') != 'success':
+                raise EnforcementError(result.get('error', 'Unknown error from daemon'))
             self.last_error = None
-            _audit_log.info("UNBLOCK %s — OVS rule removed from %s via daemon [OK]", clean_ip, self.switch)
-            return "removed"
+            _audit_log.info('UNBLOCK %s - OVS rule removed from %s via daemon [OK]', clean_ip, self.switch)
+            return 'removed'
         except Exception as exc:
             self.last_error = str(exc)
-            _audit_log.error("UNBLOCK %s — FAILED: %s", clean_ip, exc)
+            _audit_log.error('UNBLOCK %s - FAILED: %s', clean_ip, exc)
             raise EnforcementError(str(exc)) from exc
 
 
+def build_enforcement_event(ip: str, action: str, status: str) -> dict:
+    return {
+        'ip': ip,
+        'action': action,
+        'status': status,
+        'timestamp': datetime.now(timezone.utc).isoformat(),
+    }

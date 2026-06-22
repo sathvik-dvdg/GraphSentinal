@@ -10,10 +10,10 @@ from app.config import settings
 
 
 class BlockchainAdapter:
-    _instance: "BlockchainAdapter | None" = None
+    _instance: 'BlockchainAdapter | None' = None
 
     @classmethod
-    def get_instance(cls) -> "BlockchainAdapter":
+    def get_instance(cls) -> 'BlockchainAdapter':
         if cls._instance is None:
             cls._instance = cls()
         return cls._instance
@@ -31,18 +31,16 @@ class BlockchainAdapter:
         if not bridge_path.is_absolute():
             backend_dir = Path(__file__).resolve().parent.parent.parent
             bridge_path = (backend_dir / bridge_path).resolve()
-            
+
         if not bridge_path.exists():
-            self.error = f"Bridge path not found: {bridge_path}"
+            self.error = f'Bridge path not found: {bridge_path}'
             return
         sys.path.insert(0, str(bridge_path))
 
-        # Inject pydantic settings into os.environ so web3_client's
-        # os.getenv() calls can find CONTRACT_ADDRESS and GANACHE_URL.
         if settings.contract_address:
-            os.environ.setdefault("CONTRACT_ADDRESS", settings.contract_address)
+            os.environ.setdefault('CONTRACT_ADDRESS', settings.contract_address)
         if settings.ganache_url:
-            os.environ.setdefault("GANACHE_URL", settings.ganache_url)
+            os.environ.setdefault('GANACHE_URL', settings.ganache_url)
 
         try:
             from web3_client import BlockchainClient
@@ -56,9 +54,9 @@ class BlockchainAdapter:
 
     def health(self) -> dict[str, Any]:
         return {
-            "connected": self._connected,
-            "error": self.error,
-            "contract_address": settings.contract_address or None,
+            'connected': self._connected,
+            'error': self.error,
+            'contract_address': settings.contract_address or None,
         }
 
     def store_incident(
@@ -70,7 +68,7 @@ class BlockchainAdapter:
         incident_id: int,
     ) -> dict[str, Any]:
         if not self._connected or self.client is None:
-            return {"tx_hash": None, "status": "mock", "error": self.error or "blockchain offline"}
+            return {'tx_hash': None, 'status': 'mock', 'error': self.error or 'blockchain offline'}
 
         def call_client():
             return self.client.log_incident(
@@ -81,16 +79,18 @@ class BlockchainAdapter:
                 sqlite_incident_id=int(incident_id),
             )
 
-        with concurrent.futures.ThreadPoolExecutor(max_workers=1) as executor:
-            future = executor.submit(call_client)
-            try:
-                result = future.result(timeout=settings.blockchain_tx_timeout_seconds)
-            except concurrent.futures.TimeoutError:
-                return {"tx_hash": None, "status": "pending", "error": "blockchain timeout"}
-            except Exception as exc:
-                return {"tx_hash": None, "status": "error", "error": str(exc)}
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(call_client)
+        try:
+            result = future.result(timeout=settings.blockchain_tx_timeout_seconds)
+        except concurrent.futures.TimeoutError:
+            future.cancel()
+            return {'tx_hash': None, 'status': 'pending', 'error': 'blockchain timeout'}
+        except Exception as exc:
+            return {'tx_hash': None, 'status': 'error', 'error': str(exc)}
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
 
         if isinstance(result, dict):
             return result
-        return {"tx_hash": str(result), "status": "confirmed"}
-
+        return {'tx_hash': str(result), 'status': 'confirmed'}
