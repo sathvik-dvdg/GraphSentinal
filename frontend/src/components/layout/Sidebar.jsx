@@ -20,8 +20,9 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }) {
-  const alerts = useGraphStore((s) => s.alerts)
-  const unread = alerts.filter((a) => !a.is_blocked && !a.acknowledged).length
+  const unread = useGraphStore((s) => 
+    s.alerts.filter((a) => !a.is_blocked && !a.acknowledged).length
+  )
 
   return (
     <aside

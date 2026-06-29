@@ -7,7 +7,7 @@ env/
 
 # Database
 graphsentinel.db
-*.db
+*.db*
 
 # Python
 __pycache__/

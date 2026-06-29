@@ -23,6 +23,8 @@ export default function PyramidHierarchy() {
 
   // Build d3 layout from the enriched hierarchy
   const { nodes, links, svgWidth, svgHeight } = useMemo(() => {
+    if (!enrichedHierarchy) return { nodes: [], links: [], svgWidth: 0, svgHeight: 0 }
+    
     const root = hierarchy(enrichedHierarchy)
     const treeLayout = tree().nodeSize([NODE_W + H_GAP, LEVEL_GAP + NODE_H])
     treeLayout(root)
@@ -42,6 +44,14 @@ export default function PyramidHierarchy() {
       svgHeight: maxY + NODE_H + 60,
     }
   }, [enrichedHierarchy])
+
+  if (!enrichedHierarchy) {
+    return (
+      <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
+        <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'DM Mono', monospace" }}>Loading hierarchy...</span>
+      </div>
+    )
+  }
 
   return (
     <div style={{ position: 'relative', width: '100%', height: '100%', overflowX: 'auto', overflowY: 'auto' }}>

@@ -1,8 +1,8 @@
 // [Windows] GraphSentinel — Susheep
 // App.jsx — routing root with ProtectedRoute wrapping AppShell + all sub-routes
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { AppProvider } from './context/AppContext'
 import useAuthStore from './store/useAuthStore'
+import SimulationProvider from './providers/SimulationProvider'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import AppShell from './components/layout/AppShell'
@@ -24,8 +24,7 @@ function ProtectedRoute({ children }) {
 
 export default function App() {
   return (
-    <AppProvider>
-      <BrowserRouter
+    <BrowserRouter
         future={{
           v7_startTransition: true,
           v7_relativeSplatPath: true,
@@ -41,7 +40,9 @@ export default function App() {
             path="/"
             element={
               <ProtectedRoute>
-                <AppShell />
+                <SimulationProvider>
+                  <AppShell />
+                </SimulationProvider>
               </ProtectedRoute>
             }
           >
@@ -60,6 +61,5 @@ export default function App() {
           <Route path="*" element={<Navigate to="/" replace />} />
         </Routes>
       </BrowserRouter>
-    </AppProvider>
   )
 }
