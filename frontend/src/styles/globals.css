@@ -338,6 +338,27 @@ body {
 
 .malicious-pulse { animation: pulse-threat 1.2s ease-in-out infinite; }
 
+/* ── Pyramid hierarchy animations ── */
+@keyframes dashMove {
+  to { stroke-dashoffset: -20; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Sidebar / layout transitions ── */
+.sidebar-label-enter {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+.sidebar-label-visible {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 150ms 60ms, transform 150ms 60ms;
+}
+
 .neon-cta {
   box-shadow: 0 0 12px rgba(79,110,247,0.25);
   border-color: rgba(79,110,247,0.5);

@@ -29,6 +29,8 @@ const useGraphStore = create((set, get) => ({
   healingNodeId: null,
   timeline: [],
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0 },
+  nodeOverrides: {},
+  resolvedIncidentIds: [],
 
   // ── Connection state machine ───────────────────────────────
   connectionMode: 'connecting', // 'connecting' | 'live' | 'mock' | 'simulating'
@@ -114,6 +116,29 @@ const useGraphStore = create((set, get) => ({
             ? Math.max(0, Math.min(100, partial.system_health))
             : state.stats.system_health,
       },
+    })),
+
+  updateNodeStatus: (nodeId, status) =>
+    set((state) => ({
+      graphData: {
+        ...state.graphData,
+        nodes: state.graphData.nodes.map((n) =>
+          n.id === nodeId || n.ip === nodeId ? { ...n, status } : n
+        ),
+      },
+      selectedNode:
+        state.selectedNode && (state.selectedNode.id === nodeId || state.selectedNode.ip === nodeId)
+          ? { ...state.selectedNode, status }
+          : state.selectedNode,
+      nodeOverrides: {
+        ...state.nodeOverrides,
+        [nodeId]: status,
+      }
+    })),
+
+  resolveIncident: (incidentId) =>
+    set((state) => ({
+      resolvedIncidentIds: [...state.resolvedIncidentIds, incidentId],
     })),
 
   // ── UI setters ────────────────────────────────────────────
