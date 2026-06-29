@@ -2,7 +2,7 @@
 // REST polling hook — fallback when WebSocket is down
 // § 4.5: Sets connectionMode instead of isMockMode
 import { useEffect, useCallback } from 'react'
-import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline } from '../services/api'
+import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHierarchy } from '../services/api'
 import useGraphStore from '../store/useGraphStore'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -16,6 +16,7 @@ export function useGraphData() {
     updateStats,
     setConnectionMode,
     setTimeline,
+    setOrgHierarchy,
     connectionMode,
   } = useGraphStore()
 
@@ -29,7 +30,7 @@ export function useGraphData() {
     if (connectionMode === 'simulating') return
 
     try {
-      const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes] =
+      const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes, hierarchyRes] =
         await Promise.allSettled([
           getGraph(),
           getAlerts(),
@@ -37,6 +38,7 @@ export function useGraphData() {
           getForensics(),
           getStats(),
           getTimeline(),
+          getHierarchy(),
         ])
 
       if (graphRes.status === 'fulfilled') {
@@ -63,6 +65,7 @@ export function useGraphData() {
       }
       if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
       if (timelineRes.status === 'fulfilled') setTimeline(timelineRes.value.data_points)
+      if (hierarchyRes.status === 'fulfilled') setOrgHierarchy(hierarchyRes.value)
     } catch {
       console.warn('[useGraphData] Backend unavailable — switching to mock mode')
       if (connectionMode === 'connecting') {
@@ -77,7 +80,8 @@ export function useGraphData() {
     setChainTxs,
     updateStats,
     setConnectionMode,
-    setTimeline
+    setTimeline,
+    setOrgHierarchy
   ])
 
   useEffect(() => {

@@ -3,6 +3,26 @@
 @import "tailwindcss";
 @config "../../tailwind.config.js";
 
+:root {
+  --color-primary: #4F6EF7;
+  --color-success: #2ECC8A;
+  --color-warning: #E8922A;
+  --color-danger: #E03C3C;
+  --color-brand: #5E5CE6;
+
+  --bg-main: #0A0A0A;
+  --bg-panel: #171B26;
+  --bg-panel-raised: #1E2436;
+  --bg-glass: rgba(30, 36, 54, 0.8);
+
+  --border-subtle: rgba(255, 255, 255, 0.06);
+  --border-panel: #262D3F;
+
+  --text-primary: #EAEAEA;
+  --text-secondary: #8B8B8B;
+  --text-muted: #4D4D4D;
+}
+
 * {
   box-sizing: border-box;
   margin: 0;
@@ -10,8 +30,8 @@
 }
 
 body {
-  background-color: #0A0A0A;
-  color: #EAEAEA;
+  background-color: var(--bg-main);
+  color: var(--text-primary);
   font-family: 'Inter', sans-serif;
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
@@ -337,6 +357,27 @@ body {
 }
 
 .malicious-pulse { animation: pulse-threat 1.2s ease-in-out infinite; }
+
+/* ── Pyramid hierarchy animations ── */
+@keyframes dashMove {
+  to { stroke-dashoffset: -20; }
+}
+
+@keyframes slideInRight {
+  from { transform: translateX(100%); opacity: 0; }
+  to   { transform: translateX(0);    opacity: 1; }
+}
+
+/* ── Sidebar / layout transitions ── */
+.sidebar-label-enter {
+  opacity: 0;
+  transform: translateX(-8px);
+}
+.sidebar-label-visible {
+  opacity: 1;
+  transform: translateX(0);
+  transition: opacity 150ms 60ms, transform 150ms 60ms;
+}
 
 .neon-cta {
   box-shadow: 0 0 12px rgba(79,110,247,0.25);
