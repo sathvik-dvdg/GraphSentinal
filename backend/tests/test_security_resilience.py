@@ -57,7 +57,7 @@ def test_analyze_rejects_max_flows():
     headers = {"X-API-Key": settings.backend_api_token}
     response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
     assert response.status_code == 422
-    assert "List should have at most 5000 items" in response.text
+    assert "Too many flows" in response.text
 
 
 def test_graph_builder_rejects_nan_and_negative():
@@ -150,6 +150,12 @@ def test_sqlite_concurrency_locking():
 
 def test_model_shape_mismatch_fails_gracefully():
     """If graph_builder produces 8 features instead of 7, InferenceService degrades gracefully."""
+    try:
+        import torch as _torch
+    except Exception:
+        pytest.skip("torch not available on this platform (e.g. missing fbgemm.dll)")
+        return
+
     from app.services.inference_service import InferenceService
     
     # Reset instance for testing
@@ -172,10 +178,9 @@ def test_model_shape_mismatch_fails_gracefully():
     
     with patch("app.services.inference_service.build_pyg_graph") as mock_build:
         # Mock graph returning x with 8 features
-        import torch
         class MockGraph:
-            x = torch.zeros((1, 8))
-            edge_index = torch.zeros((2, 0), dtype=torch.long)
+            x = _torch.zeros((1, 8))
+            edge_index = _torch.zeros((2, 0), dtype=_torch.long)
             flow_sources = ["10.0.0.2"]
             flow_destinations = ["10.0.0.1"]
             

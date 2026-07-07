@@ -21,11 +21,14 @@ def _import_torch():
 
 class InferenceService:
     _instance: "InferenceService | None" = None
+    _lock = __import__("threading").Lock()
 
     @classmethod
     def get_instance(cls) -> "InferenceService":
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:  # double-checked locking
+                    cls._instance = cls()
         return cls._instance
 
     def __init__(self):
@@ -33,7 +36,10 @@ class InferenceService:
         self.degraded_reason = ""
         try:
             self.torch = _import_torch()
-            self.torch.set_num_threads(min(4, os.cpu_count() or 1))
+            try:
+                self.torch.set_num_threads(min(4, os.cpu_count() or 1))
+            except AttributeError:
+                pass  # torch partially loaded (e.g. Windows DLL issue) — continue in degraded mode
         except RuntimeError as exc:
             self.torch = None
             self.degraded_reason = str(exc)
