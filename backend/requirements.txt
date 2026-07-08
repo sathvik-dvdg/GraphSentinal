@@ -11,7 +11,7 @@ numpy==1.26.0
 scikit-learn==1.5.0
 scapy==2.5.0
 web3==7.4.0
-torch==2.4.0
+torch>=2.4.1
 torch-geometric==2.5.0
 pytest==8.0.0
 httpx==0.26.0
