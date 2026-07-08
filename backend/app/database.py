@@ -19,8 +19,9 @@ def init_db() -> None:
     from app.models import incident  # noqa: F401
 
     with engine.connect() as conn:
-        conn.exec_driver_sql("PRAGMA journal_mode=WAL")
-        conn.exec_driver_sql("PRAGMA synchronous=NORMAL")
+        pass
+        # conn.exec_driver_sql("PRAGMA journal_mode=WAL")
+        # conn.exec_driver_sql("PRAGMA synchronous=NORMAL")
     Base.metadata.create_all(bind=engine)
 
 
