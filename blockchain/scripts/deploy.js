@@ -46,14 +46,13 @@ async function main() {
 
   // Append to backend .env (for Sairaj)
   const backendEnvPath = path.join(__dirname, "../../backend/.env");
-  const backendEnvEntry = `\n# ─── Blockchain (from Skanda's deploy) ───\nCONTRACT_ADDRESS=${address}\nGANACHE_URL=http://127.0.0.1:8545\n`;
+  const backendEnvEntry = `\n# ─── Blockchain (from Skanda's deploy) ───\nCONTRACT_ADDRESS=${address}\n`;
 
   if (fs.existsSync(backendEnvPath)) {
     // Remove old CONTRACT_ADDRESS line if exists
     let existing = fs.readFileSync(backendEnvPath, "utf8");
     existing = existing
-      .replace(/CONTRACT_ADDRESS=.*/g, "")
-      .replace(/GANACHE_URL=.*/g, "");
+      .replace(/CONTRACT_ADDRESS=.*/g, "");
     fs.writeFileSync(backendEnvPath, existing + backendEnvEntry);
   } else {
     // If backend folder doesn't exist yet, we just create the .env file anyway so Sairaj has it later

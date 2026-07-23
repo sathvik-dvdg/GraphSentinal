@@ -90,8 +90,10 @@ class InferenceService:
                 out_channels=2,
                 num_layers=3,
             )
-            state_dict = self.torch.load(weights_path, map_location="cpu")
+            device = "cuda" if self.torch.cuda.is_available() else "cpu"
+            state_dict = self.torch.load(weights_path, map_location=device)
             self.model.load_state_dict(state_dict)
+            self.model.to(device)
             self.model.eval()
             self.mode = "model"
             self.degraded_reason = ""
@@ -122,11 +124,14 @@ class InferenceService:
             return {"flow_scores": [], "ip_scores": {}, "source_scores": {}}
 
         try:
+            device = "cuda" if self.torch.cuda.is_available() else "cpu"
+            x = graph.x.to(device)
+            edge_index = graph.edge_index.to(device)
             with self.torch.no_grad():
                 if hasattr(self.model, "predict_proba"):
-                    probs = self.model.predict_proba(graph.x, graph.edge_index)
+                    probs = self.model.predict_proba(x, edge_index)
                 else:
-                    logits = self.model(graph.x, graph.edge_index)
+                    logits = self.model(x, edge_index)
                     probs = self.torch.softmax(logits, dim=1)[:, 1]
             # Clamp NaN/Inf scores to prevent propagation through threat analysis
             scores = [

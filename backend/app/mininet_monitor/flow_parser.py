@@ -8,21 +8,42 @@ from typing import Any
 from app.config import settings
 
 
+import concurrent.futures
+import time
+
+_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+_raw_cache: dict[str, tuple[float, str]] = {}
+_CACHE_TTL = 3.0  # seconds
+
+
+def _exec_dump_flows(cmd: list[str]) -> str:
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+    return res.stdout
+
+
 def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
     import sys
+    now = time.monotonic()
+    if switch in _raw_cache:
+        cached_time, cached_output = _raw_cache[switch]
+        if now - cached_time < _CACHE_TTL:
+            flows = _parse_output(cached_output)
+            if flows:
+                return flows
+
     try:
         cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
         if sys.platform == "win32":
             cmd = ["wsl"] + cmd
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-        flows = _parse_output(result.stdout)
+
+        future = _executor.submit(_exec_dump_flows, cmd)
+        raw_stdout = future.result(timeout=3.5)
+        _raw_cache[switch] = (now, raw_stdout)
+        flows = _parse_output(raw_stdout)
         if flows:
             return flows
+    except concurrent.futures.TimeoutError:
+        print(f"[FlowParser] OVS subprocess thread timed out for switch={switch}")
     except Exception as exc:
         print(f"[FlowParser] OVS unavailable: {exc}")
     return demo_flows() if settings.demo_fallback_flows else []
@@ -31,12 +52,11 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
 def _parse_output(raw: str) -> list[dict[str, Any]]:
     flows: list[dict[str, Any]] = []
     for line in raw.splitlines():
-        if "nw_src=" not in line or "nw_dst=" not in line:
+        src = _match(line, r"nw_src=([0-9.]+)") or _match(line, r"arp_spa=([0-9.]+)")
+        dst = _match(line, r"nw_dst=([0-9.]+)") or _match(line, r"arp_tpa=([0-9.]+)")
+        if not src:
             continue
-        src = _match(line, r"nw_src=([0-9.]+)")
-        dst = _match(line, r"nw_dst=([0-9.]+)")
-        if not src or not dst:
-            continue
+        dst = dst or "0.0.0.0"
         packets = int(_match(line, r"n_packets=(\d+)", "0"))
         bytes_count = int(_match(line, r"n_bytes=(\d+)", "0"))
         src_port = int(_match(line, r"tp_src=(\d+)", "0"))

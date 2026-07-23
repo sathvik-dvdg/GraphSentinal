@@ -1,4 +1,5 @@
 # [WSL2]
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -39,7 +40,8 @@ async def lifespan(app: FastAPI):
     try:
         from app.mininet_monitor.monitor import MininetMonitor
 
-        app.state.monitor = MininetMonitor(sio=sio)
+        main_loop = asyncio.get_running_loop()  # Uvicorn main loop — guaranteed here
+        app.state.monitor = MininetMonitor(sio=sio, loop=main_loop)
         app.state.monitor.start()
     except Exception as exc:
         print(f"[Monitor] Disabled: {exc}")
@@ -52,7 +54,7 @@ async def lifespan(app: FastAPI):
 
     print(f"[DB] SQLite initialized [OK]")
     print(f"[ML] Mode: {inference.mode} {'[OK]' if inference.mode == 'model' else '[degraded]'}")
-    print(f"[Blockchain] Connected: {blockchain._connected} {'[OK]' if blockchain._connected else '[ERROR]'}")
+    print(f"[Blockchain] Connected: {blockchain._connected} {'[OK]' if blockchain._connected else '[ERROR]'} {blockchain.error or ''}")
     print(f"[Reconcile] Active: {app.state.reconciler is not None} [OK]")
     yield
     if app.state.reconciler is not None:

@@ -1,18 +1,63 @@
 # Python / Bytecode
 **/__pycache__/
+__pycache__/
 *.pyc
 *.pyo
 *.pyd
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.venv/
+.venv*/
+venv/
+ENV/
+env/
 
 # Databases & Runtime Data
 backend/graphsentinel.db
+*.db
+*.db-shm
+*.db-wal
 blockchain/ganache-data/
 
 # Environment & Dependencies
-node_modules/
 .env
+.env*.local
 !.env.example
 
+# Node / Dependencies & Build Artifacts
+dist/
+dist-ssr/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# AI Assistant & IDE Configuration
+.agents/
+.cursor/
+.github/copilot-instructions.md
+.jetro/
+.mcp.json
+.windsurfrules
+AGENT.md
+CLAUDE.md
+skills-lock.json
+.vscode/
+.idea/
+.DS_Store
+
 # Build Artifacts & Caches
-blockchain/cache/
+blockchain/artifacts/
 blockchain/artifacts/build-info/
+blockchain/typechain/
+blockchain/typechain-types/
+blockchain/coverage/
+blockchain/coverage.json
+blockchain/ignition/deployments/chain-31337/
+
+# Hardhat & Blockchain Temporary Files
+.vscode_hardhat_config_*

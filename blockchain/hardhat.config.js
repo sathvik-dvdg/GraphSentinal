@@ -15,7 +15,7 @@ module.exports = {
   networks: {
     localhost: {
       url: "http://127.0.0.1:8545",
-      chainId: 1337, // Ganache --deterministic uses 1337
+      chainId: 31337, // Hardhat node uses 31337
     },
   },
 };
