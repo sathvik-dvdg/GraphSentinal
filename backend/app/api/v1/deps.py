@@ -25,9 +25,17 @@ def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
 
 
 def require_admin_key(x_api_key: str | None = Header(default=None)) -> None:
-    target_token = settings.admin_api_token or settings.backend_api_token
-    if target_token and x_api_key != target_token:
-        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin API key required")
+    expected_token = settings.admin_api_token
+    if not expected_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin API key is not configured"
+        )
+    if x_api_key != expected_token:
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Admin API key required"
+        )
 
 
 def check_analyze_rate_limit(request: Request) -> None:

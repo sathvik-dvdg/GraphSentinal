@@ -25,7 +25,12 @@ class BlockchainClient:
             address=Web3.to_checksum_address(contract_address),
             abi=self.abi
         )
-        self.account = self.w3.eth.accounts[0]
+        self.private_key = os.getenv("BLOCKCHAIN_PRIVATE_KEY", "").strip()
+        if self.private_key:
+            signer = self.w3.eth.account.from_key(self.private_key)
+            self.account = signer.address
+        else:
+            self.account = self.w3.eth.accounts[0] if self.w3.eth.accounts else None
 
     def log_incident(self, source_ip: str, attack_type: str, severity: int, is_blocked: bool, sqlite_incident_id: int) -> dict:
         forensics_uri = f"local://incident/{sqlite_incident_id}"

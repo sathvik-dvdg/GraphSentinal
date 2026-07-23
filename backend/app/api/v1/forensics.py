@@ -1,4 +1,4 @@
-# [WSL2]
+import asyncio
 from datetime import timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
@@ -20,7 +20,7 @@ async def get_forensics(db: Session = Depends(get_db)):
     adapter = BlockchainAdapter.get_instance()
     if adapter._connected and adapter.client is not None:
         try:
-            chain_records = adapter.client.get_all_incidents()
+            chain_records = await asyncio.to_thread(adapter.client.get_all_incidents)
         except Exception:
             chain_records = []
 

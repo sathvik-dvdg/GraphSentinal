@@ -1,4 +1,5 @@
 # [WSL2]
+import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 from pydantic import BaseModel, Field
 
@@ -16,7 +17,8 @@ async def store_incident_on_chain(
     _: None = Depends(require_admin_key),
 ):
     adapter = BlockchainAdapter.get_instance()
-    return adapter.store_incident(
+    return await asyncio.to_thread(
+        adapter.store_incident,
         source_ip=request.source_ip,
         attack_type=request.attack_type,
         severity=request.severity,
@@ -42,7 +44,8 @@ async def verify_incident_on_chain(
     if not adapter._connected or adapter.client is None:
         raise HTTPException(status_code=503, detail="Blockchain offline")
     try:
-        is_valid = adapter.client.verify_incident(
+        is_valid = await asyncio.to_thread(
+            adapter.client.verify_incident,
             request.incident_id, request.source_ip, request.attack_type,
             request.severity, request.timestamp,
         )
@@ -65,7 +68,7 @@ async def release_node_on_chain(
     if not adapter._connected or adapter.client is None:
         raise HTTPException(status_code=503, detail="Blockchain offline")
     try:
-        tx_hash = adapter.client.release_node(request.ip, request.reason)
+        tx_hash = await asyncio.to_thread(adapter.client.release_node, request.ip, request.reason)
         return {"status": "released", "ip": request.ip, "tx_hash": tx_hash}
     except Exception as exc:
         raise HTTPException(status_code=500, detail=str(exc)) from exc
@@ -84,7 +87,8 @@ async def update_blockchain_config(
 ):
     adapter = BlockchainAdapter.get_instance()
     try:
-        return adapter.update_config(
+        return await asyncio.to_thread(
+            adapter.update_config,
             ganache_url=request.ganache_url,
             contract_address=request.contract_address,
         )

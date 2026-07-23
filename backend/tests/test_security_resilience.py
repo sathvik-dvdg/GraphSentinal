@@ -262,3 +262,11 @@ def test_update_config_injection_rejection():
     with pytest.raises(ValueError, match="must be a valid Ethereum address"):
         adapter.update_config(contract_address="not_an_eth_address")
 
+
+def test_simulate_rejects_outside_target_ip():
+    """Simulate endpoint rejects IPs outside the 10.0.0.x network range via Pydantic regex validation."""
+    admin_headers = {"X-API-Key": settings.admin_api_token}
+    resp = client.post("/api/v1/simulate", json={"attack_type": "DDoS", "target_ip": "8.8.8.8"}, headers=admin_headers)
+    assert resp.status_code == 422
+
+

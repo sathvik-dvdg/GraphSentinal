@@ -2,9 +2,14 @@ name: Backend Tests CI
 
 on:
   push:
-    branches: [ main, sathvik/debug ]
+    branches: [ main, sathvik/debug, develop ]
   pull_request:
-    branches: [ main, sathvik/debug ]
+    branches: [ main, sathvik/debug, develop ]
+    types: [opened, synchronize, reopened]
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
 
 jobs:
   test:
@@ -27,4 +32,4 @@ jobs:
       - name: Run Backend Pytest Suite
         run: |
           cd backend
-          python -m pytest .
+          python -m pytest . -v

@@ -9,10 +9,12 @@ from app.config import settings
 
 
 import concurrent.futures
+import threading
 import time
 
 _executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
 _raw_cache: dict[str, tuple[float, str]] = {}
+_cache_lock = threading.Lock()
 _CACHE_TTL = 3.0  # seconds
 
 
@@ -24,12 +26,13 @@ def _exec_dump_flows(cmd: list[str]) -> str:
 def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
     import sys
     now = time.monotonic()
-    if switch in _raw_cache:
-        cached_time, cached_output = _raw_cache[switch]
-        if now - cached_time < _CACHE_TTL:
-            flows = _parse_output(cached_output)
-            if flows:
-                return flows
+    with _cache_lock:
+        if switch in _raw_cache:
+            cached_time, cached_output = _raw_cache[switch]
+            if now - cached_time < _CACHE_TTL:
+                flows = _parse_output(cached_output)
+                if flows:
+                    return flows
 
     try:
         cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
@@ -38,7 +41,8 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
 
         future = _executor.submit(_exec_dump_flows, cmd)
         raw_stdout = future.result(timeout=3.5)
-        _raw_cache[switch] = (now, raw_stdout)
+        with _cache_lock:
+            _raw_cache[switch] = (now, raw_stdout)
         flows = _parse_output(raw_stdout)
         if flows:
             return flows

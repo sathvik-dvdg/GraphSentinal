@@ -84,30 +84,6 @@ class BlockchainAdapter:
             settings.contract_address = contract_address
             os.environ['CONTRACT_ADDRESS'] = contract_address
 
-        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
-        if env_path.exists():
-            try:
-                lines = env_path.read_text(encoding="utf-8").splitlines()
-                updated_lines = []
-                found_url = False
-                found_addr = False
-                for line in lines:
-                    if line.startswith("GANACHE_URL=") and ganache_url:
-                        updated_lines.append(f"GANACHE_URL={ganache_url}")
-                        found_url = True
-                    elif line.startswith("CONTRACT_ADDRESS=") and contract_address:
-                        updated_lines.append(f"CONTRACT_ADDRESS={contract_address}")
-                        found_addr = True
-                    else:
-                        updated_lines.append(line)
-                if ganache_url and not found_url:
-                    updated_lines.append(f"GANACHE_URL={ganache_url}")
-                if contract_address and not found_addr:
-                    updated_lines.append(f"CONTRACT_ADDRESS={contract_address}")
-                env_path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
-            except Exception as exc:
-                print(f"[BlockchainAdapter] Warning: failed to persist .env: {exc}")
-
         self._connect()
         return self.health()
 
