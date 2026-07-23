@@ -2,7 +2,7 @@
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
-from app.api.v1.deps import require_api_key
+from app.api.v1.deps import require_admin_key, require_api_key
 from app.database import get_db
 from app.models.incident import BlockedIP
 from app.models.schemas import BlockRequest
@@ -12,7 +12,7 @@ from app.services.self_healing import SelfHealingEngine
 router = APIRouter()
 
 
-@router.get("/blocked")
+@router.get("/blocked", dependencies=[Depends(require_api_key)])
 async def get_blocked(db: Session = Depends(get_db)):
     rows = db.query(BlockedIP).order_by(BlockedIP.blocked_at.desc()).all()
     blocked = [
@@ -33,7 +33,7 @@ async def get_blocked(db: Session = Depends(get_db)):
 @router.post("/block")
 async def block_or_unblock(
     request: BlockRequest,
-    _: None = Depends(require_api_key),
+    _: None = Depends(require_admin_key),
     db: Session = Depends(get_db),
 ):
     healer = SelfHealingEngine()

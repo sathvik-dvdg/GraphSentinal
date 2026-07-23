@@ -8,21 +8,46 @@ from typing import Any
 from app.config import settings
 
 
+import concurrent.futures
+import threading
+import time
+
+_executor = concurrent.futures.ThreadPoolExecutor(max_workers=2)
+_raw_cache: dict[str, tuple[float, str]] = {}
+_cache_lock = threading.Lock()
+_CACHE_TTL = 3.0  # seconds
+
+
+def _exec_dump_flows(cmd: list[str]) -> str:
+    res = subprocess.run(cmd, capture_output=True, text=True, timeout=3)
+    return res.stdout
+
+
 def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
     import sys
+    now = time.monotonic()
+    with _cache_lock:
+        if switch in _raw_cache:
+            cached_time, cached_output = _raw_cache[switch]
+            if now - cached_time < _CACHE_TTL:
+                flows = _parse_output(cached_output)
+                if flows:
+                    return flows
+
     try:
         cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
         if sys.platform == "win32":
             cmd = ["wsl"] + cmd
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=10,
-        )
-        flows = _parse_output(result.stdout)
+
+        future = _executor.submit(_exec_dump_flows, cmd)
+        raw_stdout = future.result(timeout=3.5)
+        with _cache_lock:
+            _raw_cache[switch] = (now, raw_stdout)
+        flows = _parse_output(raw_stdout)
         if flows:
             return flows
+    except concurrent.futures.TimeoutError:
+        print(f"[FlowParser] OVS subprocess thread timed out for switch={switch}")
     except Exception as exc:
         print(f"[FlowParser] OVS unavailable: {exc}")
     return demo_flows() if settings.demo_fallback_flows else []

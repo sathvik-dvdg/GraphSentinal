@@ -1,5 +1,9 @@
-# Python & Virtual Environments
+# Python / Bytecode
+**/__pycache__/
 __pycache__/
+*.pyc
+*.pyo
+*.pyd
 *.py[cod]
 *$py.class
 *.so
@@ -10,14 +14,19 @@ venv/
 ENV/
 env/
 
-# Databases
+# Databases & Runtime Data
+backend/graphsentinel.db
 *.db
 *.db-shm
 *.db-wal
-graphsentinel.db
+blockchain/ganache-data/
+
+# Environment & Dependencies
+.env
+.env*.local
+!.env.example
 
 # Node / Dependencies & Build Artifacts
-node_modules/
 dist/
 dist-ssr/
 build/
@@ -41,17 +50,28 @@ skills-lock.json
 .idea/
 .DS_Store
 
-# Hardhat & Blockchain Temporary Files
-.vscode_hardhat_config_*
-blockchain/cache/
+# Build Artifacts & Caches
 blockchain/artifacts/
+blockchain/artifacts/build-info/
 blockchain/typechain/
 blockchain/typechain-types/
 blockchain/coverage/
 blockchain/coverage.json
 blockchain/ignition/deployments/chain-31337/
-blockchain/ganache-data/
 
-# Environment Configuration Files
-.env
-.env*.local
+# Hardhat & Blockchain Temporary Files
+.vscode_hardhat_config_*
+
+# Analysis Reports, Logs & Internal Prompts
+BLOCKCHAIN_ANALYSIS.md
+DATAFLOW_ANALYSIS.md
+EXECUTION_LOG.md
+FRONTEND_ANALYSIS.md
+MININET_SIMULATION_ANALYSIS.md
+ML_PIPELINE_ANALYSIS.md
+RESULTS.md
+SKILL.md
+SYSTEM_DEBUG_REPORT.md
+debug_architecture.md
+graphsentinel-architecture-fix-master-prompt.md
+tatus

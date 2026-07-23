@@ -57,7 +57,35 @@ class BlockchainAdapter:
             'connected': self._connected,
             'error': self.error,
             'contract_address': settings.contract_address or None,
+            'ganache_url': settings.ganache_url,
         }
+
+    def update_config(self, ganache_url: str | None = None, contract_address: str | None = None) -> dict[str, Any]:
+        import os
+        import re
+        from pathlib import Path
+        from urllib.parse import urlparse
+
+        # Sanitize against line/header injection
+        if ganache_url:
+            if "\n" in ganache_url or "\r" in ganache_url:
+                raise ValueError("ganache_url cannot contain newlines")
+            parsed = urlparse(ganache_url)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError("ganache_url must be a valid HTTP or HTTPS URL")
+            settings.ganache_url = ganache_url
+            os.environ['GANACHE_URL'] = ganache_url
+
+        if contract_address:
+            if "\n" in contract_address or "\r" in contract_address:
+                raise ValueError("contract_address cannot contain newlines")
+            if not re.match(r"^0x[a-fA-F0-9]{40}$", contract_address):
+                raise ValueError("contract_address must be a valid Ethereum address (0x...)")
+            settings.contract_address = contract_address
+            os.environ['CONTRACT_ADDRESS'] = contract_address
+
+        self._connect()
+        return self.health()
 
     def store_incident(
         self,

@@ -193,3 +193,80 @@ def test_model_shape_mismatch_fails_gracefully():
         # If it was already in degraded mode, heuristic predicts successfully
         assert "flow_scores" in result
         assert len(result["flow_scores"]) == 1
+
+
+def test_unauthenticated_read_routes_rejected():
+    """Read routes like /graph should reject calls missing X-API-Key header when backend_api_token is set."""
+    resp = client.get("/api/v1/graph")
+    assert resp.status_code == 401
+    assert "Invalid API key" in resp.text
+
+
+def test_admin_route_requires_key():
+    """Admin write routes like /simulate should reject read token and accept admin token."""
+    # 1. No header -> 403 Forbidden
+    resp = client.post("/api/v1/simulate", json={"attack_type": "DDoS", "target_ip": "10.0.0.2"})
+    assert resp.status_code == 403
+    assert "Admin API key required" in resp.text
+
+    # 2. Read token passed to admin route -> 403 Forbidden
+    read_headers = {"X-API-Key": settings.backend_api_token}
+    resp = client.post("/api/v1/simulate", json={"attack_type": "DDoS", "target_ip": "10.0.0.2"}, headers=read_headers)
+    assert resp.status_code == 403
+
+    # 3. Admin token passed to admin route -> 200 OK
+    admin_headers = {"X-API-Key": settings.admin_api_token}
+    resp = client.post("/api/v1/simulate", json={"attack_type": "DDoS", "target_ip": "10.0.0.2"}, headers=admin_headers)
+    assert resp.status_code == 200
+    assert resp.json()["status"] == "injected"
+
+
+def test_production_default_token_guard():
+    """Refuse to start in production environment when using default, empty, or short demo token."""
+    from app.main import lifespan
+    import asyncio
+
+    # Default token
+    with patch("app.config.settings.environment", "production"):
+        with patch("app.config.settings.backend_api_token", "change-me-for-demo"):
+            with pytest.raises(RuntimeError, match="Refusing to boot in production"):
+                asyncio.run(lifespan(app).__aenter__())
+
+    # Empty token
+    with patch("app.config.settings.environment", "production"):
+        with patch("app.config.settings.backend_api_token", ""):
+            with pytest.raises(RuntimeError, match="Refusing to boot in production"):
+                asyncio.run(lifespan(app).__aenter__())
+
+    # Short token
+    with patch("app.config.settings.environment", "production"):
+        with patch("app.config.settings.backend_api_token", "short_secret"):
+            with pytest.raises(RuntimeError, match="Refusing to boot in production"):
+                asyncio.run(lifespan(app).__aenter__())
+
+
+def test_update_config_injection_rejection():
+    """update_config rejects CRLF newline injection and malformed Ethereum contract addresses."""
+    from app.services.blockchain_adapter import BlockchainAdapter
+    adapter = BlockchainAdapter.get_instance()
+
+    # Newline injection attempt
+    with pytest.raises(ValueError, match="cannot contain newlines"):
+        adapter.update_config(ganache_url="http://127.0.0.1:8545\nBACKEND_API_TOKEN=hacked")
+
+    # Invalid URL scheme
+    with pytest.raises(ValueError, match="must be a valid HTTP or HTTPS URL"):
+        adapter.update_config(ganache_url="ftp://127.0.0.1:8545")
+
+    # Invalid Ethereum address format
+    with pytest.raises(ValueError, match="must be a valid Ethereum address"):
+        adapter.update_config(contract_address="not_an_eth_address")
+
+
+def test_simulate_rejects_outside_target_ip():
+    """Simulate endpoint rejects IPs outside the 10.0.0.x network range via Pydantic regex validation."""
+    admin_headers = {"X-API-Key": settings.admin_api_token}
+    resp = client.post("/api/v1/simulate", json={"attack_type": "DDoS", "target_ip": "8.8.8.8"}, headers=admin_headers)
+    assert resp.status_code == 422
+
+
