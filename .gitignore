@@ -1,0 +1,18 @@
+# Python / Bytecode
+**/__pycache__/
+*.pyc
+*.pyo
+*.pyd
+
+# Databases & Runtime Data
+backend/graphsentinel.db
+blockchain/ganache-data/
+
+# Environment & Dependencies
+node_modules/
+.env
+!.env.example
+
+# Build Artifacts & Caches
+blockchain/cache/
+blockchain/artifacts/build-info/
