@@ -26,7 +26,9 @@ class Settings(BaseSettings):
     contract_address: str = ""
     blockchain_tx_timeout_seconds: int = 5
 
+    environment: str = "development"
     backend_api_token: str = "change-me-for-demo"
+    admin_api_token: str = "admin-secret-key-for-demo"
     max_analyze_flows: int = 5000
     analyze_rate_limit_per_minute: int = 30
 
@@ -40,6 +42,7 @@ class Settings(BaseSettings):
         env_file=".env",
         env_file_encoding="utf-8",
         protected_namespaces=("settings_",),
+        extra="ignore",
     )
 
     @property

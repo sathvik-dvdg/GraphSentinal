@@ -57,7 +57,59 @@ class BlockchainAdapter:
             'connected': self._connected,
             'error': self.error,
             'contract_address': settings.contract_address or None,
+            'ganache_url': settings.ganache_url,
         }
+
+    def update_config(self, ganache_url: str | None = None, contract_address: str | None = None) -> dict[str, Any]:
+        import os
+        import re
+        from pathlib import Path
+        from urllib.parse import urlparse
+
+        # Sanitize against line/header injection
+        if ganache_url:
+            if "\n" in ganache_url or "\r" in ganache_url:
+                raise ValueError("ganache_url cannot contain newlines")
+            parsed = urlparse(ganache_url)
+            if parsed.scheme not in ("http", "https") or not parsed.netloc:
+                raise ValueError("ganache_url must be a valid HTTP or HTTPS URL")
+            settings.ganache_url = ganache_url
+            os.environ['GANACHE_URL'] = ganache_url
+
+        if contract_address:
+            if "\n" in contract_address or "\r" in contract_address:
+                raise ValueError("contract_address cannot contain newlines")
+            if not re.match(r"^0x[a-fA-F0-9]{40}$", contract_address):
+                raise ValueError("contract_address must be a valid Ethereum address (0x...)")
+            settings.contract_address = contract_address
+            os.environ['CONTRACT_ADDRESS'] = contract_address
+
+        env_path = Path(__file__).resolve().parent.parent.parent / ".env"
+        if env_path.exists():
+            try:
+                lines = env_path.read_text(encoding="utf-8").splitlines()
+                updated_lines = []
+                found_url = False
+                found_addr = False
+                for line in lines:
+                    if line.startswith("GANACHE_URL=") and ganache_url:
+                        updated_lines.append(f"GANACHE_URL={ganache_url}")
+                        found_url = True
+                    elif line.startswith("CONTRACT_ADDRESS=") and contract_address:
+                        updated_lines.append(f"CONTRACT_ADDRESS={contract_address}")
+                        found_addr = True
+                    else:
+                        updated_lines.append(line)
+                if ganache_url and not found_url:
+                    updated_lines.append(f"GANACHE_URL={ganache_url}")
+                if contract_address and not found_addr:
+                    updated_lines.append(f"CONTRACT_ADDRESS={contract_address}")
+                env_path.write_text("\n".join(updated_lines) + "\n", encoding="utf-8")
+            except Exception as exc:
+                print(f"[BlockchainAdapter] Warning: failed to persist .env: {exc}")
+
+        self._connect()
+        return self.health()
 
     def store_incident(
         self,

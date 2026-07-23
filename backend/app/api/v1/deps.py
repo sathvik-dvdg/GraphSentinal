@@ -15,8 +15,19 @@ _requests: TTLCache = TTLCache(maxsize=10000, ttl=300)
 
 
 def require_api_key(x_api_key: str | None = Header(default=None)) -> None:
-    if settings.backend_api_token and x_api_key != settings.backend_api_token:
+    if not settings.backend_api_token:
+        return
+    valid_tokens = {settings.backend_api_token}
+    if settings.admin_api_token:
+        valid_tokens.add(settings.admin_api_token)
+    if x_api_key not in valid_tokens:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
+
+
+def require_admin_key(x_api_key: str | None = Header(default=None)) -> None:
+    target_token = settings.admin_api_token or settings.backend_api_token
+    if target_token and x_api_key != target_token:
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Admin API key required")
 
 
 def check_analyze_rate_limit(request: Request) -> None:

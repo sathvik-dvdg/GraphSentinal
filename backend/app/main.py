@@ -23,6 +23,14 @@ sio = socketio.AsyncServer(
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    from app.config import settings
+    token = settings.backend_api_token
+    if settings.environment.lower() in ("production", "prod"):
+        if not token or token == "change-me-for-demo" or len(token) < 16:
+            raise RuntimeError(
+                "CRITICAL SECURITY ERROR: Refusing to boot in production with insecure or missing BACKEND_API_TOKEN."
+            )
+
     init_db()
     inference = InferenceService.get_instance()
     blockchain = BlockchainAdapter.get_instance()
@@ -59,8 +67,8 @@ app.add_middleware(
     CORSMiddleware,
     allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
     allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
+    allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allow_headers=["Content-Type", "X-API-Key", "Authorization"],
 )
 
 
@@ -79,7 +87,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestSizeLimitMiddleware)
 
-from app.api.v1 import alerts, analyze, blocked, blockchain, forensics, graph, stats, timeline  # noqa: E402
+from app.api.v1 import alerts, analyze, blocked, blockchain, forensics, graph, hierarchy, simulate, stats, timeline  # noqa: E402
 
 app.include_router(analyze.router, prefix="/api/v1", tags=["analyze"])
 app.include_router(graph.router, prefix="/api/v1", tags=["graph"])
@@ -89,6 +97,8 @@ app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"])
 app.include_router(blocked.router, prefix="/api/v1", tags=["blocked"])
 app.include_router(forensics.router, prefix="/api/v1", tags=["forensics"])
 app.include_router(blockchain.router, prefix="/api/v1", tags=["blockchain"])
+app.include_router(hierarchy.router, prefix="/api/v1", tags=["hierarchy"])
+app.include_router(simulate.router, prefix="/api/v1", tags=["simulate"])
 
 
 @app.get("/health")

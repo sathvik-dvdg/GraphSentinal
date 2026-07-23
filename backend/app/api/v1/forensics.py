@@ -3,6 +3,7 @@ from datetime import timezone
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.v1.deps import require_api_key
 from app.config import settings
 from app.database import get_db
 from app.models.incident import Incident
@@ -12,7 +13,7 @@ from app.services.blockchain_adapter import BlockchainAdapter
 router = APIRouter()
 
 
-@router.get("/forensics")
+@router.get("/forensics", dependencies=[Depends(require_api_key)])
 async def get_forensics(db: Session = Depends(get_db)):
     incidents = db.query(Incident).order_by(Incident.created_at.desc()).all()
     chain_records = []

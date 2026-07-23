@@ -2,6 +2,7 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.v1.deps import require_api_key
 from app.database import get_db
 from app.models.incident import Incident
 from app.services.threat_analyzer import score_to_severity_label
@@ -16,7 +17,7 @@ _SEVERITY_THRESHOLDS = {
 }
 
 
-@router.get("/alerts")
+@router.get("/alerts", dependencies=[Depends(require_api_key)])
 async def get_alerts(limit: int = 50, severity: str | None = None, db: Session = Depends(get_db)):
     query = db.query(Incident)
     if severity and severity in _SEVERITY_THRESHOLDS:
