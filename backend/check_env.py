@@ -71,7 +71,7 @@ header("3. Required Package Versions")
 REQUIRED = {
     "fastapi":          "0.115.6",
     "uvicorn":          "0.35.0",
-    "python_socketio":  "5.11.0",
+    "socketio":         None,
     "dotenv":           None,       # python-dotenv — module name is 'dotenv'
     "sqlalchemy":       "2.0.36",
     "pydantic":         "2.10.4",
@@ -105,7 +105,7 @@ for pkg, expected_ver in REQUIRED.items():
         pip_name = {
             "dotenv": "python-dotenv",
             "sklearn": "scikit-learn",
-            "python_socketio": "python-socketio",
+            "socketio": "python-socketio",
             "pydantic_settings": "pydantic-settings",
             "torch_geometric": "torch-geometric",
         }.get(pkg, pkg.replace("_", "-"))
@@ -196,10 +196,14 @@ if platform.system() == "Windows":
             break
 
     if not dll_found:
-        err("libomp140.x86_64.dll NOT FOUND")
-        err("This will cause PyTorch to crash when imported!")
-        info("Fix: Upgrade PyTorch to >= 2.4.1 (it bundles the DLL):")
-        print(f"\n    {BOLD}pip install 'torch>=2.4.1' --index-url https://download.pytorch.org/whl/cu124{RESET}\n")
+        try:
+            import torch
+            ok("libomp140.x86_64.dll check skipped (PyTorch imported successfully)")
+        except ImportError:
+            err("libomp140.x86_64.dll NOT FOUND")
+            err("This will cause PyTorch to crash when imported!")
+            info("Fix: Upgrade PyTorch to >= 2.4.1 (it bundles the DLL):")
+            print(f"\n    {BOLD}pip install 'torch>=2.4.1' --index-url https://download.pytorch.org/whl/cu124{RESET}\n")
 
     # Visual C++ Redistributable
     header("5b. Visual C++ Redistributable")

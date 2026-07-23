@@ -12,8 +12,9 @@ from app.websocket.events import emit_analysis_events
 
 
 class MininetMonitor:
-    def __init__(self, sio):
+    def __init__(self, sio, loop):
         self.sio = sio
+        self.loop = loop  # the Uvicorn main event loop — sio was created on this loop
         self.interval = settings.poll_interval_seconds
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
@@ -32,8 +33,13 @@ class MininetMonitor:
                 flows = parse_ovs_flows(settings.enforcement_switch)
                 if flows:
                     result = analyze_flows(flows)
-                    asyncio.run(emit_analysis_events(self.sio, result))
+                    # Schedule sio.emit() on the main Uvicorn loop where sio was created.
+                    # asyncio.run() would spin up a foreign loop — AsyncServer internals are
+                    # bound to self.loop, making that pattern a silent failure on every tick.
+                    future = asyncio.run_coroutine_threadsafe(
+                        emit_analysis_events(self.sio, result), self.loop
+                    )
+                    future.result(timeout=10)  # propagate exceptions; 10s hard ceiling
             except Exception as exc:
                 print(f"[Monitor] Tick error: {exc}")
             time.sleep(self.interval)
-

@@ -1,4 +1,5 @@
 # [WSL2]
+import asyncio
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -31,7 +32,8 @@ async def lifespan(app: FastAPI):
     try:
         from app.mininet_monitor.monitor import MininetMonitor
 
-        app.state.monitor = MininetMonitor(sio=sio)
+        main_loop = asyncio.get_running_loop()  # Uvicorn main loop — guaranteed here
+        app.state.monitor = MininetMonitor(sio=sio, loop=main_loop)
         app.state.monitor.start()
     except Exception as exc:
         print(f"[Monitor] Disabled: {exc}")
@@ -44,7 +46,7 @@ async def lifespan(app: FastAPI):
 
     print(f"[DB] SQLite initialized [OK]")
     print(f"[ML] Mode: {inference.mode} {'[OK]' if inference.mode == 'model' else '[degraded]'}")
-    print(f"[Blockchain] Connected: {blockchain._connected} {'[OK]' if blockchain._connected else '[ERROR]'}")
+    print(f"[Blockchain] Connected: {blockchain._connected} {'[OK]' if blockchain._connected else '[ERROR]'} {blockchain.error or ''}")
     print(f"[Reconcile] Active: {app.state.reconciler is not None} [OK]")
     yield
     if app.state.reconciler is not None:
@@ -79,7 +81,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestSizeLimitMiddleware)
 
-from app.api.v1 import alerts, analyze, blocked, blockchain, forensics, graph, stats, timeline  # noqa: E402
+from app.api.v1 import alerts, analyze, blocked, blockchain, forensics, graph, stats, timeline, simulate  # noqa: E402
 
 app.include_router(analyze.router, prefix="/api/v1", tags=["analyze"])
 app.include_router(graph.router, prefix="/api/v1", tags=["graph"])
@@ -89,6 +91,7 @@ app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"])
 app.include_router(blocked.router, prefix="/api/v1", tags=["blocked"])
 app.include_router(forensics.router, prefix="/api/v1", tags=["forensics"])
 app.include_router(blockchain.router, prefix="/api/v1", tags=["blockchain"])
+app.include_router(simulate.router, prefix="/api/v1", tags=["simulate"])
 
 
 @app.get("/health")

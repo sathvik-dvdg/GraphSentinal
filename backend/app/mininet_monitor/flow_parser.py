@@ -18,7 +18,7 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
             cmd,
             capture_output=True,
             text=True,
-            timeout=3,
+            timeout=10,
         )
         flows = _parse_output(result.stdout)
         if flows:
@@ -31,12 +31,11 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
 def _parse_output(raw: str) -> list[dict[str, Any]]:
     flows: list[dict[str, Any]] = []
     for line in raw.splitlines():
-        if "nw_src=" not in line or "nw_dst=" not in line:
+        src = _match(line, r"nw_src=([0-9.]+)") or _match(line, r"arp_spa=([0-9.]+)")
+        dst = _match(line, r"nw_dst=([0-9.]+)") or _match(line, r"arp_tpa=([0-9.]+)")
+        if not src:
             continue
-        src = _match(line, r"nw_src=([0-9.]+)")
-        dst = _match(line, r"nw_dst=([0-9.]+)")
-        if not src or not dst:
-            continue
+        dst = dst or "0.0.0.0"
         packets = int(_match(line, r"n_packets=(\d+)", "0"))
         bytes_count = int(_match(line, r"n_bytes=(\d+)", "0"))
         src_port = int(_match(line, r"tp_src=(\d+)", "0"))

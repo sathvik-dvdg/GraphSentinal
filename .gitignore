@@ -1,0 +1,57 @@
+# Python & Virtual Environments
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.pytest_cache/
+.venv/
+.venv*/
+venv/
+ENV/
+env/
+
+# Databases
+*.db
+*.db-shm
+*.db-wal
+graphsentinel.db
+
+# Node / Dependencies & Build Artifacts
+node_modules/
+dist/
+dist-ssr/
+build/
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# AI Assistant & IDE Configuration
+.agents/
+.cursor/
+.github/copilot-instructions.md
+.jetro/
+.mcp.json
+.windsurfrules
+AGENT.md
+CLAUDE.md
+skills-lock.json
+.vscode/
+.idea/
+.DS_Store
+
+# Hardhat & Blockchain Temporary Files
+.vscode_hardhat_config_*
+blockchain/cache/
+blockchain/artifacts/
+blockchain/typechain/
+blockchain/typechain-types/
+blockchain/coverage/
+blockchain/coverage.json
+blockchain/ignition/deployments/chain-31337/
+blockchain/ganache-data/
+
+# Environment Configuration Files
+.env
+.env*.local
