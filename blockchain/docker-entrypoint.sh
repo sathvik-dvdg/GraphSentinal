@@ -53,7 +53,7 @@ DEPLOY_OUTPUT=$(npx hardhat run scripts/deploy.js --network localhost 2>&1)
 echo "${DEPLOY_OUTPUT}"
 
 # ── Parse CONTRACT_ADDRESS from deploy output ─────────────────────────────────
-CONTRACT_ADDRESS=$(echo "${DEPLOY_OUTPUT}" | grep -oE '0x[0-9a-fA-F]{40}' | head -1)
+CONTRACT_ADDRESS=$(echo "${DEPLOY_OUTPUT}" | grep -i 'Deployed at:' | grep -oE '0x[0-9a-fA-F]{40}')
 
 if [ -z "${CONTRACT_ADDRESS}" ]; then
     echo "[Entrypoint] ERROR: Could not parse CONTRACT_ADDRESS from deploy output."

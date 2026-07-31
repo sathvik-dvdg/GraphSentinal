@@ -155,13 +155,20 @@ WSL2 Ubuntu:     FastAPI backend (port 8000)  +  Mininet/OVS (root)
 - Mininet: `sudo apt-get install mininet`
 - The `backend/.venv` activated: `cd /mnt/d/GraphSentinal/backend && source .venv/bin/activate`
 
-### WSL2 startup sequence
+### Startup Sequence with Live Traffic
 
-Follow the existing `HOW_TO_RUN.md` exactly — **do not use the Docker stack** when running  
-the full Mininet pipeline. The two setups are independent.
+To receive real flows in the Dockerized backend:
 
-Key difference from Docker: set `DEMO_FALLBACK_FLOWS=false` in `backend/.env` so the  
-backend polls real OVS flows instead of using synthetic demo data.
+1. **Set up the Shared Secret:**
+   The backend and daemon must share a token. Generate a secure token:
+   ```bash
+   openssl rand -hex 32
+   ```
+   Add it to your local `.env.docker.local` (never committed) and your WSL2 shell:
+   ```bash
+   DAEMON_TOKEN="<your-generated-token>"
+   ```
+   *Make sure `DEMO_FALLBACK_FLOWS="false"` and `ENFORCEMENT_MODE=ovs` in `docker-compose.yml`.*
 
 ---
 

@@ -20,23 +20,34 @@ WORKDIR /build
 # ── Copy manifests first (cache layer) ────────────────────────────────────────
 COPY requirements.txt .
 
-# ── Install PyTorch 2.4.0 CPU-only first (separate index, large wheel) ────────
-# Pinned exactly to match the working dev venv. CPU-only avoids ~3 GB CUDA DLLs.
-RUN pip install --no-cache-dir --upgrade pip \
- && pip install --no-cache-dir \
+# ── Install all Python deps with exact torch pin ─────────────────────────────
+# Strategy: generate a constraints file that pins torch==2.4.0+cpu and
+# torch-geometric==2.5.0. pip honours constraints over requirements, so
+# `torch>=2.4.1` in requirements.txt won't upgrade to a newer version.
+#
+# Why this matters: without constraints, `pip install -r requirements.txt`
+# re-resolves the full graph and upgrades torch to the latest (e.g. 2.13.0),
+# defeating the pin we set. Constraints are a hard ceiling — they cannot be
+# overridden by any requirement specifier.
+RUN pip install --no-cache-dir --upgrade pip
+
+# Write the constraints file. These are absolute ceilings.
+RUN printf 'torch==2.4.0\ntorch-geometric==2.5.0\n' > /build/constraints.txt
+
+# Install torch 2.4.0 CPU-only wheel from PyTorch index
+RUN pip install --no-cache-dir \
         torch==2.4.0 \
         --index-url https://download.pytorch.org/whl/cpu
 
-# ── Install torch-geometric 2.5.0 (matches requirements.txt pin) ─────────────
-# torch-geometric 2.5.0 + torch 2.4.0/cpu does NOT require torch-scatter or
-# torch-sparse for the SAGEConv layer used here — pure Python message-passing
-# path is used. Installing them would require building from source against
-# torch 2.4.0 CPU ABI, which is fragile and unnecessary for this workload.
+# Install torch-geometric 2.5.0 (no scatter/sparse needed for SAGEConv pure path)
 RUN pip install --no-cache-dir torch-geometric==2.5.0
 
-# ── Install the rest of requirements (excluding torch lines) ──────────────────
-# We pre-installed torch above; pip will honour the already-installed version.
-RUN pip install --no-cache-dir -r requirements.txt
+# Install the rest of requirements.txt, stripped of torch lines
+# We strip torch and torch-geometric so pip doesn't conflict with our constraints
+RUN grep -v 'torch' requirements.txt > requirements-docker.txt && \
+    pip install --no-cache-dir \
+        --constraint /build/constraints.txt \
+        -r requirements-docker.txt
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
 FROM python:3.12-slim AS runtime
@@ -61,7 +72,9 @@ WORKDIR /app
 # Only requirements.txt changes require a docker compose up --build.
 
 # ── Ownership ─────────────────────────────────────────────────────────────────
-RUN chown -R appuser:appgroup /app
+# We must create /app/data before chown so that the named volume inherits
+# the appuser permissions. Otherwise Docker creates it as root at runtime.
+RUN mkdir -p /app/data && chown -R appuser:appgroup /app
 
 # ── Entrypoint: sources /shared/contract_address.env then starts uvicorn ──────
 COPY --chown=appuser:appgroup docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

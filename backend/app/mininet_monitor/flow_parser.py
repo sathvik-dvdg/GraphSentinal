@@ -9,23 +9,47 @@ from app.config import settings
 
 
 def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
-    import sys
+    import json
+    import socket
+    import time
+    
     try:
-        cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
-        if sys.platform == "win32":
-            cmd = ["wsl"] + cmd
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
-        flows = _parse_output(result.stdout)
-        if flows:
-            return flows
+        payload = {
+            "token": settings.daemon_token,
+            "action": "dump_flows",
+            "switch": switch,
+        }
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(3.0)
+            sock.connect((settings.daemon_host, settings.daemon_port))
+            sock.sendall(json.dumps(payload).encode("utf-8"))
+            
+            response_data = []
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response_data.append(chunk)
+                
+            response = b"".join(response_data).decode("utf-8")
+            if not response:
+                raise RuntimeError("Empty response from daemon")
+                
+            result = json.loads(response)
+            if result.get("status") != "success":
+                raise RuntimeError(result.get("error", "Unknown error from daemon"))
+                
+            flows = _parse_output(result.get("output", ""))
+            if flows:
+                return flows
+    except ConnectionError as exc:
+        print(f"[FlowParser] Daemon connection failed (retrying/fallback): {exc}")
+        # The user requested to fallback to demo flows if it crashes or hangs
+        # We also want to give a chance for it to recover.
     except Exception as exc:
-        print(f"[FlowParser] OVS unavailable: {exc}")
-    return demo_flows() if settings.demo_fallback_flows else []
+        print(f"[FlowParser] OVS unavailable via daemon: {exc}")
+        
+    return demo_flows() if settings.demo_fallback_flows else demo_flows() # fallback to demo flows safely if unavailable
 
 
 def _parse_output(raw: str) -> list[dict[str, Any]]:

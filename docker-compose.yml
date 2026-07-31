@@ -86,8 +86,11 @@ services:
       # web3_bridge is bind-mounted at /app/blockchain_bridge
       BLOCKCHAIN_BRIDGE_PATH: /app/blockchain_bridge
       # Demo mode: no Mininet/OVS in Docker — use synthetic fallback flows
-      DEMO_FALLBACK_FLOWS: "true"
-      ENFORCEMENT_MODE: simulated
+      DEMO_FALLBACK_FLOWS: "false"
+      ENFORCEMENT_MODE: ovs
+      DAEMON_HOST: host.docker.internal
+      DAEMON_PORT: 50051
+      DAEMON_TOKEN: ${DAEMON_TOKEN:?DAEMON_TOKEN must be set in .env}
     # Compose Watch: sync source changes without rebuild
     # Run: docker compose watch
     develop:
@@ -130,7 +133,7 @@ services:
     networks:
       - graphsentinel-net
     healthcheck:
-      test: ["CMD", "wget", "-qO-", "http://localhost:5173"]
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5173"]
       interval: 10s
       timeout: 5s
       retries: 6
