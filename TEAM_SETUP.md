@@ -38,13 +38,19 @@ the GNN, so the full threat-detection pipeline and dashboard work without a real
 git clone <repo-url>
 cd GraphSentinal
 
-# 2. Build all images (takes 3–10 minutes first time — PyTorch downloads ~800 MB)
+# 2. Set up environment variables
+cp .env.docker .env
+# Important: Generate a secure token for DAEMON_TOKEN in .env
+# e.g. DAEMON_TOKEN="<your-generated-token>"
+echo "DAEMON_TOKEN=$(openssl rand -hex 16)" >> .env
+
+# 3. Build all images (takes 3–10 minutes first time — PyTorch downloads ~800 MB)
 make build
 
-# 3. Start all services
+# 4. Start all services
 make up
 
-# 4. Verify everything is running
+# 5. Verify everything is running
 make ps
 ```
 
@@ -164,11 +170,11 @@ To receive real flows in the Dockerized backend:
    ```bash
    openssl rand -hex 32
    ```
-   Add it to your local `.env.docker.local` (never committed) and your WSL2 shell:
+   Add it to your `.env` file (never committed) and your WSL2 shell:
    ```bash
    DAEMON_TOKEN="<your-generated-token>"
    ```
-   *Make sure `DEMO_FALLBACK_FLOWS="false"` and `ENFORCEMENT_MODE=ovs` in `docker-compose.yml`.*
+   *Make sure `DEMO_FALLBACK_FLOWS="false"` and `ENFORCEMENT_MODE=ovs` in your `.env`.*
 
 ---
 
@@ -188,9 +194,9 @@ To receive real flows in the Dockerized backend:
 
 ```bash
 # Copy the committed template
-cp .env.docker .env.docker.local
-# Edit .env.docker.local — this file is gitignored, safe for real values
-# Then update docker-compose.yml env_file: to point at .env.docker.local
+cp .env.docker .env
+# Edit .env — this file is gitignored, safe for real values
+# Docker Compose will automatically read .env for interpolation and the containers
 ```
 
 ---
