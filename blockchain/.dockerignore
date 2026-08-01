@@ -1,0 +1,36 @@
+# ── blockchain/.dockerignore ──────────────────────────────────────────────────
+# node_modules is installed fresh inside the image via npm ci.
+# Excluding it from context prevents Windows/Mac native binaries from leaking in.
+
+# Dependencies
+node_modules/
+
+# Local Ganache chain database (container uses ephemeral in-memory chain)
+ganache-data/
+
+# Hardhat build artifacts and cache (recompiled inside image)
+artifacts/
+cache/
+typechain/
+typechain-types/
+coverage/
+coverage.json
+
+# Ignition deployment records
+ignition/deployments/
+
+# Local env file — env vars injected by Compose
+.env
+
+# Git
+.git/
+.gitignore
+
+# Docs
+*.md
+README*
+
+# Editor / OS junk
+.DS_Store
+*.idea/
+.vscode/

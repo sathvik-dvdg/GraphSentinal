@@ -32,9 +32,12 @@ class Settings(BaseSettings):
 
     enforcement_mode: str = "simulated"  # simulated | ovs
     enforcement_switch: str = "s1"
-    enforcement_agent_socket: str = "/tmp/graphsentinel-enforcer.sock"
     mininet_cidr: str = "10.0.0.0/24"
     demo_fallback_flows: bool = False
+    
+    daemon_host: str = "127.0.0.1"
+    daemon_port: int = 50051
+    daemon_token: str
 
     model_config = SettingsConfigDict(
         env_file=".env",

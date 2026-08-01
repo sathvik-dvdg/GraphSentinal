@@ -1,0 +1,29 @@
+# ── frontend/.dockerignore ────────────────────────────────────────────────────
+# node_modules comes from the builder stage — never from the host.
+# This prevents native binary mismatch (Windows/Mac binaries in a Linux container).
+
+# Dependencies — always installed fresh inside container
+node_modules/
+
+# Build artifacts
+dist/
+dist-ssr/
+.vite/
+
+# Local env file — env vars injected by Compose
+.env
+.env.*
+
+# Test / lint cache
+*.log
+coverage/
+
+# Git
+.git/
+.gitignore
+
+# Editor / OS junk
+.DS_Store
+*.suo
+*.idea/
+.vscode/

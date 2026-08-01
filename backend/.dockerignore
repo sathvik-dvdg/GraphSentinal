@@ -1,0 +1,49 @@
+# ── backend/.dockerignore ─────────────────────────────────────────────────────
+# Keeps the Docker build context lean.
+# Source code is bind-mounted at runtime — we only bake requirements.txt
+# into the image so the dep-install layer can be cached independently.
+
+# Python virtual environment (never copy host venv into container)
+.venv/
+venv/
+
+# Python cache
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.Python
+
+# Test artifacts
+.pytest_cache/
+tests/
+*.log
+
+# SQLite database files — container uses its own named volume
+graphsentinel.db
+graphsentinel.db-shm
+graphsentinel.db-wal
+*.db
+*.db-shm
+*.db-wal
+
+# Local env file — env vars are injected by Compose, never baked in
+.env
+
+# Git
+.git/
+.gitignore
+
+# Docs and scripts not needed in the image
+*.md
+check_env.py
+test_torch.sh
+# Note: docker-entrypoint.sh IS needed — it is explicitly COPY'd in Dockerfile
+# and must NOT be excluded. Shell scripts not named docker-entrypoint.sh are fine to exclude.
+scripts/
+
+# Editor / OS junk
+.DS_Store
+*.suo
+*.idea/
+.vscode/

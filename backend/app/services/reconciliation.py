@@ -21,24 +21,40 @@ from app.models.incident import BlockedIP
 _RECONCILE_INTERVAL = 10  # seconds
 
 
+def _send_to_daemon(payload: dict) -> dict:
+    import json
+    import socket
+    payload["token"] = getattr(settings, "daemon_token", None)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+        sock.settimeout(3.0)
+        sock.connect((settings.daemon_host, settings.daemon_port))
+        sock.sendall(json.dumps(payload).encode("utf-8"))
+        
+        response_data = []
+        while True:
+            chunk = sock.recv(4096)
+            if not chunk:
+                break
+            response_data.append(chunk)
+            
+        response = b"".join(response_data)
+        if not response:
+            raise RuntimeError("Empty response from daemon")
+        return json.loads(response.decode("utf-8"))
+
+
 def _parse_blocked_from_ovs(switch: str) -> set[str]:
     """Parse OVS dump-flows output for GraphSentinel drop rules (priority=1000)."""
-    import sys
     try:
-        cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
-        if sys.platform == "win32":
-            cmd = ["wsl"] + cmd
-        result = subprocess.run(
-            cmd,
-            capture_output=True,
-            text=True,
-            timeout=3,
-        )
+        result = _send_to_daemon({"action": "dump_flows", "switch": switch})
+        if result.get("status") != "success":
+            return set()
+        raw_flows = result.get("output", "")
     except Exception:
         return set()
 
     blocked: set[str] = set()
-    for line in result.stdout.splitlines():
+    for line in raw_flows.splitlines():
         if "priority=1000" not in line or "actions=drop" not in line:
             continue
         match = re.search(r"nw_src=([0-9.]+)", line)
@@ -68,19 +84,11 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
     removed: list[str] = []
 
     # SQLite says blocked but OVS rule is missing → reapply
-    import sys
     for ip in db_blocked - ovs_blocked:
         try:
-            cmd = [
-                "sudo", "ovs-ofctl", "add-flow", switch,
-                f"priority=1000,ip,nw_src={ip},actions=drop",
-            ]
-            if sys.platform == "win32":
-                cmd = ["wsl"] + cmd
-            subprocess.run(
-                cmd,
-                check=True, capture_output=True, text=True, timeout=3,
-            )
+            res = _send_to_daemon({"action": "block", "switch": switch, "ip": ip})
+            if res.get("status") != "success":
+                raise RuntimeError(res.get("error", "Unknown error"))
             reapplied.append(ip)
             print(f"[Reconcile] Reapplied OVS rule for {ip}")
         except Exception as exc:
@@ -89,13 +97,9 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
     # OVS has a drop rule but no SQLite row → remove stale rule
     for ip in ovs_blocked - db_blocked:
         try:
-            cmd = ["sudo", "ovs-ofctl", "del-flows", switch, f"ip,nw_src={ip}"]
-            if sys.platform == "win32":
-                cmd = ["wsl"] + cmd
-            subprocess.run(
-                cmd,
-                check=True, capture_output=True, text=True, timeout=3,
-            )
+            res = _send_to_daemon({"action": "unblock", "switch": switch, "ip": ip})
+            if res.get("status") != "success":
+                raise RuntimeError(res.get("error", "Unknown error"))
             removed.append(ip)
             print(f"[Reconcile] Removed stale OVS rule for {ip}")
         except Exception as exc:

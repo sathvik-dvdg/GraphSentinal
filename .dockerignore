@@ -1,0 +1,46 @@
+# ── Root .dockerignore ─────────────────────────────────────────────────────────
+# Prevents large / sensitive directories from being sent to the Docker daemon
+# when building from the repo root. Each service also has its own .dockerignore
+# in its subdirectory (which takes precedence for that build context).
+
+# Python
+**/__pycache__/
+**/*.py[cod]
+**/.venv/
+**/venv/
+
+# Node
+**/node_modules/
+
+# Database
+**/*.db
+**/*.db-shm
+**/*.db-wal
+
+# Ganache chain data
+blockchain/ganache-data/
+
+# Build artifacts
+**/dist/
+**/build/
+**/artifacts/
+**/cache/
+
+# Test
+**/.pytest_cache/
+**/coverage/
+
+# Git
+.git/
+
+# Env files with real secrets (only .env.docker is safe to include)
+**/.env
+!.env.docker
+
+# ML training outputs (not needed for runtime)
+ML/GraphSentinel_Training_fixed.ipynb
+
+# Editor
+**/.DS_Store
+**/.idea/
+**/.vscode/
