@@ -1,6 +1,6 @@
 // [Windows] GraphSentinel — Susheep
 // BlockchainLedger — full-page blockchain audit table with filters and export
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useEffect } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link2, CheckCircle, Loader2, Download, ChevronDown } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
@@ -15,6 +15,12 @@ export default function BlockchainLedger() {
   const [expandedRow, setExpandedRow] = useState(null)
 
   const isConnected = connectionMode === 'live'
+  useEffect(() => {
+    console.log("🟢 [MOUNTED] Blockchain Ledger Active");
+    return () => {
+      console.log("🔴 [UNMOUNTED] Exiting Blockchain Ledger");
+    };
+  }, []);
 
   const filtered = useMemo(() => {
     return chainTxs.filter((tx) => {

@@ -61,8 +61,11 @@ class BlockchainClient:
                 try:
                     receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
                     gas_used = receipt.get("gasUsed", 0)
+                    # FIX 1: Extract real transaction status from receipt
+                    tx_status = "confirmed" if receipt.get("status", 1) == 1 else "failed"
                 except Exception:
                     gas_used = 0
+                    tx_status = "confirmed" # If it's in the event log, it's mined
 
                 args = event.args
                 incident_id = args.get("id")
@@ -73,9 +76,12 @@ class BlockchainClient:
                     raw = self.contract.functions.getIncident(incident_id).call()
                     severity = raw[5]
                     is_blocked = raw[6]
+                    # FIX 2: Extract the forensicsURI at index 7
+                    forensics_uri = raw[7] 
                 except Exception:
                     severity = 0
                     is_blocked = False
+                    forensics_uri = f"local://incident/{incident_id}"
 
                 incidents.append({
                     "id": incident_id,
@@ -88,6 +94,8 @@ class BlockchainClient:
                     "severity": severity,
                     "is_blocked": is_blocked,
                     "gas_used": gas_used,
+                    "status": tx_status,           # Added to API contract
+                    "forensics_uri": forensics_uri # Added to API contract
                 })
         except Exception as e:
             # Fallback if filters are not supported
@@ -106,6 +114,8 @@ class BlockchainClient:
                         "severity": raw[5],
                         "is_blocked": raw[6],
                         "gas_used": None,
+                        "status": "confirmed", # Historical fallback
+                        "forensics_uri": raw[7] # Historical fallback URI
                     })
                 except Exception:
                     pass
