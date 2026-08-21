@@ -116,7 +116,11 @@ export default function NetworkTopology() {
             </div>
 
             {show2D ? (
-              <NetworkGraph2D graphData={graphData} healingNodeId={healingNodeId} />
+              <NetworkGraph2D
+                graphData={graphData}
+                healingNodeId={healingNodeId}
+                onNodeClick={(node) => setSelectedNode(node)}
+              />
             ) : (
               <NetworkGraph3D
                 graphData={graphData}

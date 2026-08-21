@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Cpu, ShieldCheck, Zap } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 export default function SelfHealing() {
   const { healingEvents, stats } = useGraphStore()
@@ -109,7 +110,7 @@ export default function SelfHealing() {
                       {event.action}
                     </span>
                     <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
-                      {new Date(event.timestamp).toLocaleTimeString()}
+                      {formatEventTimestamp(event.timestamp)}
                     </span>
                   </div>
 
@@ -237,7 +238,7 @@ export default function SelfHealing() {
               {healingEvents.map((ev, i) => (
                 <tr key={ev.id || i}>
                   <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
-                    {new Date(ev.timestamp).toLocaleTimeString()}
+                    {formatEventTimestamp(ev.timestamp)}
                   </td>
                   <td style={{ color: '#E8EDF5', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{ev.ip}</td>
                   <td>

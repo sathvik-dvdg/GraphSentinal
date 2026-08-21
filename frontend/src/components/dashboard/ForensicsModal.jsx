@@ -7,6 +7,8 @@ import { useState, useEffect, useRef } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RefreshCw, Database, Link2 } from 'lucide-react'
 import { getForensics } from '../../services/api'
+import { formatEventTimestamp } from '../../utils/formatTimestamp'
+import CopyableHash from '../ui/CopyableHash'
 
 export default function ForensicsModal({ isOpen, onClose }) {
   // ── Original state — untouched ──
@@ -17,6 +19,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
     total_incidents: 0,
     total_on_chain: 0,
     contract_address: null,
+    chain_id: null,
   })
   const [loading, setLoading] = useState(false)
   const intervalRef = useRef(null)
@@ -113,7 +116,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
                 </div>
               )}
 
-              <span className="text-[10px] text-gs-faint font-mono">Chain ID: 1337</span>
+              <span className="text-[10px] text-gs-faint font-mono">Chain ID: {data.chain_id ?? '—'}</span>
 
               {loading && (
                 <div className="flex items-center gap-1.5">
@@ -202,7 +205,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
                           {inc.severity}/10
                         </span>
                       </td>
-                      <td className="text-gs-muted tabular-nums">{new Date(inc.created_at).toLocaleTimeString()}</td>
+                      <td className="text-gs-muted tabular-nums">{formatEventTimestamp(inc.created_at)}</td>
                       <td className="text-gs-chain tabular-nums">
                         {inc.blockchain_tx?.slice(0, 12) || '—'}{inc.blockchain_tx ? '…' : ''}
                       </td>
@@ -231,7 +234,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
                   {data.blockchain_records.map((rec, i) => (
                     <tr key={i}>
                       <td className="text-gs-faint">{rec.id}</td>
-                      <td className="text-gs-chain tabular-nums">{rec.tx_hash?.slice(0, 14)}…</td>
+                      <td className="text-gs-chain tabular-nums"><CopyableHash value={rec.tx_hash} iconSize={9} /></td>
                       <td className="text-gs-accent tabular-nums">#{rec.block_number}</td>
                       <td>
                         <span className="px-1.5 py-0.5 rounded-md bg-gs-threat-soft text-gs-threat border border-gs-threat/20 text-[10px]">

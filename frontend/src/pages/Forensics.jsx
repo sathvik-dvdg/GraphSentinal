@@ -6,6 +6,8 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Database, Link2, RefreshCw, ShieldAlert, ChevronRight } from 'lucide-react'
 import { getForensics } from '../services/api'
 import useGraphStore from '../store/useGraphStore'
+import CopyableHash from '../components/ui/CopyableHash'
+import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 export default function Forensics() {
   const [tab, setTab] = useState('incidents')
@@ -15,6 +17,8 @@ export default function Forensics() {
     total_incidents: 0,
     total_on_chain: 0,
     contract_address: null,
+    chain_id: null,
+    blockchain_error: null,
   })
   const [loading, setLoading] = useState(false)
   const [selectedIncident, setSelectedIncident] = useState(null)
@@ -61,7 +65,7 @@ export default function Forensics() {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: '#8B5CF6', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
-              Chain ID: 1337
+              Chain ID: {data.chain_id ?? '—'}
             </span>
             {data.contract_address && (
               <span style={{ fontSize: 11, color: '#8B5CF6', fontFamily: "'DM Mono', monospace", background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', padding: '2px 8px', borderRadius: 4 }}>
@@ -139,7 +143,7 @@ export default function Forensics() {
                   {inc.source_ip}
                 </div>
                 <div style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
-                  {new Date(inc.created_at).toLocaleTimeString()}
+                  {formatEventTimestamp(inc.created_at)}
                 </div>
               </div>
             ))}
@@ -172,8 +176,13 @@ export default function Forensics() {
                     <DetailRow label="Source IP" value={selectedIncident.source_ip} />
                     <DetailRow label="Threat Score" value={`${(selectedIncident.threat_score * 100).toFixed(0)}%`} />
                     <DetailRow label="Severity" value={`${selectedIncident.severity}/10`} />
-                    <DetailRow label="Time" value={new Date(selectedIncident.created_at).toLocaleString()} />
-                    <DetailRow label="TX Hash" value={selectedIncident.blockchain_tx?.slice(0, 16) + '…' || '—'} color="#8B5CF6" />
+                    <DetailRow label="Time" value={formatEventTimestamp(selectedIncident.created_at)} />
+                    <div>
+                      <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>TX Hash</div>
+                      <div style={{ color: '#8B5CF6', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                        <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={16} />
+                      </div>
+                    </div>
                   </div>
                 </div>
 
@@ -211,7 +220,7 @@ export default function Forensics() {
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)' }}>
                       <Link2 size={12} style={{ color: '#8B5CF6' }} />
                       <span style={{ color: '#8B5CF6', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                        {selectedIncident.blockchain_tx}
+                        <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={selectedIncident.blockchain_tx.length} />
                       </span>
                       <span style={{ color: '#2ECC8A', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>✓ on-chain</span>
                     </div>
@@ -266,7 +275,7 @@ export default function Forensics() {
               {data.blockchain_records.map((rec, i) => (
                 <tr key={i}>
                   <td style={{ color: '#3D4560', fontFamily: "'DM Mono', monospace" }}>{rec.id}</td>
-                  <td style={{ color: '#8B5CF6', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>{rec.tx_hash?.slice(0, 14)}…</td>
+                  <td style={{ color: '#8B5CF6', fontFamily: "'DM Mono', monospace", fontSize: 10 }}><CopyableHash value={rec.tx_hash} iconSize={9} /></td>
                   <td style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>#{rec.block_number}</td>
                   <td><span style={{ fontSize: 10, background: 'rgba(224,60,60,0.1)', color: '#E03C3C', border: '1px solid rgba(224,60,60,0.2)', padding: '2px 7px', borderRadius: 4, fontFamily: "'DM Mono', monospace" }}>{rec.attack_type}</span></td>
                   <td style={{ color: rec.severity >= 8 ? '#E03C3C' : '#E8922A', fontFamily: "'DM Mono', monospace" }}>{rec.severity}/10</td>
@@ -277,7 +286,9 @@ export default function Forensics() {
               {data.blockchain_records.length === 0 && (
                 <tr>
                   <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: '#3D4560', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-                    No blockchain records. Ganache may be offline.
+                    {data.blockchain_error
+                      ? `No blockchain records — ${data.blockchain_error}`
+                      : 'No blockchain records.'}
                   </td>
                 </tr>
               )}

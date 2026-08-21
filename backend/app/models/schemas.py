@@ -10,7 +10,7 @@ AttackType = Literal["DDoS", "PortScan", "SSHBrute", "Botnet", "DoSHulk"]
 Severity = Literal["info", "warning", "critical"]
 BlockAction = Literal["block", "unblock"]
 BlockReason = Literal["GNN_DETECTED", "MANUAL_OVERRIDE"]
-TxStatus = Literal["confirmed", "pending", "failed", "mock", "error"]
+TxStatus = Literal["confirmed", "pending", "failed", "offline", "error"]
 
 
 class FlowRecord(BaseModel):
@@ -51,6 +51,7 @@ class NodeData(BaseModel):
     bytes_total: int = Field(ge=0)
     attack_type: Optional[AttackType] = None
     is_blocked: bool
+    source: Literal["configured", "observed"] = "configured"
 
 
 class LinkData(BaseModel):
@@ -134,6 +135,8 @@ class StatsResponse(BaseModel):
     total_packets: int
     total_bytes: int
     last_updated: str
+    enforcement_mode: str
+    demo_fallback_flows: bool
 
 
 class TimelinePoint(BaseModel):

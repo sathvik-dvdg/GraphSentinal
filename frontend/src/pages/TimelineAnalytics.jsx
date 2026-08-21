@@ -7,6 +7,7 @@ import {
 } from 'recharts'
 import { TrendingUp, Pause, Play } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import { formatTimelineTick } from '../utils/formatTimestamp'
 
 const TIME_RANGES = ['1h', '6h', '24h', '7d']
 const ATTACK_COLORS_MAP = { DDoS: '#E03C3C', SSHBrute: '#E8922A', PortScan: '#4F6EF7', Botnet: '#8B5CF6' }
@@ -131,9 +132,10 @@ export default function TimelineAnalytics() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(38,45,63,0.8)" vertical={false} />
-              <XAxis dataKey="time" tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <Tooltip
+                labelFormatter={formatTimelineTick}
                 contentStyle={{ background: '#1E1E1E', border: '1px solid #262D3F', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#E8EDF5' }}
                 itemStyle={{ color: '#8A95B0' }}
               />

@@ -100,6 +100,24 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
                   : '● Active — not blocked'}
               </span>
             </div>
+            {/* Error.md #9: baseline-topology nodes vs. nodes that actually
+                appeared in a flow are otherwise indistinguishable in the UI */}
+            {node.source && (
+              <div>
+                <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1.5">
+                  Data Source
+                </span>
+                <span
+                  className="text-[11px] font-mono"
+                  style={{ color: node.source === 'observed' ? '#2ECC8A' : '#5A6480' }}
+                  title={node.source === 'observed'
+                    ? 'This host appeared in real captured traffic'
+                    : 'Configured topology baseline — no traffic seen from this host yet'}
+                >
+                  {node.source === 'observed' ? '◆ Observed traffic' : '○ Configured (no traffic yet)'}
+                </span>
+              </div>
+            )}
           </div>
 
           {/* Divider */}

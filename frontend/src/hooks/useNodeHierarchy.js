@@ -33,9 +33,40 @@ function mergeStatuses(node, statusMap) {
 import { useMemo } from 'react'
 import useGraphStore from '../store/useGraphStore'
 
+// Error.md #2: there is no real org-chart data source (department/role
+// assignments aren't derivable from network flows) — the previous hardcoded
+// tree referenced IPs that don't even exist in the configured topology
+// (10.0.0.11 on a 10-host network). Building the pyramid directly from live
+// graphData means every node it shows genuinely exists on the network,
+// instead of a fabricated org structure that could silently diverge from
+// reality.
+function buildHierarchyFromGraph(graphData) {
+  const nodes = graphData?.nodes || []
+  if (nodes.length === 0) return null
+  return {
+    id: 'root',
+    label: 'Network Root',
+    sublabel: `${nodes.length} hosts`,
+    level: 0,
+    ip: null,
+    status: 'normal',
+    children: nodes.map((node) => ({
+      id: node.id,
+      label: node.label || node.id,
+      sublabel: node.id,
+      level: 1,
+      ip: node.id,
+      status: node.status,
+      source: node.source,
+      children: [],
+    })),
+  }
+}
+
 export function useNodeHierarchy(alerts = [], healingEvents = []) {
   const nodeOverrides = useGraphStore((s) => s.nodeOverrides)
-  const orgHierarchy = useGraphStore((s) => s.orgHierarchy)
+  const graphData = useGraphStore((s) => s.graphData)
+  const orgHierarchy = useMemo(() => buildHierarchyFromGraph(graphData), [graphData])
 
   const statusMap = useMemo(() => {
     const map = {}

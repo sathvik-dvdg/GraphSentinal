@@ -39,15 +39,29 @@ class Settings(BaseSettings):
     daemon_port: int = 50051
     daemon_token: str
 
+    flow_snapshot_retention_hours: int = 24
+
+    # Comma-separated list — see cors_origins_list below (Error.md #28)
+    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000"
+
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Absolute path so the backend always loads backend/.env regardless of
+        # the process's working directory — running pytest/uvicorn from the
+        # repo root must not pick up the root .env (which has frontend VITE_*
+        # keys and is meant for the WSL2/Docker daemon bridge, not the app).
+        env_file=str(Path(__file__).resolve().parent.parent / ".env"),
         env_file_encoding="utf-8",
         protected_namespaces=("settings_",),
+        extra="ignore",
     )
 
     @property
     def sqlite_url(self) -> str:
         return f"sqlite:///{self.sqlite_path}"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @property
     def resolved_weights_candidates(self) -> list[Path]:

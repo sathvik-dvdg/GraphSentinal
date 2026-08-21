@@ -7,6 +7,7 @@ from fastapi import FastAPI, Request, Response
 from fastapi.middleware.cors import CORSMiddleware
 from starlette.middleware.base import BaseHTTPMiddleware
 
+from app.config import settings
 from app.database import init_db
 from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.inference_service import InferenceService
@@ -15,9 +16,7 @@ from app.services.reconciliation import ReconciliationWorker
 
 sio = socketio.AsyncServer(
     async_mode="asgi",
-    cors_allowed_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
-    # ADDED another entry 
-
+    cors_allowed_origins=settings.cors_origins_list,
 )
 
 
@@ -36,11 +35,17 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         print(f"[Monitor] Disabled: {exc}")
 
-    try:
-        app.state.reconciler = ReconciliationWorker()
-        app.state.reconciler.start()
-    except Exception as exc:
-        print(f"[Reconcile] Disabled: {exc}")
+    # Error.md #33: reconciliation only makes sense in "ovs" mode — starting
+    # it unconditionally just produces "skipped" ticks and log noise when
+    # enforcement is simulated.
+    if settings.enforcement_mode == "ovs":
+        try:
+            app.state.reconciler = ReconciliationWorker()
+            app.state.reconciler.start()
+        except Exception as exc:
+            print(f"[Reconcile] Disabled: {exc}")
+    else:
+        print("[Reconcile] Disabled: enforcement_mode is not 'ovs'")
 
     print(f"[DB] SQLite initialized [OK]")
     print(f"[ML] Mode: {inference.mode} {'[OK]' if inference.mode == 'model' else '[degraded]'}")
@@ -57,7 +62,7 @@ app = FastAPI(title="GraphSentinel API", version="1.0.0", lifespan=lifespan)
 
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:5173", "http://localhost:5174", "http://localhost:3000"],
+    allow_origins=settings.cors_origins_list,
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -96,7 +101,9 @@ async def health():
     inference = InferenceService.get_instance()
     blockchain = BlockchainAdapter.get_instance()
     reconciler = getattr(app.state, "reconciler", None)
+    monitor = getattr(app.state, "monitor", None)
     reconcile_health = reconciler.last_result if reconciler else {"status": "disabled"}
+    monitor_health = monitor.health() if monitor else {"status": "disabled"}
     status = "ok" if inference.mode == "model" else "degraded"
     if reconcile_health.get("status") == "error":
         status = "degraded"
@@ -106,6 +113,7 @@ async def health():
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "ml": inference.health(),
         "blockchain": blockchain.health(),
+        "monitor": monitor_health,
         "reconciliation": reconcile_health,
     }
 

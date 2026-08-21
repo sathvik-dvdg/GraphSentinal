@@ -4,8 +4,11 @@
 // § 4.6: blockchain_records: [] renders explicit empty state, not an error
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link2, Loader2, CheckCircle } from 'lucide-react'
+import CopyableHash from '../ui/CopyableHash'
+import useGraphStore from '../../store/useGraphStore'
 
 export default function BlockchainPanel({ transactions }) {
+  const chainId = useGraphStore((s) => s.chainId)
   return (
     <div className="gs-panel border-gs-chain/15 h-full flex flex-col overflow-hidden">
       {/* Header */}
@@ -17,7 +20,7 @@ export default function BlockchainPanel({ transactions }) {
           </span>
         </div>
         <div className="flex flex-col items-end gap-0.5">
-          <span className="text-gs-muted text-[9px] font-mono">Ganache · Chain 1337</span>
+          <span className="text-gs-muted text-[9px] font-mono">Ganache · Chain {chainId ?? '—'}</span>
           <span className="text-gs-faint text-[9px] font-mono">Immutable Audit Trail</span>
         </div>
       </div>
@@ -43,7 +46,7 @@ export default function BlockchainPanel({ transactions }) {
                   <div className="flex items-center gap-1.5 min-w-0">
                     <span className="text-gs-chain/60 text-[10px] font-mono shrink-0" aria-hidden="true">⛓</span>
                     <span className="text-gs-chain text-[10px] font-mono truncate tabular-nums">
-                      {tx.tx_hash.slice(0, 16)}…{tx.tx_hash.slice(-4)}
+                      <CopyableHash value={tx.tx_hash} prefixLen={16} suffixLen={4} iconSize={9} />
                     </span>
                   </div>
 

@@ -6,6 +6,8 @@ import { ShieldAlert, Search, Filter } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import SeverityBadge from '../components/ui/SeverityBadge'
 import ThreatBar from '../components/ui/ThreatBar'
+import CopyableHash from '../components/ui/CopyableHash'
+import { formatEventTimestamp as formatAlertTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITIES = ['All', 'critical', 'warning', 'info']
 const TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
@@ -125,8 +127,8 @@ export default function ThreatFeed() {
                       <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: '#8A95B0', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: 4 }}>
                         {alert.attack_type}
                       </span>
-                      <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
-                        {new Date(alert.timestamp).toLocaleTimeString()}
+                      <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                        {formatAlertTimestamp(alert.timestamp)}
                       </span>
                     </div>
                     {/* Source IP */}
@@ -139,7 +141,7 @@ export default function ThreatFeed() {
                     {alert.blockchain_tx && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                         <span style={{ color: '#8B5CF6' }}>⛓</span>
-                        <span style={{ color: '#8B5CF6' }}>{alert.blockchain_tx.slice(0, 14)}…</span>
+                        <CopyableHash value={alert.blockchain_tx} style={{ color: '#8B5CF6' }} iconSize={9} />
                         <span style={{ color: '#2ECC8A', marginLeft: 4 }}>✓ on-chain</span>
                       </div>
                     )}

@@ -1,17 +1,28 @@
 # [WSL2]
 from __future__ import annotations
 
-from datetime import datetime, timezone
+from datetime import datetime, timedelta, timezone
 from threading import Lock
 from typing import Any
 
 from sqlalchemy.orm import Session
 
+from app.config import settings
 from app.database import SessionLocal
 from app.models.incident import BlockedIP, FlowSnapshot
+from app.services.threat_analyzer import infer_attack_type
 
+# The 10-host topology matches mininet/topologies/base_topology.py — this is
+# the *configured* network, not observed traffic. Nodes are tagged
+# "configured" vs "observed" in _build_nodes() so the UI never confuses a
+# baseline placeholder with a host that actually sent/received traffic
+# (Error.md #9).
+_BASELINE_HOSTS = frozenset(f"10.0.0.{index}" for index in range(1, 11))
 
-ATTACK_TYPES = ["DDoS", "PortScan", "SSHBrute", "Botnet", "DoSHulk"]
+# How recent a persisted FlowSnapshot must be to rehydrate in-memory state
+# after a backend restart (Error.md #10) — a small multiple of the OVS poll
+# interval, so we don't resurrect traffic that's actually gone stale.
+_REHYDRATE_WINDOW_MULTIPLIER = 3
 
 
 def severity_status(score: float, blocked: bool = False) -> str:
@@ -24,11 +35,13 @@ def severity_status(score: float, blocked: bool = False) -> str:
     return "normal"
 
 
-def attack_type_for(ip: str, score: float) -> str | None:
+def attack_type_for(ip: str, score: float, flows: list[dict[str, Any]] | None = None) -> str | None:
     if score < 0.50:
         return None
-    seed = sum(ord(ch) for ch in ip) + int(score * 100)
-    return ATTACK_TYPES[seed % len(ATTACK_TYPES)]
+    related = [flow for flow in (flows or []) if str(flow.get("src_ip")) == ip]
+    if not related:
+        return None
+    return infer_attack_type(ip, score, related)
 
 
 def _flow_dict(flow: Any) -> dict[str, Any]:
@@ -45,6 +58,51 @@ class GraphState:
         self._flows: list[dict[str, Any]] = []
         self._prediction: dict[str, Any] = {"ip_scores": {}, "flow_scores": []}
         self._updated_at = datetime.now(timezone.utc)
+        self._rehydrate_from_snapshots()
+
+    def _rehydrate_from_snapshots(self) -> None:
+        """On process start, in-memory state is empty even though SQLite has
+        recent FlowSnapshot rows (Error.md #10). Pull the most recent window
+        back in so a backend restart doesn't show a falsely-empty graph."""
+        window = timedelta(seconds=settings.poll_interval_seconds * _REHYDRATE_WINDOW_MULTIPLIER)
+        cutoff = datetime.now(timezone.utc) - window
+        db = SessionLocal()
+        try:
+            rows = (
+                db.query(FlowSnapshot)
+                .filter(FlowSnapshot.captured_at >= cutoff)
+                .order_by(FlowSnapshot.captured_at.desc())
+                .limit(500)
+                .all()
+            )
+        except Exception:
+            rows = []
+        finally:
+            db.close()
+
+        if not rows:
+            return
+
+        flows = []
+        ip_scores: dict[str, float] = {}
+        for row in rows:
+            flows.append(
+                {
+                    "src_ip": row.src_ip,
+                    "dst_ip": row.dst_ip,
+                    "src_port": row.src_port,
+                    "dst_port": row.dst_port,
+                    "protocol": row.protocol,
+                    "packet_count": row.packet_count,
+                    "byte_count": row.byte_count,
+                    "duration_sec": row.duration_sec,
+                    "tcp_flags": row.tcp_flags,
+                }
+            )
+            ip_scores.setdefault(row.src_ip, row.threat_score)
+        self._flows = flows
+        self._prediction = {"ip_scores": ip_scores, "flow_scores": []}
+        self._updated_at = rows[0].captured_at.replace(tzinfo=timezone.utc)
 
     def update(self, flows: list[Any], prediction: dict[str, Any]) -> dict:
         flow_dicts = [_flow_dict(flow) for flow in flows]
@@ -91,13 +149,16 @@ class GraphState:
             "total_packets": sum(link["packet_count"] for link in links),
             "total_bytes": sum(int(flow.get("byte_count") or 0) for flow in self._flows),
             "last_updated": graph["metadata"]["last_updated"],
+            "enforcement_mode": settings.enforcement_mode,
+            "demo_fallback_flows": settings.demo_fallback_flows,
         }
 
     def _build_nodes(self, flows: list[dict[str, Any]], ip_scores: dict[str, float], blocked: set[str]) -> list[dict]:
-        hosts = {f"10.0.0.{index}" for index in range(1, 11)}
+        observed_hosts: set[str] = set()
         for flow in flows:
-            hosts.add(str(flow["src_ip"]))
-            hosts.add(str(flow["dst_ip"]))
+            observed_hosts.add(str(flow["src_ip"]))
+            observed_hosts.add(str(flow["dst_ip"]))
+        hosts = _BASELINE_HOSTS | observed_hosts
 
         flow_counts: dict[str, int] = {}
         byte_counts: dict[str, int] = {}
@@ -122,8 +183,9 @@ class GraphState:
                     "threat_score": score,
                     "connections": flow_counts.get(ip, 0),
                     "bytes_total": byte_counts.get(ip, 0),
-                    "attack_type": attack_type_for(ip, score),
+                    "attack_type": attack_type_for(ip, score, flows),
                     "is_blocked": is_blocked,
+                    "source": "observed" if ip in observed_hosts else "configured",
                 }
             )
         return nodes
@@ -144,7 +206,7 @@ class GraphState:
                     "source": src,
                     "target": dst,
                     "value": score,
-                    "attack_type": attack_type_for(src, score),
+                    "attack_type": attack_type_for(src, score, flows),
                     "packet_count": aggregate["packet_count"],
                 }
             )
@@ -169,6 +231,11 @@ class GraphState:
                         threat_score=float(ip_scores.get(str(flow["src_ip"]), 0.0)),
                     )
                 )
+            db.commit()
+            # Retention (Error.md #30) — flow_snapshots would otherwise grow
+            # unbounded on a long-running deployment. captured_at is indexed.
+            cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.flow_snapshot_retention_hours)
+            db.query(FlowSnapshot).filter(FlowSnapshot.captured_at < cutoff).delete(synchronize_session=False)
             db.commit()
         finally:
             db.close()

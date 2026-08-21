@@ -57,6 +57,8 @@ services:
         condition: service_healthy   # waits for contract_address.env to exist
     env_file:
       - .env.docker               # base env for Docker (committed, no secrets)
+      - path: .env.docker.local   # optional, gitignored: real DAEMON_TOKEN / ENFORCEMENT_MODE=ovs
+        required: false           # for teammates bridging to a real WSL2 Mininet daemon
     volumes:
       # ── Source bind-mounts for hot-reload ──────────────────────────────────
       # Editing any file in backend/app/ triggers uvicorn --reload automatically.
@@ -85,12 +87,14 @@ services:
       MODEL_SOURCE_PATH: /app/ML/src
       # web3_bridge is bind-mounted at /app/blockchain_bridge
       BLOCKCHAIN_BRIDGE_PATH: /app/blockchain_bridge
-      # Demo mode: no Mininet/OVS in Docker — use synthetic fallback flows
-      DEMO_FALLBACK_FLOWS: ${DEMO_FALLBACK_FLOWS:-true}
-      ENFORCEMENT_MODE: ${ENFORCEMENT_MODE:-simulated}
+      # DEMO_FALLBACK_FLOWS / ENFORCEMENT_MODE / THREAT_THRESHOLD / DAEMON_TOKEN come
+      # from env_file (.env.docker, optionally overridden by .env.docker.local) —
+      # deliberately NOT interpolated as ${VAR} here, since that would read the
+      # repo-root .env (used for local/WSL2 dev) and silently override these Docker
+      # defaults. Docker must stay self-contained: `docker compose up` alone always
+      # gets safe demo/simulated defaults regardless of what's in the root .env.
       DAEMON_HOST: host.docker.internal
       DAEMON_PORT: 50051
-      DAEMON_TOKEN: ${DAEMON_TOKEN:?DAEMON_TOKEN must be set in .env}
     # Compose Watch: sync source changes without rebuild
     # Run: docker compose watch
     develop:
@@ -120,6 +124,8 @@ services:
         condition: service_healthy
     env_file:
       - .env.docker
+      - path: .env.docker.local
+        required: false
     volumes:
       # ── Source bind-mount for Vite HMR ─────────────────────────────────────
       # Editing frontend/src/ reloads the browser instantly (Vite HMR).

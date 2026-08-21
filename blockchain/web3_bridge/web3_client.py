@@ -111,6 +111,9 @@ class BlockchainClient:
                     pass
         return incidents
 
+    def get_chain_id(self) -> int:
+        return self.w3.eth.chain_id
+
     def verify_incident(self, incident_id: int, source_ip: str, attack_type: str, severity: int, timestamp: int) -> bool:
         return self.contract.functions.verifyIncident(
             incident_id, source_ip, attack_type, severity, timestamp

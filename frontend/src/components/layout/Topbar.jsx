@@ -7,6 +7,8 @@ import { motion } from 'framer-motion'
 import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
+import EnforcementModeBadge from '../ui/EnforcementModeBadge'
+import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
@@ -28,6 +30,7 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
   const {
     stats,
     connectionMode,
+    dataErrors,
   } = useGraphStore()
 
   const [time, setTime] = useState(new Date().toLocaleTimeString())
@@ -78,6 +81,8 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
         </span>
 
         <ConnectionModeBadge mode={connectionMode} />
+        <EnforcementModeBadge mode={stats.enforcement_mode} />
+        <DataFreshnessBadge dataErrors={dataErrors} />
 
         {isSimulating && (
           <span

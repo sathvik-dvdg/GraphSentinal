@@ -15,7 +15,7 @@ const ATTACK_TYPES = ['DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('simulation')
-  const { connectionMode, setConnectionMode, isConnected } = useGraphStore()
+  const { connectionMode, setConnectionMode, isConnected, simulateAttack } = useGraphStore()
 
   // Simulation
   const isSimulating = connectionMode === 'simulating'
@@ -135,8 +135,9 @@ export default function Settings() {
                   />
                 </div>
                 <button style={{ ...primaryBtnStyle('#E03C3C'), alignSelf: 'flex-start' }}
-                  onClick={() => alert(`Inject ${injectType} → ${injectTarget} (connect to backend)`)}>
-                  Inject Attack
+                  disabled={isSimulating}
+                  onClick={() => simulateAttack({ attackType: injectType, targetIp: injectTarget })}>
+                  {isSimulating ? 'Injecting…' : 'Inject Attack'}
                 </button>
               </div>
             </Section>

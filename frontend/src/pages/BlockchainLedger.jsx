@@ -1,15 +1,17 @@
 // [Windows] GraphSentinel — Susheep
 // BlockchainLedger — full-page blockchain audit table with filters and export
-import { useState, useMemo } from 'react'
+import { Fragment, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link2, CheckCircle, Loader2, Download, ChevronDown } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import CopyableHash from '../components/ui/CopyableHash'
+import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 const STATUSES = ['All', 'confirmed', 'pending']
 const ATTACK_TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function BlockchainLedger() {
-  const { chainTxs, connectionMode } = useGraphStore()
+  const { chainTxs, connectionMode, chainId } = useGraphStore()
   const [statusFilter, setStatusFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
   const [expandedRow, setExpandedRow] = useState(null)
@@ -67,7 +69,7 @@ export default function BlockchainLedger() {
             Blockchain Ledger
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: '#8B5CF6', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Ganache · Chain 1337</span>
+            <span style={{ color: '#8B5CF6', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Ganache · Chain {chainId ?? '—'}</span>
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 7, height: 7, borderRadius: '50%',
@@ -123,7 +125,7 @@ export default function BlockchainLedger() {
             </thead>
             <tbody>
               {filtered.map((tx, i) => (
-                <>
+                <Fragment key={tx.id || i}>
                   <motion.tr
                     key={tx.id || i}
                     initial={{ opacity: 0 }}
@@ -135,7 +137,7 @@ export default function BlockchainLedger() {
                     <td style={{ color: '#8B5CF6', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                         <Link2 size={10} style={{ flexShrink: 0 }} />
-                        {tx.tx_hash?.slice(0, 14)}…
+                        <CopyableHash value={tx.tx_hash} iconSize={9} />
                         <ChevronDown size={10} style={{
                           marginLeft: 4,
                           transform: expandedRow === (tx.id || i) ? 'rotate(180deg)' : 'rotate(0)',
@@ -169,7 +171,7 @@ export default function BlockchainLedger() {
                       )}
                     </td>
                     <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
-                      {new Date(tx.timestamp).toLocaleTimeString()}
+                      {formatEventTimestamp(tx.timestamp)}
                     </td>
                   </motion.tr>
 
@@ -187,7 +189,7 @@ export default function BlockchainLedger() {
                             <div style={{ padding: '12px 16px', fontFamily: "'DM Mono', monospace", fontSize: 11 }}>
                               <div style={{ marginBottom: 6 }}>
                                 <span style={{ color: '#3D4560' }}>Full TX Hash: </span>
-                                <span style={{ color: '#8B5CF6' }}>{tx.tx_hash}</span>
+                                <span style={{ color: '#8B5CF6' }}>{tx.tx_hash || '—'}</span>
                               </div>
                               <div style={{ marginBottom: 6 }}>
                                 <span style={{ color: '#3D4560' }}>Incident Hash: </span>
@@ -203,7 +205,7 @@ export default function BlockchainLedger() {
                       </tr>
                     )}
                   </AnimatePresence>
-                </>
+                </Fragment>
               ))}
 
               {filtered.length === 0 && (

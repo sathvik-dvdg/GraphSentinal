@@ -5,9 +5,14 @@ import { useRef, useEffect, useMemo } from 'react'
 import cytoscape from 'cytoscape'
 import { STATUS_COLORS } from '../../constants/theme'
 
-export default function NetworkGraph2D({ graphData, healingNodeId }) {
+export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }) {
   const containerRef = useRef(null)
   const cyRef = useRef(null)
+  // Ref so the tap handler always calls the latest callback without forcing
+  // cytoscape to be torn down and rebuilt (which onNodeClick's inline arrow
+  // function identity would otherwise trigger on every parent render).
+  const onNodeClickRef = useRef(onNodeClick)
+  onNodeClickRef.current = onNodeClick
 
   const elements = useMemo(() => {
     const nodes = graphData.nodes.map((n) => ({
@@ -17,6 +22,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
         status: n.status,
         threat: n.threat_score,
         is_blocked: n.is_blocked,
+        source: n.source,
       },
     }))
     const edges = graphData.links.map((l) => ({
@@ -102,6 +108,19 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
           },
         },
 
+        // Configured baseline host with no traffic seen yet — dim + dashed,
+        // so the topology's placeholder hosts read as distinct from hosts
+        // that actually appeared in captured traffic (Error.md #9). Applied
+        // last so it layers on top of the status-shape rules above rather
+        // than replacing them.
+        {
+          selector: 'node[source="configured"]',
+          style: {
+            opacity: 0.35,
+            'border-style': 'dashed',
+          },
+        },
+
         // Edges
         {
           selector: 'edge',
@@ -123,6 +142,17 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
       layout: { name: 'cose', animate: false },
     })
 
+    // Cytoscape's own node.data() only carries the trimmed fields mapped
+    // into `elements` above — look the full node back up in graphData so
+    // the detail panel gets the same complete shape NetworkGraph3D already
+    // passes (connections, bytes_total, attack_type, source, etc.), not a
+    // partial object with mismatched field names (Error.md follow-up: this
+    // view previously had no click handler at all).
+    cy.on('tap', 'node', (evt) => {
+      const fullNode = graphData.nodes.find((n) => n.id === evt.target.id())
+      if (fullNode) onNodeClickRef.current?.(fullNode)
+    })
+
     cyRef.current = cy
 
     return () => {
@@ -131,7 +161,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId }) {
         cyRef.current = null
       }
     }
-  }, [elements])
+  }, [elements, graphData])
 
   // Healing animation: highlight the healing node with a pulsing style
   useEffect(() => {

@@ -112,7 +112,16 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
       const group = new THREE.Group()
 
       // Main sphere — cloned from cached geometry/material (no new allocation)
+      // for the common case. Configured-but-unobserved baseline hosts (no
+      // traffic seen yet) get a dimmed material clone so they read as
+      // visually distinct from hosts that actually appeared in captured
+      // traffic (Error.md #9) — cloning only this material, not the shared
+      // one, so it doesn't dim every other node of the same status.
       const mesh = new THREE.Mesh(cached.geo, cached.mat)
+      if (node.source === 'configured') {
+        mesh.material = cached.mat.clone()
+        mesh.material.opacity = cached.mat.opacity * 0.4
+      }
       group.add(mesh)
 
       // Suspicious ring
@@ -233,6 +242,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
             Status: <span style="color:${STATUS_COLORS[node.status]}">${node.status?.toUpperCase()}</span>
             ${node.status === 'malicious' ? ' ▲' : node.status === 'blocked' ? ' ⬡' : node.status === 'suspicious' ? ' ◆' : ' ●'}<br/>
             Threat: ${(node.threat_score * 100).toFixed(1)}% | Conns: ${node.connections}
+            ${node.source ? `<br/><span style="color:${node.source === 'observed' ? '#2ECC8A' : '#5A6480'}">${node.source === 'observed' ? '◆ Observed traffic' : '○ Configured, no traffic yet'}</span>` : ''}
           </div>`
         }
       />

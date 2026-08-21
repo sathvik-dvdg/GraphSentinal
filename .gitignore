@@ -1,4 +1,5 @@
 ﻿.env
+.env.docker.local
 
 # AI/editor tool scaffolding (local-only, not for sharing)
 .agents/

@@ -2,7 +2,6 @@
 from __future__ import annotations
 
 import re
-import subprocess
 from typing import Any
 
 from app.config import settings
@@ -49,7 +48,7 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
     except Exception as exc:
         print(f"[FlowParser] OVS unavailable via daemon: {exc}")
         
-    return demo_flows() if settings.demo_fallback_flows else demo_flows() # fallback to demo flows safely if unavailable
+    return demo_flows() if settings.demo_fallback_flows else []
 
 
 def _parse_output(raw: str) -> list[dict[str, Any]]:
@@ -66,7 +65,26 @@ def _parse_output(raw: str) -> list[dict[str, Any]]:
         src_port = int(_match(line, r"tp_src=(\d+)", "0"))
         dst_port = int(_match(line, r"tp_dst=(\d+)", "0"))
         duration = float(_match(line, r"duration=([0-9.]+)s", "5.0"))
-        protocol = "TCP" if "tcp" in line.lower() else "UDP" if "udp" in line.lower() else "IP"
+        line_lower = line.lower()
+        if "icmp" in line_lower:
+            protocol = "ICMP"
+        elif "tcp" in line_lower:
+            protocol = "TCP"
+        elif "udp" in line_lower:
+            protocol = "UDP"
+        else:
+            protocol = "IP"
+        # `dump-flows` doesn't normally expose per-packet TCP flags — only
+        # trust a real tcp_flags= field if OVS actually printed one; never
+        # fabricate SYN (Error.md #32).
+        flags_hex = _match(line, r"tcp_flags=0x([0-9a-fA-F]+)")
+        flags_dec = _match(line, r"tcp_flags=(\d+)")
+        if flags_hex is not None:
+            tcp_flags = int(flags_hex, 16)
+        elif flags_dec is not None:
+            tcp_flags = int(flags_dec)
+        else:
+            tcp_flags = 0
         flows.append(
             {
                 "src_ip": src,
@@ -77,7 +95,7 @@ def _parse_output(raw: str) -> list[dict[str, Any]]:
                 "packet_count": packets,
                 "byte_count": bytes_count,
                 "duration_sec": max(duration, 0.001),
-                "tcp_flags": 2 if protocol == "TCP" else 0,
+                "tcp_flags": tcp_flags,
             }
         )
     return flows

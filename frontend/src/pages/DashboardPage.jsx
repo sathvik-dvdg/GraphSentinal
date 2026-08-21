@@ -12,6 +12,7 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
+import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
 
 export default function DashboardPage() {
   const { stats, alerts, healingEvents, timeline } = useGraphStore()
@@ -135,7 +136,7 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>
-                    {new Date(alert.timestamp).toLocaleTimeString()}
+                    {formatEventTimestamp(alert.timestamp)}
                   </div>
                   {/* Threat score */}
                   <div
@@ -269,9 +270,10 @@ export default function DashboardPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(38,45,63,0.8)" vertical={false} />
-              <XAxis dataKey="time" tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <Tooltip
+                labelFormatter={formatTimelineTick}
                 contentStyle={{ background: '#1E1E1E', border: '1px solid #262D3F', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#E8EDF5' }}
                 itemStyle={{ color: '#8A95B0' }}
               />

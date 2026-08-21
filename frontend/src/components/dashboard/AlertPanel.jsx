@@ -4,6 +4,7 @@
 import { motion, AnimatePresence } from 'framer-motion'
 import { SEVERITY_STYLES } from '../../constants/theme'
 import { ShieldAlert } from 'lucide-react'
+import { formatEventTimestamp } from '../../utils/formatTimestamp'
 import SeverityBadge from '../ui/SeverityBadge'
 import ThreatBar from '../ui/ThreatBar'
 
@@ -63,7 +64,7 @@ export default function AlertPanel({ alerts }) {
                       {alert.attack_type}
                     </span>
                     <span className="text-gs-muted text-[10px] ml-auto font-mono tabular-nums">
-                      {new Date(alert.timestamp).toLocaleTimeString()}
+                      {formatEventTimestamp(alert.timestamp)}
                     </span>
                   </div>
 

@@ -2,23 +2,33 @@
 // REST polling hook — fallback when WebSocket is down
 // § 4.5: Sets connectionMode instead of isMockMode
 import { useEffect, useCallback } from 'react'
-import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHierarchy } from '../services/api'
+import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline } from '../services/api'
 import useGraphStore from '../store/useGraphStore'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
+// Error.md #22/#26: each resource is tracked independently. A failed fetch
+// deliberately leaves that resource's last-known data in place (blanking a
+// security panel on a transient error would misleadingly read as "all
+// clear") but records the failure in dataErrors so the UI can mark that
+// specific panel stale instead of silently presenting old data as current.
+const RESOURCE_FETCHERS = {
+  graph: { fetch: getGraph, apply: (v, s) => s.setGraphData(v) },
+  alerts: { fetch: getAlerts, apply: (v, s) => s.setAlerts(v.alerts) },
+  blocked: { fetch: getBlocked, apply: (v, s) => s.setBlockedIPs(v.blocked_ips) },
+  forensics: {
+    fetch: getForensics,
+    apply: (v, s) => {
+      s.setChainTxs(v.blockchain_records ?? [])
+      s.setChainId(v.chain_id ?? null)
+    },
+  },
+  stats: { fetch: getStats, apply: (v, s) => s.updateStats(v) },
+  timeline: { fetch: getTimeline, apply: (v, s) => s.setTimeline(v.data_points) },
+}
+
 export function useGraphData() {
-  const {
-    setGraphData,
-    setAlerts,
-    setBlockedIPs,
-    setChainTxs,
-    updateStats,
-    setConnectionMode,
-    setTimeline,
-    setOrgHierarchy,
-    connectionMode,
-  } = useGraphStore()
+  const { setConnectionMode, connectionMode } = useGraphStore()
 
   const fetchAll = useCallback(async () => {
     if (USE_MOCK) {
@@ -29,60 +39,29 @@ export function useGraphData() {
     // Don't overwrite data during an active simulation
     if (connectionMode === 'simulating') return
 
-    try {
-      const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes, hierarchyRes] =
-        await Promise.allSettled([
-          getGraph(),
-          getAlerts(),
-          getBlocked(),
-          getForensics(),
-          getStats(),
-          getTimeline(),
-          getHierarchy(),
-        ])
+    const entries = Object.entries(RESOURCE_FETCHERS)
+    const results = await Promise.allSettled(entries.map(([, r]) => r.fetch()))
 
-      if (graphRes.status === 'fulfilled') {
-        // At least one successful response — we're live
-        if (connectionMode !== 'simulating') {
-          setConnectionMode('live')
-          setGraphData(graphRes.value)
-        }
-      } else {
-        // Graph endpoint failed — switch to mock if not already live via socket
-        if (connectionMode === 'connecting') {
-          setConnectionMode('mock')
-        }
-      }
+    const store = useGraphStore.getState()
+    if (store.connectionMode === 'simulating') return // may have started mid-fetch
 
-      // Only update remaining fields if not simulating
-      if (connectionMode === 'simulating') return
-
-      if (alertsRes.status === 'fulfilled') setAlerts(alertsRes.value.alerts)
-      if (blockedRes.status === 'fulfilled') setBlockedIPs(blockedRes.value.blocked_ips)
-      if (forensicsRes.status === 'fulfilled') {
-        // § 4.6: blockchain_records is [] when Ganache is offline — not null
-        setChainTxs(forensicsRes.value.blockchain_records ?? [])
-      }
-      if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
-      if (timelineRes.status === 'fulfilled') setTimeline(timelineRes.value.data_points)
-      if (hierarchyRes.status === 'fulfilled') setOrgHierarchy(hierarchyRes.value)
-    } catch {
-      console.warn('[useGraphData] Backend unavailable — switching to mock mode')
-      if (connectionMode === 'connecting') {
-        setConnectionMode('mock')
-      }
+    const graphIndex = entries.findIndex(([name]) => name === 'graph')
+    if (results[graphIndex].status === 'fulfilled') {
+      setConnectionMode('live')
+    } else if (connectionMode === 'connecting') {
+      setConnectionMode('mock')
     }
-  }, [
-    connectionMode,
-    setGraphData,
-    setAlerts,
-    setBlockedIPs,
-    setChainTxs,
-    updateStats,
-    setConnectionMode,
-    setTimeline,
-    setOrgHierarchy
-  ])
+
+    entries.forEach(([name, resource], i) => {
+      const result = results[i]
+      if (result.status === 'fulfilled') {
+        resource.apply(result.value, store)
+        store.setDataError(name, null)
+      } else {
+        store.setDataError(name, result.reason?.message || 'request failed')
+      }
+    })
+  }, [connectionMode, setConnectionMode])
 
   useEffect(() => {
     fetchAll()

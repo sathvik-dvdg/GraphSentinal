@@ -52,6 +52,14 @@ class BlockchainAdapter:
             self.error = str(exc)
             self._connected = False
 
+    def chain_id(self) -> int | None:
+        if not self._connected or self.client is None:
+            return None
+        try:
+            return self.client.get_chain_id()
+        except Exception:
+            return None
+
     def health(self) -> dict[str, Any]:
         return {
             'connected': self._connected,
@@ -68,7 +76,7 @@ class BlockchainAdapter:
         incident_id: int,
     ) -> dict[str, Any]:
         if not self._connected or self.client is None:
-            return {'tx_hash': None, 'status': 'mock', 'error': self.error or 'blockchain offline'}
+            return {'tx_hash': None, 'status': 'offline', 'error': self.error or 'blockchain offline'}
 
         def call_client():
             return self.client.log_incident(
