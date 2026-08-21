@@ -1,1 +1,25 @@
 ﻿.env
+
+# AI/editor tool scaffolding (local-only, not for sharing)
+.agents/
+.cursor/
+.jetro/
+.mcp.json
+.windsurfrules
+.github/copilot-instructions.md
+AGENT.md
+CLAUDE.md
+skills-lock.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local virtualenvs
+.venv/
+.venv_linux/
+**/.venv/
+**/.venv_linux/
+
+# Local IDE-generated hardhat temp configs
+blockchain/.vscode_hardhat_config_*.ts
