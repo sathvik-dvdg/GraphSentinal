@@ -16,6 +16,7 @@ from typing import Any
 from app.config import settings
 from app.database import SessionLocal
 from app.models.incident import BlockedIP
+from app.services.enforcement_log import log_enforcement_action
 
 
 _RECONCILE_INTERVAL = 10  # seconds
@@ -91,8 +92,10 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
                 raise RuntimeError(res.get("error", "Unknown error"))
             reapplied.append(ip)
             print(f"[Reconcile] Reapplied OVS rule for {ip}")
+            log_enforcement_action(ip_address=ip, action="block", reason="RECONCILE_REAPPLY", status="enforced")
         except Exception as exc:
             print(f"[Reconcile] Failed to reapply OVS rule for {ip}: {exc}")
+            log_enforcement_action(ip_address=ip, action="block", reason="RECONCILE_REAPPLY", status="failed", error=str(exc))
 
     # OVS has a drop rule but no SQLite row → remove stale rule
     for ip in ovs_blocked - db_blocked:
@@ -102,8 +105,10 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
                 raise RuntimeError(res.get("error", "Unknown error"))
             removed.append(ip)
             print(f"[Reconcile] Removed stale OVS rule for {ip}")
+            log_enforcement_action(ip_address=ip, action="unblock", reason="RECONCILE_REMOVE", status="removed")
         except Exception as exc:
             print(f"[Reconcile] Failed to remove stale OVS rule for {ip}: {exc}")
+            log_enforcement_action(ip_address=ip, action="unblock", reason="RECONCILE_REMOVE", status="failed", error=str(exc))
 
     return {
         "status": "ok",

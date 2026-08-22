@@ -2,14 +2,14 @@
 from fastapi import APIRouter, Depends
 
 from app.api.v1.deps import require_session_or_api_key
-from app.models.schemas import BlockchainStoreRequest
+from app.models.schemas import BlockchainStoreRequest, BlockchainStoreResponse
 from app.services.blockchain_adapter import BlockchainAdapter
 
 
 router = APIRouter()
 
 
-@router.post("/blockchain/store")
+@router.post("/blockchain/store", response_model=BlockchainStoreResponse)
 async def store_incident_on_chain(
     request: BlockchainStoreRequest,
     _: None = Depends(require_session_or_api_key),

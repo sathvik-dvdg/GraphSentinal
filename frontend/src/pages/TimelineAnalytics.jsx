@@ -7,13 +7,14 @@ import {
 } from 'recharts'
 import { TrendingUp, Pause, Play } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatTimelineTick } from '../utils/formatTimestamp'
 
 const TIME_RANGES = ['1h', '6h', '24h', '7d']
 const ATTACK_COLORS_MAP = { DDoS: '#E03C3C', SSHBrute: '#E8922A', PortScan: '#4F6EF7', Botnet: '#8B5CF6' }
 
 export default function TimelineAnalytics() {
-  const { timeline, alerts } = useGraphStore()
+  const { timeline, alerts, dataErrors } = useGraphStore()
   const [timeRange, setTimeRange] = useState('24h')
   const [paused, setPaused] = useState(false)
   const [threshold, setThreshold] = useState(3)
@@ -54,9 +55,12 @@ export default function TimelineAnalytics() {
           <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Timeline Analytics
           </h1>
-          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-            Threat patterns over time · Anomaly detection
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+              Threat patterns over time · Anomaly detection
+            </p>
+            <DataFreshnessBadge dataErrors={{ timeline: dataErrors.timeline, alerts: dataErrors.alerts }} />
+          </div>
         </div>
         {/* Controls */}
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>

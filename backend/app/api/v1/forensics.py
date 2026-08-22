@@ -7,6 +7,7 @@ from app.api.v1.deps import require_session_or_api_key
 from app.config import settings
 from app.database import get_db
 from app.models.incident import Incident
+from app.models.schemas import ForensicsResponse
 from app.services.blockchain_adapter import BlockchainAdapter
 
 
@@ -31,7 +32,7 @@ def _normalize_chain_record(raw: dict) -> dict:
     }
 
 
-@router.get("/forensics")
+@router.get("/forensics", response_model=ForensicsResponse)
 async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require_session_or_api_key)):
     incidents = db.query(Incident).order_by(Incident.created_at.desc()).all()
     adapter = BlockchainAdapter.get_instance()
@@ -57,6 +58,7 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
                 "blockchain_tx": row.blockchain_tx,
                 "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),
                 "enforcement_status": row.enforcement_status,
+                "data_source": row.data_source,
             }
             for row in incidents
         ],

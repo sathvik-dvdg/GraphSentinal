@@ -8,12 +8,12 @@ from fastapi import APIRouter, Depends
 
 from app.api.v1.deps import require_session_or_api_key
 from app.config import settings
-from app.models.schemas import SettingsUpdateRequest
+from app.models.schemas import SettingsResponse, SettingsUpdateRequest, SettingsUpdateResponse
 
 router = APIRouter()
 
 
-@router.get("/settings")
+@router.get("/settings", response_model=SettingsResponse)
 async def get_settings_endpoint(_: None = Depends(require_session_or_api_key)):
     return {
         "threat_threshold": settings.threat_threshold,
@@ -24,7 +24,7 @@ async def get_settings_endpoint(_: None = Depends(require_session_or_api_key)):
     }
 
 
-@router.patch("/settings")
+@router.patch("/settings", response_model=SettingsUpdateResponse)
 async def update_settings_endpoint(
     request: SettingsUpdateRequest,
     _: None = Depends(require_session_or_api_key),

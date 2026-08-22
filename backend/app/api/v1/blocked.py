@@ -5,8 +5,9 @@ from sqlalchemy.orm import Session
 from app.api.v1.deps import require_session_or_api_key
 from app.database import get_db
 from app.models.incident import BlockedIP, Incident
-from app.models.schemas import BlockRequest
+from app.models.schemas import BlockedResponse, BlockRequest, BlockResponse
 from app.services.blockchain_adapter import BlockchainAdapter
+from app.services.enforcement_log import log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
 from app.services.threat_analyzer import score_to_severity_int
 
@@ -14,7 +15,7 @@ from app.services.threat_analyzer import score_to_severity_int
 router = APIRouter()
 
 
-@router.get("/blocked")
+@router.get("/blocked", response_model=BlockedResponse)
 async def get_blocked(db: Session = Depends(get_db), _: None = Depends(require_session_or_api_key)):
     rows = db.query(BlockedIP).order_by(BlockedIP.blocked_at.desc()).all()
     blocked = [
@@ -32,7 +33,7 @@ async def get_blocked(db: Session = Depends(get_db), _: None = Depends(require_s
     return {"blocked_ips": blocked, "count": len(blocked)}
 
 
-@router.post("/block")
+@router.post("/block", response_model=BlockResponse)
 async def block_or_unblock(
     request: BlockRequest,
     _: None = Depends(require_session_or_api_key),
@@ -60,6 +61,7 @@ async def block_or_unblock(
                 is_blocked=False,
                 enforcement_status=result["enforcement_status"],
                 idempotency_key=None,
+                data_source="manual",
             )
             db.add(closure)
             db.commit()
@@ -73,6 +75,15 @@ async def block_or_unblock(
             )
             closure.blockchain_tx = tx_result.get("tx_hash")
             db.commit()
+            log_enforcement_action(
+                ip_address=result["ip"],
+                action="unblock",
+                reason="MANUAL_OVERRIDE",
+                status=result["enforcement_status"],
+                blockchain_tx=tx_result.get("tx_hash"),
+                incident_id=closure.id,
+                db=db,
+            )
 
             return {
                 "status": "unblocked",
@@ -91,6 +102,7 @@ async def block_or_unblock(
             is_blocked=True,
             enforcement_status=event["enforcement_status"],
             idempotency_key=None,
+            data_source="manual",
         )
         db.add(incident)
         db.commit()
@@ -109,6 +121,16 @@ async def block_or_unblock(
         if blocked_row is not None and tx_result.get("tx_hash"):
             blocked_row.blockchain_tx = tx_result["tx_hash"]
             db.commit()
+
+        log_enforcement_action(
+            ip_address=event["ip"],
+            action="block",
+            reason=request.reason,
+            status=event["enforcement_status"],
+            blockchain_tx=tx_result.get("tx_hash"),
+            incident_id=incident.id,
+            db=db,
+        )
 
         return {
             "status": "blocked",

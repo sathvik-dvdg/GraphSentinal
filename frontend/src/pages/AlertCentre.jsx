@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
 import StatTile from '../components/ui/StatTile'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITY_COLORS = { critical: '#E03C3C', warning: '#E8922A', info: '#4F6EF7' }
@@ -32,7 +33,7 @@ const STATUS_CYCLE = { open: 'acknowledged', acknowledged: 'resolved', resolved:
 export default function AlertCentre() {
   const navigate = useNavigate()
   const { alerts: unified, stats } = useAlerts()
-  const { timeline } = useGraphStore()
+  const { timeline, dataErrors } = useGraphStore()
 
   const [localStatuses, setLocalStatuses] = useState({})
   const [filterSeverity, setFilterSeverity] = useState('All')
@@ -89,9 +90,12 @@ export default function AlertCentre() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Alert Centre
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          Unified incident hub · Acknowledge and resolve alerts
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            Unified incident hub · Acknowledge and resolve alerts
+          </p>
+          <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
+        </div>
       </div>
 
       {/* Stats bar */}

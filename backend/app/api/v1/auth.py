@@ -9,13 +9,13 @@ from fastapi import APIRouter, Depends, Header, HTTPException, status
 
 from app.api.v1.deps import check_login_rate_limit
 from app.config import settings
-from app.models.schemas import LoginRequest
+from app.models.schemas import LoginRequest, LoginResponse, LogoutResponse, MeResponse
 from app.services import auth_service
 
 router = APIRouter()
 
 
-@router.post("/auth/login")
+@router.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest, _: None = Depends(check_login_rate_limit)):
     username_ok = secrets.compare_digest(request.username, settings.operator_username)
     password_ok = secrets.compare_digest(request.password, settings.operator_password)
@@ -25,14 +25,14 @@ async def login(request: LoginRequest, _: None = Depends(check_login_rate_limit)
     return {"token": token, "username": settings.operator_username, "expires_in_hours": settings.session_ttl_hours}
 
 
-@router.post("/auth/logout")
+@router.post("/auth/logout", response_model=LogoutResponse)
 async def logout(authorization: str | None = Header(default=None)):
     token = auth_service.extract_bearer_token(authorization)
     auth_service.destroy_session(token)
     return {"status": "logged_out"}
 
 
-@router.get("/auth/me")
+@router.get("/auth/me", response_model=MeResponse)
 async def me(authorization: str | None = Header(default=None)):
     token = auth_service.extract_bearer_token(authorization)
     if not auth_service.validate_session(token):

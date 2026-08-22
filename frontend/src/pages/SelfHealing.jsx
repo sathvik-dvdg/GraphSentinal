@@ -4,10 +4,11 @@ import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Cpu, ShieldCheck, Zap } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 export default function SelfHealing() {
-  const { healingEvents, stats } = useGraphStore()
+  const { healingEvents, stats, dataErrors } = useGraphStore()
 
   const stability = Math.max(0, Math.min(100, stats.system_health ?? 100))
   const avgResponseMs = useMemo(() => {
@@ -38,9 +39,12 @@ export default function SelfHealing() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Self-Healing Engine
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          Autonomous threat response · Network stability monitoring
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            Autonomous threat response · Network stability monitoring
+          </p>
+          <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats }} />
+        </div>
       </div>
 
       {/* Stat cards row */}

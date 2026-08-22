@@ -97,6 +97,7 @@ class GraphState:
                     "byte_count": row.byte_count,
                     "duration_sec": row.duration_sec,
                     "tcp_flags": row.tcp_flags,
+                    "data_source": row.data_source,
                 }
             )
             ip_scores.setdefault(row.src_ip, row.threat_score)
@@ -141,6 +142,13 @@ class GraphState:
         active = sum(1 for node in nodes if node["status"] in {"malicious", "suspicious"})
         blocked = sum(1 for node in nodes if node["status"] == "blocked")
         system_health = max(0, 100 - active * 12 - blocked * 4)
+        # Error.md #34 — breakdown of the current flow batch by provenance,
+        # so an operator can see at a glance whether "live" traffic is
+        # actually real OVS capture, or quietly all demo/simulated.
+        data_sources: dict[str, int] = {}
+        for flow in self._flows:
+            key = str(flow.get("data_source") or "manual")
+            data_sources[key] = data_sources.get(key, 0) + 1
         return {
             "total_nodes": len(nodes),
             "active_threats": active,
@@ -151,6 +159,7 @@ class GraphState:
             "last_updated": graph["metadata"]["last_updated"],
             "enforcement_mode": settings.enforcement_mode,
             "demo_fallback_flows": settings.demo_fallback_flows,
+            "data_sources": data_sources,
         }
 
     def _build_nodes(self, flows: list[dict[str, Any]], ip_scores: dict[str, float], blocked: set[str]) -> list[dict]:
@@ -162,6 +171,13 @@ class GraphState:
 
         flow_counts: dict[str, int] = {}
         byte_counts: dict[str, int] = {}
+        # Error.md #34 — first data_source seen touching each host, so a node
+        # that only ever appeared in demo/simulated traffic can be told apart
+        # from one that showed up in a real OVS capture. First-seen (not
+        # last-seen) so a host doesn't flip labels line-by-line within one
+        # mixed batch — in practice a batch is homogeneous anyway (one flow
+        # source per analyze_flows() call).
+        node_sources: dict[str, str] = {}
         for flow in flows:
             src = str(flow["src_ip"])
             dst = str(flow["dst_ip"])
@@ -170,6 +186,9 @@ class GraphState:
             flow_counts[dst] = flow_counts.get(dst, 0) + 1
             byte_counts[src] = byte_counts.get(src, 0) + byte_count
             byte_counts[dst] = byte_counts.get(dst, 0) + byte_count
+            flow_source = str(flow.get("data_source") or "manual")
+            node_sources.setdefault(src, flow_source)
+            node_sources.setdefault(dst, flow_source)
 
         nodes = []
         for ip in sorted(hosts, key=self._ip_sort_key):
@@ -186,17 +205,20 @@ class GraphState:
                     "attack_type": attack_type_for(ip, score, flows),
                     "is_blocked": is_blocked,
                     "source": "observed" if ip in observed_hosts else "configured",
+                    "data_source": node_sources.get(ip),
                 }
             )
         return nodes
 
     def _build_links(self, flows: list[dict[str, Any]], ip_scores: dict[str, float]) -> list[dict]:
-        aggregates: dict[tuple[str, str], dict[str, int]] = {}
+        aggregates: dict[tuple[str, str], dict[str, Any]] = {}
         for flow in flows:
             key = (str(flow["src_ip"]), str(flow["dst_ip"]))
-            row = aggregates.setdefault(key, {"packet_count": 0, "byte_count": 0})
+            row = aggregates.setdefault(key, {"packet_count": 0, "byte_count": 0, "data_source": None})
             row["packet_count"] += int(flow.get("packet_count") or 0)
             row["byte_count"] += int(flow.get("byte_count") or 0)
+            if row["data_source"] is None:
+                row["data_source"] = str(flow.get("data_source") or "manual")
 
         links = []
         for (src, dst), aggregate in aggregates.items():
@@ -208,6 +230,7 @@ class GraphState:
                     "value": score,
                     "attack_type": attack_type_for(src, score, flows),
                     "packet_count": aggregate["packet_count"],
+                    "data_source": aggregate["data_source"],
                 }
             )
         return links
@@ -229,6 +252,7 @@ class GraphState:
                         duration_sec=float(flow.get("duration_sec") or 1.0),
                         tcp_flags=int(flow.get("tcp_flags") or 0),
                         threat_score=float(ip_scores.get(str(flow["src_ip"]), 0.0)),
+                        data_source=str(flow.get("data_source") or "manual"),
                     )
                 )
             db.commit()

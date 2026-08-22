@@ -12,6 +12,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.incident import BlockedIP, Incident
 from app.services.blockchain_adapter import BlockchainAdapter
+from app.services.enforcement_log import log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
 
 
@@ -86,7 +87,15 @@ class ThreatAnalyzer:
                 incident_id=incident.id,
             )
             self._update_incident_after_actions(incident.id, tx_result, healing_event)
-            alerts.append(self._alert_record(incident.id, ip, attack_type, score, True, tx_result.get("tx_hash")))
+            log_enforcement_action(
+                ip_address=ip,
+                action="block",
+                reason="GNN_DETECTED",
+                status=healing_event.get("enforcement_status", "unknown"),
+                blockchain_tx=tx_result.get("tx_hash"),
+                incident_id=incident.id,
+            )
+            alerts.append(self._alert_record(incident.id, ip, attack_type, score, True, tx_result.get("tx_hash"), incident.data_source))
 
         return alerts, healing_events
 
@@ -107,6 +116,10 @@ class ThreatAnalyzer:
                 is_blocked=False,
                 raw_flow_json=json.dumps(flows),
                 idempotency_key=key,
+                # Error.md #34 — every related flow was tagged by
+                # flow_parser.py/simulateAttack() with where it came from;
+                # take the first one's (they're all from the same batch).
+                data_source=str(flows[0].get("data_source") or "manual") if flows else "manual",
             )
             db.add(incident)
             db.commit()
@@ -148,6 +161,7 @@ class ThreatAnalyzer:
         score: float,
         is_blocked: bool,
         blockchain_tx: str | None,
+        data_source: str = "manual",
     ) -> dict:
         return {
             "id": f"alert-{incident_id}",
@@ -159,6 +173,7 @@ class ThreatAnalyzer:
             "description": f"{attack_type} detected from {ip} (score: {score:.2f})",
             "is_blocked": is_blocked,
             "blockchain_tx": blockchain_tx,
+            "data_source": data_source,
         }
 
     @staticmethod

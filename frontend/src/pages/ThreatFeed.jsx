@@ -8,6 +8,7 @@ import SeverityBadge from '../components/ui/SeverityBadge'
 import ThreatBar from '../components/ui/ThreatBar'
 import CopyableHash from '../components/ui/CopyableHash'
 import StatTile from '../components/ui/StatTile'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp as formatAlertTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITIES = ['All', 'critical', 'warning', 'info']
@@ -15,7 +16,7 @@ const TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 const TIME_RANGES = ['1h', '6h', '24h', '7d']
 
 export default function ThreatFeed() {
-  const { alerts } = useGraphStore()
+  const { alerts, dataErrors } = useGraphStore()
 
   const [severity, setSeverity] = useState('All')
   const [attackType, setAttackType] = useState('All')
@@ -51,9 +52,12 @@ export default function ThreatFeed() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Threat Feed
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          {filtered.length} event{filtered.length !== 1 ? 's' : ''} · Real-time threat intelligence
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            {filtered.length} event{filtered.length !== 1 ? 's' : ''} · Real-time threat intelligence
+          </p>
+          <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts }} />
+        </div>
       </div>
 
       {/* Filter bar */}

@@ -24,6 +24,10 @@ class Incident(Base):
     blockchain_tx: Mapped[str | None] = mapped_column(String(120), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(160), unique=True, nullable=True)
     enforcement_status: Mapped[str] = mapped_column(String(40), default="not_requested")
+    # Error.md #34 — where the triggering flow data came from: ovs | demo |
+    # manual | simulation. Lets forensics/alerts distinguish a real detection
+    # from a demo-fallback or frontend-simulated one after the fact.
+    data_source: Mapped[str] = mapped_column(String(20), default="manual")
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
 
@@ -40,6 +44,24 @@ class BlockedIP(Base):
     blocked_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
 
+class EnforcementAction(Base):
+    """Error.md #35 — append-only audit trail for every block/unblock attempt,
+    covering what `incidents`/`blocked_ips` (current-state tables) can't:
+    unblock events, reconciliation-driven reapply/remove actions, and
+    failed/pending attempts that never made it into a BlockedIP row."""
+    __tablename__ = "enforcement_actions"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    ip_address: Mapped[str] = mapped_column(String(45), nullable=False, index=True)
+    action: Mapped[str] = mapped_column(String(20), nullable=False)  # block | unblock
+    reason: Mapped[str] = mapped_column(String(50), nullable=False)  # GNN_DETECTED | MANUAL_OVERRIDE | RECONCILE_REAPPLY | RECONCILE_REMOVE
+    status: Mapped[str] = mapped_column(String(40), nullable=False)  # enforced | simulated | pending_enforcement | pending_unblock | removed | failed
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    blockchain_tx: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    incident_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
+
+
 class FlowSnapshot(Base):
     __tablename__ = "flow_snapshots"
 
@@ -54,5 +76,6 @@ class FlowSnapshot(Base):
     duration_sec: Mapped[float] = mapped_column(Float, default=1.0)
     tcp_flags: Mapped[int] = mapped_column(Integer, default=0)
     threat_score: Mapped[float] = mapped_column(Float, default=0.0)
+    data_source: Mapped[str] = mapped_column(String(20), default="manual")
     captured_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 

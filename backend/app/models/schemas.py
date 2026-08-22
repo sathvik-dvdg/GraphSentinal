@@ -23,6 +23,11 @@ class FlowRecord(BaseModel):
     byte_count: int = Field(default=0, ge=0)
     duration_sec: float = Field(default=1.0, gt=0)
     tcp_flags: int = Field(default=0, ge=0)
+    # Error.md #34 — provenance of this flow: "ovs" (real capture, set by
+    # flow_parser.py), "demo" (synthetic fallback, also flow_parser.py),
+    # "simulation" (frontend Simulate button), or the default "manual" for
+    # any other direct /api/v1/analyze submission.
+    data_source: str = "manual"
     fwd_packets: Optional[int] = Field(default=None, ge=0)
     bwd_packets: Optional[int] = Field(default=None, ge=0)
     fwd_bytes: Optional[int] = Field(default=None, ge=0)
@@ -52,6 +57,9 @@ class NodeData(BaseModel):
     attack_type: Optional[AttackType] = None
     is_blocked: bool
     source: Literal["configured", "observed"] = "configured"
+    # Error.md #34 — provenance of the flow(s) that involved this host this
+    # batch; None for a configured-but-unobserved host (no flow to derive it from).
+    data_source: Optional[str] = None
 
 
 class LinkData(BaseModel):
@@ -60,6 +68,7 @@ class LinkData(BaseModel):
     value: float = Field(ge=0.0, le=1.0)
     attack_type: Optional[AttackType] = None
     packet_count: int = Field(ge=0)
+    data_source: Optional[str] = None
 
 
 class GraphResponse(BaseModel):
@@ -72,12 +81,18 @@ class AlertRecord(BaseModel):
     id: str
     timestamp: str
     source_ip: str
-    attack_type: AttackType
+    # str, not AttackType: /api/v1/alerts queries the same Incident table
+    # manual block/unblock rows land in, and those carry attack_type
+    # "Manual"/"Manual-Unblock" — not a GNN-classified attack type. Using
+    # the strict Literal here would 500 the whole endpoint the first time a
+    # manual block appears in the results.
+    attack_type: str
     severity: Severity
     threat_score: float
     description: str
     is_blocked: bool
     blockchain_tx: Optional[str] = None
+    data_source: str = "manual"
 
 
 class AlertsResponse(BaseModel):
@@ -92,6 +107,11 @@ class BlockedIPRecord(BaseModel):
     attack_type: Optional[AttackType] = None
     threat_score: float
     blockchain_tx: Optional[str] = None
+    # Was already returned by GET /blocked but missing from this schema —
+    # a real pre-existing drift this pass's response_model= work caught
+    # (Error.md #25): applying response_model without this would have
+    # silently stripped the field from every response.
+    enforcement_status: str = "simulated"
 
 
 class BlockedResponse(BaseModel):
@@ -109,6 +129,10 @@ class BlockResponse(BaseModel):
     status: Literal["blocked", "unblocked"]
     ip: str
     blockchain_tx: Optional[str] = None
+    # Was already returned by POST /block for both actions but missing from
+    # this schema — same class of drift response_model= would have silently
+    # stripped (Error.md #25).
+    enforcement_status: str
 
 
 class BlockchainStoreRequest(BaseModel):
@@ -150,6 +174,7 @@ class StatsResponse(BaseModel):
     last_updated: str
     enforcement_mode: str
     demo_fallback_flows: bool
+    data_sources: dict[str, int] = Field(default_factory=dict)
 
 
 class TimelinePoint(BaseModel):
@@ -175,4 +200,108 @@ class HealingEvent(BaseModel):
     duration_ms: int
     network_stability_before: int
     network_stability_after: int
+    enforcement_status: str
+
+
+class IncidentRecord(BaseModel):
+    id: int
+    source_ip: str
+    attack_type: str
+    threat_score: float
+    severity: int
+    is_blocked: bool
+    blockchain_tx: Optional[str] = None
+    created_at: str
+    enforcement_status: str
+    data_source: str = "manual"
+
+
+class ChainRecord(BaseModel):
+    id: Optional[int] = None
+    tx_hash: Optional[str] = None
+    block_number: Optional[int] = None
+    incident_hash: Optional[str] = None
+    timestamp: Optional[str] = None
+    source_ip: Optional[str] = None
+    attack_type: Optional[str] = None
+    severity: Optional[int] = None
+    is_blocked: Optional[bool] = None
+    gas_used: Optional[int] = None
+
+
+class ForensicsResponse(BaseModel):
+    incidents: list[IncidentRecord]
+    blockchain_records: list[ChainRecord]
+    blockchain_error: Optional[str] = None
+    total_incidents: int
+    total_on_chain: int
+    chain_id: Optional[int] = None
+    contract_address: Optional[str] = None
+
+
+class SettingsResponse(BaseModel):
+    threat_threshold: float
+    enforcement_mode: str
+    demo_fallback_flows: bool
+    ganache_url: str
+    contract_address: Optional[str] = None
+
+
+class SettingsUpdateResponse(BaseModel):
+    threat_threshold: float
+
+
+# Error.md #35 — durable enforcement audit trail
+EnforcementActionType = Literal["block", "unblock"]
+EnforcementActionReason = Literal["GNN_DETECTED", "MANUAL_OVERRIDE", "RECONCILE_REAPPLY", "RECONCILE_REMOVE"]
+
+
+class EnforcementActionRecord(BaseModel):
+    id: int
+    ip_address: str
+    action: EnforcementActionType
+    reason: EnforcementActionReason
+    status: str
+    error: Optional[str] = None
+    blockchain_tx: Optional[str] = None
+    incident_id: Optional[int] = None
+    created_at: str
+
+
+class EnforcementActionsResponse(BaseModel):
+    actions: list[EnforcementActionRecord]
+    count: int
+
+
+class FlowScore(BaseModel):
+    flow_index: int
+    src_ip: str
+    dst_ip: str
+    score: float
+
+
+class AnalyzeResponse(BaseModel):
+    predictions: dict[str, float]
+    flow_scores: list[FlowScore]
+    incidents_created: list[str]
+    healing_triggered: list[str]
+    graph_snapshot: GraphResponse
+    alerts: list[AlertRecord]
+    healing_events: list[HealingEvent]
+    ml_mode: Optional[str] = None
+    degraded_reason: Optional[str] = None
+
+
+class LoginResponse(BaseModel):
+    token: str
+    username: str
+    expires_in_hours: float
+
+
+class LogoutResponse(BaseModel):
+    status: Literal["logged_out"]
+
+
+class MeResponse(BaseModel):
+    username: str
 

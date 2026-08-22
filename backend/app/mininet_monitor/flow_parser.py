@@ -96,6 +96,9 @@ def _parse_output(raw: str) -> list[dict[str, Any]]:
                 "byte_count": bytes_count,
                 "duration_sec": max(duration, 0.001),
                 "tcp_flags": tcp_flags,
+                # Error.md #34 — this is real OVS-dumped traffic, not demo
+                # fallback or a manual/simulated submission.
+                "data_source": "ovs",
             }
         )
     return flows
@@ -118,6 +121,7 @@ def demo_flows() -> list[dict[str, Any]]:
             "byte_count": 5120000,
             "duration_sec": 3.5,
             "tcp_flags": 2,
+            "data_source": "demo",
         },
         {
             "src_ip": "10.0.0.3",
@@ -129,6 +133,7 @@ def demo_flows() -> list[dict[str, Any]]:
             "byte_count": 64000,
             "duration_sec": 4.0,
             "tcp_flags": 0,
+            "data_source": "demo",
         },
     ]
 

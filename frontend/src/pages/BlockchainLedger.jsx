@@ -6,13 +6,14 @@ import { Link2, CheckCircle, Loader2, Download, ChevronDown } from 'lucide-react
 import useGraphStore from '../store/useGraphStore'
 import CopyableHash from '../components/ui/CopyableHash'
 import StatTile from '../components/ui/StatTile'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 const STATUSES = ['All', 'confirmed', 'pending']
 const ATTACK_TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function BlockchainLedger() {
-  const { chainTxs, connectionMode, chainId } = useGraphStore()
+  const { chainTxs, connectionMode, chainId, dataErrors } = useGraphStore()
   const [statusFilter, setStatusFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
   const [expandedRow, setExpandedRow] = useState(null)
@@ -71,6 +72,7 @@ export default function BlockchainLedger() {
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <span style={{ color: '#8B5CF6', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Ganache · Chain {chainId ?? '—'}</span>
+            <DataFreshnessBadge dataErrors={{ forensics: dataErrors.forensics }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 7, height: 7, borderRadius: '50%',

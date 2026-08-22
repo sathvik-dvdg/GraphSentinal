@@ -12,10 +12,11 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
 
 export default function DashboardPage() {
-  const { stats, alerts, healingEvents, timeline } = useGraphStore()
+  const { stats, alerts, healingEvents, timeline, dataErrors } = useGraphStore()
 
   const health = Math.max(0, Math.min(100, stats.system_health ?? 100))
   const healthColor = health >= 80 ? '#2ECC8A' : health >= 50 ? '#E8922A' : '#E03C3C'
@@ -31,9 +32,12 @@ export default function DashboardPage() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Dashboard
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          Network overview · Real-time threat summary
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            Network overview · Real-time threat summary
+          </p>
+          <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
+        </div>
       </div>
 
       {/* ── Row 1: 4 stat cards ── */}

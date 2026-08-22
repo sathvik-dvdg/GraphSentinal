@@ -500,15 +500,21 @@ Impact:
 Required fix:
 - Normalize status vocabulary or add a clear mapping layer with typed values.
 
-### 25. [PARTIAL 2026-08-22] Forensics and blockchain field shapes are not normalized
+### 25. [RESOLVED 2026-08-22] Forensics and blockchain field shapes are not normalized
 
-Partial fix: `forensics.py` now runs every chain record through `_normalize_chain_record()`, explicitly extracting a fixed field set (`id`/`tx_hash`/`block_number`/`incident_hash`/`timestamp`/`source_ip`/`attack_type`/`severity`/`is_blocked`/`gas_used`) with `.get()` defaults, instead of forwarding `adapter.client.get_all_incidents()`'s raw shape directly — the response schema is now stable even if the two different code paths inside `web3_client.get_all_incidents()` (event-log vs. count-fallback) diverge further. A real `blockchain_error` field is also now returned and surfaced in `Forensics.jsx` (previously a static "Ganache may be offline" guess regardless of actual cause). Not done: a full Pydantic response model enforcing this at the FastAPI layer.
+Fix: every FastAPI GET/POST route now declares `response_model=`, closing the gap the earlier partial fix left open. This surfaced and fixed real pre-existing drift where the actual returned dict had fields the schema didn't declare — `response_model=` silently strips undeclared fields, so each gap below would have been a silent regression the moment enforcement was turned on: `BlockedIPRecord.enforcement_status`, `BlockResponse.enforcement_status`, `HealingEvent.enforcement_status` were all real fields the endpoints returned but the schema was missing. New schemas were added for the routes that had none at all: `AnalyzeResponse` (+ `FlowScore`) for `POST /analyze`, `LoginResponse`/`LogoutResponse`/`MeResponse` for the auth routes, and `BlockchainStoreResponse`/`TimelineResponse`/`SettingsResponse`/`SettingsUpdateResponse` for their respective routes. Verified live via `docker compose up` + curl against every route with a real session token: no field was silently dropped from any response, including a real POST /analyze run that created a genuine incident and healing event end-to-end.
 
 Files:
 - `frontend/src/pages/Forensics.jsx`
 - `frontend/src/pages/BlockchainLedger.jsx`
 - `frontend/src/components/dashboard/BlockchainPanel.jsx`
 - `backend/app/api/v1/forensics.py`
+- `backend/app/api/v1/analyze.py`
+- `backend/app/api/v1/auth.py`
+- `backend/app/api/v1/blockchain.py`
+- `backend/app/api/v1/timeline.py`
+- `backend/app/api/v1/settings_route.py`
+- `backend/app/models/schemas.py`
 
 The frontend expects transaction fields such as `tx_hash`, `block_number`, `gas_used`, `attack_type`, and `severity`, but `blockchain_records` comes directly from `adapter.client.get_all_incidents()` without an API normalization layer.
 
@@ -519,14 +525,21 @@ Required fix:
 - Normalize blockchain records in the backend API schema.
 - Add frontend empty/error states for missing fields.
 
-### 26. [PARTIAL 2026-08-22] Error states are often swallowed or logged only
+### 26. [RESOLVED 2026-08-22] Error states are often swallowed or logged only
 
-Partial fix: the `dataErrors` tracking from #22 now feeds a new `DataFreshnessBadge` in the Topbar — visible, not just console-logged, whenever any panel's last fetch failed (hover shows which resource(s) and why). `AppShell.jsx`'s block/unblock error handling (#23) and `Forensics.jsx`'s blockchain error (#25) were also fixed to show real errors. Not done: a per-panel inline stale/error indicator on every individual page (Forensics, Blockchain Ledger, Threat Feed, etc.) — the Topbar badge is a single global signal, not per-panel.
+Fix: the same `DataFreshnessBadge` used globally in the Topbar (#22) is now also rendered per-page, each instance scoped to only the `dataErrors` key(s) that page actually consumes — `NetworkTopology` (`graph`), `AlertCentre`/`ThreatFeed` (`alerts`), `TimelineAnalytics` (`timeline`/`alerts`), `DashboardPage` (`stats`/`alerts`/`timeline`), `SelfHealing` (`stats`), `BlockchainLedger` (`forensics`). `Forensics.jsx` already had its own independent `fetchError` from `useForensicsData` (#39) surfaced inline, so it needed no change. Verified live with a Playwright forced-failure test: intercepting only `/api/v1/graph` and returning 500 shows "STALE: GRAPH" on the Network Topology page while leaving other pages' own panels unaffected (the global Topbar badge still reflects it everywhere, which is correct — it's the aggregate signal).
 
 Files:
 - `frontend/src/hooks/useGraphData.js`
 - `frontend/src/components/layout/AppShell.jsx`
 - `frontend/src/pages/Forensics.jsx`
+- `frontend/src/pages/NetworkTopology.jsx`
+- `frontend/src/pages/AlertCentre.jsx`
+- `frontend/src/pages/ThreatFeed.jsx`
+- `frontend/src/pages/DashboardPage.jsx`
+- `frontend/src/pages/TimelineAnalytics.jsx`
+- `frontend/src/pages/SelfHealing.jsx`
+- `frontend/src/pages/BlockchainLedger.jsx`
 
 Several failures are caught and logged or ignored without visible user feedback.
 
@@ -655,9 +668,9 @@ Required fix:
 
 ## Data Model Gaps
 
-### 34. [PARTIAL 2026-08-22] No first-class data source field
+### 34. [RESOLVED 2026-08-22] No first-class data source field
 
-Partial: graph nodes now carry `source: "configured" | "observed"` (#9). A full `source_type`/`data_source` field threaded through flow parser → analysis pipeline → alerts → forensics → stats API responses is a larger cross-cutting schema change spanning most of the backend's response models — not attempted this pass beyond the graph-node piece.
+Fix: a real `data_source` field (`"ovs" | "demo" | "manual" | "simulation"`) is now tagged at the earliest point in each pipeline — `flow_parser.py` for real OVS captures and the demo fallback, `useGraphStore.js`'s `simulateAttack()` for frontend-triggered bursts, and the schema-level `"manual"` default for any other direct `/api/v1/analyze` submission — then threaded through unchanged: `FlowRecord`/`Incident`/`FlowSnapshot` (new Alembic migration, `server_default='manual'` so it applies safely against the already-populated dev database), graph nodes/links (first-seen-wins per host/edge), a new `stats.data_sources` breakdown, `alerts`, and `forensics`. Verified live: a real simulated attack (`data_source: "simulation"`) shows up correctly tagged through `/api/v1/graph`, `/api/v1/alerts`, and `/api/v1/forensics`, while pre-existing rows correctly backfilled to `"manual"`.
 
 Affected areas:
 - flow parser
@@ -675,9 +688,9 @@ Impact:
 Required fix:
 - Add `source_type`/`data_source` and propagate it through storage and API responses.
 
-### 35. [PARTIAL 2026-08-22] No durable enforcement action table
+### 35. [RESOLVED 2026-08-22] No durable enforcement action table
 
-Partial: #13/#14 give manual block/unblock a durable, blockchain-logged trail by reusing the existing `Incident` model (closure rows for unblock), which covers the most visible symptom (incident history lying about current block state). A dedicated append-only enforcement-action/event table (distinct from `incidents`, covering daemon errors, reconciliation actions, requested-vs-enforced-vs-failed states) is a real new table + migration (see #29) — not attempted this pass.
+Fix: a new append-only `enforcement_actions` table (Alembic migration, alongside #34's `data_source` columns) logs every block/unblock attempt — GNN auto-block, manual block/unblock, and reconciliation reapply/removal — through one shared `log_enforcement_action()` writer, independent of the current-state-only `incidents`/`blocked_ips` tables. Each row records `action`/`reason`/`status`/`error`/`blockchain_tx`/`incident_id`, so failures are captured too, not just successes. A new `GET /api/v1/enforcement-actions` endpoint (session-gated like every other route, optional `ip_address` filter) exposes the trail. Verified live: real GNN-triggered blocks, a manual block/unblock cycle, and reconciliation's daemon-connection failures all produced correctly-shaped rows, including genuine `status: "failed"` entries with the real underlying error message.
 
 Affected areas:
 - self-healing

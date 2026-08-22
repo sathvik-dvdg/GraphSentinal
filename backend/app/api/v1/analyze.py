@@ -4,7 +4,7 @@ import asyncio
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.api.v1.deps import check_analyze_rate_limit, require_session_or_api_key
-from app.models.schemas import AnalyzeRequest
+from app.models.schemas import AnalyzeRequest, AnalyzeResponse
 from app.services.analysis_pipeline import analyze_flows
 from app.websocket.events import emit_analysis_events
 
@@ -12,7 +12,7 @@ from app.websocket.events import emit_analysis_events
 router = APIRouter()
 
 
-@router.post('/analyze')
+@router.post('/analyze', response_model=AnalyzeResponse)
 async def analyze_traffic(
     request: AnalyzeRequest,
     _: None = Depends(require_session_or_api_key),

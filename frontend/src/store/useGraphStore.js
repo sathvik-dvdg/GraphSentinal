@@ -175,7 +175,10 @@ const useGraphStore = create((set, get) => ({
         { src_ip: targetIp, dst_ip: victimIp, src_port: 51234, dst_port: 6667, protocol: 'TCP', packet_count: 500, byte_count: 64000, duration_sec: 8.0, tcp_flags: 2 },
       ],
     }
-    const flows = attackFlows[attackType] || attackFlows.DDoS
+    // Error.md #34 — tag every synthetic flow as simulation-sourced so it's
+    // distinguishable from real OVS traffic everywhere downstream (graph
+    // nodes, incidents, alerts, forensics) instead of blending in silently.
+    const flows = (attackFlows[attackType] || attackFlows.DDoS).map((f) => ({ ...f, data_source: 'simulation' }))
 
     try {
       const analyzeResult = await analyzeFlows(flows)
