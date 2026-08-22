@@ -22,18 +22,44 @@ require_ml_model: bool = False        # Docker default: False
 demo_allow_mock_ml: bool = True       # Docker default: True
 ```
 
-Combined effect of the four possible combinations:
+Combined effect of the four possible combinations — **corrected 2026-08-22**:
+the previous version of this table was wrong about row 1. Read
+`InferenceService._degrade_or_raise()` directly:
+
+```python
+def _degrade_or_raise(self, reason: str) -> None:
+    if settings.require_ml_model and not settings.demo_allow_mock_ml:
+        raise RuntimeError(reason)
+    self.model = None
+    self.mode = "degraded"
+    self.degraded_reason = reason   # ← unconditional, every non-raise path
+```
+
+`degraded_reason` is set on **every** path that doesn't raise — `demo_allow_mock_ml`
+never gates whether it gets populated. It only matters as the second half of
+the `and` that decides whether to raise, which is already short-circuited to
+`False` whenever `require_ml_model=False`. So with today's default
+(`require_ml_model=False`), `demo_allow_mock_ml`'s value has **zero effect on
+anything** — the corrected table:
 
 | `require_ml_model` | `demo_allow_mock_ml` | What happens on model failure |
 |---|---|---|
-| `False` | `True` (**current**) | Silently falls back to heuristic scorer. App keeps running, no banner, no log warning visible in UI. |
-| `False` | `False` | Falls back to heuristic scorer, but `degraded_reason` is populated in the API response so the UI can show a warning banner. |
-| `True` | `True` | Startup still succeeds (allow_mock wins). This combination is contradictory and effectively the same as the first row. |
+| `False` | `True` (**current**) | Degrades to heuristic scorer. `mode: "degraded"` and `degraded_reason` are populated in `/health` — the frontend's `MlModeBadge` already reads this and shows "HEURISTIC SCORING". **Not silent.** |
+| `False` | `False` | Identical behavior to the row above — `demo_allow_mock_ml` is never evaluated when `require_ml_model=False`. |
+| `True` | `True` | Startup still succeeds (allow_mock wins) — identical to the first two rows. |
 | `True` | `False` | **Hard fail.** `RuntimeError` is raised inside `InferenceService.__init__()`. Uvicorn/FastAPI startup will abort. The backend container will crash-loop. |
+
+Confirmed live (2026-08-22): `MlModeBadge` already correctly surfaces
+degraded mode today, under the current default config — this was built and
+verified as part of Error.md #4's Third Pass fix. There is no "toggle a flag
+to unhide the banner" step left to do; that was never how this worked.
 
 ### The real question
 > **If the model weights are missing or broken, should the backend refuse to
-> start — or should it start in degraded mode and tell the user?**
+> start — or should it stay in degraded mode (which it already does, visibly)?**
+
+Only two outcomes actually exist given the code above — there's no real
+"Option B vs Option C" distinction:
 
 **Option A — Fail hard** (`require_ml_model=True`, `demo_allow_mock_ml=False`)
 
@@ -44,34 +70,29 @@ Combined effect of the four possible combinations:
 - Appropriate if: this is a production security tool where heuristic scores
   are considered worse than no scores at all.
 
-**Option B — Degrade with visible warning** (`require_ml_model=False`, `demo_allow_mock_ml=False`)
+**Option B — Degrade with visible warning (current, already correct)**
 
-- Backend starts even without the model.
-- The API response includes `mode: "degraded"` and `degraded_reason: "weights not found"`.
-- The frontend can read these fields and show a persistent warning banner.
+- Any config with `require_ml_model=False` (the default).
+- Backend starts even without the model, `mode: "degraded"` +
+  `degraded_reason` are populated, and the frontend already shows a badge.
 - Threat scores are still computed (heuristically) — the dashboard stays usable.
 - Appropriate if: you want the monitoring dashboard to always be available,
   even when ML infrastructure has a problem.
 
-**Option C — Current (silent degradation)** (`demo_allow_mock_ml=True`)
-
-- Everything the same as B, but no warning is shown anywhere.
-- **Recommended to move away from this** — it is the worst of both worlds:
-  the model might not be running and nobody knows.
-
 ### Recommended answer
-**Option B.** Hard-failing the whole backend because of a model file is
-disproportionate for a monitoring system. But silent degradation is dangerous
-for a security tool. Degraded-with-banner is the right middle ground.
+**Option B — no change needed.** The system already does the right thing:
+starts in degraded mode, tells the user via a real UI badge, keeps the
+dashboard usable. Only touch this if you specifically want Option A (hard
+fail) for a production deployment where heuristic scores are unacceptable.
 
 ### What becomes code once you decide
-One line in `.env.docker` / `config.py`:
+Nothing, unless you want Option A. To get Option A:
 ```
+REQUIRE_ML_MODEL=true
 DEMO_ALLOW_MOCK_ML=false
 ```
-Plus: the frontend reads `stats.ml_mode` / `stats.degraded_reason` from the
-`/api/v1/stats` response (already returned by `graph_state.stats_response()`)
-and shows a banner. That is the only code change.
+in `.env.docker` / `config.py`. No frontend change needed either way — the
+badge already reads `/health` correctly.
 
 ---
 

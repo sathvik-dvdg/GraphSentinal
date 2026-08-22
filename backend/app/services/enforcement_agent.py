@@ -56,6 +56,15 @@ class EnforcementAgent:
         self.switch = switch or settings.enforcement_switch
         self.mode = mode or settings.enforcement_mode
         self.last_error: str | None = None
+        # Decision #5 (decisions.md) — Option C: a log-visible warning rather
+        # than rejecting `simulated` outright. `simulated` stays a legitimate
+        # mode (Docker/dev workflows depend on it); this just makes it
+        # impossible to miss in the container log that no real OVS rules are
+        # being applied. A stronger `require_real_enforcement` guard is
+        # deferred until a real-network production deployment is an actual
+        # goal (there isn't one defined yet).
+        if self.mode != 'ovs':
+            _audit_log.warning('Enforcement mode is SIMULATED — no OVS flow rules will be applied.')
 
     def _send_to_daemon(self, payload: dict) -> dict:
         payload["token"] = getattr(settings, "daemon_token", None)

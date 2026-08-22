@@ -10,6 +10,7 @@ import ConnectionModeBadge from '../ui/ConnectionModeBadge'
 import EnforcementModeBadge from '../ui/EnforcementModeBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
+import DemoModeBadge from '../ui/DemoModeBadge'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
@@ -88,6 +89,8 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
         <EnforcementModeBadge mode={stats.enforcement_mode} />
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
+        <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />
+
 
         {isSimulating && (
           <span

@@ -18,7 +18,7 @@ Goal: make the full application dynamic and functional by removing mock data and
 
 Everything below the original scope (~30 open issues) was addressed in a second pass in the same session, after confirming the real WSL2 Mininet + enforcement daemon + Docker pipeline (see #8, #5 resolutions above). Verified live: full stack booted through `docker compose up`, a real simulated DDoS burst produced a real GraphSAGE score, a real OVS drop rule (confirmed via `ovs-ofctl dump-flows`), and a real Ganache transaction; the frontend was driven through a headless-Chromium session (login → dashboard → threat feed → forensics → blockchain ledger → network/org-pyramid view → live Simulate click) with zero console errors.
 
-Three categories were deliberately left open as decisions bigger than a drive-by fix — see the "Not Addressed" note on each: real authentication (#18/#27), DB migrations (#29), and a dedicated durable audit-log table (#35, though #13/#14 cover its most-visible symptom via the existing Incident model). #39 (component de-duplication) is explicitly meant to happen after data contracts stabilize, so it's still open by design.
+Three categories were deliberately left open at the time as decisions bigger than a drive-by fix — real authentication, DB migrations, and a dedicated durable audit-log table — but all three were later resolved in follow-up passes: see #18/#27 (real session auth), #29 (Alembic migrations), and #35 (the `enforcement_actions` table). #39 (component de-duplication) is explicitly meant to happen after data contracts stabilize, so it's still open by design.
 
 ## 2026-08-22 Verification Pass (audit of the follow-up pass above)
 

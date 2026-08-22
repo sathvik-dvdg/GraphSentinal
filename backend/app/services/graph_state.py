@@ -53,6 +53,15 @@ def _flow_dict(flow: Any) -> dict[str, Any]:
 
 
 class GraphState:
+    # Decision #10/#36 (decisions.md) — deliberately a single in-process
+    # singleton, not derived from SQLite or a shared cache like Redis. This
+    # is the correct design for a single-worker deployment: fast, simple, no
+    # extra infrastructure. It only becomes wrong if multiple uvicorn workers
+    # or multiple backend replicas are ever run — each would get its own
+    # independent GraphState instance and they'd diverge (one worker's
+    # blocks wouldn't be visible to another's REST/WebSocket responses).
+    # Revisit only if multi-worker/multi-instance deployment becomes an
+    # actual concrete goal — don't add that complexity speculatively.
     def __init__(self):
         self._lock = Lock()
         self._flows: list[dict[str, Any]] = []
