@@ -119,6 +119,11 @@ class BlockchainStoreRequest(BaseModel):
     sqlite_incident_id: int
 
 
+class LoginRequest(BaseModel):
+    username: str = Field(min_length=1, max_length=100)
+    password: str = Field(min_length=1, max_length=200)
+
+
 class SettingsUpdateRequest(BaseModel):
     # Error.md #19 — the only Settings-page control with a real, single-value
     # backend equivalent. Everything else on that page (a separate

@@ -4,6 +4,7 @@
 //   → on reconnect, trigger onReconnect() so caller can REST-fetch fresh state
 import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
+import { SESSION_STORAGE_KEY } from '../store/useAuthStore'
 
 // Same-origin by default — rides the Vite (or Docker) proxy exactly like REST
 // calls already do (see vite.config.js / vite.config.docker.js). Only set
@@ -35,11 +36,18 @@ export function useWebSocket({
   callbacksRef.current = { onGraphUpdate, onAlert, onHealingTriggered, onConnect, onDisconnect, onReconnect }
 
   useEffect(() => {
+    // This hook only mounts inside ProtectedRoute (via SimulationProvider),
+    // so a valid session token is already guaranteed to exist by the time
+    // this runs — the socket used to push the same live security data
+    // (graph updates, alerts, healing events) as the REST endpoints with no
+    // auth at all, which would have made the new REST session gate pointless
+    // for anyone who just connected a socket.io client directly instead.
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
       timeout: 5000,
+      auth: { token: sessionStorage.getItem(SESSION_STORAGE_KEY) },
     })
 
     socket.on('connect', () => {

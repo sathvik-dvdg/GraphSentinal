@@ -10,6 +10,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
+import StatTile from '../components/ui/StatTile'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITY_COLORS = { critical: '#E03C3C', warning: '#E8922A', info: '#4F6EF7' }
@@ -95,10 +96,10 @@ export default function AlertCentre() {
 
       {/* Stats bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, flexShrink: 0 }}>
-        <StatBadge label="Open" value={stats.open} color="#E03C3C" />
-        <StatBadge label="Acknowledged" value={stats.acked} color="#E8922A" />
-        <StatBadge label="Resolved" value={stats.resolved} color="#2ECC8A" />
-        <StatBadge label="MTTA" value={`${stats.mttaMin}m`} color="#4F6EF7" />
+        <StatTile layout="row" label="Open" value={stats.open} color="#E03C3C" />
+        <StatTile layout="row" label="Acknowledged" value={stats.acked} color="#E8922A" />
+        <StatTile layout="row" label="Resolved" value={stats.resolved} color="#2ECC8A" />
+        <StatTile layout="row" label="MTTA" value={`${stats.mttaMin}m`} color="#4F6EF7" />
       </div>
 
       {/* Filter bar */}
@@ -275,14 +276,6 @@ export default function AlertCentre() {
   )
 }
 
-function StatBadge({ label, value, color }) {
-  return (
-    <div className="gs-panel" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
-      <span style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22 }}>{value}</span>
-    </div>
-  )
-}
 
 function Pill({ label, active, onClick, color }) {
   return (

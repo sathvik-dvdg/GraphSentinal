@@ -30,6 +30,14 @@ class Settings(BaseSettings):
     max_analyze_flows: int = 5000
     analyze_rate_limit_per_minute: int = 30
 
+    # Single-operator session auth (Error.md #18/#27). Same "documented
+    # insecure default, change it for real use" convention as
+    # backend_api_token above — not a required-with-no-default field, so a
+    # fresh clone/Docker boot works with zero setup.
+    operator_username: str = "admin"
+    operator_password: str = "change-me-for-demo"
+    session_ttl_hours: int = 8
+
     enforcement_mode: str = "simulated"  # simulated | ovs
     enforcement_switch: str = "s1"
     mininet_cidr: str = "10.0.0.0/24"

@@ -1,64 +1,27 @@
 // [Windows] GraphSentinel — Susheep
 // Forensics — full-page version of ForensicsModal content (no modal wrapper)
-// Reuses getForensics() API and same data bindings as the original modal
-import { useState, useEffect, useRef } from 'react'
+// Error.md #39: fetch/poll/refresh/error logic and the blockchain records
+// table are now shared with ForensicsModal.jsx via useForensicsData and
+// BlockchainRecordsTable instead of two independent copies.
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
-import { Database, Link2, RefreshCw, ShieldAlert, ChevronRight } from 'lucide-react'
-import { getForensics } from '../services/api'
+import { Database, Link2, RefreshCw, ShieldAlert } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import { useForensicsData } from '../hooks/useForensicsData'
 import CopyableHash from '../components/ui/CopyableHash'
+import StatTile from '../components/ui/StatTile'
+import BlockchainRecordsTable from '../components/forensics/BlockchainRecordsTable'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 export default function Forensics() {
   const [tab, setTab] = useState('incidents')
-  const [data, setData] = useState({
-    incidents: [],
-    blockchain_records: [],
-    total_incidents: 0,
-    total_on_chain: 0,
-    contract_address: null,
-    chain_id: null,
-    blockchain_error: null,
-  })
-  const [loading, setLoading] = useState(false)
   const [selectedIncident, setSelectedIncident] = useState(null)
-  // Distinct from data.blockchain_error: this is for the getForensics()
-  // request itself failing (network error, 5xx, timeout) — previously
-  // silently swallowed, so a backend outage on this page looked identical
-  // to "no incidents yet" instead of "couldn't reach the backend."
-  const [fetchError, setFetchError] = useState(null)
-  const intervalRef = useRef(null)
+  const { data, loading, fetchError, refresh } = useForensicsData(true, 5000)
 
   const resolvedIncidentIds = useGraphStore((s) => s.resolvedIncidentIds)
   const resolveIncident = useGraphStore((s) => s.resolveIncident)
 
   const activeIncidents = data.incidents.filter((inc) => !resolvedIncidentIds.includes(inc.id))
-
-  useEffect(() => {
-    let isMounted = true
-    const doRefresh = () => {
-      if (!isMounted) return
-      setLoading(true)
-      getForensics()
-        .then((res) => { if (isMounted) { setData(res); setFetchError(null) } })
-        .catch((err) => { if (isMounted) setFetchError(err.message || 'Failed to reach the backend') })
-        .finally(() => { if (isMounted) setLoading(false) })
-    }
-    doRefresh()
-    intervalRef.current = setInterval(doRefresh, 5000)
-    return () => {
-      isMounted = false
-      if (intervalRef.current) clearInterval(intervalRef.current)
-    }
-  }, [])
-
-  const handleManualRefresh = () => {
-    setLoading(true)
-    getForensics()
-      .then((res) => { setData(res); setFetchError(null) })
-      .catch((err) => setFetchError(err.message || 'Failed to reach the backend'))
-      .finally(() => setLoading(false))
-  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -87,7 +50,7 @@ export default function Forensics() {
         </div>
         <button
           id="forensics-refresh"
-          onClick={handleManualRefresh}
+          onClick={refresh}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '6px 14px', borderRadius: 6,
@@ -122,10 +85,10 @@ export default function Forensics() {
 
       {/* Stat summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        <StatCard label="Total Incidents" value={data.total_incidents} color="#4F6EF7" />
-        <StatCard label="On-Chain Records" value={data.total_on_chain} color="#8B5CF6" />
-        <StatCard label="Active Incidents" value={activeIncidents.length} color="#E03C3C" />
-        <StatCard label="Blockchain Records" value={data.blockchain_records.length} color="#2ECC8A" />
+        <StatTile label="Total Incidents" value={data.total_incidents} color="#4F6EF7" />
+        <StatTile label="On-Chain Records" value={data.total_on_chain} color="#8B5CF6" />
+        <StatTile label="Active Incidents" value={activeIncidents.length} color="#E03C3C" />
+        <StatTile label="Blockchain Records" value={data.blockchain_records.length} color="#2ECC8A" />
       </div>
 
       {/* Main content: case list + detail */}
@@ -293,48 +256,9 @@ export default function Forensics() {
           </span>
         </div>
         <div style={{ overflowX: 'auto' }}>
-          <table className="gs-table" style={{ width: '100%' }}>
-            <thead style={{ background: '#1E2436' }}>
-              <tr>
-                {['ID', 'TX Hash', 'Block #', 'Attack', 'Severity', 'Gas', 'Status'].map((h) => (
-                  <th key={h}>{h}</th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {data.blockchain_records.map((rec, i) => (
-                <tr key={i}>
-                  <td style={{ color: '#3D4560', fontFamily: "'DM Mono', monospace" }}>{rec.id}</td>
-                  <td style={{ color: '#8B5CF6', fontFamily: "'DM Mono', monospace", fontSize: 10 }}><CopyableHash value={rec.tx_hash} iconSize={9} /></td>
-                  <td style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>#{rec.block_number}</td>
-                  <td><span style={{ fontSize: 10, background: 'rgba(224,60,60,0.1)', color: '#E03C3C', border: '1px solid rgba(224,60,60,0.2)', padding: '2px 7px', borderRadius: 4, fontFamily: "'DM Mono', monospace" }}>{rec.attack_type}</span></td>
-                  <td style={{ color: rec.severity >= 8 ? '#E03C3C' : '#E8922A', fontFamily: "'DM Mono', monospace" }}>{rec.severity}/10</td>
-                  <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace" }}>{rec.gas_used?.toLocaleString()}</td>
-                  <td><span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#2ECC8A', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>● Confirmed</span></td>
-                </tr>
-              ))}
-              {data.blockchain_records.length === 0 && (
-                <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: '#3D4560', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-                    {data.blockchain_error
-                      ? `No blockchain records — ${data.blockchain_error}`
-                      : 'No blockchain records.'}
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          <BlockchainRecordsTable records={data.blockchain_records} blockchainError={data.blockchain_error} />
         </div>
       </div>
-    </div>
-  )
-}
-
-function StatCard({ label, value, color }) {
-  return (
-    <div className="gs-panel" style={{ padding: '14px 16px' }}>
-      <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>{label}</div>
-      <div style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 24 }}>{value}</div>
     </div>
   )
 }

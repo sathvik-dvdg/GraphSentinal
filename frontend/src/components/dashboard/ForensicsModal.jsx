@@ -1,69 +1,20 @@
 // [Windows] GraphSentinel — Susheep
 // ForensicsModal — redesigned with new token system
-// ── ALL state, effects, data bindings, and handlers preserved verbatim ──
 // § 4.6: blockchain_records: [] renders explicit empty state
-// Interval cleanup: verified — clearInterval runs on isOpen effect cleanup (correct)
-import { useState, useEffect, useRef } from 'react'
+import { useState } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { X, RefreshCw, Database, Link2 } from 'lucide-react'
-import { getForensics } from '../../services/api'
+import { useForensicsData } from '../../hooks/useForensicsData'
 import { formatEventTimestamp } from '../../utils/formatTimestamp'
-import CopyableHash from '../ui/CopyableHash'
+import BlockchainRecordsTable from '../forensics/BlockchainRecordsTable'
 
 export default function ForensicsModal({ isOpen, onClose }) {
-  // ── Original state — untouched ──
-  const [tab, setTab]   = useState('incidents')
-  const [data, setData] = useState({
-    incidents: [],
-    blockchain_records: [],
-    total_incidents: 0,
-    total_on_chain: 0,
-    contract_address: null,
-    chain_id: null,
-  })
-  const [loading, setLoading] = useState(false)
-  const intervalRef = useRef(null)
-
-  // § 4.6: Interval cleanup is correct — clearInterval runs when isOpen changes or unmount
-  // Track isMounted to prevent setting state after unmount or close
-  useEffect(() => {
-    if (isOpen) {
-      let isMounted = true
-
-      const doRefresh = () => {
-        if (!isMounted) return
-        setLoading(true)
-        getForensics()
-          .then((res) => {
-            if (isMounted) setData(res)
-          })
-          .catch(() => {})
-          .finally(() => {
-            if (isMounted) setLoading(false)
-          })
-      }
-
-      doRefresh()
-      intervalRef.current = setInterval(doRefresh, 3000)
-
-      return () => {
-        isMounted = false
-        if (intervalRef.current) {
-          clearInterval(intervalRef.current)
-          intervalRef.current = null
-        }
-      }
-    }
-  }, [isOpen])
-
-  // Manual refresh for button
-  const handleManualRefresh = () => {
-    setLoading(true)
-    getForensics()
-      .then((res) => setData(res))
-      .catch(() => {})
-      .finally(() => setLoading(false))
-  }
+  const [tab, setTab] = useState('incidents')
+  // Error.md #39: fetch/poll/refresh/error logic now shared with Forensics.jsx
+  // via useForensicsData — this also fixes a real bug: the modal previously
+  // swallowed fetch failures silently (`.catch(() => {})`), unlike the full
+  // page, which already surfaces a fetchError banner (see #26).
+  const { data, loading, fetchError, refresh } = useForensicsData(isOpen, 3000)
 
   if (!isOpen) return null
 
@@ -130,7 +81,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
               {/* Refresh button — original handler preserved */}
               <button
                 id="forensics-refresh"
-                onClick={handleManualRefresh}
+                onClick={refresh}
                 className="tac-btn flex items-center gap-1.5 text-gs-muted hover:text-gs-accent border border-gs-border hover:border-gs-accent/40 hover:bg-gs-accent-soft text-[10px] font-mono px-2.5 py-1.5 rounded-lg transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-accent"
               >
                 <RefreshCw size={10} aria-hidden="true" />
@@ -147,6 +98,12 @@ export default function ForensicsModal({ isOpen, onClose }) {
               </button>
             </div>
           </div>
+
+          {fetchError && (
+            <div role="alert" className="mx-5 mt-3 flex items-center gap-2 px-3 py-2 rounded-lg border border-gs-threat/30 bg-gs-threat-soft text-gs-threat text-[11px] font-mono shrink-0">
+              Failed to refresh: {fetchError}
+            </div>
+          )}
 
           {/* Stat summary row */}
           <div className="flex items-center border-b border-gs-border shrink-0">
@@ -221,53 +178,11 @@ export default function ForensicsModal({ isOpen, onClose }) {
                 </tbody>
               </table>
             ) : (
-              <table className="gs-table w-full">
-                <thead className="sticky top-0" style={{ background: '#1E2436' }}>
-                  <tr>
-                    {['ID', 'TX Hash', 'Block #', 'Attack', 'Severity', 'Gas', 'Status'].map((h) => (
-                      <th key={h}>{h}</th>
-                    ))}
-                  </tr>
-                </thead>
-                <tbody>
-                  {/* § 4.6: blockchain_records: [] renders empty state — not an error */}
-                  {data.blockchain_records.map((rec, i) => (
-                    <tr key={i}>
-                      <td className="text-gs-faint">{rec.id}</td>
-                      <td className="text-gs-chain tabular-nums"><CopyableHash value={rec.tx_hash} iconSize={9} /></td>
-                      <td className="text-gs-accent tabular-nums">#{rec.block_number}</td>
-                      <td>
-                        <span className="px-1.5 py-0.5 rounded-md bg-gs-threat-soft text-gs-threat border border-gs-threat/20 text-[10px]">
-                          {rec.attack_type}
-                        </span>
-                      </td>
-                      <td className="text-gs-warn tabular-nums">{rec.severity}/10</td>
-                      <td className="text-gs-muted tabular-nums">{rec.gas_used?.toLocaleString()}</td>
-                      <td>
-                        <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-gs-heal-soft text-gs-heal border border-gs-heal/20 text-[10px]">
-                          <span className="w-1 h-1 rounded-full bg-gs-heal" aria-hidden="true" />
-                          Confirmed
-                        </span>
-                      </td>
-                    </tr>
-                  ))}
-                  {data.blockchain_records.length === 0 && (
-                    <tr>
-                      <td colSpan={7} className="py-10 text-center">
-                        <div className="flex flex-col items-center gap-2">
-                          <div className="w-8 h-8 rounded-lg bg-gs-chain-soft border border-gs-chain/20 flex items-center justify-center">
-                            <Link2 size={16} className="text-gs-chain/40" aria-hidden="true" />
-                          </div>
-                          <p className="text-gs-faint font-mono text-xs">No blockchain records.</p>
-                          <p className="text-gs-faint font-mono text-[10px] opacity-70">
-                            Ganache may be offline. Records appear when incidents are verified on-chain.
-                          </p>
-                        </div>
-                      </td>
-                    </tr>
-                  )}
-                </tbody>
-              </table>
+              <BlockchainRecordsTable
+                records={data.blockchain_records}
+                blockchainError={data.blockchain_error}
+                stickyHeader
+              />
             )}
           </div>
 

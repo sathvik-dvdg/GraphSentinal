@@ -64,6 +64,11 @@ services:
       # Editing any file in backend/app/ triggers uvicorn --reload automatically.
       # NO rebuild needed. Only requirements.txt changes need --build.
       - ./backend/app:/app/app:ro
+      # ── Alembic migrations (Error.md #29) — bind-mounted for the same
+      # reason as backend/app: a new migration file should apply on the
+      # next container restart, not require a full image rebuild.
+      - ./backend/migrations:/app/migrations:ro
+      - ./backend/alembic.ini:/app/alembic.ini:ro
       # ── ML model weights (read-only, from repo) ────────────────────────────
       # Weights are committed (560 KB); bind-mounted so they're always in sync.
       - ./ML:/app/ML:ro

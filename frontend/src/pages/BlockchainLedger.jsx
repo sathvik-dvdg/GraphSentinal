@@ -5,6 +5,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link2, CheckCircle, Loader2, Download, ChevronDown } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import CopyableHash from '../components/ui/CopyableHash'
+import StatTile from '../components/ui/StatTile'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 const STATUSES = ['All', 'confirmed', 'pending']
@@ -94,10 +95,10 @@ export default function BlockchainLedger() {
 
       {/* Stats row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-        <MiniStat label="Total Records" value={chainTxs.length} color="#8B5CF6" />
-        <MiniStat label="Confirmed" value={confirmedCount} color="#2ECC8A" />
-        <MiniStat label="Gas Used Today" value={formatGas(totalGas)} color="#E8922A" />
-        <MiniStat label="Last Block" value={lastBlock} color="#4F6EF7" />
+        <StatTile label="Total Records" value={chainTxs.length} color="#8B5CF6" valueFontSize={22} />
+        <StatTile label="Confirmed" value={confirmedCount} color="#2ECC8A" valueFontSize={22} />
+        <StatTile label="Gas Used Today" value={formatGas(totalGas)} color="#E8922A" valueFontSize={22} />
+        <StatTile label="Last Block" value={lastBlock} color="#4F6EF7" valueFontSize={22} />
       </div>
 
       {/* Filters */}
@@ -218,19 +219,6 @@ export default function BlockchainLedger() {
             </tbody>
           </table>
         </div>
-      </div>
-    </div>
-  )
-}
-
-function MiniStat({ label, value, color }) {
-  return (
-    <div className="gs-panel" style={{ padding: '14px 16px' }}>
-      <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 6 }}>
-        {label}
-      </div>
-      <div style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22 }}>
-        {value}
       </div>
     </div>
   )

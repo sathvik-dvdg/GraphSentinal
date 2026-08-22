@@ -1,11 +1,13 @@
 // [Windows] GraphSentinel — Susheep
 // App.jsx — routing root with ProtectedRoute wrapping AppShell + all sub-routes
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './store/useAuthStore'
 import SimulationProvider from './providers/SimulationProvider'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import AppShell from './components/layout/AppShell'
+import LoadingScreen from './components/shared/LoadingScreen'
 import DashboardPage from './pages/DashboardPage'
 import NetworkTopology from './pages/NetworkTopology'
 import ThreatFeed from './pages/ThreatFeed'
@@ -17,12 +19,23 @@ import AlertCentre from './pages/AlertCentre'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, authStatus } = useAuthStore()
+  // A token can survive a page refresh in sessionStorage — 'checking' covers
+  // the round-trip to verify it's still valid server-side, so a stale token
+  // doesn't briefly flash the dashboard before an inevitable 401 bounces it
+  // back to /login, and a valid one doesn't bounce to /login first either.
+  if (authStatus === 'checking') return <LoadingScreen />
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return children
 }
 
 export default function App() {
+  const checkSession = useAuthStore((s) => s.checkSession)
+
+  useEffect(() => {
+    checkSession()
+  }, [checkSession])
+
   return (
     <BrowserRouter
         future={{

@@ -49,8 +49,10 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
 
   const isSimulating = connectionMode === 'simulating'
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    // logout() calls POST /api/v1/auth/logout to invalidate the session
+    // server-side too, not just forget the token client-side.
+    await logout()
     navigate('/')
   }
 

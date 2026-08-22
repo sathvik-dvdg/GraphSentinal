@@ -7,6 +7,7 @@ import useGraphStore from '../store/useGraphStore'
 import SeverityBadge from '../components/ui/SeverityBadge'
 import ThreatBar from '../components/ui/ThreatBar'
 import CopyableHash from '../components/ui/CopyableHash'
+import StatTile from '../components/ui/StatTile'
 import { formatEventTimestamp as formatAlertTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITIES = ['All', 'critical', 'warning', 'info']
@@ -183,9 +184,9 @@ export default function ThreatFeed() {
             <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Live Stats
             </div>
-            <StatRow label="Total alerts" value={alerts.length} color="#8A95B0" />
-            <StatRow label="Critical" value={criticalCount} color="#E03C3C" />
-            <StatRow label="Isolated" value={blockedCount} color="#2ECC8A" />
+            <StatTile layout="row" panel={false} label="Total alerts" value={alerts.length} color="#8A95B0" />
+            <StatTile layout="row" panel={false} label="Critical" value={criticalCount} color="#E03C3C" />
+            <StatTile layout="row" panel={false} label="Isolated" value={blockedCount} color="#2ECC8A" />
           </div>
 
           {/* Top attacking IPs */}
@@ -254,11 +255,3 @@ function Pill({ label, active, onClick, color }) {
   )
 }
 
-function StatRow({ label, value, color }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-      <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
-      <span style={{ color, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{value}</span>
-    </div>
-  )
-}

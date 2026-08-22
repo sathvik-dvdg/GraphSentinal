@@ -1,4 +1,5 @@
 # [WSL2]
+import secrets
 from contextlib import asynccontextmanager
 from datetime import datetime, timezone
 
@@ -9,6 +10,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.database import init_db
+from app.services import auth_service
 from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.inference_service import InferenceService
 from app.services.reconciliation import ReconciliationWorker
@@ -84,8 +86,9 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
 app.add_middleware(RequestSizeLimitMiddleware)
 
-from app.api.v1 import alerts, analyze, blocked, blockchain, forensics, graph, settings_route, stats, timeline  # noqa: E402
+from app.api.v1 import alerts, analyze, auth, blocked, blockchain, forensics, graph, settings_route, stats, timeline  # noqa: E402
 
+app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(analyze.router, prefix="/api/v1", tags=["analyze"])
 app.include_router(graph.router, prefix="/api/v1", tags=["graph"])
 app.include_router(stats.router, prefix="/api/v1", tags=["stats"])
@@ -120,7 +123,15 @@ async def health():
 
 
 @sio.event
-async def connect(sid, environ):
+async def connect(sid, environ, auth=None):
+    # Same auth gate as require_session_or_api_key, adapted for Socket.IO's
+    # connect-time auth payload (Error.md #18/#27 — this socket pushes the
+    # same live security data as the now-gated REST endpoints).
+    token = (auth or {}).get("token") if isinstance(auth, dict) else None
+    api_key = environ.get("HTTP_X_API_KEY")
+    key_ok = bool(api_key) and bool(settings.backend_api_token) and secrets.compare_digest(api_key, settings.backend_api_token)
+    if not (key_ok or auth_service.validate_session(token)):
+        raise ConnectionRefusedError("Authentication required")
     await sio.emit("connected", {"sid": sid, "service": "GraphSentinel"}, to=sid)
 
 
