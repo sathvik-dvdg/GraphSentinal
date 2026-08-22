@@ -13,7 +13,7 @@ const NAV_ITEMS = [
   { path: '/network',    Icon: Network,          label: 'Network Topology',  color: '#1D9E75' },
   { path: '/threats',    Icon: ShieldAlert,      label: 'Threat Feed',       color: '#E03C3C' },
   { path: '/forensics',  Icon: Search,           label: 'Forensics',         color: '#4F6EF7' },
-  { path: '/blockchain', Icon: Link2,            label: 'Blockchain Ledger', color: '#8B5CF6' },
+  { path: '/blockchain', Icon: Link2,            label: 'Audit & Ledger',    color: '#8B5CF6' },
   { path: '/timeline',   Icon: TrendingUp,       label: 'Timeline',          color: '#1D9E75' },
   { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: '#2ECC8A' },
   { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: '#E8922A' },

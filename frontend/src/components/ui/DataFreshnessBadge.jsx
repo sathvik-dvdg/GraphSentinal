@@ -10,6 +10,7 @@ const LABELS = {
   stats: 'stats',
   timeline: 'timeline',
   health: 'health',
+  enforcement: 'enforcement log',
 }
 
 export default function DataFreshnessBadge({ dataErrors, className = '' }) {

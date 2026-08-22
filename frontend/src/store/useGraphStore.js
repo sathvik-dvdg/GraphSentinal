@@ -17,6 +17,7 @@ const EMPTY_STATE = {
   blockedIPs: [],
   chainTxs: [],
   timeline: [],
+  enforcementActions: [],
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
 }
 
@@ -35,6 +36,7 @@ const useGraphStore = create((set, get) => ({
   healingEvents: [],
   healingNodeId: null,
   timeline: [],
+  enforcementActions: [],
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
   nodeOverrides: {},
   resolvedIncidentIds: [],
@@ -256,6 +258,7 @@ const useGraphStore = create((set, get) => ({
   setChainTxs: (txs) => set({ chainTxs: txs }),
   setChainId: (id) => set({ chainId: id }),
   setTimeline: (data) => set({ timeline: data }),
+  setEnforcementActions: (actions) => set({ enforcementActions: actions }),
 }))
 
 export default useGraphStore
