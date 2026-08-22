@@ -19,6 +19,7 @@ const EMPTY_STATE = {
   timeline: [],
   enforcementActions: [],
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
+  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null },
 }
 
 const useGraphStore = create((set, get) => ({
@@ -45,9 +46,8 @@ const useGraphStore = create((set, get) => ({
   // useGraphData.js updates each panel's data independently, so a panel can
   // silently go stale if only its own fetch keeps failing while others
   // succeed. This lets the UI show that panel is stale instead of pretending
-  // everything is in sync. Keyed by resource name, each entry is either
   // null (last fetch OK) or an error message string.
-  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null },
+  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null },
   setDataError: (resource, error) =>
     set((state) => ({ dataErrors: { ...state.dataErrors, [resource]: error } })),
 

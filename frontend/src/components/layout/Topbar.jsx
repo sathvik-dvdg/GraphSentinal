@@ -17,7 +17,7 @@ const ROUTE_TITLES = {
   '/network':    'Network Topology',
   '/threats':    'Threat Feed',
   '/forensics':  'Forensics',
-  '/blockchain': 'Blockchain Ledger',
+  '/blockchain': 'Audit & Ledger',
   '/timeline':   'Timeline Analytics',
   '/healing':    'Self-Healing Engine',
   '/alerts':     'Alert Centre',
