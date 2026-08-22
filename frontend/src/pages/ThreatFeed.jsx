@@ -8,6 +8,7 @@ import SeverityBadge from '../components/ui/SeverityBadge'
 import ThreatBar from '../components/ui/ThreatBar'
 import CopyableHash from '../components/ui/CopyableHash'
 import StatTile from '../components/ui/StatTile'
+import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp as formatAlertTimestamp } from '../utils/formatTimestamp'
 
@@ -70,7 +71,7 @@ export default function ThreatFeed() {
         {/* Severity pills */}
         <div style={{ display: 'flex', gap: 4 }}>
           {SEVERITIES.map((s) => (
-            <Pill key={s} label={s} active={severity === s} onClick={() => setSeverity(s)}
+            <FilterPill key={s} label={s} active={severity === s} onClick={() => setSeverity(s)}
               color={s === 'critical' ? '#E03C3C' : s === 'warning' ? '#E8922A' : s === 'info' ? '#4F6EF7' : '#5A6480'} />
           ))}
         </div>
@@ -80,7 +81,7 @@ export default function ThreatFeed() {
         {/* Type pills */}
         <div style={{ display: 'flex', gap: 4 }}>
           {TYPES.map((t) => (
-            <Pill key={t} label={t} active={attackType === t} onClick={() => setAttackType(t)} color="#8B5CF6" />
+            <FilterPill key={t} label={t} active={attackType === t} onClick={() => setAttackType(t)} color="#8B5CF6" />
           ))}
         </div>
 
@@ -100,7 +101,7 @@ export default function ThreatFeed() {
         {/* Time range */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
           {TIME_RANGES.map((t) => (
-            <Pill key={t} label={t} active={timeRange === t} onClick={() => setTimeRange(t)} color="#4F6EF7" />
+            <FilterPill key={t} label={t} active={timeRange === t} onClick={() => setTimeRange(t)} color="#4F6EF7" />
           ))}
         </div>
       </div>
@@ -235,27 +236,3 @@ export default function ThreatFeed() {
     </div>
   )
 }
-
-function Pill({ label, active, onClick, color }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '4px 10px',
-        borderRadius: 6,
-        border: `1px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
-        background: active ? `${color}18` : 'transparent',
-        color: active ? color : '#5A6480',
-        fontSize: 10,
-        fontFamily: "'DM Mono', monospace",
-        cursor: 'pointer',
-        transition: 'all 150ms',
-        fontWeight: active ? 600 : 400,
-        textTransform: 'capitalize',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-

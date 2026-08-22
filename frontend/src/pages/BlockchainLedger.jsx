@@ -6,6 +6,7 @@ import { Link2, CheckCircle, Loader2, Download, ChevronDown } from 'lucide-react
 import useGraphStore from '../store/useGraphStore'
 import CopyableHash from '../components/ui/CopyableHash'
 import StatTile from '../components/ui/StatTile'
+import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
@@ -107,11 +108,11 @@ export default function BlockchainLedger() {
       <div className="gs-panel" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
         <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Filter:</span>
         {STATUSES.map((s) => (
-          <Pill key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} color="#2ECC8A" />
+          <FilterPill key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} color="#2ECC8A" />
         ))}
         <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.08)' }} />
         {ATTACK_TYPES.map((t) => (
-          <Pill key={t} label={t} active={typeFilter === t} onClick={() => setTypeFilter(t)} color="#E03C3C" />
+          <FilterPill key={t} label={t} active={typeFilter === t} onClick={() => setTypeFilter(t)} color="#E03C3C" />
         ))}
       </div>
 
@@ -225,25 +226,6 @@ export default function BlockchainLedger() {
     </div>
   )
 }
-
-function Pill({ label, active, onClick, color }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '3px 10px', borderRadius: 5,
-        border: `1px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
-        background: active ? `${color}15` : 'transparent',
-        color: active ? color : '#5A6480',
-        fontSize: 10, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
-        transition: 'all 150ms', textTransform: 'capitalize',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
 function exportBtnStyle(color) {
   return {
     display: 'flex', alignItems: 'center', gap: 6,

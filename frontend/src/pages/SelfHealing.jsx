@@ -4,6 +4,7 @@ import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Cpu, ShieldCheck, Zap } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import StatTile from '../components/ui/StatTile'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
@@ -49,23 +50,26 @@ export default function SelfHealing() {
 
       {/* Stat cards row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-        <StatCard
+        <StatTile
           label="Total Isolations Today"
           value={totalIsolations}
           color="#E03C3C"
           icon={<Zap size={16} style={{ color: '#E03C3C' }} />}
+          valueFontSize={26}
         />
-        <StatCard
+        <StatTile
           label="Avg Response Time"
           value={`${avgResponseMs}ms`}
           color="#4F6EF7"
           icon={<Cpu size={16} style={{ color: '#4F6EF7' }} />}
+          valueFontSize={26}
         />
-        <StatCard
+        <StatTile
           label="Network Stability"
           value={`${stability}%`}
           color={stabilityColor}
           icon={<ShieldCheck size={16} style={{ color: stabilityColor }} />}
+          valueFontSize={26}
         />
       </div>
 
@@ -275,27 +279,7 @@ export default function SelfHealing() {
   )
 }
 
-function StatCard({ label, value, color, icon }) {
-  return (
-    <div className="gs-panel" style={{ padding: '16px 20px', position: 'relative', overflow: 'hidden' }}>
-      <div style={{
-        position: 'absolute', top: 0, right: 0, width: 60, height: 60,
-        background: `${color}08`, filter: 'blur(20px)',
-      }} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          {label}
-        </span>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}12`, border: `1px solid ${color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {icon}
-        </div>
-      </div>
-      <div style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 26 }}>
-        {value}
-      </div>
-    </div>
-  )
-}
+
 
 function LegendRow({ label, value, color, active }) {
   return (

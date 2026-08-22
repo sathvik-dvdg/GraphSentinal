@@ -11,6 +11,7 @@ import {
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
 import StatTile from '../components/ui/StatTile'
+import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
@@ -110,16 +111,16 @@ export default function AlertCentre() {
       <div className="gs-panel" style={{ padding: '10px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Filter size={13} style={{ color: '#5A6480' }} />
         {['All', 'critical', 'warning', 'info'].map((s) => (
-          <Pill key={s} label={s} active={filterSeverity === s} onClick={() => setFilterSeverity(s)}
+          <FilterPill key={s} label={s} active={filterSeverity === s} onClick={() => setFilterSeverity(s)}
             color={SEVERITY_COLORS[s] || '#5A6480'} />
         ))}
         <Sep />
         {['All', 'open', 'acknowledged', 'resolved'].map((s) => (
-          <Pill key={s} label={s} active={filterStatus === s} onClick={() => setFilterStatus(s)} color="#8A95B0" />
+          <FilterPill key={s} label={s} active={filterStatus === s} onClick={() => setFilterStatus(s)} color="#8A95B0" />
         ))}
         <Sep />
         {['All', 'threat_feed', 'self_healing', 'blockchain', 'system'].map((s) => (
-          <Pill key={s} label={s === 'All' ? 'All' : SOURCE_LABELS[s] || s} active={filterSource === s}
+          <FilterPill key={s} label={s === 'All' ? 'All' : SOURCE_LABELS[s] || s} active={filterSource === s}
             onClick={() => setFilterSource(s)} color={SOURCE_COLORS[s] || '#5A6480'} />
         ))}
       </div>
@@ -280,24 +281,6 @@ export default function AlertCentre() {
   )
 }
 
-
-function Pill({ label, active, onClick, color }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '3px 9px', borderRadius: 5,
-        border: `1px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
-        background: active ? `${color}15` : 'transparent',
-        color: active ? color : '#5A6480',
-        fontSize: 10, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
-        transition: 'all 150ms', textTransform: 'capitalize',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
 
 function Sep() {
   return <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />

@@ -33,7 +33,7 @@ export default function Settings() {
   const [isolateThreshold, setIsolateThreshold] = useState(null)
   const [savedThreshold, setSavedThreshold] = useState(null)
   const [thresholdStatus, setThresholdStatus] = useState('loading') // loading | idle | saving | saved | error
-  const [lateralSensitivity, setLateralSensitivity] = useState('normal')
+  const [alertThreshold, setAlertThreshold] = useState(85)
 
   // Blockchain — real values, read-only (see note in the Blockchain tab
   // below for why these aren't live-editable)
@@ -220,17 +220,6 @@ export default function Settings() {
             </Section>
 
             <Section title="Lateral Movement Sensitivity (not implemented)">
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['strict', 'normal', 'permissive'].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setLateralSensitivity(s)}
-                    style={optionBtnStyle(lateralSensitivity === s, '#4F6EF7')}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
               <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
                 The backend has no lateral-movement detection logic at all yet (no L3→L0 escalation tracking) — this control has nothing to connect to.
               </div>
