@@ -26,6 +26,7 @@ export default function AppShell() {
     setSelectedNode,
     setForensicsOpen,
     simulateAttack,
+    stopSimulation,
     setGraphData,
     setBlockedIPs,
     updateStats,
@@ -85,6 +86,7 @@ export default function AppShell() {
       <div style={{ gridColumn: 2, gridRow: 1 }}>
         <Topbar
           onSimulate={simulateAttack}
+          onStopSimulate={stopSimulation}
           onForensicsClick={() => setForensicsOpen(true)}
         />
       </div>

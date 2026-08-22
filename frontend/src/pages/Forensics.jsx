@@ -22,6 +22,11 @@ export default function Forensics() {
   })
   const [loading, setLoading] = useState(false)
   const [selectedIncident, setSelectedIncident] = useState(null)
+  // Distinct from data.blockchain_error: this is for the getForensics()
+  // request itself failing (network error, 5xx, timeout) — previously
+  // silently swallowed, so a backend outage on this page looked identical
+  // to "no incidents yet" instead of "couldn't reach the backend."
+  const [fetchError, setFetchError] = useState(null)
   const intervalRef = useRef(null)
 
   const resolvedIncidentIds = useGraphStore((s) => s.resolvedIncidentIds)
@@ -35,8 +40,8 @@ export default function Forensics() {
       if (!isMounted) return
       setLoading(true)
       getForensics()
-        .then((res) => { if (isMounted) setData(res) })
-        .catch(() => {})
+        .then((res) => { if (isMounted) { setData(res); setFetchError(null) } })
+        .catch((err) => { if (isMounted) setFetchError(err.message || 'Failed to reach the backend') })
         .finally(() => { if (isMounted) setLoading(false) })
     }
     doRefresh()
@@ -50,8 +55,8 @@ export default function Forensics() {
   const handleManualRefresh = () => {
     setLoading(true)
     getForensics()
-      .then((res) => setData(res))
-      .catch(() => {})
+      .then((res) => { setData(res); setFetchError(null) })
+      .catch((err) => setFetchError(err.message || 'Failed to reach the backend'))
       .finally(() => setLoading(false))
   }
 
@@ -94,6 +99,26 @@ export default function Forensics() {
           <RefreshCw size={12} /> Refresh
         </button>
       </div>
+
+      {/* Visible fetch-failure banner — the request itself failed (network
+          error, 5xx, timeout), distinct from data.blockchain_error which
+          means the request succeeded but Ganache is offline. Previously
+          silently swallowed, so a backend outage looked identical to "no
+          incidents yet." */}
+      {fetchError && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 14px', borderRadius: 8,
+            border: '1px solid rgba(224,60,60,0.3)', background: 'rgba(224,60,60,0.08)',
+            color: '#E03C3C', fontSize: 12, fontFamily: "'DM Mono', monospace",
+          }}
+        >
+          <ShieldAlert size={14} style={{ flexShrink: 0 }} />
+          Failed to refresh forensics data: {fetchError}
+        </div>
+      )}
 
       {/* Stat summary */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
@@ -148,8 +173,13 @@ export default function Forensics() {
               </div>
             ))}
             {activeIncidents.length === 0 && (
-              <div style={{ padding: '32px 0', textAlign: 'center', color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                No incidents logged
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                <div style={{ marginBottom: 4 }}>No incidents logged</div>
+                <div style={{ fontSize: 10, color: '#2D3348' }}>
+                  {fetchError
+                    ? 'Check the error above — this may be stale, not empty'
+                    : 'Incidents appear here once real traffic crosses the threat threshold, or use Simulate in the top bar to trigger one'}
+                </div>
               </div>
             )}
           </div>

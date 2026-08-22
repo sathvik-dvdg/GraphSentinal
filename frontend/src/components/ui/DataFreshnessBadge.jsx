@@ -9,6 +9,7 @@ const LABELS = {
   forensics: 'forensics',
   stats: 'stats',
   timeline: 'timeline',
+  health: 'health',
 }
 
 export default function DataFreshnessBadge({ dataErrors, className = '' }) {

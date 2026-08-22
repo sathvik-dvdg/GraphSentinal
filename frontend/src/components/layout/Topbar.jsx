@@ -9,6 +9,7 @@ import useAuthStore from '../../store/useAuthStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
 import EnforcementModeBadge from '../ui/EnforcementModeBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
+import MlModeBadge from '../ui/MlModeBadge'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
@@ -22,7 +23,7 @@ const ROUTE_TITLES = {
   '/settings':   'Settings',
 }
 
-export default function Topbar({ onSimulate, onForensicsClick }) {
+export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuthStore()
@@ -31,6 +32,7 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
     stats,
     connectionMode,
     dataErrors,
+    mlHealth,
   } = useGraphStore()
 
   const [time, setTime] = useState(new Date().toLocaleTimeString())
@@ -82,6 +84,7 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
 
         <ConnectionModeBadge mode={connectionMode} />
         <EnforcementModeBadge mode={stats.enforcement_mode} />
+        <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
 
         {isSimulating && (
@@ -195,7 +198,7 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
         {onSimulate && (
           <button
             id="topbar-simulate"
-            onClick={onSimulate}
+            onClick={isSimulating ? onStopSimulate : onSimulate}
             style={{
               display: 'flex',
               alignItems: 'center',

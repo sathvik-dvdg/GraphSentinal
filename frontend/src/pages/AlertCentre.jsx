@@ -10,6 +10,7 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
+import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITY_COLORS = { critical: '#E03C3C', warning: '#E8922A', info: '#4F6EF7' }
 const SOURCE_LABELS = {
@@ -70,11 +71,14 @@ export default function AlertCentre() {
   // Last 6h sparkline — reuse timeline data
   const sparkData = timeline.slice(-12)
 
+  // Error.md #37 pattern: a relative label past ~1 day is ambiguous ("29h
+  // ago" doesn't say which day) — fall back to a real date+time.
   const relativeTime = (ts) => {
     const diff = Date.now() - ts
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-    return `${Math.floor(diff / 3600000)}h ago`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+    return formatEventTimestamp(ts)
   }
 
   return (

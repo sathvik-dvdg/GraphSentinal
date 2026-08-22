@@ -27,6 +27,11 @@ const useGraphStore = create((set, get) => ({
   blockedIPs: [],
   chainTxs: [],
   chainId: null, // Error.md #17 — real chain ID from the connected Web3 provider, not hardcoded
+  // Error.md #4 — the API already returned ml.mode/degraded_reason via
+  // /health, but nothing in the frontend fetched or displayed it, so an
+  // operator couldn't tell real GraphSAGE scores from the heuristic fallback.
+  mlHealth: { mode: 'model', degraded_reason: null },
+  setMlHealth: (health) => set({ mlHealth: health }),
   healingEvents: [],
   healingNodeId: null,
   timeline: [],
@@ -40,7 +45,7 @@ const useGraphStore = create((set, get) => ({
   // succeed. This lets the UI show that panel is stale instead of pretending
   // everything is in sync. Keyed by resource name, each entry is either
   // null (last fetch OK) or an error message string.
-  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null },
+  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null },
   setDataError: (resource, error) =>
     set((state) => ({ dataErrors: { ...state.dataErrors, [resource]: error } })),
 
@@ -173,7 +178,10 @@ const useGraphStore = create((set, get) => ({
     const flows = attackFlows[attackType] || attackFlows.DDoS
 
     try {
-      await analyzeFlows(flows)
+      const analyzeResult = await analyzeFlows(flows)
+      if (analyzeResult?.ml_mode) {
+        state.setMlHealth({ mode: analyzeResult.ml_mode, degraded_reason: analyzeResult.degraded_reason ?? null })
+      }
 
       // Pull the real resulting state back via REST — same normalization
       // path as normal polling (useGraphData.js), just triggered immediately
@@ -205,6 +213,19 @@ const useGraphStore = create((set, get) => ({
         }
       }, 8000)
     }
+  },
+
+  // The Topbar's "Stop Sim" button previously called simulateAttack() again
+  // while already simulating, which just hit simulateAttack's own re-entrancy
+  // guard (`if connectionMode === 'simulating') return`) and did nothing —
+  // clicking it looked like it should cancel, but was inert. This ends the
+  // simulating UI state immediately; the in-flight /api/v1/analyze request
+  // (if any) still completes server-side since it's a real backend action,
+  // it just won't hold the UI in "simulating" waiting for it.
+  stopSimulation: () => {
+    const state = get()
+    if (state.connectionMode !== 'simulating') return
+    state.setConnectionMode(state.isConnected ? 'live' : 'mock')
   },
 
   resolveIncident: (incidentId) =>

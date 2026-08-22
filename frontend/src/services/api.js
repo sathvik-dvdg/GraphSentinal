@@ -29,6 +29,7 @@ export const getBlocked = () => api.get('/api/v1/blocked')
 export const getForensics = () => api.get('/api/v1/forensics')
 export const getTimeline = (last = '60min') =>
   api.get('/api/v1/timeline', { params: { last } })
+export const getHealth = () => api.get('/health')
 
 export const blockIP = (ip, action = 'block', reason = 'MANUAL_OVERRIDE') => {
   const token = import.meta.env.VITE_BACKEND_API_TOKEN || 'change-me-for-demo'
@@ -42,6 +43,15 @@ export const blockIP = (ip, action = 'block', reason = 'MANUAL_OVERRIDE') => {
 export const analyzeFlows = (flows) => {
   const token = import.meta.env.VITE_BACKEND_API_TOKEN || 'change-me-for-demo'
   return api.post('/api/v1/analyze', { flows }, {
+    headers: { 'X-API-Key': token },
+  })
+}
+
+export const getSettings = () => api.get('/api/v1/settings')
+
+export const updateThreatThreshold = (threat_threshold) => {
+  const token = import.meta.env.VITE_BACKEND_API_TOKEN || 'change-me-for-demo'
+  return api.patch('/api/v1/settings', { threat_threshold }, {
     headers: { 'X-API-Key': token },
   })
 }

@@ -119,6 +119,14 @@ class BlockchainStoreRequest(BaseModel):
     sqlite_incident_id: int
 
 
+class SettingsUpdateRequest(BaseModel):
+    # Error.md #19 — the only Settings-page control with a real, single-value
+    # backend equivalent. Everything else on that page (a separate
+    # detection-vs-isolate threshold, lateral-movement sensitivity, live
+    # Ganache reconnection) has no matching backend concept to wire to.
+    threat_threshold: float = Field(ge=0.0, le=1.0)
+
+
 class BlockchainStoreResponse(BaseModel):
     tx_hash: Optional[str] = None
     block_number: Optional[int] = None

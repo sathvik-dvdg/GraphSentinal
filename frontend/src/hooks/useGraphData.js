@@ -2,7 +2,7 @@
 // REST polling hook — fallback when WebSocket is down
 // § 4.5: Sets connectionMode instead of isMockMode
 import { useEffect, useCallback } from 'react'
-import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline } from '../services/api'
+import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealth } from '../services/api'
 import useGraphStore from '../store/useGraphStore'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -25,6 +25,7 @@ const RESOURCE_FETCHERS = {
   },
   stats: { fetch: getStats, apply: (v, s) => s.updateStats(v) },
   timeline: { fetch: getTimeline, apply: (v, s) => s.setTimeline(v.data_points) },
+  health: { fetch: getHealth, apply: (v, s) => s.setMlHealth(v.ml) },
 }
 
 export function useGraphData() {

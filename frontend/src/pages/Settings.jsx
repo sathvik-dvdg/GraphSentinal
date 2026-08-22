@@ -1,8 +1,9 @@
 // [Windows] GraphSentinel — Susheep
 // Settings — tabbed configuration page: Simulation / Detection / Network / Blockchain
-import { useState } from 'react'
+import { useState, useEffect } from 'react'
 import { Settings as SettingsIcon, Zap, Shield, Network, Link2 } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import { getSettings, updateThreatThreshold } from '../services/api'
 
 const TABS = [
   { id: 'simulation',  label: 'Simulation',           icon: <Zap size={14} /> },
@@ -25,13 +26,42 @@ export default function Settings() {
 
   // Detection
   const [anomalyThreshold, setAnomalyThreshold] = useState(70)
-  const [isolateThreshold, setIsolateThreshold] = useState(85)
+  // Error.md #19 — this is the one control with a real backend equivalent
+  // (settings.threat_threshold). Starts null until the real value loads so
+  // the slider never shows a fabricated default that might not match what
+  // the backend is actually running.
+  const [isolateThreshold, setIsolateThreshold] = useState(null)
+  const [savedThreshold, setSavedThreshold] = useState(null)
+  const [thresholdStatus, setThresholdStatus] = useState('loading') // loading | idle | saving | saved | error
   const [lateralSensitivity, setLateralSensitivity] = useState('normal')
 
-  // Blockchain
-  const [ganacheUrl, setGanacheUrl] = useState('http://127.0.0.1:8545')
-  const [contractAddr, setContractAddr] = useState('')
-  const [gasLimit, setGasLimit] = useState(200000)
+  // Blockchain — real values, read-only (see note in the Blockchain tab
+  // below for why these aren't live-editable)
+  const [chainConfig, setChainConfig] = useState({ ganache_url: null, contract_address: null })
+  const [chainConfigLoading, setChainConfigLoading] = useState(true)
+
+  useEffect(() => {
+    getSettings()
+      .then((res) => {
+        setIsolateThreshold(Math.round(res.threat_threshold * 100))
+        setSavedThreshold(Math.round(res.threat_threshold * 100))
+        setThresholdStatus('idle')
+        setChainConfig({ ganache_url: res.ganache_url, contract_address: res.contract_address })
+      })
+      .catch(() => setThresholdStatus('error'))
+      .finally(() => setChainConfigLoading(false))
+  }, [])
+
+  const saveThreshold = () => {
+    setThresholdStatus('saving')
+    updateThreatThreshold(isolateThreshold / 100)
+      .then((res) => {
+        setSavedThreshold(Math.round(res.threat_threshold * 100))
+        setThresholdStatus('saved')
+        setTimeout(() => setThresholdStatus('idle'), 2000)
+      })
+      .catch(() => setThresholdStatus('error'))
+  }
 
   const toggleSimulation = () => {
     if (isSimulating) {
@@ -146,25 +176,50 @@ export default function Settings() {
 
         {activeTab === 'detection' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section title="Anomaly Score Threshold">
+            <Section title="Threat Threshold">
+              {/* Error.md #19: the backend has a single threat_threshold that
+                  gates both alerting and auto-block — there is no separate
+                  detect-only vs. isolate-only stage. This is the real,
+                  live-editable control; the old "Anomaly Score Threshold"
+                  slider below is informational only, see its own note. */}
               <SliderSetting
-                label="Alert fires above this score"
+                label="Nodes are alerted AND auto-isolated above this score (live backend value)"
+                value={isolateThreshold ?? 0}
+                onChange={setIsolateThreshold}
+                color="#E03C3C"
+                disabled={thresholdStatus === 'loading'}
+              />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                <button
+                  style={{ ...primaryBtnStyle('#E03C3C'), opacity: (thresholdStatus === 'loading' || isolateThreshold === savedThreshold) ? 0.5 : 1 }}
+                  disabled={thresholdStatus === 'loading' || thresholdStatus === 'saving' || isolateThreshold === savedThreshold}
+                  onClick={saveThreshold}
+                >
+                  {thresholdStatus === 'saving' ? 'Saving…' : 'Save'}
+                </button>
+                <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: thresholdStatus === 'error' ? '#E03C3C' : thresholdStatus === 'saved' ? '#2ECC8A' : '#3D4560' }}>
+                  {thresholdStatus === 'loading' && 'Loading current value from backend…'}
+                  {thresholdStatus === 'error' && 'Failed to reach the backend'}
+                  {thresholdStatus === 'saved' && `Saved — live threshold is now ${(savedThreshold / 100).toFixed(2)}`}
+                  {thresholdStatus === 'idle' && isolateThreshold !== savedThreshold && 'Unsaved change'}
+                  {thresholdStatus === 'idle' && isolateThreshold === savedThreshold && `Current live value: ${(savedThreshold / 100).toFixed(2)} (resets to .env default on backend restart)`}
+                </span>
+              </div>
+            </Section>
+
+            <Section title="Anomaly Score Threshold (display only)">
+              <SliderSetting
+                label="Not wired to the backend — see note below"
                 value={anomalyThreshold}
                 onChange={setAnomalyThreshold}
                 color="#E8922A"
               />
+              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+                The backend doesn't have a separate "flag but don't block" stage — scoring above the single Threat Threshold above both alerts and auto-isolates in one step. This slider is left as a UI-only preview until that two-stage behavior actually exists server-side.
+              </div>
             </Section>
 
-            <Section title="Auto-Isolate Threshold">
-              <SliderSetting
-                label="Nodes are isolated above this score"
-                value={isolateThreshold}
-                onChange={setIsolateThreshold}
-                color="#E03C3C"
-              />
-            </Section>
-
-            <Section title="Lateral Movement Sensitivity">
+            <Section title="Lateral Movement Sensitivity (not implemented)">
               <div style={{ display: 'flex', gap: 8 }}>
                 {['strict', 'normal', 'permissive'].map((s) => (
                   <button
@@ -177,9 +232,7 @@ export default function Settings() {
                 ))}
               </div>
               <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
-                {lateralSensitivity === 'strict' ? 'Any cross-level connection triggers alert'
-                  : lateralSensitivity === 'normal' ? 'L3→L0 escalations trigger alert'
-                  : 'Only confirmed attack patterns trigger alert'}
+                The backend has no lateral-movement detection logic at all yet (no L3→L0 escalation tracking) — this control has nothing to connect to.
               </div>
             </Section>
           </div>
@@ -187,24 +240,19 @@ export default function Settings() {
 
         {activeTab === 'network' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section title="Import Org Hierarchy">
-              <Label>Upload hierarchy JSON</Label>
-              <input
-                type="file"
-                accept=".json"
-                onChange={(e) => alert('JSON import — connect to pyramidConfig loader')}
-                style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace" }}
-              />
-              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 6 }}>
-                Upload a JSON file matching the ORG_HIERARCHY schema to override the default hierarchy.
+            {/* Error.md #2 already replaced the hierarchy view with one
+                derived live from real graph data instead of an editable
+                admin-entered org chart — so "import a JSON to override it"
+                and a manual node editor are both stale ideas that would
+                reintroduce exactly the fake-data problem #2 fixed. Removed
+                the controls rather than wiring up something that would
+                undermine that fix; explaining why instead. */}
+            <Section title="Org Hierarchy Source">
+              <div style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
+                The Org Hierarchy / Pyramid view is derived live from real network topology (<code>graphData.nodes</code>) — every host shown is a host that actually exists on the configured network, with its real IP and live status.
               </div>
-            </Section>
-
-            <Section title="Node Editor">
-              <div style={{ color: '#5A6480', fontSize: 12, fontFamily: "'DM Mono', monospace", padding: '20px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 8 }}>
-                Node editor table (ID / IP / Label / Level / Department)
-                <br />
-                <span style={{ fontSize: 11, opacity: 0.6 }}>— Connect to hierarchy state to enable add/edit/delete —</span>
+              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 10 }}>
+                A JSON import / manual node editor to override it was removed rather than wired up — either would reintroduce admin-entered data that could silently diverge from what's actually on the network, which is the exact problem the live-derived hierarchy was built to fix.
               </div>
             </Section>
           </div>
@@ -212,33 +260,32 @@ export default function Settings() {
 
         {activeTab === 'blockchain' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section title="Ganache Connection">
+            {/* Error.md #19: these used to be editable text fields that did
+                nothing on save. They're real values now (fetched from
+                /api/v1/settings), but read-only rather than fake-editable —
+                the blockchain adapter connects to Ganache once at process
+                startup and is a singleton; changing which chain/contract
+                security incidents get logged to, live, via a text field, is
+                a genuinely risky action, not just a missing wire-up. */}
+            <Section title="Ganache Connection (read-only — live backend values)">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
                   <Label>RPC URL</Label>
-                  <input value={ganacheUrl} onChange={(e) => setGanacheUrl(e.target.value)} style={inputStyle} />
+                  <input value={chainConfigLoading ? 'Loading…' : (chainConfig.ganache_url || '—')} readOnly style={{ ...inputStyle, opacity: 0.7, cursor: 'default' }} />
                 </div>
                 <div>
                   <Label>Contract Address</Label>
-                  <input value={contractAddr} onChange={(e) => setContractAddr(e.target.value)} style={inputStyle} placeholder="0x..." />
+                  <input value={chainConfigLoading ? 'Loading…' : (chainConfig.contract_address || 'Not deployed / not connected')} readOnly style={{ ...inputStyle, opacity: 0.7, cursor: 'default' }} />
                 </div>
                 <div>
-                  <Label>Gas Limit</Label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <input
-                      type="range" min={50000} max={500000} step={10000}
-                      value={gasLimit} onChange={(e) => setGasLimit(Number(e.target.value))}
-                      style={{ flex: 1, accentColor: '#8B5CF6' }}
-                    />
-                    <span style={{ color: '#8B5CF6', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 70 }}>
-                      {gasLimit.toLocaleString()}
-                    </span>
+                  <Label>Gas Limit (fixed)</Label>
+                  <div style={{ color: '#8B5CF6', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                    1,000,000
                   </div>
                 </div>
-                <button style={{ ...primaryBtnStyle('#8B5CF6'), alignSelf: 'flex-start' }}
-                  onClick={() => alert('Save blockchain config — connect to backend')}>
-                  Save Config
-                </button>
+                <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                  To change these, edit <code>GANACHE_URL</code> / <code>CONTRACT_ADDRESS</code> in the backend's env config and restart — reconnecting live from the UI isn't supported (it would mean silently switching which chain security incidents get written to while the app keeps running).
+                </div>
               </div>
             </Section>
           </div>
@@ -286,14 +333,15 @@ function Toggle({ active, onClick }) {
   )
 }
 
-function SliderSetting({ label, value, onChange, color }) {
+function SliderSetting({ label, value, onChange, color, disabled = false }) {
   return (
     <div>
       <Label>{label}</Label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: disabled ? 0.5 : 1 }}>
         <input
           type="range" min={0} max={100}
           value={value} onChange={(e) => onChange(Number(e.target.value))}
+          disabled={disabled}
           style={{ flex: 1, accentColor: color }}
         />
         <span style={{ color, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 36 }}>
