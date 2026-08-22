@@ -8,7 +8,23 @@ import { STATUS_COLORS, ATTACK_COLORS } from '../../constants/theme'
 
 export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }) {
   const fgRef = useRef()
+  const containerRef = useRef()
   const [animatedNodeId, setAnimatedNodeId] = useState(null)
+  // react-force-graph-3d's own container auto-sizing was measuring the full
+  // viewport instead of this panel (visible as a tiny, off-center scene
+  // clipped inside the actual panel bounds) — track the real container size
+  // ourselves and pass it explicitly rather than relying on that detection.
+  const [size, setSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight })
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // ── Cached per-status objects — built ONCE on mount using useMemo ──
   const statusObjects = useMemo(() => {
@@ -209,9 +225,12 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
   const getParticleW = useCallback((link) => (link.value > 0.75 ? 3 : 2), [])
 
   return (
-    <div className="w-full h-full bg-transparent">
+    <div ref={containerRef} className="w-full h-full bg-transparent">
+      {size.width > 0 && size.height > 0 && (
       <ForceGraph3D
         ref={fgRef}
+        width={size.width}
+        height={size.height}
         graphData={graphData}
         nodeThreeObject={nodeThreeObject}
         nodeThreeObjectExtend={false}
@@ -246,6 +265,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
           </div>`
         }
       />
+      )}
     </div>
   )
 }

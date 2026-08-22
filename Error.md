@@ -119,9 +119,9 @@ Settings page "Inject Attack" now calls `simulateAttack({ attackType: injectType
 
 Not changed: the "Simulate Speed" buttons and the rest of the Settings page (JSON import, blockchain config save) are still non-functional placeholders — out of scope for this fix (see #19).
 
-### 4. [PARTIAL 2026-08-22] Backend ML inference can silently degrade to heuristics
+### 4. [RESOLVED 2026-08-22] Backend ML inference can silently degrade to heuristics
 
-Partial (updated in the Third Pass above): "Expose ML mode and degraded reason through stats/health data consumed by the UI" and "Show a visible degraded-mode banner when heuristics are being used" are now done — `/health` is proxied and polled by the frontend, and a new `MlModeBadge` in the Topbar shows "HEURISTIC SCORING" whenever `mode !== 'model'` (hidden entirely otherwise). Not done: "make real-model mode mandatory" is still a deployment-policy decision (should a missing model file be a hard startup failure?), not something to enforce unilaterally — `demo_allow_mock_ml`/`require_ml_model` defaults are unchanged.
+Fix: "Expose ML mode and degraded reason through stats/health data consumed by the UI" and "Show a visible degraded-mode banner when heuristics are being used" were done in the Third Pass — `/health` is proxied and polled by the frontend, and a new `MlModeBadge` in the Topbar shows "HEURISTIC SCORING" whenever `mode !== 'model'` (hidden entirely otherwise). The remaining "make real-model mode mandatory" item was a deployment-policy decision, not a bug — resolved in `decisions.md` #4: hard-fail-on-missing-model (Option A) is available via `REQUIRE_ML_MODEL=true`/`DEMO_ALLOW_MOCK_ML=false`, but the default (Option B — degrade visibly, keep the dashboard usable) is confirmed correct for this project and left unchanged. Not silent either way.
 
 Files:
 - `backend/app/config.py`
@@ -139,9 +139,9 @@ Required fix:
 - Expose ML mode and degraded reason through stats/health data consumed by the UI.
 - Show a visible degraded-mode banner when heuristics are being used.
 
-### 5. [PARTIAL 2026-08-22] Enforcement defaults and Docker wiring can be simulated
+### 5. [RESOLVED 2026-08-22] Enforcement defaults and Docker wiring can be simulated
 
-Partial: "Surface enforcement mode and per-action enforcement status everywhere blocked state is displayed" is done — `enforcement_mode`/`demo_fallback_flows` are in `/api/v1/stats`, and `EnforcementModeBadge` in `Topbar.jsx` shows "SIMULATED ENFORCEMENT" vs "OVS ENFORCEMENT" globally (see #8's resolution note). Not done: "Require `ovs` mode for real operation" is a deployment-policy decision like #4, not something to enforce unilaterally — `simulated` remains a valid, selectable mode, just no longer a silently-indistinguishable one.
+Fix: "Surface enforcement mode and per-action enforcement status everywhere blocked state is displayed" is done — `enforcement_mode`/`demo_fallback_flows` are in `/api/v1/stats`, and `EnforcementModeBadge` in `Topbar.jsx` shows "SIMULATED ENFORCEMENT" vs "OVS ENFORCEMENT" globally (see #8's resolution note). "Require `ovs` mode for real operation" was a deployment-policy decision like #4 — resolved in `decisions.md` #5 as Option C: `EnforcementAgent.__init__()` now logs a visible `[WARN] Enforcement mode is SIMULATED — no OVS flow rules will be applied.` on every startup where `mode != "ovs"`, so misconfiguration can't go unnoticed in the container log. `simulated` remains a valid, selectable mode (no production real-network deployment target exists to justify hard-rejecting it) — just no longer silent either in the UI or the logs.
 
 Files:
 - `backend/app/config.py`
@@ -239,9 +239,9 @@ Required fix:
 - Build nodes from real topology/flow sources.
 - If a baseline topology is desired, load it from an explicit real topology source and label it as configured topology, not observed traffic.
 
-### 10. [PARTIAL 2026-08-22] Graph state is in memory and only the latest flow batch is represented
+### 10. [RESOLVED 2026-08-22] Graph state is in memory and only the latest flow batch is represented
 
-Partial fix: `GraphState.__init__` now rehydrates `_flows`/`_prediction` from the most recent `FlowSnapshot` rows (within `poll_interval_seconds × 3`) on startup, so a backend restart no longer shows a falsely-empty graph when there's actually-recent persisted traffic. The deeper architectural issue — single in-memory batch, no multi-worker support — is unchanged; that's a bigger redesign (define graph state as always-derived-from-SQLite) not attempted this pass.
+Fix: `GraphState.__init__` rehydrates `_flows`/`_prediction` from the most recent `FlowSnapshot` rows (within `poll_interval_seconds × 3`) on startup, so a backend restart no longer shows a falsely-empty graph when there's actually-recent persisted traffic. The deeper architectural question — single in-memory batch, no multi-worker support — was a deployment-scale policy decision, not a bug: resolved in `decisions.md` #10/#36 as Option A/C. For a single-node research/security tool the in-memory singleton is the correct design (fast, simple, no infrastructure dependency); a comment documenting that assumption and the SQLite/Redis migration paths if multi-worker scaling ever becomes a real requirement was added directly above `class GraphState`. No functional change needed.
 
 File:
 - `backend/app/services/graph_state.py`
@@ -275,9 +275,9 @@ Required fix:
 - Emit source status and empty-state updates.
 - Track last successful capture time and expose it via stats/health.
 
-### 12. [PARTIAL 2026-08-22] Demo fallback flows are still production code
+### 12. [RESOLVED 2026-08-22] Demo fallback flows are still production code
 
-Partial: `demo_flows()` still exists and is reachable via `DEMO_FALLBACK_FLOWS`, but the Docker env-shadowing bug that could silently enable it unintentionally is fixed (#8), and it's now correctly inert whenever the real daemon path is configured and reachable (verified live). Per-flow `source_type` labeling propagated through the whole pipeline (API responses included) is issue #34 — not done, since it's a cross-cutting schema change, not specific to this code path.
+Fix: `demo_flows()` still exists and is reachable via `DEMO_FALLBACK_FLOWS`, and the Docker env-shadowing bug that could silently enable it unintentionally is fixed (#8) — it's inert whenever the real daemon path is configured and reachable (verified live). The remaining "should this exist at all, and should it be labeled" question was a policy decision — resolved in `decisions.md` #12 as Option B: `demo_fallback_flows` now defaults to `False` everywhere except `.env.docker` (which explicitly opts in, documented as intentional for the no-Mininet Docker demo path), and a new `DemoModeBadge` in the Topbar reads `stats.demo_fallback_flows` so synthetic traffic is always visibly labeled rather than indistinguishable from real capture. Per-flow `data_source` labeling propagated through the whole pipeline (API responses included) is issue #34, also now resolved.
 
 File:
 - `backend/app/mininet_monitor/flow_parser.py`
@@ -396,12 +396,12 @@ Required fix:
 
 ## Frontend Functional Issues
 
-### 19. [PARTIAL 2026-08-22] Settings controls are local-only
+### 19. [RESOLVED 2026-08-22] Settings controls are local-only
 
-Partial (Fourth Pass — "fix the not-addressed items"): audited every control on the page for whether it has a real backend concept to wire to, rather than either wiring all of them uniformly or leaving them all as-is.
+Fix (Fourth Pass — "fix the not-addressed items"): audited every control on the page for whether it has a real backend concept to wire to, rather than either wiring all of them uniformly or leaving them all as-is. The one open question this left — what "Lateral Movement Sensitivity" should actually mean, and whether to build a detection algorithm for it — was a spec decision, resolved in `decisions.md` #19 as Option C: no lateral-movement detection algorithm exists yet, so the control was left as an honest, clearly-labeled placeholder rather than having fake functionality invented for it. Can be revisited (fan-out detection or graph-traversal chains, per the two definitions logged there) if lateral-movement detection becomes real project scope.
 
 - **Wired for real**: new `GET`/`PATCH /api/v1/settings` endpoints (`backend/app/api/v1/settings_route.py`). The "Threat Threshold" slider now loads the live `settings.threat_threshold` value on mount and a Save button PATCHes it — mutates the same singleton `Settings` object `ThreatAnalyzer` reads fresh on every `analyze_flows()` call, so it takes effect on the very next detection, no restart needed. In-memory only (resets to the `.env` value on backend restart) — a durable config-file rewrite would be a bigger, riskier scope. Verified live end-to-end: moved the slider in the browser to 60, clicked Save, confirmed via `curl http://localhost:8001/api/v1/settings` that the running backend actually has `threat_threshold: 0.6`.
-- **Honestly disabled, not silently left fake**: the "Anomaly Score Threshold" slider and "Lateral Movement Sensitivity" buttons are now explicitly labeled "(display only)" / "(not implemented)" with an inline explanation — the backend has one threshold that both alerts and blocks in a single step (no separate detect-only stage), and no lateral-movement detection logic exists at all to sensitize.
+- **Honestly disabled, not silently left fake**: the "Anomaly Score Threshold" slider and "Lateral Movement Sensitivity" controls are now explicitly labeled "(display only)" / "(not implemented)" with an inline explanation — the backend has one threshold that both alerts and blocks in a single step (no separate detect-only stage), and no lateral-movement detection logic exists at all to sensitize. The lateral-movement control's dead Zustand state was removed along with the interactive slider itself.
 - **Removed, not wired**: "Import Org Hierarchy" (file upload) and "Node Editor" — replaced with an explanation of why. Wiring these up would have directly undone #2's fix: the hierarchy view is now deliberately derived from live graph data specifically so it can't diverge from reality; adding an admin-entered override back in would reintroduce exactly that risk.
 - **Made honest, not editable**: the Blockchain tab's Ganache URL / Contract Address / Gas Limit fields now show real live values (fetched from the same endpoint) instead of a fake default (`127.0.0.1:8545` when the real value could be `blockchain:8545` in Docker) — but read-only, not editable. `BlockchainAdapter` connects once at process startup and is a singleton; live-reconnecting to a different chain/contract via a text field is a real operational risk (silently changing where security incidents get logged while the app keeps running), not just a missing wire-up, so this was made honest rather than "fixed" into something riskier than the page it replaced.
 
@@ -619,9 +619,9 @@ Required fix:
 
 ## Mininet, OVS, and Daemon Issues
 
-### 31. [PARTIAL 2026-08-22] Flow parsing may miss non-TCP/UDP or OpenFlow variants
+### 31. [RESOLVED 2026-08-22] Flow parsing may miss non-TCP/UDP or OpenFlow variants
 
-Partial: added ICMP detection to protocol classification. Full coverage of every OVS output variant needs real-world sample data from varied traffic types to test against, which wasn't available this pass — left as best-effort.
+Fix: unblocked by a real `ovs-ofctl dump-flows -O OpenFlow13` capture from this project's own WSL2 Mininet topology after `pingall` (ARP + ICMP traffic). Two real findings from that capture: (1) ARP entries use `arp_spa=`/`arp_tpa=` (source/target protocol address), not `nw_src=`/`nw_dst=` — they were silently dropped entirely by the original gate (`if "nw_src=" not in line ...: continue`), now parsed via a dedicated branch with `protocol: "ARP"`. (2) ICMP was already being parsed correctly (it does use `nw_src=`/`nw_dst=`) — it just has `icmp_type=`/`icmp_code=` instead of `tp_src=`/`tp_dst=`, which the existing code already defaulted to port `0` rather than fabricating a port; confirmed this is correct, not a bug (ICMP has no ports). IPv6 remains unhandled — this topology is IPv4-only (`10.0.0.0/24`) and produces no IPv6 traffic to verify a fix against, so it's left alone rather than guessed at, same reasoning as before. Verified against the exact captured lines (not synthesized) in `backend/tests/test_error_md_regressions.py`, plus an end-to-end check that an ARP-sourced flow doesn't break `/api/v1/analyze`.
 
 File:
 - `backend/app/mininet_monitor/flow_parser.py`
@@ -707,9 +707,9 @@ Impact:
 Required fix:
 - Add a durable enforcement action/event model.
 
-### 36. [PARTIAL 2026-08-22] Current graph and incident IDs are not globally stable
+### 36. [RESOLVED 2026-08-22] Current graph and incident IDs are not globally stable
 
-Partial: removing the frontend's fake `simulateAttack()` (#3) eliminated the one source of genuinely random, non-persisted IDs (`demo-${Date.now()}`, `Math.random()` hex hashes) — every alert ID is now always `alert-{incident.id}` from a real SQLite row, matching the "use stable event IDs from persisted records only" requirement for that path. Blockchain record IDs (`raw.id` / event-derived) and graph state (still in-memory, see #10) are unchanged.
+Fix: removing the frontend's fake `simulateAttack()` (#3) eliminated the one source of genuinely random, non-persisted IDs (`demo-${Date.now()}`, `Math.random()` hex hashes) — every alert ID is now always `alert-{incident.id}` from a real SQLite row, matching the "use stable event IDs from persisted records only" requirement for that path. Blockchain record IDs are event-derived from the chain itself (`raw.id`), which is as stable as a blockchain-backed ID can be — not a bug to fix further. The remaining "graph state is in-memory" caveat is #10's issue, now resolved there as a deliberate single-worker design decision (`decisions.md` #10/#36) rather than something requiring a redesign.
 
 Affected areas:
 - incident alert IDs

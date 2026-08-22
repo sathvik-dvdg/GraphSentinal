@@ -65,7 +65,14 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             height: 24,
             shape: 'ellipse', // default: circle = normal
             'border-width': 1.5,
-            'border-color': (ele) => STATUS_COLORS[ele.data('status')] + '40' || '#262D3F',
+            // Cytoscape's border-color doesn't accept 8-digit RGBA hex —
+            // appending an alpha suffix here silently rejected the whole
+            // value (console: "border-color: #8B8B8B40 is invalid"), which
+            // also meant the `|| '#262D3F'` fallback below it could never
+            // fire (string concatenation is always truthy). Use the real
+            // border-opacity property instead.
+            'border-color': (ele) => STATUS_COLORS[ele.data('status')] || '#262D3F',
+            'border-opacity': 0.25,
           },
         },
         // Normal — circle (default above)
@@ -131,7 +138,11 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             },
             'line-color': (ele) => {
               const v = ele.data('value') || 0.5
-              return v > 0.75 ? '#E03C3C55' : v > 0.5 ? '#E8922A44' : '#262D3F'
+              return v > 0.75 ? '#E03C3C' : v > 0.5 ? '#E8922A' : '#262D3F'
+            },
+            'line-opacity': (ele) => {
+              const v = ele.data('value') || 0.5
+              return v > 0.75 ? 0.33 : v > 0.5 ? 0.27 : 1
             },
             'target-arrow-color': '#3D4560',
             'target-arrow-shape': 'triangle',
@@ -178,7 +189,8 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
       'border-color': '#4F6EF7',
       'border-width': 4,
       'border-style': 'solid',
-      'background-color': '#4F6EF780',
+      'background-color': '#4F6EF7',
+      'background-opacity': 0.5,
     })
 
     const t = setTimeout(() => {

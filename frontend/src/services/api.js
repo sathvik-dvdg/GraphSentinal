@@ -5,7 +5,17 @@ import axios from 'axios'
 
 const api = axios.create({
   baseURL: '/',
-  timeout: 5000,
+  // The FastAPI backend itself is consistently fast (single-digit ms,
+  // confirmed by timing it directly) — but in the Docker dev environment,
+  // Vite's dev-server proxy sits in front of it with `watch.usePolling: true`
+  // (needed for file-change propagation through the Windows/WSL2 bind mount),
+  // which periodically busies the same single-threaded process handling the
+  // proxy. That occasionally pushed a proxied request past 5s, which axios
+  // then aborted client-side (surfacing as a false "Error: undefined" — no
+  // response was ever slow from the backend, the request just never reached
+  // it in time). 15s gives real headroom without masking an actually-dead
+  // backend for anything but a truly hung connection.
+  timeout: 15000,
 })
 
 // Error.md #18/#27 — every /api/v1/* route now requires either a real
@@ -34,6 +44,13 @@ api.interceptors.request.use((config) => {
 api.interceptors.response.use(
   (r) => r.data,
   (err) => {
+    // A cancelled request (React 18 StrictMode double-invokes effects in
+    // dev, aborting the first mount's in-flight calls) is not a backend
+    // failure — logging it as "[API] Error: undefined ..." reads as a real
+    // outage when the retried request actually succeeds a moment later.
+    if (axios.isCancel(err) || err.code === 'ERR_CANCELED') {
+      throw err
+    }
     console.error(`[API] Error: ${err.response?.status} ${err.config?.url}`)
     if (err.response?.status === 401 && !err.config?.url?.includes('/auth/login')) {
       unauthorizedHandler?.()

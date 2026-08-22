@@ -54,10 +54,35 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
 def _parse_output(raw: str) -> list[dict[str, Any]]:
     flows: list[dict[str, Any]] = []
     for line in raw.splitlines():
-        if "nw_src=" not in line or "nw_dst=" not in line:
+        # Error.md #31 — verified against real `ovs-ofctl dump-flows -O
+        # OpenFlow13` output from this project's own WSL2 Mininet session.
+        # ARP entries use arp_spa=/arp_tpa= (source/target protocol address),
+        # not nw_src=/nw_dst=, so they were silently dropped entirely before
+        # this branch existed. ICMP was already handled correctly by the
+        # nw_src=/nw_dst= path below — it just has icmp_type=/icmp_code=
+        # instead of tp_src=/tp_dst=, which correctly default ports to 0
+        # (ICMP has no ports; that's not a bug). IPv6 (ipv6_src=/ipv6_dst=)
+        # is still unhandled — this topology is IPv4-only and never produces
+        # IPv6 traffic to verify a fix against, so it's left alone rather
+        # than guessed at.
+        if "arp_spa=" in line and "arp_tpa=" in line:
+            src = _match(line, r"arp_spa=([0-9.]+)")
+            dst = _match(line, r"arp_tpa=([0-9.]+)")
+            protocol = "ARP"
+        elif "nw_src=" in line and "nw_dst=" in line:
+            src = _match(line, r"nw_src=([0-9.]+)")
+            dst = _match(line, r"nw_dst=([0-9.]+)")
+            line_lower = line.lower()
+            if "icmp" in line_lower:
+                protocol = "ICMP"
+            elif "tcp" in line_lower:
+                protocol = "TCP"
+            elif "udp" in line_lower:
+                protocol = "UDP"
+            else:
+                protocol = "IP"
+        else:
             continue
-        src = _match(line, r"nw_src=([0-9.]+)")
-        dst = _match(line, r"nw_dst=([0-9.]+)")
         if not src or not dst:
             continue
         packets = int(_match(line, r"n_packets=(\d+)", "0"))
@@ -65,15 +90,6 @@ def _parse_output(raw: str) -> list[dict[str, Any]]:
         src_port = int(_match(line, r"tp_src=(\d+)", "0"))
         dst_port = int(_match(line, r"tp_dst=(\d+)", "0"))
         duration = float(_match(line, r"duration=([0-9.]+)s", "5.0"))
-        line_lower = line.lower()
-        if "icmp" in line_lower:
-            protocol = "ICMP"
-        elif "tcp" in line_lower:
-            protocol = "TCP"
-        elif "udp" in line_lower:
-            protocol = "UDP"
-        else:
-            protocol = "IP"
         # `dump-flows` doesn't normally expose per-packet TCP flags — only
         # trust a real tcp_flags= field if OVS actually printed one; never
         # fabricate SYN (Error.md #32).
