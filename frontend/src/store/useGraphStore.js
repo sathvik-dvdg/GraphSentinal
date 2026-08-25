@@ -93,7 +93,21 @@ const useGraphStore = create((set, get) => ({
         : get().connectionMode),
 
   // ── Data setters ──────────────────────────────────────────
-  setGraphData: (data) => set({ graphData: data }),
+  setGraphData: (newData) =>
+    set((state) => {
+      // Preserve node object references so react-force-graph-3d doesn't lose
+      // their x, y, z physics coordinates on every 10s polling tick.
+      const existingNodes = new Map(state.graphData.nodes.map(n => [n.id, n]))
+      const mergedNodes = newData.nodes.map(newNode => {
+        const existing = existingNodes.get(newNode.id)
+        if (existing) {
+          // Update properties in place, preserving physics coords & object ref
+          return Object.assign(existing, newNode)
+        }
+        return newNode
+      })
+      return { graphData: { nodes: mergedNodes, links: newData.links } }
+    }),
 
   addAlert: (alert) =>
     set((state) => ({

@@ -8,11 +8,13 @@ import { STATUS_COLORS } from '../../constants/theme'
 export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }) {
   const containerRef = useRef(null)
   const cyRef = useRef(null)
-  // Ref so the tap handler always calls the latest callback without forcing
-  // cytoscape to be torn down and rebuilt (which onNodeClick's inline arrow
-  // function identity would otherwise trigger on every parent render).
   const onNodeClickRef = useRef(onNodeClick)
   onNodeClickRef.current = onNodeClick
+
+  const graphDataRef = useRef(graphData)
+  useEffect(() => {
+    graphDataRef.current = graphData
+  }, [graphData])
 
   const elements = useMemo(() => {
     const nodes = graphData.nodes.map((n) => ({
@@ -39,15 +41,8 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
   useEffect(() => {
     if (!containerRef.current) return
 
-    // Destroy previous instance
-    if (cyRef.current) {
-      try { cyRef.current.destroy() } catch { /* ignore */ }
-      cyRef.current = null
-    }
-
     const cy = cytoscape({
       container: containerRef.current,
-      elements,
       style: [
         // Base node style — shape encodes status (accessibility: not color alone)
         {
@@ -65,69 +60,30 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             height: 24,
             shape: 'ellipse', // default: circle = normal
             'border-width': 1.5,
-            // Cytoscape's border-color doesn't accept 8-digit RGBA hex —
-            // appending an alpha suffix here silently rejected the whole
-            // value (console: "border-color: #8B8B8B40 is invalid"), which
-            // also meant the `|| '#262D3F'` fallback below it could never
-            // fire (string concatenation is always truthy). Use the real
-            // border-opacity property instead.
             'border-color': (ele) => STATUS_COLORS[ele.data('status')] || '#262D3F',
             'border-opacity': 0.25,
           },
         },
-        // Normal — circle (default above)
-
         // Suspicious — diamond shape
         {
           selector: 'node[status="suspicious"]',
-          style: {
-            shape: 'diamond',
-            width: 28,
-            height: 28,
-            'border-color': '#E8922A',
-            'border-width': 2,
-          },
+          style: { shape: 'diamond', width: 28, height: 28, 'border-color': '#E8922A', 'border-width': 2 },
         },
-
         // Malicious — triangle (warning shape)
         {
           selector: 'node[status="malicious"]',
-          style: {
-            shape: 'triangle',
-            width: 36,
-            height: 36,
-            'border-color': '#E03C3C',
-            'border-width': 2.5,
-          },
+          style: { shape: 'triangle', width: 36, height: 36, 'border-color': '#E03C3C', 'border-width': 2.5 },
         },
-
         // Blocked — hexagon (containment shape) with dashed border
         {
           selector: 'node[status="blocked"]',
-          style: {
-            shape: 'hexagon',
-            width: 30,
-            height: 30,
-            'border-color': '#4F6EF7',
-            'border-width': 2,
-            'border-style': 'dashed',
-            opacity: 0.8,
-          },
+          style: { shape: 'hexagon', width: 30, height: 30, 'border-color': '#4F6EF7', 'border-width': 2, 'border-style': 'dashed', opacity: 0.8 },
         },
-
-        // Configured baseline host with no traffic seen yet — dim + dashed,
-        // so the topology's placeholder hosts read as distinct from hosts
-        // that actually appeared in captured traffic (Error.md #9). Applied
-        // last so it layers on top of the status-shape rules above rather
-        // than replacing them.
+        // Configured baseline host
         {
           selector: 'node[source="configured"]',
-          style: {
-            opacity: 0.35,
-            'border-style': 'dashed',
-          },
+          style: { opacity: 0.35, 'border-style': 'dashed' },
         },
-
         // Edges
         {
           selector: 'edge',
@@ -150,29 +106,69 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
           },
         },
       ],
-      layout: { name: 'cose', animate: false },
+      layout: { 
+        name: 'concentric', 
+        animate: false,
+        concentric: (node) => {
+          const ipMatch = node.id().match(/\.(\d+)$/)
+          return 255 - (ipMatch ? parseInt(ipMatch[1], 10) : 100)
+        },
+        levelWidth: () => 1
+      },
+      elements: [] // start empty, updated by next effect
     })
 
-    // Cytoscape's own node.data() only carries the trimmed fields mapped
-    // into `elements` above — look the full node back up in graphData so
-    // the detail panel gets the same complete shape NetworkGraph3D already
-    // passes (connections, bytes_total, attack_type, source, etc.), not a
-    // partial object with mismatched field names (Error.md follow-up: this
-    // view previously had no click handler at all).
     cy.on('tap', 'node', (evt) => {
-      const fullNode = graphData.nodes.find((n) => n.id === evt.target.id())
+      const fullNode = graphDataRef.current?.nodes.find((n) => n.id === evt.target.id())
       if (fullNode) onNodeClickRef.current?.(fullNode)
     })
 
     cyRef.current = cy
-
     return () => {
-      if (cyRef.current) {
-        try { cyRef.current.destroy() } catch { /* ignore */ }
-        cyRef.current = null
-      }
+      cy.destroy()
+      cyRef.current = null
     }
-  }, [elements, graphData])
+  }, []) // initialize once
+
+  const nodeCountRef = useRef(0)
+  
+  // Update elements in place without destroying the instance
+  useEffect(() => {
+    if (!cyRef.current) return
+    const cy = cyRef.current
+
+    cy.batch(() => {
+      const currentIds = new Set(elements.map(e => e.data.id))
+      // Remove stale
+      cy.elements().forEach(ele => {
+        if (!currentIds.has(ele.id())) cy.remove(ele)
+      })
+      // Add or update
+      elements.forEach(ele => {
+        const existing = cy.getElementById(ele.data.id)
+        if (existing.length > 0) {
+          existing.data(ele.data)
+        } else {
+          cy.add(ele)
+        }
+      })
+    })
+
+    const newCount = elements.filter(e => !e.data.source && !e.data.target).length
+    if (newCount !== nodeCountRef.current) {
+      cy.layout({
+        name: 'concentric',
+        animate: true,
+        animationDuration: 300,
+        concentric: (node) => {
+          const ipMatch = node.id().match(/\.(\d+)$/)
+          return 255 - (ipMatch ? parseInt(ipMatch[1], 10) : 100)
+        },
+        levelWidth: () => 1
+      }).run()
+      nodeCountRef.current = newCount
+    }
+  }, [elements])
 
   // Healing animation: highlight the healing node with a pulsing style
   useEffect(() => {
