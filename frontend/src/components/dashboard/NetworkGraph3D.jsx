@@ -9,6 +9,7 @@ import { STATUS_COLORS, ATTACK_COLORS } from '../../constants/theme'
 export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }) {
   const fgRef = useRef()
   const containerRef = useRef()
+  const orbitRadiusRef = useRef(200)
   const [animatedNodeId, setAnimatedNodeId] = useState(null)
   // react-force-graph-3d's own container auto-sizing was measuring the full
   // viewport instead of this panel (visible as a tiny, off-center scene
@@ -109,9 +110,10 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
     const timer = setInterval(() => {
       if (fgRef.current) {
         angle += 0.003
+        const r = orbitRadiusRef.current
         fgRef.current.cameraPosition({
-          x: 200 * Math.sin(angle),
-          z: 200 * Math.cos(angle),
+          x: r * Math.sin(angle),
+          z: r * Math.cos(angle),
         })
       }
     }, 50)
@@ -244,6 +246,26 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
         enableNodeDrag={true}
         enableNavigationControls={true}
         showNavInfo={false}
+        cooldownTicks={100}
+        d3AlphaDecay={0.05}
+        d3VelocityDecay={0.4}
+        onEngineTick={() => {
+          if (fgRef.current) {
+            fgRef.current.d3Force('charge').distanceMax(220)
+          }
+        }}
+        onEngineStop={() => {
+          if (fgRef.current) {
+            fgRef.current.zoomToFit(400, 60)
+            const nodes = graphData.nodes || []
+            let maxDist = 150
+            nodes.forEach(n => {
+              const d = Math.sqrt((n.x||0)**2 + (n.y||0)**2 + (n.z||0)**2)
+              if (d > maxDist) maxDist = d
+            })
+            orbitRadiusRef.current = maxDist + 100
+          }
+        }}
         onNodeClick={(node) => {
           if (onNodeClick) onNodeClick(node)
           const d = 80

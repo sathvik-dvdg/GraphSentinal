@@ -29,6 +29,7 @@ def _normalize_chain_record(raw: dict) -> dict:
         "severity": raw.get("severity"),
         "is_blocked": raw.get("is_blocked"),
         "gas_used": raw.get("gas_used"),
+        "status": "confirmed",
     }
 
 
