@@ -168,7 +168,16 @@ const useGraphStore = create((set, get) => ({
   // real blockchain write). No fabricated hashes or optimistic local state —
   // see Error.md #3. `targetIp` is the attacker source; `victimIp` is who
   // it's attacking.
-  simulateAttack: async ({ attackType = 'DDoS', targetIp = '10.0.0.2', victimIp = '10.0.0.1' } = {}) => {
+  simulateAttack: async ({ attackType, targetIp, victimIp } = {}) => {
+    // Randomize defaults so each Simulate click hits different hosts/attacks
+    const allHosts = Array.from({ length: 10 }, (_, i) => `10.0.0.${i + 1}`)
+    const attackTypes = ['DDoS', 'PortScan', 'SSHBrute', 'Botnet']
+    if (!attackType) attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)]
+    if (!targetIp) targetIp = allHosts[Math.floor(Math.random() * allHosts.length)]
+    if (!victimIp) {
+      const others = allHosts.filter((h) => h !== targetIp)
+      victimIp = others[Math.floor(Math.random() * others.length)]
+    }
     const state = get()
     if (state.connectionMode === 'simulating') return
 
