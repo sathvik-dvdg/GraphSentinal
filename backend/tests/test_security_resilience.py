@@ -193,3 +193,123 @@ def test_model_shape_mismatch_fails_gracefully():
         # If it was already in degraded mode, heuristic predicts successfully
         assert "flow_scores" in result
         assert len(result["flow_scores"]) == 1
+
+
+def test_k03_daemon_policy_validation_rejections():
+    """K-03: Privileged daemon independently rejects non-Mininet, loopback, multicast, broadcast, and IPv6 IPs."""
+    import importlib.util
+    from pathlib import Path
+
+    daemon_path = Path(__file__).resolve().parent.parent / "scripts" / "enforcement_daemon.py"
+    spec = importlib.util.spec_from_file_location("enforcement_daemon", daemon_path)
+    daemon_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(daemon_mod)
+
+    # Rejection of loopback, unspecified, multicast
+    with pytest.raises(ValueError, match="not enforceable"):
+        daemon_mod.validate_ip("127.0.0.1")
+    with pytest.raises(ValueError, match="not enforceable"):
+        daemon_mod.validate_ip("0.0.0.0")
+    with pytest.raises(ValueError, match="not enforceable"):
+        daemon_mod.validate_ip("224.0.0.1")
+
+    # Rejection of outside CIDR
+    with pytest.raises(ValueError, match="is outside"):
+        daemon_mod.validate_ip("192.168.1.1")
+    with pytest.raises(ValueError, match="is outside"):
+        daemon_mod.validate_ip("8.8.8.8")
+
+    # Rejection of network and broadcast addresses
+    with pytest.raises(ValueError, match="is not a host address"):
+        daemon_mod.validate_ip("10.0.0.0")
+    with pytest.raises(ValueError, match="is not a host address"):
+        daemon_mod.validate_ip("10.0.0.255")
+
+    # Rejection of IPv6
+    with pytest.raises(ValueError, match="IPv6 address"):
+        daemon_mod.validate_ip("2001:db8::1")
+    with pytest.raises(ValueError, match="IPv6 address"):
+        daemon_mod.validate_ip("::1")
+
+
+def test_k03_daemon_policy_validation_acceptance():
+    """K-03: Privileged daemon accepts valid Mininet host IPs."""
+    import importlib.util
+    from pathlib import Path
+
+    daemon_path = Path(__file__).resolve().parent.parent / "scripts" / "enforcement_daemon.py"
+    spec = importlib.util.spec_from_file_location("enforcement_daemon", daemon_path)
+    daemon_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(daemon_mod)
+
+    assert daemon_mod.validate_ip("10.0.0.5") == "10.0.0.5"
+    assert daemon_mod.validate_ip("10.0.0.1") == "10.0.0.1"
+    assert daemon_mod.validate_ip("10.0.0.254") == "10.0.0.254"
+
+
+def test_k02_daemon_connection_timeout_and_liveness():
+    """K-02: Real run_daemon() terminates idle client connection on timeout, remains alive, and processes subsequent request."""
+    import importlib.util
+    import json
+    import socket
+    import threading
+    import time
+    from pathlib import Path
+
+    daemon_path = Path(__file__).resolve().parent.parent / "scripts" / "enforcement_daemon.py"
+    spec = importlib.util.spec_from_file_location("enforcement_daemon", daemon_path)
+    daemon_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(daemon_mod)
+
+    # Find a free local port for test isolation
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        free_port = s.getsockname()[1]
+
+    original_host = daemon_mod.HOST
+    original_port = daemon_mod.PORT
+    original_timeout = daemon_mod.CLIENT_TIMEOUT
+
+    daemon_mod.HOST = "127.0.0.1"
+    daemon_mod.PORT = free_port
+    daemon_mod.CLIENT_TIMEOUT = 0.3
+
+    # Run the real production run_daemon() in a daemon thread
+    worker = threading.Thread(target=daemon_mod.run_daemon, daemon=True)
+    worker.start()
+    time.sleep(0.1)  # Allow socket bind and listen
+
+    try:
+        # 1. Connect idle client, send no data, and hold connection beyond CLIENT_TIMEOUT
+        idle_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        idle_client.connect(("127.0.0.1", free_port))
+        time.sleep(0.5)  # Exceeds CLIENT_TIMEOUT (0.3s)
+
+        # 2. Verify real run_daemon() closed the idle client connection
+        idle_client.settimeout(0.2)
+        assert len(idle_client.recv(1024)) == 0  # EOF -> closed by server
+        idle_client.close()
+
+        # 3. Connect a second legitimate client to verify daemon is still alive and accepting
+        legit_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        legit_client.connect(("127.0.0.1", free_port))
+        req_payload = {
+            "token": daemon_mod.SHARED_SECRET,
+            "action": "block",
+            "switch": "s1",
+            "ip": "10.0.0.5",
+        }
+
+        with patch.object(daemon_mod.subprocess, "run") as mock_subproc:
+            mock_subproc.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            legit_client.sendall(json.dumps(req_payload).encode("utf-8"))
+            resp_bytes = legit_client.recv(4096)
+            resp = json.loads(resp_bytes.decode("utf-8"))
+
+        assert resp.get("status") == "success"
+        assert resp.get("ip") == "10.0.0.5"
+        legit_client.close()
+    finally:
+        daemon_mod.HOST = original_host
+        daemon_mod.PORT = original_port
+        daemon_mod.CLIENT_TIMEOUT = original_timeout
