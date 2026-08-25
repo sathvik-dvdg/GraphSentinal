@@ -10,14 +10,21 @@ import sys
 import json
 import subprocess
 import logging
-from ipaddress import ip_address
+from ipaddress import ip_address, ip_network
 
 HOST = "0.0.0.0"
 PORT = 50051
+CLIENT_TIMEOUT = 2.0
 
 SHARED_SECRET = os.environ.get("DAEMON_TOKEN")
 if not SHARED_SECRET:
     sys.exit("ERROR: DAEMON_TOKEN environment variable must be set.")
+
+MININET_CIDR = os.environ.get("MININET_CIDR", "10.0.0.0/24")
+try:
+    MININET_NETWORK = ip_network(MININET_CIDR, strict=False)
+except ValueError as exc:
+    sys.exit(f"ERROR: Invalid MININET_CIDR '{MININET_CIDR}': {exc}")
 
 ALLOWED_SWITCHES = {"s1", "s2", "s3"}
 
@@ -25,8 +32,32 @@ logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [DAEMON] %(message
 
 
 def validate_ip(value: str) -> str:
-    # Basic structural validation to prevent command injection
-    return str(ip_address(value))
+    """Validate and sanitize an IP for enforcement.
+
+    Independently enforces:
+    - IPv4 parsing (rejects non-IP strings and IPv6)
+    - Mininet CIDR restriction (must belong to MININET_NETWORK)
+    - Rejection of multicast, loopback, and unspecified addresses
+    - Rejection of network and broadcast addresses
+    """
+    try:
+        parsed = ip_address(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid IP address: {value}") from exc
+
+    if parsed.version != 4:
+        raise ValueError(f"IPv6 address {value} is not supported")
+
+    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified:
+        raise ValueError(f"IP {value} is not enforceable")
+
+    if parsed not in MININET_NETWORK:
+        raise ValueError(f"IP {value} is outside {MININET_NETWORK}")
+
+    if parsed in {MININET_NETWORK.network_address, MININET_NETWORK.broadcast_address}:
+        raise ValueError(f"IP {value} is not a host address")
+
+    return str(parsed)
 
 
 def handle_request(payload: dict) -> dict:
@@ -107,6 +138,7 @@ def run_daemon():
             conn, addr = server.accept()
             with conn:
                 try:
+                    conn.settimeout(CLIENT_TIMEOUT)
                     data = conn.recv(4096)
                     if not data:
                         continue
@@ -114,6 +146,8 @@ def run_daemon():
                     response = handle_request(payload)
                     
                     conn.sendall(json.dumps(response).encode("utf-8"))
+                except (socket.timeout, TimeoutError):
+                    logging.warning("Connection from %s timed out waiting for data", addr)
                 except json.JSONDecodeError:
                     conn.sendall(json.dumps({"status": "error", "error": "Invalid JSON"}).encode("utf-8"))
                 except Exception as exc:

@@ -16,6 +16,7 @@ if _TEST_DB.exists():
     _TEST_DB.unlink()
 os.environ["SQLITE_PATH"] = str(_TEST_DB)
 os.environ.setdefault("DEMO_FALLBACK_FLOWS", "false")
+os.environ.setdefault("DAEMON_TOKEN", "test-token-for-pytest")
 
 import pytest  # noqa: E402
 from fastapi.testclient import TestClient  # noqa: E402
