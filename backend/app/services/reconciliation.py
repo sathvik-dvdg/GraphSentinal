@@ -11,6 +11,7 @@ import re
 import subprocess
 import threading
 import time
+from datetime import datetime, timezone, timedelta
 from typing import Any
 
 from app.config import settings
@@ -121,12 +122,14 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
 
 
 def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
-    """N-05 — Reconcile pending blockchain transactions and retry unwritten incidents.
+    """N-05 / N-06 — Reconcile pending blockchain transactions and retry unwritten incidents.
 
     1. Pending Reconciliation: For rows with blockchain_tx and status='pending' (or missing incident_id),
-       checks live receipt on-chain and updates blockchain_incident_id, block_number, and status.
-    2. Outbox Retry: For high-threat / blocked incidents with no blockchain_tx and retry_count < max_retries,
-       attempts to store them on-chain once RPC is online.
+       checks live receipt on-chain. If mined, updates incident_id, block_number, and status='confirmed'.
+       If pending exceeds blockchain_pending_timeout_seconds, transitions to retryable state.
+    2. Outbox Retry (Atomic Claim): For unwritten incidents, atomically acquires a lease via
+       blockchain_status='submitting' to eliminate race conditions between ingestion and worker,
+       then stores them on-chain once RPC is online.
     """
     adapter = BlockchainAdapter.get_instance()
     if not adapter._connected or adapter.client is None:
@@ -140,6 +143,11 @@ def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
     try:
         w3 = adapter.client.w3
         contract = adapter.client.contract
+        now = datetime.now(timezone.utc)
+        pending_timeout = getattr(settings, "blockchain_pending_timeout_seconds", 180)
+        max_retries = getattr(settings, "blockchain_max_retries", 5)
+        claim_timeout = getattr(settings, "blockchain_claim_timeout_seconds", 60)
+        lease_cutoff = now - timedelta(seconds=claim_timeout)
 
         # ── 1. Reconcile Pending Transactions ────────────────────────────────
         pending_rows = (
@@ -167,66 +175,111 @@ def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
                             row.blockchain_incident_id = processed[0]["args"]["id"]
                         row.blockchain_status = "confirmed"
                         row.blockchain_last_error = None
+                        row.blockchain_pending_since = None
                         pending_reconciled += 1
                     else:
                         row.blockchain_status = "failed"
                         row.blockchain_last_error = "Transaction reverted on-chain"
+                        row.blockchain_pending_since = None
                     db.commit()
+                else:
+                    # N-06 (N06-SEC-03): Check for stalled/dropped pending transaction timeout
+                    pending_since = row.blockchain_pending_since or row.created_at
+                    if pending_since is not None:
+                        if pending_since.tzinfo is None:
+                            pending_since = pending_since.replace(tzinfo=timezone.utc)
+                        if (now - pending_since).total_seconds() >= pending_timeout:
+                            row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
+                            if row.blockchain_retry_count >= max_retries:
+                                row.blockchain_status = "permanent_failure"
+                                row.blockchain_last_error = f"Pending transaction timed out after {pending_timeout}s (max retries reached)"
+                            else:
+                                row.blockchain_status = "retry"
+                                row.blockchain_tx = None
+                                row.blockchain_pending_since = None
+                                row.blockchain_last_error = f"Pending transaction {tx_hash} timed out after {pending_timeout}s without receipt"
+                            db.commit()
             except Exception as exc:
                 row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
                 row.blockchain_last_error = str(exc)
                 db.commit()
 
-        # ── 2. Retry Unwritten Eligible Incidents (Outbox Backfill) ──────────
-        max_retries = getattr(settings, "blockchain_max_retries", 5)
-        eligible_unwritten = (
-            db.query(Incident)
-            .filter(
-                Incident.blockchain_tx.is_(None),
-                (Incident.threat_score >= settings.threat_threshold) | (Incident.is_blocked == True),  # noqa: E712
-                (Incident.blockchain_retry_count < max_retries) | (Incident.blockchain_retry_count.is_(None)),
-                Incident.blockchain_status != "permanent_failure",
-            )
-            .order_by(Incident.id.asc())
-            .limit(max_batch)
-            .all()
+        # ── 2. Retry Unwritten Eligible Incidents (Atomic Claim Outbox) ──────
+        pending_ids = [r.id for r in pending_rows]
+        query = db.query(Incident).filter(
+            Incident.blockchain_tx.is_(None),
+            (Incident.threat_score >= settings.threat_threshold) | (Incident.is_blocked == True),  # noqa: E712
+            (Incident.blockchain_retry_count < max_retries) | (Incident.blockchain_retry_count.is_(None)),
+            Incident.blockchain_status != "permanent_failure",
+            Incident.blockchain_status != "confirmed",
+            (Incident.blockchain_status != "submitting") | (Incident.blockchain_claimed_at < lease_cutoff),
         )
+        if pending_ids:
+            query = query.filter(Incident.id.notin_(pending_ids))
+
+        eligible_unwritten = query.order_by(Incident.id.asc()).limit(max_batch).all()
 
         for row in eligible_unwritten:
-            if row.blockchain_tx is not None:
+            # N-06 (N06-SEC-02): Atomic database-level claim reservation
+            claim_time = datetime.now(timezone.utc)
+            claim_lease_cutoff = claim_time - timedelta(seconds=claim_timeout)
+            claimed = (
+                db.query(Incident)
+                .filter(
+                    Incident.id == row.id,
+                    Incident.blockchain_tx.is_(None),
+                    (Incident.blockchain_status != "submitting") | (Incident.blockchain_claimed_at < claim_lease_cutoff),
+                )
+                .update(
+                    {"blockchain_status": "submitting", "blockchain_claimed_at": claim_time},
+                    synchronize_session=False,
+                )
+            )
+            db.commit()
+            if claimed == 0:
+                # Concurrently claimed by ingestion thread or another worker
+                continue
+
+            target = db.get(Incident, row.id)
+            if not target or target.blockchain_tx is not None:
                 continue
 
             result = adapter.store_incident(
-                source_ip=row.source_ip,
-                attack_type=row.attack_type,
-                severity=row.severity,
-                is_blocked=row.is_blocked,
-                incident_id=row.id,
+                source_ip=target.source_ip,
+                attack_type=target.attack_type,
+                severity=target.severity,
+                is_blocked=target.is_blocked,
+                incident_id=target.id,
             )
 
+            target.blockchain_claimed_at = None
             if result.get("status") == "confirmed":
-                row.blockchain_tx = result.get("tx_hash")
-                row.blockchain_incident_id = result.get("incident_id")
-                row.blockchain_chain_id = result.get("chain_id")
-                row.blockchain_contract_address = result.get("contract_address")
-                row.blockchain_block_number = result.get("block_number")
-                row.blockchain_status = "confirmed"
-                row.blockchain_last_error = None
+                target.blockchain_tx = result.get("tx_hash")
+                target.blockchain_incident_id = result.get("incident_id")
+                target.blockchain_chain_id = result.get("chain_id")
+                target.blockchain_contract_address = result.get("contract_address")
+                target.blockchain_block_number = result.get("block_number")
+                target.blockchain_status = "confirmed"
+                target.blockchain_last_error = None
+                target.blockchain_pending_since = None
                 retried_success += 1
             elif result.get("status") == "pending" and result.get("tx_hash"):
-                row.blockchain_tx = result.get("tx_hash")
-                row.blockchain_chain_id = result.get("chain_id")
-                row.blockchain_contract_address = result.get("contract_address")
-                row.blockchain_status = "pending"
-                row.blockchain_last_error = result.get("error")
+                target.blockchain_tx = result.get("tx_hash")
+                target.blockchain_chain_id = result.get("chain_id")
+                target.blockchain_contract_address = result.get("contract_address")
+                target.blockchain_status = "pending"
+                target.blockchain_pending_since = datetime.now(timezone.utc)
+                err = result.get("error")
+                target.blockchain_last_error = str(err) if err is not None else None
                 retried_success += 1
             else:
-                row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
-                row.blockchain_last_error = result.get("error", "Failed to write to blockchain")
-                if row.blockchain_retry_count >= max_retries:
-                    row.blockchain_status = "permanent_failure"
+                target.blockchain_retry_count = (target.blockchain_retry_count or 0) + 1
+                err = result.get("error")
+                target.blockchain_last_error = str(err) if err is not None else "Failed to write to blockchain"
+                if target.blockchain_retry_count >= max_retries:
+                    target.blockchain_status = "permanent_failure"
                 else:
-                    row.blockchain_status = "retry"
+                    target.blockchain_status = "retry"
                 retried_failed += 1
             db.commit()
 

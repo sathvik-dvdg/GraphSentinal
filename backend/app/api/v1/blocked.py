@@ -1,4 +1,4 @@
-# [WSL2]
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -100,6 +100,7 @@ async def block_or_unblock(
 
         event = healer.block_ip(request.ip, reason=request.reason, db=db)
 
+        now = datetime.now(timezone.utc)
         incident = Incident(
             source_ip=event["ip"],
             attack_type="Manual",
@@ -108,6 +109,9 @@ async def block_or_unblock(
             is_blocked=True,
             enforcement_status=event["enforcement_status"],
             idempotency_key=None,
+            # N-06 (N06-SEC-02): Claim reservation on creation
+            blockchain_status="submitting",
+            blockchain_claimed_at=now,
             data_source="manual",
         )
         db.add(incident)
@@ -127,16 +131,19 @@ async def block_or_unblock(
         incident.blockchain_block_number = tx_result.get("block_number")
         # N-04: persist exact on-chain incident ID decoded from receipt event
         incident.blockchain_incident_id = tx_result.get("incident_id")
-        # N-05: record outbox status
+        # N-06: release claim lease and record outbox status & pending timestamp
+        incident.blockchain_claimed_at = None
         if tx_result.get("status") == "confirmed":
             incident.blockchain_status = "confirmed"
             incident.blockchain_last_error = None
         elif tx_result.get("status") == "pending" and tx_result.get("tx_hash"):
             incident.blockchain_status = "pending"
+            incident.blockchain_pending_since = datetime.now(timezone.utc)
             incident.blockchain_last_error = tx_result.get("error")
         else:
-            incident.blockchain_status = tx_result.get("status", "no_tx")
-            incident.blockchain_last_error = tx_result.get("error")
+            incident.blockchain_status = "retry"
+            incident.blockchain_retry_count = (incident.blockchain_retry_count or 0) + 1
+            incident.blockchain_last_error = tx_result.get("error", "Blockchain write failed or offline")
         db.commit()
 
         blocked_row = db.query(BlockedIP).filter(BlockedIP.ip_address == event["ip"]).one_or_none()

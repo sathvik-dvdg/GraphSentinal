@@ -10,7 +10,7 @@ from sqlalchemy.exc import IntegrityError
 
 from app.config import settings
 from app.database import SessionLocal
-from app.models.incident import BlockedIP, Incident
+from app.models.incident import BlockedIP, Incident, utc_now
 from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.enforcement_log import log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
@@ -116,6 +116,9 @@ class ThreatAnalyzer:
                 is_blocked=False,
                 raw_flow_json=json.dumps(flows),
                 idempotency_key=key,
+                # N-06 (N06-SEC-02): Claim reservation on creation to prevent outbox double-submission race
+                blockchain_status="submitting",
+                blockchain_claimed_at=utc_now(),
                 # Error.md #34 — every related flow was tagged by
                 # flow_parser.py/simulateAttack() with where it came from;
                 # take the first one's (they're all from the same batch).
@@ -148,16 +151,19 @@ class ThreatAnalyzer:
                 incident.blockchain_block_number = tx_result.get("block_number")
                 # N-04: persist exact on-chain incident ID decoded from receipt event
                 incident.blockchain_incident_id = tx_result.get("incident_id")
-                # N-05: persist outbox state and error if pending/failed/offline
+                # N-06: release claim lease and record final outbox status & pending timestamp
+                incident.blockchain_claimed_at = None
                 if tx_result.get("status") == "confirmed":
                     incident.blockchain_status = "confirmed"
                     incident.blockchain_last_error = None
                 elif tx_result.get("status") == "pending" and tx_result.get("tx_hash"):
                     incident.blockchain_status = "pending"
+                    incident.blockchain_pending_since = utc_now()
                     incident.blockchain_last_error = tx_result.get("error")
                 else:
-                    incident.blockchain_status = tx_result.get("status", "no_tx")
-                    incident.blockchain_last_error = tx_result.get("error")
+                    incident.blockchain_status = "retry"
+                    incident.blockchain_retry_count = (incident.blockchain_retry_count or 0) + 1
+                    incident.blockchain_last_error = tx_result.get("error", "Blockchain submission offline or failed")
                 db.commit()
 
             # Keep BlockedIP.blockchain_tx in sync — self_healing.block_ip()

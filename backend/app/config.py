@@ -31,6 +31,10 @@ class Settings(BaseSettings):
     blockchain_max_gas: int = 600000
     blockchain_retry_interval_seconds: int = 10
     blockchain_max_retries: int = 5
+    # N-06: Concurrency, claim lease, pending timeout & chain safety
+    blockchain_expected_chain_id: int | None = None
+    blockchain_pending_timeout_seconds: int = 180
+    blockchain_claim_timeout_seconds: int = 60
 
     backend_api_token: str = "change-me-for-demo"
     max_analyze_flows: int = 5000

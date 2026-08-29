@@ -1,13 +1,14 @@
 # blockchain/web3_bridge/web3_client.py
 import json
 import os
+import threading
 from datetime import datetime, timezone
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
 class BlockchainClient:
     """
-    GraphSentinel — Forensic Blockchain Client (Dual-Mode Signer & Dynamic Gas)
+    GraphSentinel — Forensic Blockchain Client (Dual-Mode Signer, Thread-Safe Nonce & Dynamic Gas)
     """
     def __init__(self):
         ganache_url = os.getenv("GANACHE_URL", "http://127.0.0.1:8545")
@@ -15,6 +16,16 @@ class BlockchainClient:
 
         if not self.w3.is_connected():
             raise ConnectionError(f"Cannot connect to Ganache at {ganache_url}")
+
+        # N-06 (N06-SEC-04): Configurable Expected Chain ID validation
+        expected_chain_id_str = os.getenv("BLOCKCHAIN_EXPECTED_CHAIN_ID", "").strip()
+        self.expected_chain_id = int(expected_chain_id_str) if expected_chain_id_str else None
+        self.chain_id = self.w3.eth.chain_id
+        if self.expected_chain_id is not None and self.chain_id != self.expected_chain_id:
+            raise ValueError(
+                f"Chain ID mismatch: connected to chain {self.chain_id}, "
+                f"expected {self.expected_chain_id}"
+            )
 
         abi_path = os.path.join(os.path.dirname(__file__), "contract_abi.json")
         with open(abi_path) as f:
@@ -25,6 +36,10 @@ class BlockchainClient:
             address=Web3.to_checksum_address(contract_address),
             abi=self.abi
         )
+
+        # N-06 (N06-SEC-01): Thread-safe nonce synchronization for private-key signing
+        self._nonce_lock = threading.Lock()
+        self._managed_nonce = None
 
         # N-05: Dual-Mode Signer Architecture (N01-SEC-01)
         # Mode A: External/Production private key
@@ -67,26 +82,47 @@ class BlockchainClient:
         return max(gas_limit, 21000)
 
     def _send_contract_tx(self, contract_fn, value: int = 0):
-        """Builds, signs, and broadcasts transaction using the active signer mode."""
+        """Builds, signs, and broadcasts transaction using the active signer mode with thread-safe nonce control."""
         gas_limit = self._estimate_and_get_gas(contract_fn, value=value)
         mode = getattr(self, "mode", "node_account")
         private_key = getattr(self, "private_key", "")
         account = getattr(self, "account", None)
 
         if mode == "private_key" and private_key:
-            nonce = self.w3.eth.get_transaction_count(account, "pending")
-            gas_price = self.w3.eth.gas_price
-            chain_id = self.w3.eth.chain_id
-            tx_dict = contract_fn.build_transaction({
-                "from": account,
-                "nonce": nonce,
-                "gas": gas_limit,
-                "gasPrice": gas_price,
-                "chainId": chain_id,
-                "value": value,
-            })
-            signed = self.w3.eth.account.sign_transaction(tx_dict, private_key=private_key)
-            return self.w3.eth.send_raw_transaction(signed.raw_transaction)
+            lock = getattr(self, "_nonce_lock", None)
+            if lock is None:
+                lock = threading.Lock()
+                self._nonce_lock = lock
+
+            with lock:
+                node_nonce = self.w3.eth.get_transaction_count(account, "pending")
+                managed_nonce = getattr(self, "_managed_nonce", None)
+                if managed_nonce is None or managed_nonce < node_nonce:
+                    self._managed_nonce = node_nonce
+                nonce = self._managed_nonce
+
+                gas_price = self.w3.eth.gas_price
+                chain_id = getattr(self, "chain_id", None) or self.w3.eth.chain_id
+                tx_dict = contract_fn.build_transaction({
+                    "from": account,
+                    "nonce": nonce,
+                    "gas": gas_limit,
+                    "gasPrice": gas_price,
+                    "chainId": chain_id,
+                    "value": value,
+                })
+                signed = self.w3.eth.account.sign_transaction(tx_dict, private_key=private_key)
+                try:
+                    tx_hash = self.w3.eth.send_raw_transaction(signed.raw_transaction)
+                    self._managed_nonce += 1
+                    return tx_hash
+                except Exception as exc:
+                    # On broadcast failure, resync managed nonce from node
+                    try:
+                        self._managed_nonce = self.w3.eth.get_transaction_count(account, "pending")
+                    except Exception:
+                        self._managed_nonce = None
+                    raise exc
         else:
             return contract_fn.transact({"from": account, "gas": gas_limit, "value": value})
 

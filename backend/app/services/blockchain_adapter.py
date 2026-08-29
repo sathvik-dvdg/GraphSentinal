@@ -42,6 +42,7 @@ class BlockchainAdapter:
         private_key = os.environ.get('BLOCKCHAIN_PRIVATE_KEY') or getattr(settings, 'blockchain_private_key', None)
         gas_multiplier = os.environ.get('BLOCKCHAIN_GAS_MULTIPLIER') or getattr(settings, 'blockchain_gas_multiplier', None)
         max_gas = os.environ.get('BLOCKCHAIN_MAX_GAS') or getattr(settings, 'blockchain_max_gas', None)
+        expected_chain_id = os.environ.get('BLOCKCHAIN_EXPECTED_CHAIN_ID') or getattr(settings, 'blockchain_expected_chain_id', None)
 
         if contract_address:
             os.environ['CONTRACT_ADDRESS'] = contract_address
@@ -53,6 +54,8 @@ class BlockchainAdapter:
             os.environ['BLOCKCHAIN_GAS_MULTIPLIER'] = str(gas_multiplier)
         if max_gas:
             os.environ['BLOCKCHAIN_MAX_GAS'] = str(max_gas)
+        if expected_chain_id:
+            os.environ['BLOCKCHAIN_EXPECTED_CHAIN_ID'] = str(expected_chain_id)
 
         try:
             from web3_client import BlockchainClient

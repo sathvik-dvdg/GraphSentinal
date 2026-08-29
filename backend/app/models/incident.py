@@ -34,6 +34,9 @@ class Incident(Base):
     blockchain_status: Mapped[str | None] = mapped_column(String(30), default="no_tx", nullable=True)
     blockchain_retry_count: Mapped[int | None] = mapped_column(Integer, default=0, nullable=True)
     blockchain_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # N-06: atomic claim lease & pending timeout tracking
+    blockchain_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    blockchain_pending_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(160), unique=True, nullable=True)
     enforcement_status: Mapped[str] = mapped_column(String(40), default="not_requested")
     # Error.md #34 — where the triggering flow data came from: ovs | demo |
