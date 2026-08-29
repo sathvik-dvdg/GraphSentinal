@@ -39,6 +39,12 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
     adapter = BlockchainAdapter.get_instance()
     chain_records: list[dict] = []
     chain_error: str | None = None
+
+    # Current active contract address (from settings, loaded from /shared at
+    # backend startup) — used as the expected target for reconciliation.
+    active_contract = settings.contract_address or None
+    active_chain_id = adapter.chain_id() if adapter._connected else None
+
     if adapter._connected and adapter.client is not None:
         try:
             chain_records = [_normalize_chain_record(r) for r in adapter.client.get_all_incidents()]
@@ -47,27 +53,53 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
     else:
         chain_error = adapter.error or "blockchain offline"
 
+    # ── N-03: Reconcile each SQLite incident's blockchain_tx ─────────────────
+    # We call reconcile_tx() for every incident that has a blockchain_tx.
+    # reconcile_tx is non-blocking and handles RPC errors gracefully.
+    reconciled_incidents = []
+    for row in incidents:
+        if row.blockchain_tx:
+            # Use per-row stored contract address if available (post-N-03 rows),
+            # otherwise fall back to the currently active contract address.
+            contract_for_check = row.blockchain_contract_address or active_contract
+            tx_status: str = adapter.reconcile_tx(
+                tx_hash=row.blockchain_tx,
+                expected_contract=contract_for_check,
+            )
+            if tx_status == "missing" and getattr(row, "blockchain_status", None) == "pending":
+                tx_status = "pending"
+        else:
+            # No blockchain_tx recorded — the incident was never written to chain
+            # (either blockchain was offline, or this is a manual block row).
+            tx_status = "no_tx"
+
+        reconciled_incidents.append({
+            "id": row.id,
+            "source_ip": row.source_ip,
+            "attack_type": row.attack_type,
+            "threat_score": row.threat_score,
+            "severity": row.severity,
+            "is_blocked": row.is_blocked,
+            "blockchain_tx": row.blockchain_tx,
+            "blockchain_chain_id": row.blockchain_chain_id,
+            "blockchain_contract_address": row.blockchain_contract_address,
+            "blockchain_block_number": row.blockchain_block_number,
+            "blockchain_incident_id": row.blockchain_incident_id,
+            "blockchain_status": getattr(row, "blockchain_status", None) or tx_status,
+            "blockchain_retry_count": getattr(row, "blockchain_retry_count", 0),
+            "blockchain_last_error": getattr(row, "blockchain_last_error", None),
+            "tx_status": tx_status,
+            "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),
+            "enforcement_status": row.enforcement_status,
+            "data_source": row.data_source,
+        })
+
     return {
-        "incidents": [
-            {
-                "id": row.id,
-                "source_ip": row.source_ip,
-                "attack_type": row.attack_type,
-                "threat_score": row.threat_score,
-                "severity": row.severity,
-                "is_blocked": row.is_blocked,
-                "blockchain_tx": row.blockchain_tx,
-                "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),
-                "enforcement_status": row.enforcement_status,
-                "data_source": row.data_source,
-            }
-            for row in incidents
-        ],
+        "incidents": reconciled_incidents,
         "blockchain_records": chain_records,
         "blockchain_error": chain_error,
         "total_incidents": len(incidents),
         "total_on_chain": len(chain_records),
-        "chain_id": adapter.chain_id(),
-        "contract_address": settings.contract_address or None,
+        "chain_id": active_chain_id,
+        "contract_address": active_contract,
     }
-

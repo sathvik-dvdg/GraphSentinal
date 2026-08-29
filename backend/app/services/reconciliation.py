@@ -11,11 +11,15 @@ import re
 import subprocess
 import threading
 import time
+from datetime import datetime, timezone, timedelta
 from typing import Any
+
+from web3.exceptions import TransactionNotFound
 
 from app.config import settings
 from app.database import SessionLocal
-from app.models.incident import BlockedIP
+from app.models.incident import BlockedIP, Incident
+from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.enforcement_log import log_enforcement_action
 
 
@@ -73,7 +77,7 @@ def _sqlite_blocked_ips() -> set[str]:
 
 
 def reconcile_once(switch: str | None = None) -> dict[str, Any]:
-    """Run a single reconciliation pass. Returns a summary dict."""
+    """Run a single OVS reconciliation pass. Returns a summary dict."""
     switch = switch or settings.enforcement_switch
     if settings.enforcement_mode != "ovs":
         return {"status": "skipped", "reason": "enforcement_mode is not ovs"}
@@ -119,8 +123,183 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
     }
 
 
+def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
+    """N-05 / N-06 — Reconcile pending blockchain transactions and retry unwritten incidents.
+
+    1. Pending Reconciliation: For rows with blockchain_tx and status='pending' (or missing incident_id),
+       checks live receipt on-chain. If mined, updates incident_id, block_number, and status='confirmed'.
+       If pending exceeds blockchain_pending_timeout_seconds, transitions to retryable state.
+    2. Outbox Retry (Atomic Claim): For unwritten incidents, atomically acquires a lease via
+       blockchain_status='submitting' to eliminate race conditions between ingestion and worker,
+       then stores them on-chain once RPC is online.
+    """
+    adapter = BlockchainAdapter.get_instance()
+    if not adapter._connected or adapter.client is None:
+        return {"status": "offline", "reason": adapter.error or "blockchain offline"}
+
+    db = SessionLocal()
+    pending_reconciled = 0
+    retried_success = 0
+    retried_failed = 0
+
+    try:
+        w3 = adapter.client.w3
+        contract = adapter.client.contract
+        now = datetime.now(timezone.utc)
+        pending_timeout = getattr(settings, "blockchain_pending_timeout_seconds", 180)
+        max_retries = getattr(settings, "blockchain_max_retries", 5)
+        claim_timeout = getattr(settings, "blockchain_claim_timeout_seconds", 60)
+        lease_cutoff = now - timedelta(seconds=claim_timeout)
+
+        # ── 1. Reconcile Pending Transactions ────────────────────────────────
+        pending_rows = (
+            db.query(Incident)
+            .filter(
+                Incident.blockchain_tx.isnot(None),
+                Incident.blockchain_incident_id.is_(None),
+                Incident.attack_type != "Manual-Unblock",
+            )
+            .limit(max_batch)
+            .all()
+        )
+
+        for row in pending_rows:
+            try:
+                tx_hash = row.blockchain_tx
+                if not tx_hash.startswith("0x"):
+                    tx_hash = "0x" + tx_hash
+                try:
+                    receipt = w3.eth.get_transaction_receipt(tx_hash)
+                except TransactionNotFound:
+                    receipt = None
+                if receipt is not None:
+                    row.blockchain_block_number = receipt.get("blockNumber")
+                    if receipt.get("status") == 1:
+                        processed = contract.events.IncidentLogged().process_receipt(receipt)
+                        if processed:
+                            row.blockchain_incident_id = processed[0]["args"]["id"]
+                        row.blockchain_status = "confirmed"
+                        row.blockchain_last_error = None
+                        row.blockchain_pending_since = None
+                        pending_reconciled += 1
+                    else:
+                        row.blockchain_status = "failed"
+                        row.blockchain_last_error = "Transaction reverted on-chain"
+                        row.blockchain_pending_since = None
+                    db.commit()
+                else:
+                    # N-06 (N06-SEC-03): Check for stalled/dropped pending transaction timeout
+                    pending_since = row.blockchain_pending_since or row.created_at
+                    if pending_since is not None:
+                        if pending_since.tzinfo is None:
+                            pending_since = pending_since.replace(tzinfo=timezone.utc)
+                        if (now - pending_since).total_seconds() >= pending_timeout:
+                            row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
+                            if row.blockchain_retry_count >= max_retries:
+                                row.blockchain_status = "permanent_failure"
+                                row.blockchain_last_error = f"Pending transaction timed out after {pending_timeout}s (max retries reached)"
+                            else:
+                                row.blockchain_status = "retry"
+                                row.blockchain_tx = None
+                                row.blockchain_pending_since = None
+                                row.blockchain_last_error = f"Pending transaction {tx_hash} timed out after {pending_timeout}s without receipt"
+                            db.commit()
+            except Exception as exc:
+                row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
+                row.blockchain_last_error = str(exc)
+                db.commit()
+
+        # ── 2. Retry Unwritten Eligible Incidents (Atomic Claim Outbox) ──────
+        pending_ids = [r.id for r in pending_rows]
+        query = db.query(Incident).filter(
+            Incident.blockchain_tx.is_(None),
+            (Incident.threat_score >= settings.threat_threshold) | (Incident.is_blocked == True),  # noqa: E712
+            (Incident.blockchain_retry_count < max_retries) | (Incident.blockchain_retry_count.is_(None)),
+            Incident.blockchain_status != "permanent_failure",
+            Incident.blockchain_status != "confirmed",
+            (Incident.blockchain_status != "submitting") | (Incident.blockchain_claimed_at < lease_cutoff),
+        )
+        if pending_ids:
+            query = query.filter(Incident.id.notin_(pending_ids))
+
+        eligible_unwritten = query.order_by(Incident.id.asc()).limit(max_batch).all()
+
+        for row in eligible_unwritten:
+            # N-06 (N06-SEC-02): Atomic database-level claim reservation
+            claim_time = datetime.now(timezone.utc)
+            claim_lease_cutoff = claim_time - timedelta(seconds=claim_timeout)
+            claimed = (
+                db.query(Incident)
+                .filter(
+                    Incident.id == row.id,
+                    Incident.blockchain_tx.is_(None),
+                    (Incident.blockchain_status != "submitting") | (Incident.blockchain_claimed_at < claim_lease_cutoff),
+                )
+                .update(
+                    {"blockchain_status": "submitting", "blockchain_claimed_at": claim_time},
+                    synchronize_session=False,
+                )
+            )
+            db.commit()
+            if claimed == 0:
+                # Concurrently claimed by ingestion thread or another worker
+                continue
+
+            target = db.get(Incident, row.id)
+            if not target or target.blockchain_tx is not None:
+                continue
+
+            result = adapter.store_incident(
+                source_ip=target.source_ip,
+                attack_type=target.attack_type,
+                severity=target.severity,
+                is_blocked=target.is_blocked,
+                incident_id=target.id,
+            )
+
+            target.blockchain_claimed_at = None
+            if result.get("status") == "confirmed":
+                target.blockchain_tx = result.get("tx_hash")
+                target.blockchain_incident_id = result.get("incident_id")
+                target.blockchain_chain_id = result.get("chain_id")
+                target.blockchain_contract_address = result.get("contract_address")
+                target.blockchain_block_number = result.get("block_number")
+                target.blockchain_status = "confirmed"
+                target.blockchain_last_error = None
+                target.blockchain_pending_since = None
+                retried_success += 1
+            elif result.get("status") == "pending" and result.get("tx_hash"):
+                target.blockchain_tx = result.get("tx_hash")
+                target.blockchain_chain_id = result.get("chain_id")
+                target.blockchain_contract_address = result.get("contract_address")
+                target.blockchain_status = "pending"
+                target.blockchain_pending_since = datetime.now(timezone.utc)
+                err = result.get("error")
+                target.blockchain_last_error = str(err) if err is not None else None
+                retried_success += 1
+            else:
+                target.blockchain_retry_count = (target.blockchain_retry_count or 0) + 1
+                err = result.get("error")
+                target.blockchain_last_error = str(err) if err is not None else "Failed to write to blockchain"
+                if target.blockchain_retry_count >= max_retries:
+                    target.blockchain_status = "permanent_failure"
+                else:
+                    target.blockchain_status = "retry"
+                retried_failed += 1
+            db.commit()
+
+        return {
+            "status": "ok",
+            "pending_reconciled": pending_reconciled,
+            "retried_success": retried_success,
+            "retried_failed": retried_failed,
+        }
+    finally:
+        db.close()
+
+
 class ReconciliationWorker:
-    """Background thread that runs OVS ↔ SQLite reconciliation periodically."""
+    """Background thread that runs OVS ↔ SQLite and Blockchain Outbox reconciliation periodically."""
 
     def __init__(self, interval: int = _RECONCILE_INTERVAL):
         self.interval = interval
@@ -139,7 +318,13 @@ class ReconciliationWorker:
     def _run(self) -> None:
         while not self._stop_event.is_set():
             try:
-                self.last_result = reconcile_once()
+                ovs_result = reconcile_once() if settings.enforcement_mode == "ovs" else {"status": "skipped"}
+                bc_result = reconcile_blockchain_outbox()
+                self.last_result = {
+                    "ovs": ovs_result,
+                    "blockchain": bc_result,
+                    "status": "ok" if (ovs_result.get("status") != "error" and bc_result.get("status") != "error") else "degraded",
+                }
             except Exception as exc:
                 self.last_result = {"status": "error", "error": str(exc)}
                 print(f"[Reconcile] Error: {exc}")

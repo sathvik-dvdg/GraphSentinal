@@ -22,6 +22,21 @@ class Incident(Base):
     is_blocked: Mapped[bool] = mapped_column(Boolean, default=False)
     raw_flow_json: Mapped[str | None] = mapped_column(Text, nullable=True)
     blockchain_tx: Mapped[str | None] = mapped_column(String(120), nullable=True)
+    # N-03: chain context for forensic reconciliation. NULL on pre-N-03 rows
+    # (accurate — those rows pre-date the metadata collection).
+    blockchain_chain_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    blockchain_contract_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
+    blockchain_block_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # N-04: exact on-chain incident ID emitted by IncidentLogged event.
+    # NULL on pre-N-04 rows or when blockchain transaction fails/is offline.
+    blockchain_incident_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # N-05: blockchain outbox state & retry tracking
+    blockchain_status: Mapped[str | None] = mapped_column(String(30), default="no_tx", nullable=True)
+    blockchain_retry_count: Mapped[int | None] = mapped_column(Integer, default=0, nullable=True)
+    blockchain_last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    # N-06: atomic claim lease & pending timeout tracking
+    blockchain_claimed_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    blockchain_pending_since: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(160), unique=True, nullable=True)
     enforcement_status: Mapped[str] = mapped_column(String(40), default="not_requested")
     # Error.md #34 — where the triggering flow data came from: ovs | demo |

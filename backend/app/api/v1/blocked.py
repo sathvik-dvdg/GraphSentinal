@@ -1,4 +1,4 @@
-# [WSL2]
+from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.orm import Session
 
@@ -66,14 +66,20 @@ async def block_or_unblock(
             db.add(closure)
             db.commit()
             db.refresh(closure)
-            tx_result = BlockchainAdapter.get_instance().store_incident(
-                source_ip=result["ip"],
-                attack_type="Manual-Unblock",
-                severity=1,
-                is_blocked=False,
-                incident_id=closure.id,
+            tx_result = BlockchainAdapter.get_instance().release_node(
+                ip=result["ip"],
+                reason="MANUAL_OVERRIDE",
             )
             closure.blockchain_tx = tx_result.get("tx_hash")
+            # N-03: persist chain context for forensic reconciliation
+            closure.blockchain_chain_id = tx_result.get("chain_id")
+            closure.blockchain_contract_address = tx_result.get("contract_address")
+            closure.blockchain_block_number = tx_result.get("block_number")
+            # N-04: releaseNode is an on-chain state transition, not an incident creation
+            closure.blockchain_incident_id = None
+            # N-05: record outbox status
+            closure.blockchain_status = tx_result.get("status", "pending") if tx_result.get("tx_hash") else tx_result.get("status", "no_tx")
+            closure.blockchain_last_error = tx_result.get("error") if tx_result.get("status") != "confirmed" else None
             db.commit()
             log_enforcement_action(
                 ip_address=result["ip"],
@@ -94,6 +100,7 @@ async def block_or_unblock(
 
         event = healer.block_ip(request.ip, reason=request.reason, db=db)
 
+        now = datetime.now(timezone.utc)
         incident = Incident(
             source_ip=event["ip"],
             attack_type="Manual",
@@ -102,6 +109,9 @@ async def block_or_unblock(
             is_blocked=True,
             enforcement_status=event["enforcement_status"],
             idempotency_key=None,
+            # N-06 (N06-SEC-02): Claim reservation on creation
+            blockchain_status="submitting",
+            blockchain_claimed_at=now,
             data_source="manual",
         )
         db.add(incident)
@@ -115,6 +125,25 @@ async def block_or_unblock(
             incident_id=incident.id,
         )
         incident.blockchain_tx = tx_result.get("tx_hash")
+        # N-03: persist chain context for forensic reconciliation
+        incident.blockchain_chain_id = tx_result.get("chain_id")
+        incident.blockchain_contract_address = tx_result.get("contract_address")
+        incident.blockchain_block_number = tx_result.get("block_number")
+        # N-04: persist exact on-chain incident ID decoded from receipt event
+        incident.blockchain_incident_id = tx_result.get("incident_id")
+        # N-06: release claim lease and record outbox status & pending timestamp
+        incident.blockchain_claimed_at = None
+        if tx_result.get("status") == "confirmed":
+            incident.blockchain_status = "confirmed"
+            incident.blockchain_last_error = None
+        elif tx_result.get("status") == "pending" and tx_result.get("tx_hash"):
+            incident.blockchain_status = "pending"
+            incident.blockchain_pending_since = datetime.now(timezone.utc)
+            incident.blockchain_last_error = tx_result.get("error")
+        else:
+            incident.blockchain_status = "retry"
+            incident.blockchain_retry_count = (incident.blockchain_retry_count or 0) + 1
+            incident.blockchain_last_error = tx_result.get("error", "Blockchain write failed or offline")
         db.commit()
 
         blocked_row = db.query(BlockedIP).filter(BlockedIP.ip_address == event["ip"]).one_or_none()

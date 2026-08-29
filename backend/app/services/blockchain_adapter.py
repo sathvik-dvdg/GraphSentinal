@@ -37,10 +37,25 @@ class BlockchainAdapter:
             return
         sys.path.insert(0, str(bridge_path))
 
-        if settings.contract_address:
-            os.environ.setdefault('CONTRACT_ADDRESS', settings.contract_address)
-        if settings.ganache_url:
-            os.environ.setdefault('GANACHE_URL', settings.ganache_url)
+        ganache_url = os.environ.get('GANACHE_URL') or settings.ganache_url
+        contract_address = os.environ.get('CONTRACT_ADDRESS') or settings.contract_address
+        private_key = os.environ.get('BLOCKCHAIN_PRIVATE_KEY') or getattr(settings, 'blockchain_private_key', None)
+        gas_multiplier = os.environ.get('BLOCKCHAIN_GAS_MULTIPLIER') or getattr(settings, 'blockchain_gas_multiplier', None)
+        max_gas = os.environ.get('BLOCKCHAIN_MAX_GAS') or getattr(settings, 'blockchain_max_gas', None)
+        expected_chain_id = os.environ.get('BLOCKCHAIN_EXPECTED_CHAIN_ID') or getattr(settings, 'blockchain_expected_chain_id', None)
+
+        if contract_address:
+            os.environ['CONTRACT_ADDRESS'] = contract_address
+        if ganache_url:
+            os.environ['GANACHE_URL'] = ganache_url
+        if private_key:
+            os.environ['BLOCKCHAIN_PRIVATE_KEY'] = private_key
+        if gas_multiplier:
+            os.environ['BLOCKCHAIN_GAS_MULTIPLIER'] = str(gas_multiplier)
+        if max_gas:
+            os.environ['BLOCKCHAIN_MAX_GAS'] = str(max_gas)
+        if expected_chain_id:
+            os.environ['BLOCKCHAIN_EXPECTED_CHAIN_ID'] = str(expected_chain_id)
 
         try:
             from web3_client import BlockchainClient
@@ -100,5 +115,116 @@ class BlockchainAdapter:
             executor.shutdown(wait=False, cancel_futures=True)
 
         if isinstance(result, dict):
+            # N-03/N-05: enrich with chain context so the caller can persist it on
+            # the incident row without an extra round-trip to the RPC node, for both
+            # confirmed AND pending/broadcast transactions.
+            if result.get('status') in ('confirmed', 'pending') and result.get('tx_hash'):
+                result.setdefault('chain_id', self.chain_id())
+                result.setdefault('contract_address', settings.contract_address)
             return result
-        return {'tx_hash': str(result), 'status': 'confirmed'}
+        # Legacy path: client returned a raw tx-hash string
+        return {
+            'tx_hash': str(result),
+            'status': 'confirmed',
+            'chain_id': self.chain_id(),
+            'contract_address': settings.contract_address,
+        }
+
+    def release_node(self, ip: str, reason: str = "MANUAL_OVERRIDE") -> dict[str, Any]:
+        """N-04 / N-05 — Invoke IncidentLogger.releaseNode(ip, reason) on-chain."""
+        if not self._connected or self.client is None:
+            return {'tx_hash': None, 'status': 'offline', 'error': self.error or 'blockchain offline'}
+
+        def call_client():
+            if hasattr(self.client, 'release_node'):
+                return self.client.release_node(ip=ip, reason=reason)
+            return {'tx_hash': None, 'status': 'error', 'error': 'BlockchainClient missing release_node'}
+
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(call_client)
+        try:
+            result = future.result(timeout=settings.blockchain_tx_timeout_seconds)
+        except concurrent.futures.TimeoutError:
+            future.cancel()
+            return {'tx_hash': None, 'status': 'pending', 'error': 'blockchain timeout'}
+        except Exception as exc:
+            return {'tx_hash': None, 'status': 'error', 'error': str(exc)}
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        if isinstance(result, dict):
+            if result.get('status') in ('confirmed', 'pending') and result.get('tx_hash'):
+                result.setdefault('chain_id', self.chain_id())
+                result.setdefault('contract_address', settings.contract_address)
+            return result
+        return {
+            'tx_hash': str(result),
+            'status': 'confirmed',
+            'chain_id': self.chain_id(),
+            'contract_address': settings.contract_address,
+        }
+
+    def reconcile_tx(
+        self,
+        tx_hash: str | None,
+        expected_contract: str | None = None,
+        expected_chain_id: int | None = None,
+    ) -> str:
+        """N-03 — Classify a stored blockchain_tx reference against the live chain.
+
+        Returns one of:
+          "confirmed"       — tx exists, receipt status=1, contract matches
+          "wrong_contract"  — tx exists but targets a different contract address
+          "missing"         — tx hash is genuinely absent from the current chain
+          "unavailable"     — blockchain RPC is down / adapter is not connected
+          "no_tx"           — incident has no blockchain_tx recorded
+        """
+        if not tx_hash:
+            return 'no_tx'
+
+        if not self._connected or self.client is None:
+            return 'unavailable'
+
+        try:
+            w3 = self.client.w3
+            # Prefix tx_hash if needed
+            if not tx_hash.startswith('0x'):
+                lookup_hash = '0x' + tx_hash
+            else:
+                lookup_hash = tx_hash
+
+            # 1. Transaction existence
+            try:
+                tx = w3.eth.get_transaction(lookup_hash)
+            except Exception:
+                tx = None
+
+            if tx is None:
+                return 'missing'
+
+            # 2. Check contract target
+            if expected_contract:
+                tx_to = (tx.get('to') or '').lower()
+                exp_lower = expected_contract.lower()
+                if tx_to != exp_lower:
+                    return 'wrong_contract'
+
+            # 3. Receipt / confirmed status
+            try:
+                receipt = w3.eth.get_transaction_receipt(lookup_hash)
+            except Exception:
+                receipt = None
+
+            if receipt is None:
+                return 'missing'
+
+            if receipt.get('status') == 1:
+                return 'confirmed'
+            else:
+                # Receipt exists but transaction reverted
+                return 'missing'
+
+        except Exception:
+            # Any unexpected RPC error is treated as unavailable, not missing
+            return 'unavailable'
+
