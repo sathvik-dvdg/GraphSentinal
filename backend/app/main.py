@@ -37,17 +37,12 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         print(f"[Monitor] Disabled: {exc}")
 
-    # Error.md #33: reconciliation only makes sense in "ovs" mode — starting
-    # it unconditionally just produces "skipped" ticks and log noise when
-    # enforcement is simulated.
-    if settings.enforcement_mode == "ovs":
-        try:
-            app.state.reconciler = ReconciliationWorker()
-            app.state.reconciler.start()
-        except Exception as exc:
-            print(f"[Reconcile] Disabled: {exc}")
-    else:
-        print("[Reconcile] Disabled: enforcement_mode is not 'ovs'")
+    # N-05: start ReconciliationWorker for continuous blockchain outbox & OVS reconciliation
+    try:
+        app.state.reconciler = ReconciliationWorker(interval=settings.blockchain_retry_interval_seconds)
+        app.state.reconciler.start()
+    except Exception as exc:
+        print(f"[Reconcile] Disabled: {exc}")
 
     print(f"[DB] SQLite initialized [OK]")
     print(f"[ML] Mode: {inference.mode} {'[OK]' if inference.mode == 'model' else '[degraded]'}")

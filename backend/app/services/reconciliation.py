@@ -15,7 +15,8 @@ from typing import Any
 
 from app.config import settings
 from app.database import SessionLocal
-from app.models.incident import BlockedIP
+from app.models.incident import BlockedIP, Incident
+from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.enforcement_log import log_enforcement_action
 
 
@@ -73,7 +74,7 @@ def _sqlite_blocked_ips() -> set[str]:
 
 
 def reconcile_once(switch: str | None = None) -> dict[str, Any]:
-    """Run a single reconciliation pass. Returns a summary dict."""
+    """Run a single OVS reconciliation pass. Returns a summary dict."""
     switch = switch or settings.enforcement_switch
     if settings.enforcement_mode != "ovs":
         return {"status": "skipped", "reason": "enforcement_mode is not ovs"}
@@ -119,8 +120,128 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
     }
 
 
+def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
+    """N-05 — Reconcile pending blockchain transactions and retry unwritten incidents.
+
+    1. Pending Reconciliation: For rows with blockchain_tx and status='pending' (or missing incident_id),
+       checks live receipt on-chain and updates blockchain_incident_id, block_number, and status.
+    2. Outbox Retry: For high-threat / blocked incidents with no blockchain_tx and retry_count < max_retries,
+       attempts to store them on-chain once RPC is online.
+    """
+    adapter = BlockchainAdapter.get_instance()
+    if not adapter._connected or adapter.client is None:
+        return {"status": "offline", "reason": adapter.error or "blockchain offline"}
+
+    db = SessionLocal()
+    pending_reconciled = 0
+    retried_success = 0
+    retried_failed = 0
+
+    try:
+        w3 = adapter.client.w3
+        contract = adapter.client.contract
+
+        # ── 1. Reconcile Pending Transactions ────────────────────────────────
+        pending_rows = (
+            db.query(Incident)
+            .filter(
+                Incident.blockchain_tx.isnot(None),
+                Incident.blockchain_incident_id.is_(None),
+                Incident.attack_type != "Manual-Unblock",
+            )
+            .limit(max_batch)
+            .all()
+        )
+
+        for row in pending_rows:
+            try:
+                tx_hash = row.blockchain_tx
+                if not tx_hash.startswith("0x"):
+                    tx_hash = "0x" + tx_hash
+                receipt = w3.eth.get_transaction_receipt(tx_hash)
+                if receipt is not None:
+                    row.blockchain_block_number = receipt.get("blockNumber")
+                    if receipt.get("status") == 1:
+                        processed = contract.events.IncidentLogged().process_receipt(receipt)
+                        if processed:
+                            row.blockchain_incident_id = processed[0]["args"]["id"]
+                        row.blockchain_status = "confirmed"
+                        row.blockchain_last_error = None
+                        pending_reconciled += 1
+                    else:
+                        row.blockchain_status = "failed"
+                        row.blockchain_last_error = "Transaction reverted on-chain"
+                    db.commit()
+            except Exception as exc:
+                row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
+                row.blockchain_last_error = str(exc)
+                db.commit()
+
+        # ── 2. Retry Unwritten Eligible Incidents (Outbox Backfill) ──────────
+        max_retries = getattr(settings, "blockchain_max_retries", 5)
+        eligible_unwritten = (
+            db.query(Incident)
+            .filter(
+                Incident.blockchain_tx.is_(None),
+                (Incident.threat_score >= settings.threat_threshold) | (Incident.is_blocked == True),  # noqa: E712
+                (Incident.blockchain_retry_count < max_retries) | (Incident.blockchain_retry_count.is_(None)),
+                Incident.blockchain_status != "permanent_failure",
+            )
+            .order_by(Incident.id.asc())
+            .limit(max_batch)
+            .all()
+        )
+
+        for row in eligible_unwritten:
+            if row.blockchain_tx is not None:
+                continue
+
+            result = adapter.store_incident(
+                source_ip=row.source_ip,
+                attack_type=row.attack_type,
+                severity=row.severity,
+                is_blocked=row.is_blocked,
+                incident_id=row.id,
+            )
+
+            if result.get("status") == "confirmed":
+                row.blockchain_tx = result.get("tx_hash")
+                row.blockchain_incident_id = result.get("incident_id")
+                row.blockchain_chain_id = result.get("chain_id")
+                row.blockchain_contract_address = result.get("contract_address")
+                row.blockchain_block_number = result.get("block_number")
+                row.blockchain_status = "confirmed"
+                row.blockchain_last_error = None
+                retried_success += 1
+            elif result.get("status") == "pending" and result.get("tx_hash"):
+                row.blockchain_tx = result.get("tx_hash")
+                row.blockchain_chain_id = result.get("chain_id")
+                row.blockchain_contract_address = result.get("contract_address")
+                row.blockchain_status = "pending"
+                row.blockchain_last_error = result.get("error")
+                retried_success += 1
+            else:
+                row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
+                row.blockchain_last_error = result.get("error", "Failed to write to blockchain")
+                if row.blockchain_retry_count >= max_retries:
+                    row.blockchain_status = "permanent_failure"
+                else:
+                    row.blockchain_status = "retry"
+                retried_failed += 1
+            db.commit()
+
+        return {
+            "status": "ok",
+            "pending_reconciled": pending_reconciled,
+            "retried_success": retried_success,
+            "retried_failed": retried_failed,
+        }
+    finally:
+        db.close()
+
+
 class ReconciliationWorker:
-    """Background thread that runs OVS ↔ SQLite reconciliation periodically."""
+    """Background thread that runs OVS ↔ SQLite and Blockchain Outbox reconciliation periodically."""
 
     def __init__(self, interval: int = _RECONCILE_INTERVAL):
         self.interval = interval
@@ -139,7 +260,13 @@ class ReconciliationWorker:
     def _run(self) -> None:
         while not self._stop_event.is_set():
             try:
-                self.last_result = reconcile_once()
+                ovs_result = reconcile_once() if settings.enforcement_mode == "ovs" else {"status": "skipped"}
+                bc_result = reconcile_blockchain_outbox()
+                self.last_result = {
+                    "ovs": ovs_result,
+                    "blockchain": bc_result,
+                    "status": "ok" if (ovs_result.get("status") != "error" and bc_result.get("status") != "error") else "degraded",
+                }
             except Exception as exc:
                 self.last_result = {"status": "error", "error": str(exc)}
                 print(f"[Reconcile] Error: {exc}")

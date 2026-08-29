@@ -25,6 +25,12 @@ class Settings(BaseSettings):
     ganache_url: str = "http://127.0.0.1:8545"
     contract_address: str = ""
     blockchain_tx_timeout_seconds: int = 5
+    # N-05: Signer, Gas, and Outbox configuration
+    blockchain_private_key: str = ""
+    blockchain_gas_multiplier: float = 1.2
+    blockchain_max_gas: int = 600000
+    blockchain_retry_interval_seconds: int = 10
+    blockchain_max_retries: int = 5
 
     backend_api_token: str = "change-me-for-demo"
     max_analyze_flows: int = 5000

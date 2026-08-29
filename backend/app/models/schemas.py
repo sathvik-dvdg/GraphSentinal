@@ -218,7 +218,11 @@ class IncidentRecord(BaseModel):
     blockchain_block_number: Optional[int] = None
     # N-04: on-chain incident ID emitted by IncidentLogged event
     blockchain_incident_id: Optional[int] = None
-    # tx_status: confirmed | missing | wrong_contract | unavailable | no_tx
+    # N-05: outbox status, retries, and errors
+    blockchain_status: Optional[str] = None
+    blockchain_retry_count: Optional[int] = None
+    blockchain_last_error: Optional[str] = None
+    # tx_status: confirmed | missing | wrong_contract | unavailable | no_tx | pending
     tx_status: Optional[str] = None
     created_at: str
     enforcement_status: str

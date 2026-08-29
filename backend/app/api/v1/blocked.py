@@ -77,6 +77,9 @@ async def block_or_unblock(
             closure.blockchain_block_number = tx_result.get("block_number")
             # N-04: releaseNode is an on-chain state transition, not an incident creation
             closure.blockchain_incident_id = None
+            # N-05: record outbox status
+            closure.blockchain_status = tx_result.get("status", "pending") if tx_result.get("tx_hash") else tx_result.get("status", "no_tx")
+            closure.blockchain_last_error = tx_result.get("error") if tx_result.get("status") != "confirmed" else None
             db.commit()
             log_enforcement_action(
                 ip_address=result["ip"],
@@ -124,6 +127,16 @@ async def block_or_unblock(
         incident.blockchain_block_number = tx_result.get("block_number")
         # N-04: persist exact on-chain incident ID decoded from receipt event
         incident.blockchain_incident_id = tx_result.get("incident_id")
+        # N-05: record outbox status
+        if tx_result.get("status") == "confirmed":
+            incident.blockchain_status = "confirmed"
+            incident.blockchain_last_error = None
+        elif tx_result.get("status") == "pending" and tx_result.get("tx_hash"):
+            incident.blockchain_status = "pending"
+            incident.blockchain_last_error = tx_result.get("error")
+        else:
+            incident.blockchain_status = tx_result.get("status", "no_tx")
+            incident.blockchain_last_error = tx_result.get("error")
         db.commit()
 
         blocked_row = db.query(BlockedIP).filter(BlockedIP.ip_address == event["ip"]).one_or_none()

@@ -65,6 +65,8 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
                 tx_hash=row.blockchain_tx,
                 expected_contract=contract_for_check,
             )
+            if tx_status == "missing" and getattr(row, "blockchain_status", None) == "pending":
+                tx_status = "pending"
         else:
             # No blockchain_tx recorded — the incident was never written to chain
             # (either blockchain was offline, or this is a manual block row).
@@ -82,6 +84,9 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
             "blockchain_contract_address": row.blockchain_contract_address,
             "blockchain_block_number": row.blockchain_block_number,
             "blockchain_incident_id": row.blockchain_incident_id,
+            "blockchain_status": getattr(row, "blockchain_status", None) or tx_status,
+            "blockchain_retry_count": getattr(row, "blockchain_retry_count", 0),
+            "blockchain_last_error": getattr(row, "blockchain_last_error", None),
             "tx_status": tx_status,
             "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),
             "enforcement_status": row.enforcement_status,

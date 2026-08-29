@@ -37,10 +37,22 @@ class BlockchainAdapter:
             return
         sys.path.insert(0, str(bridge_path))
 
-        if settings.contract_address:
-            os.environ.setdefault('CONTRACT_ADDRESS', settings.contract_address)
-        if settings.ganache_url:
-            os.environ.setdefault('GANACHE_URL', settings.ganache_url)
+        ganache_url = os.environ.get('GANACHE_URL') or settings.ganache_url
+        contract_address = os.environ.get('CONTRACT_ADDRESS') or settings.contract_address
+        private_key = os.environ.get('BLOCKCHAIN_PRIVATE_KEY') or getattr(settings, 'blockchain_private_key', None)
+        gas_multiplier = os.environ.get('BLOCKCHAIN_GAS_MULTIPLIER') or getattr(settings, 'blockchain_gas_multiplier', None)
+        max_gas = os.environ.get('BLOCKCHAIN_MAX_GAS') or getattr(settings, 'blockchain_max_gas', None)
+
+        if contract_address:
+            os.environ['CONTRACT_ADDRESS'] = contract_address
+        if ganache_url:
+            os.environ['GANACHE_URL'] = ganache_url
+        if private_key:
+            os.environ['BLOCKCHAIN_PRIVATE_KEY'] = private_key
+        if gas_multiplier:
+            os.environ['BLOCKCHAIN_GAS_MULTIPLIER'] = str(gas_multiplier)
+        if max_gas:
+            os.environ['BLOCKCHAIN_MAX_GAS'] = str(max_gas)
 
         try:
             from web3_client import BlockchainClient
@@ -100,9 +112,10 @@ class BlockchainAdapter:
             executor.shutdown(wait=False, cancel_futures=True)
 
         if isinstance(result, dict):
-            # N-03: enrich with chain context so the caller can persist it on
-            # the incident row without an extra round-trip to the RPC node.
-            if result.get('status') == 'confirmed':
+            # N-03/N-05: enrich with chain context so the caller can persist it on
+            # the incident row without an extra round-trip to the RPC node, for both
+            # confirmed AND pending/broadcast transactions.
+            if result.get('status') in ('confirmed', 'pending') and result.get('tx_hash'):
                 result.setdefault('chain_id', self.chain_id())
                 result.setdefault('contract_address', settings.contract_address)
             return result
@@ -115,7 +128,7 @@ class BlockchainAdapter:
         }
 
     def release_node(self, ip: str, reason: str = "MANUAL_OVERRIDE") -> dict[str, Any]:
-        """N-04 — Invoke IncidentLogger.releaseNode(ip, reason) on-chain."""
+        """N-04 / N-05 — Invoke IncidentLogger.releaseNode(ip, reason) on-chain."""
         if not self._connected or self.client is None:
             return {'tx_hash': None, 'status': 'offline', 'error': self.error or 'blockchain offline'}
 
@@ -137,7 +150,7 @@ class BlockchainAdapter:
             executor.shutdown(wait=False, cancel_futures=True)
 
         if isinstance(result, dict):
-            if result.get('status') == 'confirmed':
+            if result.get('status') in ('confirmed', 'pending') and result.get('tx_hash'):
                 result.setdefault('chain_id', self.chain_id())
                 result.setdefault('contract_address', settings.contract_address)
             return result

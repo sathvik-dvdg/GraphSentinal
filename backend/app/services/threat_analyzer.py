@@ -148,6 +148,16 @@ class ThreatAnalyzer:
                 incident.blockchain_block_number = tx_result.get("block_number")
                 # N-04: persist exact on-chain incident ID decoded from receipt event
                 incident.blockchain_incident_id = tx_result.get("incident_id")
+                # N-05: persist outbox state and error if pending/failed/offline
+                if tx_result.get("status") == "confirmed":
+                    incident.blockchain_status = "confirmed"
+                    incident.blockchain_last_error = None
+                elif tx_result.get("status") == "pending" and tx_result.get("tx_hash"):
+                    incident.blockchain_status = "pending"
+                    incident.blockchain_last_error = tx_result.get("error")
+                else:
+                    incident.blockchain_status = tx_result.get("status", "no_tx")
+                    incident.blockchain_last_error = tx_result.get("error")
                 db.commit()
 
             # Keep BlockedIP.blockchain_tx in sync — self_healing.block_ip()
