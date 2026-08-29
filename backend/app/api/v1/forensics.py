@@ -53,25 +53,21 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
     else:
         chain_error = adapter.error or "blockchain offline"
 
-    # ── N-03: Reconcile each SQLite incident's blockchain_tx ─────────────────
-    # We call reconcile_tx() for every incident that has a blockchain_tx.
-    # reconcile_tx is non-blocking and handles RPC errors gracefully.
+    # ── O-F04: Read authoritative persisted reconciliation state from SQLite ──
+    # Instead of calling adapter.reconcile_tx() in an N+1 synchronous loop that
+    # fires live RPC calls for every incident row, use the durable fields
+    # maintained by ReconciliationWorker and ingestion pipelines.
     reconciled_incidents = []
     for row in incidents:
-        if row.blockchain_tx:
-            # Use per-row stored contract address if available (post-N-03 rows),
-            # otherwise fall back to the currently active contract address.
-            contract_for_check = row.blockchain_contract_address or active_contract
-            tx_status: str = adapter.reconcile_tx(
-                tx_hash=row.blockchain_tx,
-                expected_contract=contract_for_check,
-            )
-            if tx_status == "missing" and getattr(row, "blockchain_status", None) == "pending":
-                tx_status = "pending"
-        else:
-            # No blockchain_tx recorded — the incident was never written to chain
-            # (either blockchain was offline, or this is a manual block row).
+        status = getattr(row, "blockchain_status", None)
+        if not row.blockchain_tx:
             tx_status = "no_tx"
+        elif status and status not in ("no_tx", "submitting"):
+            tx_status = status
+        elif not adapter._connected or adapter.client is None:
+            tx_status = "unavailable"
+        else:
+            tx_status = status or "pending"
 
         reconciled_incidents.append({
             "id": row.id,
@@ -85,8 +81,8 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
             "blockchain_contract_address": row.blockchain_contract_address,
             "blockchain_block_number": row.blockchain_block_number,
             "blockchain_incident_id": row.blockchain_incident_id,
-            "blockchain_status": getattr(row, "blockchain_status", None) or tx_status,
-            "blockchain_retry_count": getattr(row, "blockchain_retry_count", 0),
+            "blockchain_status": status or tx_status,
+            "blockchain_retry_count": getattr(row, "blockchain_retry_count", 0) or 0,
             "blockchain_last_error": getattr(row, "blockchain_last_error", None),
             "tx_status": tx_status,
             "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),

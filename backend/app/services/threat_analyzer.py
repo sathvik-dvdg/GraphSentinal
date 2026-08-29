@@ -12,6 +12,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.incident import BlockedIP, Incident, utc_now
 from app.services.blockchain_adapter import BlockchainAdapter
+from app.services.enforcement_agent import validate_mininet_ip
 from app.services.enforcement_log import log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
 
@@ -60,9 +61,10 @@ class ThreatAnalyzer:
             if score < self.threshold:
                 continue
 
+            clean_ip = validate_mininet_ip(ip)
             related_flows = [flow for flow in flow_dicts if str(flow["src_ip"]) == ip]
-            attack_type = infer_attack_type(ip, score, related_flows)
-            incident, is_new = self._create_incident(ip, attack_type, score, related_flows)
+            attack_type = infer_attack_type(clean_ip, score, related_flows)
+            incident, is_new = self._create_incident(clean_ip, attack_type, score, related_flows)
             if incident is None:
                 continue
             # A duplicate landed on an existing incident whose enforcement
@@ -73,14 +75,14 @@ class ThreatAnalyzer:
                 continue
 
             healing_event = self.healer.block_ip(
-                ip,
+                clean_ip,
                 reason="GNN_DETECTED",
                 attack_type=attack_type,
                 threat_score=score,
             )
             healing_events.append(healing_event)
             tx_result = self.blockchain.store_incident(
-                source_ip=ip,
+                source_ip=clean_ip,
                 attack_type=attack_type,
                 severity=score_to_severity_int(score),
                 is_blocked=True,
@@ -88,14 +90,14 @@ class ThreatAnalyzer:
             )
             self._update_incident_after_actions(incident.id, tx_result, healing_event)
             log_enforcement_action(
-                ip_address=ip,
+                ip_address=clean_ip,
                 action="block",
                 reason="GNN_DETECTED",
                 status=healing_event.get("enforcement_status", "unknown"),
                 blockchain_tx=tx_result.get("tx_hash"),
                 incident_id=incident.id,
             )
-            alerts.append(self._alert_record(incident.id, ip, attack_type, score, True, tx_result.get("tx_hash"), incident.data_source))
+            alerts.append(self._alert_record(incident.id, clean_ip, attack_type, score, True, tx_result.get("tx_hash"), incident.data_source))
 
         return alerts, healing_events
 

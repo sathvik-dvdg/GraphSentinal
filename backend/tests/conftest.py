@@ -13,7 +13,10 @@ from pathlib import Path
 
 _TEST_DB = Path(__file__).resolve().parent / "test_regressions.db"
 if _TEST_DB.exists():
-    _TEST_DB.unlink()
+    try:
+        _TEST_DB.unlink()
+    except (PermissionError, OSError):
+        pass
 os.environ["SQLITE_PATH"] = str(_TEST_DB)
 os.environ.setdefault("DEMO_FALLBACK_FLOWS", "false")
 os.environ.setdefault("DAEMON_TOKEN", "test-token-for-pytest")
@@ -43,10 +46,17 @@ def _reset_module_singletons():
     """Several services are process-wide singletons (`InferenceService`,
     `BlockchainAdapter`) that individual tests reset/monkeypatch. Reset them
     back to a clean, real state after each test so one test's mocked state
-    can't bleed into the next."""
+    can't bleed into the next. Also clear module-level rate-limit caches
+    so concurrency tests do not pollute subsequent tests (O-F06)."""
+    from app.api.v1.deps import _login_attempts, _requests
+
+    _requests.clear()
+    _login_attempts.clear()
     yield
-    from app.services.inference_service import InferenceService
     from app.services.blockchain_adapter import BlockchainAdapter
+    from app.services.inference_service import InferenceService
 
     InferenceService._instance = None
     BlockchainAdapter._instance = None
+    _requests.clear()
+    _login_attempts.clear()

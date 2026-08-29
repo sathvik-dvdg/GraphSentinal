@@ -60,6 +60,134 @@ def test_analyze_rejects_max_flows():
     assert "Too many flows" in response.text
 
 
+def test_analyze_rejects_outside_cidr_without_persisting_incident(monkeypatch):
+    """O-F01: /api/v1/analyze rejects IP outside 10.0.0.0/24 with 422 without creating orphan Incident in DB."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+
+    monkeypatch.setattr(settings, "threat_threshold", 0.10)
+
+    flows = [
+        {
+            "src_ip": "192.168.1.100",
+            "dst_ip": "10.0.0.1",
+            "src_port": 54321,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "packet_count": 25000,
+            "byte_count": 9000000,
+            "duration_sec": 1.5,
+            "tcp_flags": 2,
+        }
+    ]
+    headers = {"X-API-Key": settings.backend_api_token}
+    response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
+    assert response.status_code == 422
+    assert "is outside" in response.text
+
+    db = SessionLocal()
+    orphan = db.query(Incident).filter(Incident.source_ip == "192.168.1.100").first()
+    db.close()
+
+    assert orphan is None
+
+
+def test_analyze_rejects_invalid_ip_format_without_persisting_incident(monkeypatch):
+    """O-F01: /api/v1/analyze rejects malformed/injection IP with 422 without creating orphan Incident in DB."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+
+    monkeypatch.setattr(settings, "threat_threshold", 0.10)
+
+    flows = [
+        {
+            "src_ip": "10.0.0.1; rm -rf /",
+            "dst_ip": "10.0.0.2",
+            "src_port": 54321,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "packet_count": 25000,
+            "byte_count": 9000000,
+            "duration_sec": 1.5,
+            "tcp_flags": 2,
+        }
+    ]
+    headers = {"X-API-Key": settings.backend_api_token}
+    response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
+    assert response.status_code == 422
+    assert "Invalid IP address" in response.text
+
+    db = SessionLocal()
+    orphan = db.query(Incident).filter(Incident.source_ip == "10.0.0.1; rm -rf /").first()
+    db.close()
+
+    assert orphan is None
+
+
+def test_threat_analyzer_direct_outside_cidr_no_db_persistence():
+    """O-F01 Unit Test: ThreatAnalyzer.evaluate() raises ValueError on outside-CIDR IP before creating Incident."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+    from app.services.threat_analyzer import ThreatAnalyzer
+
+    analyzer = ThreatAnalyzer()
+    analyzer.threshold = 0.50
+
+    db = SessionLocal()
+    count_before = db.query(Incident).count()
+    db.close()
+
+    prediction = {
+        "source_scores": {"192.168.1.50": 0.95},
+        "flow_scores": [{"flow_index": 0, "src_ip": "192.168.1.50", "dst_ip": "10.0.0.1", "score": 0.95}],
+    }
+    flows = [{"src_ip": "192.168.1.50", "dst_ip": "10.0.0.1", "packet_count": 1000, "byte_count": 50000}]
+
+    with pytest.raises(ValueError, match="is outside"):
+        analyzer.evaluate(prediction, flows)
+
+    db = SessionLocal()
+    count_after = db.query(Incident).count()
+    orphan = db.query(Incident).filter(Incident.source_ip == "192.168.1.50").first()
+    db.close()
+
+    assert count_after == count_before
+    assert orphan is None
+
+
+def test_analyze_valid_mininet_ip_persists_incident(monkeypatch):
+    """O-F01: /api/v1/analyze accepts valid Mininet host IP (e.g. 10.0.0.2) and persists Incident successfully."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+
+    monkeypatch.setattr(settings, "threat_threshold", 0.10)
+
+    flows = [
+        {
+            "src_ip": "10.0.0.2",
+            "dst_ip": "10.0.0.1",
+            "src_port": 54321,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "packet_count": 25000,
+            "byte_count": 9000000,
+            "duration_sec": 1.5,
+            "tcp_flags": 2,
+        }
+    ]
+    headers = {"X-API-Key": settings.backend_api_token}
+    response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "10.0.0.2" in data["predictions"]
+
+    db = SessionLocal()
+    incident = db.query(Incident).filter(Incident.source_ip == "10.0.0.2").order_by(Incident.id.desc()).first()
+    db.close()
+
+    assert incident is not None
+
+
 def test_graph_builder_rejects_nan_and_negative():
     """Graph builder rejects NaN and negative flow values — Prevents NaN threat scores"""
     with pytest.raises(ValueError):
