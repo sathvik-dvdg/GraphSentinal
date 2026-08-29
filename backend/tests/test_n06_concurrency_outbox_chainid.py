@@ -20,6 +20,7 @@ from unittest.mock import MagicMock, patch
 
 import pytest
 from web3 import Web3
+from web3.exceptions import TransactionNotFound
 
 # Ensure web3_bridge and backend are importable
 bridge_path = (Path(__file__).resolve().parent.parent.parent / "blockchain" / "web3_bridge").resolve()
@@ -740,4 +741,128 @@ def test_t21_adapter_propagates_expected_chain_id():
             with patch("web3_client.BlockchainClient") as mock_client_cls:
                 adapter._connect()
                 assert os.environ.get("BLOCKCHAIN_EXPECTED_CHAIN_ID") == "1337"
+
+
+def test_t22_transaction_not_found_below_timeout_stays_pending():
+    """T22: Web3 TransactionNotFound exception below timeout preserves blockchain_status='pending'."""
+    db = SessionLocal()
+    try:
+        inc = Incident(
+            source_ip="192.168.1.80",
+            attack_type="DDoS",
+            threat_score=0.95,
+            severity=9,
+            is_blocked=True,
+            blockchain_tx="0xpendingtnfrecent0000000000000000000000000000000000000000000000000001",
+            blockchain_status="pending",
+            blockchain_pending_since=datetime.now(timezone.utc) - timedelta(seconds=30),
+            blockchain_incident_id=None,
+        )
+        db.add(inc)
+        db.commit()
+        db.refresh(inc)
+        inc_id = inc.id
+    finally:
+        db.close()
+
+    mock_adapter = MagicMock()
+    mock_adapter._connected = True
+    mock_adapter.client = MagicMock()
+    mock_adapter.client.w3 = MagicMock()
+    mock_adapter.client.contract = MagicMock()
+    mock_adapter.client.w3.eth.get_transaction_receipt.side_effect = TransactionNotFound("Transaction not found")
+
+    with patch.object(BlockchainAdapter, "get_instance", return_value=mock_adapter):
+        reconcile_blockchain_outbox(max_batch=10)
+
+    db = SessionLocal()
+    row = db.get(Incident, inc_id)
+    assert row.blockchain_status == "pending"
+    assert row.blockchain_tx == "0xpendingtnfrecent0000000000000000000000000000000000000000000000000001"
+    db.close()
+
+
+def test_t23_transaction_not_found_beyond_timeout_transitions_to_retry():
+    """T23: Web3 TransactionNotFound exception beyond timeout clears tx and transitions to retry."""
+    db = SessionLocal()
+    try:
+        inc = Incident(
+            source_ip="192.168.1.81",
+            attack_type="DDoS",
+            threat_score=0.95,
+            severity=9,
+            is_blocked=True,
+            blockchain_tx="0xpendingtnfold0000000000000000000000000000000000000000000000000000001",
+            blockchain_status="pending",
+            blockchain_pending_since=datetime.now(timezone.utc) - timedelta(seconds=300),
+            blockchain_retry_count=0,
+            blockchain_incident_id=None,
+        )
+        db.add(inc)
+        db.commit()
+        db.refresh(inc)
+        inc_id = inc.id
+    finally:
+        db.close()
+
+    mock_adapter = MagicMock()
+    mock_adapter._connected = True
+    mock_adapter.client = MagicMock()
+    mock_adapter.client.w3 = MagicMock()
+    mock_adapter.client.contract = MagicMock()
+    mock_adapter.client.w3.eth.get_transaction_receipt.side_effect = TransactionNotFound("Transaction not found")
+
+    with patch.object(BlockchainAdapter, "get_instance", return_value=mock_adapter):
+        reconcile_blockchain_outbox(max_batch=10)
+
+    db = SessionLocal()
+    row = db.get(Incident, inc_id)
+    assert row.blockchain_status == "retry"
+    assert row.blockchain_tx is None
+    assert row.blockchain_pending_since is None
+    assert row.blockchain_retry_count == 1
+    assert "timed out after" in (row.blockchain_last_error or "")
+    db.close()
+
+
+def test_t24_transaction_not_found_max_retries_produces_permanent_failure():
+    """T24: Web3 TransactionNotFound exceeding timeout with max retries transitions to permanent_failure."""
+    db = SessionLocal()
+    try:
+        inc = Incident(
+            source_ip="192.168.1.82",
+            attack_type="DDoS",
+            threat_score=0.95,
+            severity=9,
+            is_blocked=True,
+            blockchain_tx="0xpendingtnfmax000000000000000000000000000000000000000000000000000001",
+            blockchain_status="pending",
+            blockchain_pending_since=datetime.now(timezone.utc) - timedelta(seconds=300),
+            blockchain_retry_count=4,
+            blockchain_incident_id=None,
+        )
+        db.add(inc)
+        db.commit()
+        db.refresh(inc)
+        inc_id = inc.id
+    finally:
+        db.close()
+
+    mock_adapter = MagicMock()
+    mock_adapter._connected = True
+    mock_adapter.client = MagicMock()
+    mock_adapter.client.w3 = MagicMock()
+    mock_adapter.client.contract = MagicMock()
+    mock_adapter.client.w3.eth.get_transaction_receipt.side_effect = TransactionNotFound("Transaction not found")
+
+    with patch.object(BlockchainAdapter, "get_instance", return_value=mock_adapter):
+        reconcile_blockchain_outbox(max_batch=10)
+
+    db = SessionLocal()
+    row = db.get(Incident, inc_id)
+    assert row.blockchain_status == "permanent_failure"
+    assert row.blockchain_retry_count >= 5
+    assert "max retries reached" in (row.blockchain_last_error or "")
+    db.close()
+
 

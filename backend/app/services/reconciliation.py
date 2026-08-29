@@ -14,6 +14,8 @@ import time
 from datetime import datetime, timezone, timedelta
 from typing import Any
 
+from web3.exceptions import TransactionNotFound
+
 from app.config import settings
 from app.database import SessionLocal
 from app.models.incident import BlockedIP, Incident
@@ -166,7 +168,10 @@ def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
                 tx_hash = row.blockchain_tx
                 if not tx_hash.startswith("0x"):
                     tx_hash = "0x" + tx_hash
-                receipt = w3.eth.get_transaction_receipt(tx_hash)
+                try:
+                    receipt = w3.eth.get_transaction_receipt(tx_hash)
+                except TransactionNotFound:
+                    receipt = None
                 if receipt is not None:
                     row.blockchain_block_number = receipt.get("blockNumber")
                     if receipt.get("status") == 1:
