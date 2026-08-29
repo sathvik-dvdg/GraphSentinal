@@ -159,6 +159,7 @@ class SettingsUpdateRequest(BaseModel):
 class BlockchainStoreResponse(BaseModel):
     tx_hash: Optional[str] = None
     block_number: Optional[int] = None
+    incident_id: Optional[int] = None
     status: TxStatus
     gas_used: Optional[int] = None
     error: Optional[str] = None
@@ -215,6 +216,8 @@ class IncidentRecord(BaseModel):
     blockchain_chain_id: Optional[int] = None
     blockchain_contract_address: Optional[str] = None
     blockchain_block_number: Optional[int] = None
+    # N-04: on-chain incident ID emitted by IncidentLogged event
+    blockchain_incident_id: Optional[int] = None
     # tx_status: confirmed | missing | wrong_contract | unavailable | no_tx
     tx_status: Optional[str] = None
     created_at: str

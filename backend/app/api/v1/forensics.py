@@ -81,6 +81,7 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
             "blockchain_chain_id": row.blockchain_chain_id,
             "blockchain_contract_address": row.blockchain_contract_address,
             "blockchain_block_number": row.blockchain_block_number,
+            "blockchain_incident_id": row.blockchain_incident_id,
             "tx_status": tx_status,
             "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),
             "enforcement_status": row.enforcement_status,

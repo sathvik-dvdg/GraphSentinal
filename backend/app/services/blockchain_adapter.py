@@ -114,6 +114,40 @@ class BlockchainAdapter:
             'contract_address': settings.contract_address,
         }
 
+    def release_node(self, ip: str, reason: str = "MANUAL_OVERRIDE") -> dict[str, Any]:
+        """N-04 — Invoke IncidentLogger.releaseNode(ip, reason) on-chain."""
+        if not self._connected or self.client is None:
+            return {'tx_hash': None, 'status': 'offline', 'error': self.error or 'blockchain offline'}
+
+        def call_client():
+            if hasattr(self.client, 'release_node'):
+                return self.client.release_node(ip=ip, reason=reason)
+            return {'tx_hash': None, 'status': 'error', 'error': 'BlockchainClient missing release_node'}
+
+        executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
+        future = executor.submit(call_client)
+        try:
+            result = future.result(timeout=settings.blockchain_tx_timeout_seconds)
+        except concurrent.futures.TimeoutError:
+            future.cancel()
+            return {'tx_hash': None, 'status': 'pending', 'error': 'blockchain timeout'}
+        except Exception as exc:
+            return {'tx_hash': None, 'status': 'error', 'error': str(exc)}
+        finally:
+            executor.shutdown(wait=False, cancel_futures=True)
+
+        if isinstance(result, dict):
+            if result.get('status') == 'confirmed':
+                result.setdefault('chain_id', self.chain_id())
+                result.setdefault('contract_address', settings.contract_address)
+            return result
+        return {
+            'tx_hash': str(result),
+            'status': 'confirmed',
+            'chain_id': self.chain_id(),
+            'contract_address': settings.contract_address,
+        }
+
     def reconcile_tx(
         self,
         tx_hash: str | None,

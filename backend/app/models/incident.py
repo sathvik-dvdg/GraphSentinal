@@ -27,6 +27,9 @@ class Incident(Base):
     blockchain_chain_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     blockchain_contract_address: Mapped[str | None] = mapped_column(String(45), nullable=True)
     blockchain_block_number: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    # N-04: exact on-chain incident ID emitted by IncidentLogged event.
+    # NULL on pre-N-04 rows or when blockchain transaction fails/is offline.
+    blockchain_incident_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     idempotency_key: Mapped[str | None] = mapped_column(String(160), unique=True, nullable=True)
     enforcement_status: Mapped[str] = mapped_column(String(40), default="not_requested")
     # Error.md #34 — where the triggering flow data came from: ovs | demo |

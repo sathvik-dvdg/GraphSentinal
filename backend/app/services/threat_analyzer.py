@@ -146,6 +146,8 @@ class ThreatAnalyzer:
                 incident.blockchain_chain_id = tx_result.get("chain_id")
                 incident.blockchain_contract_address = tx_result.get("contract_address")
                 incident.blockchain_block_number = tx_result.get("block_number")
+                # N-04: persist exact on-chain incident ID decoded from receipt event
+                incident.blockchain_incident_id = tx_result.get("incident_id")
                 db.commit()
 
             # Keep BlockedIP.blockchain_tx in sync — self_healing.block_ip()

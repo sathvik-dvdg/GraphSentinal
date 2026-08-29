@@ -37,13 +37,62 @@ class BlockchainClient:
             ).transact({"from": self.account, "gas": 1000000})
 
             receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=15)
-            on_chain_id = self.contract.functions.getIncidentCount().call()
+
+            if receipt.status != 1:
+                return {
+                    "tx_hash": receipt.transactionHash.hex(),
+                    "block_number": receipt.blockNumber,
+                    "incident_id": None,
+                    "status": "failed",
+                    "error": "Transaction reverted on-chain",
+                }
+
+            # N-04: Authoritative incident ID from the mined transaction's IncidentLogged event
+            processed_logs = self.contract.events.IncidentLogged().process_receipt(receipt)
+            if not processed_logs:
+                return {
+                    "tx_hash": receipt.transactionHash.hex(),
+                    "block_number": receipt.blockNumber,
+                    "incident_id": None,
+                    "status": "error",
+                    "error": "IncidentLogged event not found in transaction receipt",
+                }
+
+            event_args = processed_logs[0]["args"]
+            exact_on_chain_id = event_args.get("id")
+            incident_hash = "0x" + event_args["incidentHash"].hex() if "incidentHash" in event_args and hasattr(event_args["incidentHash"], "hex") else None
 
             return {
                 "tx_hash": receipt.transactionHash.hex(),
                 "block_number": receipt.blockNumber,
-                "incident_id": on_chain_id,
-                "status": "confirmed" if receipt.status == 1 else "failed",
+                "incident_id": exact_on_chain_id,
+                "incident_hash": incident_hash,
+                "status": "confirmed",
+            }
+        except Exception as e:
+            return {"tx_hash": None, "incident_id": None, "status": "error", "error": str(e)}
+
+    def release_node(self, ip: str, reason: str = "MANUAL_OVERRIDE") -> dict:
+        """N-04 — Invoke IncidentLogger.releaseNode(ip, reason) on-chain."""
+        try:
+            tx_hash = self.contract.functions.releaseNode(
+                ip, reason
+            ).transact({"from": self.account, "gas": 1000000})
+
+            receipt = self.w3.eth.wait_for_transaction_receipt(tx_hash, timeout=15)
+
+            if receipt.status != 1:
+                return {
+                    "tx_hash": receipt.transactionHash.hex(),
+                    "block_number": receipt.blockNumber,
+                    "status": "failed",
+                    "error": "releaseNode transaction reverted on-chain",
+                }
+
+            return {
+                "tx_hash": receipt.transactionHash.hex(),
+                "block_number": receipt.blockNumber,
+                "status": "confirmed",
             }
         except Exception as e:
             return {"tx_hash": None, "status": "error", "error": str(e)}
