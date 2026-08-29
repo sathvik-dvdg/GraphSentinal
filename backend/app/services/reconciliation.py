@@ -20,6 +20,7 @@ from app.config import settings
 from app.database import SessionLocal
 from app.models.incident import BlockedIP, Incident
 from app.services.blockchain_adapter import BlockchainAdapter
+from app.services.enforcement_agent import EnforcementError
 from app.services.enforcement_log import log_enforcement_action
 
 
@@ -30,33 +31,42 @@ def _send_to_daemon(payload: dict) -> dict:
     import json
     import socket
     payload["token"] = getattr(settings, "daemon_token", None)
-    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
-        sock.settimeout(3.0)
-        sock.connect((settings.daemon_host, settings.daemon_port))
-        sock.sendall(json.dumps(payload).encode("utf-8"))
-        
-        response_data = []
-        while True:
-            chunk = sock.recv(4096)
-            if not chunk:
-                break
-            response_data.append(chunk)
+    try:
+        with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
+            sock.settimeout(3.0)
+            sock.connect((settings.daemon_host, settings.daemon_port))
+            sock.sendall(json.dumps(payload).encode("utf-8"))
             
-        response = b"".join(response_data)
-        if not response:
-            raise RuntimeError("Empty response from daemon")
-        return json.loads(response.decode("utf-8"))
+            response_data = []
+            while True:
+                chunk = sock.recv(4096)
+                if not chunk:
+                    break
+                response_data.append(chunk)
+                
+            response = b"".join(response_data)
+            if not response:
+                raise EnforcementError("Empty response from daemon")
+            data = json.loads(response.decode("utf-8"))
+            if data.get("status") == "error":
+                raise EnforcementError(data.get("error", "Daemon returned error"))
+            return data
+    except EnforcementError:
+        raise
+    except Exception as exc:
+        raise EnforcementError(f"Daemon communication failure: {exc}") from exc
 
 
 def _parse_blocked_from_ovs(switch: str) -> set[str]:
-    """Parse OVS dump-flows output for GraphSentinel drop rules (priority=1000)."""
-    try:
-        result = _send_to_daemon({"action": "dump_flows", "switch": switch})
-        if result.get("status") != "success":
-            return set()
-        raw_flows = result.get("output", "")
-    except Exception:
-        return set()
+    """Parse OVS dump-flows output for GraphSentinel drop rules (priority=1000).
+    
+    Returns:
+        set[str]: Managed IP addresses blocked in OVS. (empty set if query succeeded but 0 flows exist).
+    Raises:
+        EnforcementError: If querying the daemon or OVS fails (socket error, timeout, auth error, command error).
+    """
+    result = _send_to_daemon({"action": "dump_flows", "switch": switch})
+    raw_flows = result.get("output", "")
 
     blocked: set[str] = set()
     for line in raw_flows.splitlines():
@@ -82,45 +92,61 @@ def reconcile_once(switch: str | None = None) -> dict[str, Any]:
     if settings.enforcement_mode != "ovs":
         return {"status": "skipped", "reason": "enforcement_mode is not ovs"}
 
-    ovs_blocked = _parse_blocked_from_ovs(switch)
     db_blocked = _sqlite_blocked_ips()
+
+    try:
+        ovs_blocked = _parse_blocked_from_ovs(switch)
+    except Exception as exc:
+        error_msg = f"Failed to query OVS flows from switch '{switch}': {exc}"
+        print(f"[Reconcile] {error_msg}")
+        return {
+            "status": "error",
+            "error": error_msg,
+            "reapplied": [],
+            "removed": [],
+            "db_blocked": len(db_blocked),
+            "ovs_blocked": None,
+        }
 
     reapplied: list[str] = []
     removed: list[str] = []
+    errors: list[str] = []
 
     # SQLite says blocked but OVS rule is missing → reapply
     for ip in db_blocked - ovs_blocked:
         try:
             res = _send_to_daemon({"action": "block", "switch": switch, "ip": ip})
-            if res.get("status") != "success":
-                raise RuntimeError(res.get("error", "Unknown error"))
             reapplied.append(ip)
             print(f"[Reconcile] Reapplied OVS rule for {ip}")
             log_enforcement_action(ip_address=ip, action="block", reason="RECONCILE_REAPPLY", status="enforced")
         except Exception as exc:
             print(f"[Reconcile] Failed to reapply OVS rule for {ip}: {exc}")
+            errors.append(f"Failed to reapply {ip}: {exc}")
             log_enforcement_action(ip_address=ip, action="block", reason="RECONCILE_REAPPLY", status="failed", error=str(exc))
 
     # OVS has a drop rule but no SQLite row → remove stale rule
     for ip in ovs_blocked - db_blocked:
         try:
             res = _send_to_daemon({"action": "unblock", "switch": switch, "ip": ip})
-            if res.get("status") != "success":
-                raise RuntimeError(res.get("error", "Unknown error"))
             removed.append(ip)
             print(f"[Reconcile] Removed stale OVS rule for {ip}")
             log_enforcement_action(ip_address=ip, action="unblock", reason="RECONCILE_REMOVE", status="removed")
         except Exception as exc:
             print(f"[Reconcile] Failed to remove stale OVS rule for {ip}: {exc}")
+            errors.append(f"Failed to remove {ip}: {exc}")
             log_enforcement_action(ip_address=ip, action="unblock", reason="RECONCILE_REMOVE", status="failed", error=str(exc))
 
-    return {
-        "status": "ok",
+    status = "ok" if not errors else "degraded"
+    result: dict[str, Any] = {
+        "status": status,
         "reapplied": reapplied,
         "removed": removed,
         "db_blocked": len(db_blocked),
         "ovs_blocked": len(ovs_blocked),
     }
+    if errors:
+        result["errors"] = errors
+    return result
 
 
 def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
@@ -320,10 +346,17 @@ class ReconciliationWorker:
             try:
                 ovs_result = reconcile_once() if settings.enforcement_mode == "ovs" else {"status": "skipped"}
                 bc_result = reconcile_blockchain_outbox()
+                ovs_status = ovs_result.get("status", "ok")
+                bc_status = bc_result.get("status", "ok")
+                if ovs_status in {"error", "degraded"} or bc_status in {"error", "degraded"}:
+                    overall_status = "degraded"
+                else:
+                    overall_status = "ok"
+
                 self.last_result = {
                     "ovs": ovs_result,
                     "blockchain": bc_result,
-                    "status": "ok" if (ovs_result.get("status") != "error" and bc_result.get("status") != "error") else "degraded",
+                    "status": overall_status,
                 }
             except Exception as exc:
                 self.last_result = {"status": "error", "error": str(exc)}

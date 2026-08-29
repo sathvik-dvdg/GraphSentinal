@@ -105,7 +105,7 @@ async def health():
     reconcile_health = reconciler.last_result if reconciler else {"status": "disabled"}
     monitor_health = monitor.health() if monitor else {"status": "disabled"}
     status = "ok" if inference.mode == "model" else "degraded"
-    if reconcile_health.get("status") == "error":
+    if reconcile_health.get("status") in {"error", "degraded"}:
         status = "degraded"
     return {
         "status": status,
