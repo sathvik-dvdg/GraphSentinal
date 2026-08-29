@@ -141,6 +141,11 @@ class ThreatAnalyzer:
                 incident.is_blocked = True
                 incident.blockchain_tx = tx_result.get("tx_hash")
                 incident.enforcement_status = healing_event.get("enforcement_status", "unknown")
+                # N-03: persist chain context so forensic reconciliation can
+                # validate this tx against the correct chain/contract later.
+                incident.blockchain_chain_id = tx_result.get("chain_id")
+                incident.blockchain_contract_address = tx_result.get("contract_address")
+                incident.blockchain_block_number = tx_result.get("block_number")
                 db.commit()
 
             # Keep BlockedIP.blockchain_tx in sync — self_healing.block_ip()
@@ -152,6 +157,7 @@ class ThreatAnalyzer:
                 db.commit()
         finally:
             db.close()
+
 
     @staticmethod
     def _alert_record(

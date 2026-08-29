@@ -100,5 +100,81 @@ class BlockchainAdapter:
             executor.shutdown(wait=False, cancel_futures=True)
 
         if isinstance(result, dict):
+            # N-03: enrich with chain context so the caller can persist it on
+            # the incident row without an extra round-trip to the RPC node.
+            if result.get('status') == 'confirmed':
+                result.setdefault('chain_id', self.chain_id())
+                result.setdefault('contract_address', settings.contract_address)
             return result
-        return {'tx_hash': str(result), 'status': 'confirmed'}
+        # Legacy path: client returned a raw tx-hash string
+        return {
+            'tx_hash': str(result),
+            'status': 'confirmed',
+            'chain_id': self.chain_id(),
+            'contract_address': settings.contract_address,
+        }
+
+    def reconcile_tx(
+        self,
+        tx_hash: str | None,
+        expected_contract: str | None = None,
+        expected_chain_id: int | None = None,
+    ) -> str:
+        """N-03 — Classify a stored blockchain_tx reference against the live chain.
+
+        Returns one of:
+          "confirmed"       — tx exists, receipt status=1, contract matches
+          "wrong_contract"  — tx exists but targets a different contract address
+          "missing"         — tx hash is genuinely absent from the current chain
+          "unavailable"     — blockchain RPC is down / adapter is not connected
+          "no_tx"           — incident has no blockchain_tx recorded
+        """
+        if not tx_hash:
+            return 'no_tx'
+
+        if not self._connected or self.client is None:
+            return 'unavailable'
+
+        try:
+            w3 = self.client.w3
+            # Prefix tx_hash if needed
+            if not tx_hash.startswith('0x'):
+                lookup_hash = '0x' + tx_hash
+            else:
+                lookup_hash = tx_hash
+
+            # 1. Transaction existence
+            try:
+                tx = w3.eth.get_transaction(lookup_hash)
+            except Exception:
+                tx = None
+
+            if tx is None:
+                return 'missing'
+
+            # 2. Check contract target
+            if expected_contract:
+                tx_to = (tx.get('to') or '').lower()
+                exp_lower = expected_contract.lower()
+                if tx_to != exp_lower:
+                    return 'wrong_contract'
+
+            # 3. Receipt / confirmed status
+            try:
+                receipt = w3.eth.get_transaction_receipt(lookup_hash)
+            except Exception:
+                receipt = None
+
+            if receipt is None:
+                return 'missing'
+
+            if receipt.get('status') == 1:
+                return 'confirmed'
+            else:
+                # Receipt exists but transaction reverted
+                return 'missing'
+
+        except Exception:
+            # Any unexpected RPC error is treated as unavailable, not missing
+            return 'unavailable'
+

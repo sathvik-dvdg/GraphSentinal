@@ -211,6 +211,12 @@ class IncidentRecord(BaseModel):
     severity: int
     is_blocked: bool
     blockchain_tx: Optional[str] = None
+    # N-03: chain context and reconciliation status
+    blockchain_chain_id: Optional[int] = None
+    blockchain_contract_address: Optional[str] = None
+    blockchain_block_number: Optional[int] = None
+    # tx_status: confirmed | missing | wrong_contract | unavailable | no_tx
+    tx_status: Optional[str] = None
     created_at: str
     enforcement_status: str
     data_source: str = "manual"

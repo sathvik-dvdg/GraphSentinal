@@ -31,6 +31,9 @@ services:
     volumes:
       # Named volume shared with backend — entrypoint writes contract_address.env here
       - contract-shared:/shared
+      # N-03: Persistent Ganache EVM state — survives container restart/recreation.
+      # Remove ONLY with `docker compose down -v` when a genuinely fresh chain is required.
+      - ganache-data:/data
     ports:
       # 8546 on host → 8545 inside container (leaves local dev port 8545 free)
       - "8546:8545"
@@ -170,6 +173,13 @@ volumes:
   # WARNING: Do NOT add this to any `docker compose down -v` command.
   # Use `make clean` (which prompts before wiping) if you need a truly fresh start.
   backend-db:
+    driver: local
+
+  # N-03: Persistent Ganache EVM state. Ganache writes its LevelDB data here.
+  # This makes blockchain state survive container restart and recreation.
+  # WARNING: Do NOT wipe this with `docker compose down -v` unless a fresh
+  # chain is genuinely required (e.g. contract ABI breakage).
+  ganache-data:
     driver: local
 
 # ── Internal network ──────────────────────────────────────────────────────────

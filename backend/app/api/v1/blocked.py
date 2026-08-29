@@ -74,6 +74,10 @@ async def block_or_unblock(
                 incident_id=closure.id,
             )
             closure.blockchain_tx = tx_result.get("tx_hash")
+            # N-03: persist chain context for forensic reconciliation
+            closure.blockchain_chain_id = tx_result.get("chain_id")
+            closure.blockchain_contract_address = tx_result.get("contract_address")
+            closure.blockchain_block_number = tx_result.get("block_number")
             db.commit()
             log_enforcement_action(
                 ip_address=result["ip"],
@@ -115,6 +119,10 @@ async def block_or_unblock(
             incident_id=incident.id,
         )
         incident.blockchain_tx = tx_result.get("tx_hash")
+        # N-03: persist chain context for forensic reconciliation
+        incident.blockchain_chain_id = tx_result.get("chain_id")
+        incident.blockchain_contract_address = tx_result.get("contract_address")
+        incident.blockchain_block_number = tx_result.get("block_number")
         db.commit()
 
         blocked_row = db.query(BlockedIP).filter(BlockedIP.ip_address == event["ip"]).one_or_none()
