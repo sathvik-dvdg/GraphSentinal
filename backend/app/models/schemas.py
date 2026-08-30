@@ -262,6 +262,7 @@ class ChainRecord(BaseModel):
     severity: Optional[int] = None
     is_blocked: Optional[bool] = None
     gas_used: Optional[int] = None
+    status: Optional[str] = "confirmed"
 
 
 class ForensicsResponse(BaseModel):

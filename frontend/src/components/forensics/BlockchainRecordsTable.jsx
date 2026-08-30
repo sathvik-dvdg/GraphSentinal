@@ -4,6 +4,7 @@
 // ForensicsModal.jsx.
 import { Link2 } from 'lucide-react'
 import CopyableHash from '../ui/CopyableHash'
+import BlockchainStatusBadge from '../ui/BlockchainStatusBadge'
 
 const HEADERS = ['ID', 'TX Hash', 'Block #', 'Attack', 'Severity', 'Gas', 'Status']
 
@@ -29,10 +30,7 @@ export default function BlockchainRecordsTable({ records, blockchainError, stick
             <td className="text-gs-warn tabular-nums">{rec.severity}/10</td>
             <td className="text-gs-muted tabular-nums">{rec.gas_used?.toLocaleString()}</td>
             <td>
-              <span className="inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md bg-gs-heal-soft text-gs-heal border border-gs-heal/20 text-[10px]">
-                <span className="w-1 h-1 rounded-full bg-gs-heal" aria-hidden="true" />
-                Confirmed
-              </span>
+              <BlockchainStatusBadge status={rec.status} />
             </td>
           </tr>
         ))}

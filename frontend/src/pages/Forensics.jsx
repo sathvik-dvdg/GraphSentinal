@@ -9,6 +9,7 @@ import { Database, Link2, RefreshCw, ShieldAlert } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import { useForensicsData } from '../hooks/useForensicsData'
 import CopyableHash from '../components/ui/CopyableHash'
+import BlockchainStatusBadge from '../components/ui/BlockchainStatusBadge'
 import StatTile from '../components/ui/StatTile'
 import BlockchainRecordsTable from '../components/forensics/BlockchainRecordsTable'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
@@ -185,22 +186,46 @@ export default function Forensics() {
                     Attack Timeline
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
-                    {[
-                      { step: 'Scan detected', detail: `Port scan from ${selectedIncident.source_ip}`, color: '#E8922A' },
-                      { step: 'Connection attempted', detail: 'SYN flood initiated', color: '#E8922A' },
-                      { step: 'GraphSAGE classified', detail: `Threat score: ${(selectedIncident.threat_score * 100).toFixed(0)}%`, color: '#E03C3C' },
-                      { step: selectedIncident.blockchain_tx ? 'Logged on-chain' : 'Self-healing fired', detail: selectedIncident.blockchain_tx ? 'Blockchain record created' : 'Node isolated automatically', color: '#2ECC8A' },
-                    ].map((item, i) => (
-                      <div key={i} style={{ display: 'flex', gap: 12, position: 'relative', paddingBottom: 14 }}>
-                        {/* Line */}
-                        {i < 3 && <div style={{ position: 'absolute', left: 7, top: 16, width: 1, height: 'calc(100% - 4px)', background: 'rgba(255,255,255,0.06)' }} />}
-                        <div style={{ width: 15, height: 15, borderRadius: '50%', background: `${item.color}20`, border: `1.5px solid ${item.color}`, flexShrink: 0, marginTop: 2 }} />
-                        <div>
-                          <div style={{ color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600, marginBottom: 2 }}>{item.step}</div>
-                          <div style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{item.detail}</div>
+                    {(() => {
+                      const isConfirmed = selectedIncident.blockchain_status === 'confirmed' || selectedIncident.tx_status === 'confirmed'
+                      const isPending = selectedIncident.blockchain_status === 'pending' || selectedIncident.blockchain_status === 'submitting' || selectedIncident.tx_status === 'pending'
+                      const isRetry = selectedIncident.blockchain_status === 'retry'
+                      const isFailed = selectedIncident.blockchain_status === 'failed' || selectedIncident.tx_status === 'missing' || selectedIncident.tx_status === 'wrong_contract'
+
+                      let fourthStep
+                      if (isConfirmed) {
+                        fourthStep = { step: 'Logged on-chain', detail: 'Blockchain record verified', color: '#2ECC8A' }
+                      } else if (isPending) {
+                        fourthStep = { step: 'Pending confirmation', detail: 'Transaction broadcast to ledger', color: '#E8922A' }
+                      } else if (isRetry) {
+                        fourthStep = { step: 'Blockchain retry scheduled', detail: selectedIncident.blockchain_last_error || 'Outbox retry pending', color: '#E8922A' }
+                      } else if (isFailed) {
+                        fourthStep = { step: 'Blockchain write failed', detail: selectedIncident.blockchain_last_error || 'Verification failed', color: '#E03C3C' }
+                      } else if (selectedIncident.blockchain_tx) {
+                        fourthStep = { step: 'Transaction recorded', detail: 'Blockchain transaction created', color: '#8B5CF6' }
+                      } else {
+                        fourthStep = { step: 'Self-healing fired', detail: 'Node isolated automatically', color: '#4F6EF7' }
+                      }
+
+                      const steps = [
+                        { step: 'Scan detected', detail: `Port scan from ${selectedIncident.source_ip}`, color: '#E8922A' },
+                        { step: 'Connection attempted', detail: 'SYN flood initiated', color: '#E8922A' },
+                        { step: 'GraphSAGE classified', detail: `Threat score: ${(selectedIncident.threat_score * 100).toFixed(0)}%`, color: '#E03C3C' },
+                        fourthStep,
+                      ]
+
+                      return steps.map((item, i) => (
+                        <div key={i} style={{ display: 'flex', gap: 12, position: 'relative', paddingBottom: 14 }}>
+                          {/* Line */}
+                          {i < 3 && <div style={{ position: 'absolute', left: 7, top: 16, width: 1, height: 'calc(100% - 4px)', background: 'rgba(255,255,255,0.06)' }} />}
+                          <div style={{ width: 15, height: 15, borderRadius: '50%', background: `${item.color}20`, border: `1.5px solid ${item.color}`, flexShrink: 0, marginTop: 2 }} />
+                          <div>
+                            <div style={{ color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600, marginBottom: 2 }}>{item.step}</div>
+                            <div style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{item.detail}</div>
+                          </div>
                         </div>
-                      </div>
-                    ))}
+                      ))
+                    })()}
                   </div>
                 </div>
 
@@ -215,7 +240,9 @@ export default function Forensics() {
                       <span style={{ color: '#8B5CF6', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
                         <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={selectedIncident.blockchain_tx.length} />
                       </span>
-                      <span style={{ color: '#2ECC8A', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>✓ on-chain</span>
+                      <div style={{ marginLeft: 'auto' }}>
+                        <BlockchainStatusBadge status={selectedIncident.blockchain_status || selectedIncident.tx_status} />
+                      </div>
                     </div>
                   ) : (
                     <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>No blockchain evidence</div>

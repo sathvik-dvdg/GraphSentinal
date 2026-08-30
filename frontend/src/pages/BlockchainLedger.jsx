@@ -3,12 +3,13 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Link2, CheckCircle, Loader2, Download, ChevronDown, ShieldCheck, XCircle } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import CopyableHash from '../components/ui/CopyableHash'
+import BlockchainStatusBadge from '../components/ui/BlockchainStatusBadge'
 import StatTile from '../components/ui/StatTile'
 import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 
-const STATUSES = ['All', 'confirmed', 'pending']
+const STATUSES = ['All', 'confirmed', 'pending', 'failed']
 const ATTACK_TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function BlockchainLedger() {
@@ -179,15 +180,7 @@ export default function BlockchainLedger() {
                           </span>
                         </td>
                         <td>
-                          {tx.status === 'confirmed' ? (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#2ECC8A', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
-                              <CheckCircle size={10} /> Confirmed
-                            </span>
-                          ) : (
-                            <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: '#E8922A', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
-                              <Loader2 size={10} className="spin-slow" /> Pending
-                            </span>
-                          )}
+                          <BlockchainStatusBadge status={tx.status} />
                         </td>
                         <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
                           {formatEventTimestamp(tx.timestamp)}
@@ -319,6 +312,9 @@ function EnforcementStatusBadge({ status, error }) {
     color = '#2ECC8A'
     bg = 'rgba(46,204,138,0.1)'
   } else if (status === 'simulated') {
+    color = '#4F6EF7'
+    bg = 'rgba(79,110,247,0.1)'
+  } else if (status === 'pending_enforcement' || status === 'pending_unblock') {
     color = '#E8922A'
     bg = 'rgba(232,146,42,0.1)'
   } else if (status === 'failed') {
@@ -337,7 +333,8 @@ function EnforcementStatusBadge({ status, error }) {
       }}
     >
       {status === 'failed' && <XCircle size={10} />}
-      {status === 'enforced' || status === 'removed' ? <CheckCircle size={10} /> : null}
+      {(status === 'enforced' || status === 'removed') && <CheckCircle size={10} />}
+      {(status === 'pending_enforcement' || status === 'pending_unblock') && <Loader2 size={10} className="spin-slow" />}
       {status}
     </span>
   )
