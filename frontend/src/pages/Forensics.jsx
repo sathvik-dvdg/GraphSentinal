@@ -127,6 +127,11 @@ export default function Forensics() {
                   <span style={{ color: '#8A95B0', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                     {inc.attack_type}
                   </span>
+                  {inc.is_blocked && (
+                    <span style={{ marginLeft: 'auto', fontSize: 9, color: '#E03C3C', fontFamily: "'DM Mono', monospace", background: 'rgba(224,60,60,0.1)', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(224,60,60,0.2)' }}>
+                      ISOLATED
+                    </span>
+                  )}
                 </div>
                 <div style={{ color: '#E8EDF5', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, marginBottom: 2 }}>
                   {inc.source_ip}
@@ -162,20 +167,29 @@ export default function Forensics() {
               >
                 {/* Incident summary card */}
                 <div className="gs-panel" style={{ padding: '16px 18px', borderLeft: '3px solid #4F6EF7' }}>
-                  <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
-                    Incident Summary
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                      <span style={{ color: '#E8EDF5', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                        Incident #{selectedIncident.id}
+                      </span>
+                      <IsolationBadge isBlocked={selectedIncident.is_blocked} />
+                    </div>
+                    <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                      {formatEventTimestamp(selectedIncident.created_at)}
+                    </div>
                   </div>
-                  <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 12 }}>
-                    <DetailRow label="Attack Type" value={selectedIncident.attack_type} />
-                    <DetailRow label="Source IP" value={selectedIncident.source_ip} />
-                    <DetailRow label="Threat Score" value={`${(selectedIncident.threat_score * 100).toFixed(0)}%`} />
-                    <DetailRow label="Severity" value={`${selectedIncident.severity}/10`} />
-                    <DetailRow label="Time" value={formatEventTimestamp(selectedIncident.created_at)} />
+                  <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 12 }}>
+                    <DetailRow label="Attack Type" value={selectedIncident.attack_type || 'Unknown'} />
+                    <DetailRow label="Source IP" value={selectedIncident.source_ip || '—'} />
+                    <DetailRow label="Threat Score" value={selectedIncident.threat_score !== null && selectedIncident.threat_score !== undefined ? `${(selectedIncident.threat_score * 100).toFixed(0)}%` : '—'} />
+                    <DetailRow label="Severity" value={selectedIncident.severity !== null && selectedIncident.severity !== undefined ? `${selectedIncident.severity}/10` : '—'} color={selectedIncident.severity >= 8 ? '#E03C3C' : selectedIncident.severity >= 5 ? '#E8922A' : '#4F6EF7'} />
                     <div>
-                      <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>TX Hash</div>
-                      <div style={{ color: '#8B5CF6', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
-                        <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={16} />
-                      </div>
+                      <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Enforcement</div>
+                      <EnforcementPill status={selectedIncident.enforcement_status} />
+                    </div>
+                    <div>
+                      <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Data Source</div>
+                      <ProvenancePill source={selectedIncident.data_source} />
                     </div>
                   </div>
                 </div>
@@ -230,22 +244,72 @@ export default function Forensics() {
                 </div>
 
                 {/* Evidence */}
-                <div className="gs-panel" style={{ padding: '14px 18px' }}>
-                  <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 10 }}>
-                    Evidence
-                  </div>
-                  {selectedIncident.blockchain_tx ? (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)' }}>
-                      <Link2 size={12} style={{ color: '#8B5CF6' }} />
-                      <span style={{ color: '#8B5CF6', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                        <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={selectedIncident.blockchain_tx.length} />
+                <div className="gs-panel" style={{ padding: '14px 18px', borderLeft: '3px solid #8B5CF6' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
+                      <Link2 size={13} style={{ color: '#8B5CF6' }} />
+                      <span style={{ color: '#8B5CF6', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
+                        Blockchain Evidence
                       </span>
-                      <div style={{ marginLeft: 'auto' }}>
-                        <BlockchainStatusBadge status={selectedIncident.blockchain_status || selectedIncident.tx_status} />
+                    </div>
+                    <BlockchainStatusBadge status={selectedIncident.blockchain_status || selectedIncident.tx_status} />
+                  </div>
+
+                  {selectedIncident.blockchain_tx ? (
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)' }}>
+                        <span style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' }}>Transaction</span>
+                        <span style={{ color: '#8B5CF6', fontSize: 11, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
+                          <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={selectedIncident.blockchain_tx.length} />
+                        </span>
                       </div>
+
+                      {/* Blockchain Metadata Grid */}
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '8px 10px', background: 'rgba(255,255,255,0.02)', borderRadius: 6, border: '1px solid rgba(255,255,255,0.04)' }}>
+                        <div>
+                          <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Chain ID</div>
+                          <div style={{ color: '#E8EDF5', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                            {selectedIncident.blockchain_chain_id ?? data.chain_id ?? '—'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Contract</div>
+                          <div style={{ color: '#E8EDF5', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }} title={selectedIncident.blockchain_contract_address || data.contract_address || undefined}>
+                            {selectedIncident.blockchain_contract_address ? `${selectedIncident.blockchain_contract_address.slice(0, 8)}…` : (data.contract_address ? `${data.contract_address.slice(0, 8)}…` : '—')}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Block #</div>
+                          <div style={{ color: '#8B5CF6', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                            {selectedIncident.blockchain_block_number !== null && selectedIncident.blockchain_block_number !== undefined ? `#${selectedIncident.blockchain_block_number}` : 'Block —'}
+                          </div>
+                        </div>
+                        <div>
+                          <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>On-Chain Log ID</div>
+                          <div style={{ color: '#8B5CF6', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                            {selectedIncident.blockchain_incident_id !== null && selectedIncident.blockchain_incident_id !== undefined ? `#${selectedIncident.blockchain_incident_id}` : 'Log ID —'}
+                          </div>
+                        </div>
+                      </div>
+
+                      {/* Retry attempts if relevant */}
+                      {(selectedIncident.blockchain_retry_count > 0 || selectedIncident.blockchain_status === 'retry') && (
+                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 4, background: 'rgba(232,146,42,0.08)', border: '1px solid rgba(232,146,42,0.2)', color: '#E8922A', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                          <span>Retry attempts: {selectedIncident.blockchain_retry_count || 1}</span>
+                        </div>
+                      )}
+
+                      {/* Failure/error details if present */}
+                      {selectedIncident.blockchain_last_error && (
+                        <div style={{ padding: '8px 10px', borderRadius: 4, background: 'rgba(224,60,60,0.08)', border: '1px solid rgba(224,60,60,0.2)', color: '#E03C3C', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                          <span style={{ fontWeight: 600 }}>Last error:</span> {selectedIncident.blockchain_last_error}
+                        </div>
+                      )}
                     </div>
                   ) : (
-                    <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>No blockchain evidence</div>
+                    <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", padding: '4px 0' }}>
+                      No transaction recorded
+                    </div>
                   )}
                 </div>
 
@@ -296,6 +360,111 @@ function DetailRow({ label, value, color = '#8A95B0' }) {
       <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>{label}</div>
       <div style={{ color, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{value}</div>
     </div>
+  )
+}
+
+function IsolationBadge({ isBlocked }) {
+  if (isBlocked === true) {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, background: 'rgba(224,60,60,0.1)', color: '#E03C3C', border: '1px solid rgba(224,60,60,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+        <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#E03C3C' }} />
+        ISOLATED
+      </span>
+    )
+  }
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: '#2ECC8A', border: '1px solid rgba(46,204,138,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+      <span style={{ width: 5, height: 5, borderRadius: '50%', background: '#2ECC8A' }} />
+      ACTIVE
+    </span>
+  )
+}
+
+function EnforcementPill({ status }) {
+  const norm = typeof status === 'string' ? status.trim().toLowerCase() : ''
+  if (norm === 'enforced') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: '#2ECC8A', border: '1px solid rgba(46,204,138,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+        ENFORCED
+      </span>
+    )
+  }
+  if (norm === 'simulated') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(79,110,247,0.1)', color: '#4F6EF7', border: '1px solid rgba(79,110,247,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+        SIMULATED
+      </span>
+    )
+  }
+  if (norm === 'pending_enforcement' || norm === 'pending_unblock') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(232,146,42,0.1)', color: '#E8922A', border: '1px solid rgba(232,146,42,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+        PENDING
+      </span>
+    )
+  }
+  if (norm === 'failed') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(224,60,60,0.1)', color: '#E03C3C', border: '1px solid rgba(224,60,60,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+        FAILED
+      </span>
+    )
+  }
+  if (norm === 'removed') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: '#2ECC8A', border: '1px solid rgba(46,204,138,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+        REMOVED
+      </span>
+    )
+  }
+  if (norm === 'not_requested') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.05)', color: '#5A6480', border: '1px solid rgba(255,255,255,0.1)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 500 }}>
+        NOT REQUESTED
+      </span>
+    )
+  }
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.05)', color: '#8A95B0', border: '1px solid rgba(255,255,255,0.1)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 500 }}>
+      {status || 'Unknown'}
+    </span>
+  )
+}
+
+function ProvenancePill({ source }) {
+  const norm = typeof source === 'string' ? source.trim().toLowerCase() : ''
+  if (norm === 'ovs') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: '#2ECC8A', border: '1px solid rgba(46,204,138,0.2)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+        OVS LIVE
+      </span>
+    )
+  }
+  if (norm === 'demo') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(232,146,42,0.1)', color: '#E8922A', border: '1px solid rgba(232,146,42,0.2)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+        DEMO FLOW
+      </span>
+    )
+  }
+  if (norm === 'simulation') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(79,110,247,0.1)', color: '#4F6EF7', border: '1px solid rgba(79,110,247,0.2)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+        SIMULATION
+      </span>
+    )
+  }
+  if (norm === 'manual') {
+    return (
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.05)', color: '#8A95B0', border: '1px solid rgba(255,255,255,0.1)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 500 }}>
+        MANUAL
+      </span>
+    )
+  }
+  return (
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(255,255,255,0.05)', color: '#5A6480', border: '1px solid rgba(255,255,255,0.1)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 500 }}>
+      {source || 'Unknown source'}
+    </span>
   )
 }
 
