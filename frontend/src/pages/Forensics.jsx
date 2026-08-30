@@ -201,37 +201,13 @@ export default function Forensics() {
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
                     {(() => {
-                      const isConfirmed = selectedIncident.blockchain_status === 'confirmed' || selectedIncident.tx_status === 'confirmed'
-                      const isPending = selectedIncident.blockchain_status === 'pending' || selectedIncident.blockchain_status === 'submitting' || selectedIncident.tx_status === 'pending'
-                      const isRetry = selectedIncident.blockchain_status === 'retry'
-                      const isFailed = selectedIncident.blockchain_status === 'failed' || selectedIncident.tx_status === 'missing' || selectedIncident.tx_status === 'wrong_contract'
-
-                      let fourthStep
-                      if (isConfirmed) {
-                        fourthStep = { step: 'Logged on-chain', detail: 'Blockchain record verified', color: '#2ECC8A' }
-                      } else if (isPending) {
-                        fourthStep = { step: 'Pending confirmation', detail: 'Transaction broadcast to ledger', color: '#E8922A' }
-                      } else if (isRetry) {
-                        fourthStep = { step: 'Blockchain retry scheduled', detail: selectedIncident.blockchain_last_error || 'Outbox retry pending', color: '#E8922A' }
-                      } else if (isFailed) {
-                        fourthStep = { step: 'Blockchain write failed', detail: selectedIncident.blockchain_last_error || 'Verification failed', color: '#E03C3C' }
-                      } else if (selectedIncident.blockchain_tx) {
-                        fourthStep = { step: 'Transaction recorded', detail: 'Blockchain transaction created', color: '#8B5CF6' }
-                      } else {
-                        fourthStep = { step: 'Self-healing fired', detail: 'Node isolated automatically', color: '#4F6EF7' }
-                      }
-
-                      const steps = [
-                        { step: 'Scan detected', detail: `Port scan from ${selectedIncident.source_ip}`, color: '#E8922A' },
-                        { step: 'Connection attempted', detail: 'SYN flood initiated', color: '#E8922A' },
-                        { step: 'GraphSAGE classified', detail: `Threat score: ${(selectedIncident.threat_score * 100).toFixed(0)}%`, color: '#E03C3C' },
-                        fourthStep,
-                      ]
-
+                      const steps = deriveAttackTimelineSteps(selectedIncident)
                       return steps.map((item, i) => (
                         <div key={i} style={{ display: 'flex', gap: 12, position: 'relative', paddingBottom: 14 }}>
                           {/* Line */}
-                          {i < 3 && <div style={{ position: 'absolute', left: 7, top: 16, width: 1, height: 'calc(100% - 4px)', background: 'rgba(255,255,255,0.06)' }} />}
+                          {i < steps.length - 1 && (
+                            <div style={{ position: 'absolute', left: 7, top: 16, width: 1, height: 'calc(100% - 4px)', background: 'rgba(255,255,255,0.06)' }} />
+                          )}
                           <div style={{ width: 15, height: 15, borderRadius: '50%', background: `${item.color}20`, border: `1.5px solid ${item.color}`, flexShrink: 0, marginTop: 2 }} />
                           <div>
                             <div style={{ color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600, marginBottom: 2 }}>{item.step}</div>
@@ -481,4 +457,156 @@ function ActionBtn({ label, color, onClick }) {
       {label}
     </button>
   )
+}
+
+function deriveAttackTimelineSteps(incident) {
+  if (!incident) return []
+
+  const ip = incident.source_ip || 'Source host'
+  const normType = typeof incident.attack_type === 'string' ? incident.attack_type.trim().toLowerCase() : ''
+  const displayType = incident.attack_type || 'Unknown'
+  const threatPercent = incident.threat_score !== null && incident.threat_score !== undefined
+    ? `${(incident.threat_score * 100).toFixed(0)}%`
+    : '—'
+
+  // Step 1: Detection / Activity Observation (strictly from available fields)
+  let detectionStep
+  if (normType === 'ddos') {
+    detectionStep = {
+      step: 'DDoS activity detected',
+      detail: `Detected activity from ${ip}`,
+      color: '#E8922A',
+    }
+  } else if (normType === 'portscan') {
+    detectionStep = {
+      step: 'PortScan activity detected',
+      detail: `Detected activity from ${ip}`,
+      color: '#E8922A',
+    }
+  } else if (normType === 'sshbrute') {
+    detectionStep = {
+      step: 'SSHBrute activity detected',
+      detail: `Detected activity from ${ip}`,
+      color: '#E8922A',
+    }
+  } else if (normType === 'doshulk') {
+    detectionStep = {
+      step: 'DoSHulk activity detected',
+      detail: `Detected activity from ${ip}`,
+      color: '#E8922A',
+    }
+  } else if (normType === 'botnet') {
+    detectionStep = {
+      step: 'Botnet activity detected',
+      detail: `Detected activity from ${ip}`,
+      color: '#E8922A',
+    }
+  } else {
+    detectionStep = {
+      step: 'Anomalous activity detected',
+      detail: `Detected activity from ${ip}`,
+      color: '#E8922A',
+    }
+  }
+
+  // Step 2: Classification (GraphSAGE threat assessment)
+  const classificationStep = {
+    step: 'GraphSAGE classified',
+    detail: `${displayType} classified (threat score: ${threatPercent})`,
+    color: '#E03C3C',
+  }
+
+  // Step 3: Enforcement State (truthful OVS / daemon execution state)
+  const normEnforcement = typeof incident.enforcement_status === 'string' ? incident.enforcement_status.trim().toLowerCase() : ''
+  let enforcementStep
+  if (normEnforcement === 'enforced') {
+    enforcementStep = {
+      step: 'OpenFlow rule installed',
+      detail: incident.is_blocked ? 'Host isolated via OVS drop flow' : 'Active drop rule confirmed',
+      color: '#2ECC8A',
+    }
+  } else if (normEnforcement === 'simulated') {
+    enforcementStep = {
+      step: 'Simulation executed',
+      detail: 'Simulated isolation rule triggered',
+      color: '#4F6EF7',
+    }
+  } else if (normEnforcement === 'pending_enforcement' || normEnforcement === 'pending_unblock') {
+    enforcementStep = {
+      step: 'Enforcement pending',
+      detail: 'Daemon isolation action queued',
+      color: '#E8922A',
+    }
+  } else if (normEnforcement === 'failed') {
+    enforcementStep = {
+      step: 'Enforcement failed',
+      detail: 'OVS daemon rule installation failed',
+      color: '#E03C3C',
+    }
+  } else if (normEnforcement === 'removed') {
+    enforcementStep = {
+      step: 'Isolation removed',
+      detail: 'OpenFlow drop rule cleared',
+      color: '#2ECC8A',
+    }
+  } else if (normEnforcement === 'not_requested') {
+    enforcementStep = {
+      step: 'No enforcement requested',
+      detail: incident.is_blocked ? 'Host marked blocked' : 'Monitoring without active isolation',
+      color: '#5A6480',
+    }
+  } else {
+    enforcementStep = {
+      step: 'Enforcement: ' + (incident.enforcement_status || 'Unknown'),
+      detail: incident.is_blocked ? 'Host marked isolated' : 'No active drop rule',
+      color: '#5A6480',
+    }
+  }
+
+  // Step 4: Blockchain Evidence (truthful ledger recording state)
+  const isConfirmed = incident.blockchain_status === 'confirmed' || incident.tx_status === 'confirmed'
+  const isPending = incident.blockchain_status === 'pending' || incident.blockchain_status === 'submitting' || incident.tx_status === 'pending'
+  const isRetry = incident.blockchain_status === 'retry'
+  const isFailed = incident.blockchain_status === 'failed' || incident.tx_status === 'missing' || incident.tx_status === 'wrong_contract'
+
+  let blockchainStep
+  if (isConfirmed) {
+    blockchainStep = {
+      step: 'Logged on-chain',
+      detail: incident.blockchain_block_number ? `Verified in block #${incident.blockchain_block_number}` : 'Blockchain record verified',
+      color: '#2ECC8A',
+    }
+  } else if (isPending) {
+    blockchainStep = {
+      step: 'Pending confirmation',
+      detail: 'Transaction broadcast to ledger',
+      color: '#E8922A',
+    }
+  } else if (isRetry) {
+    blockchainStep = {
+      step: 'Blockchain retry scheduled',
+      detail: incident.blockchain_last_error || 'Outbox retry pending',
+      color: '#E8922A',
+    }
+  } else if (isFailed) {
+    blockchainStep = {
+      step: 'Blockchain write failed',
+      detail: incident.blockchain_last_error || 'Verification failed',
+      color: '#E03C3C',
+    }
+  } else if (incident.blockchain_tx) {
+    blockchainStep = {
+      step: 'Transaction recorded',
+      detail: 'Blockchain transaction created',
+      color: '#8B5CF6',
+    }
+  } else {
+    blockchainStep = {
+      step: 'No blockchain record',
+      detail: 'Incident not recorded to ledger',
+      color: '#5A6480',
+    }
+  }
+
+  return [detectionStep, classificationStep, enforcementStep, blockchainStep]
 }

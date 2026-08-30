@@ -16,14 +16,14 @@ import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
 
 export default function DashboardPage() {
-  const { stats, alerts, healingEvents, timeline, dataErrors } = useGraphStore()
+  const { stats = {}, alerts = [], healingEvents = [], timeline = [], dataErrors = {} } = useGraphStore()
 
-  const health = Math.max(0, Math.min(100, stats.system_health ?? 100))
+  const health = Math.max(0, Math.min(100, stats?.system_health ?? 100))
   const healthColor = health >= 80 ? '#2ECC8A' : health >= 50 ? '#E8922A' : '#E03C3C'
   const healthLabel = health >= 80 ? 'Healthy' : health >= 50 ? 'Degraded' : 'Critical'
 
-  const recentThreats = [...alerts].slice(0, 5)
-  const recentHealing = [...healingEvents].slice(0, 3)
+  const recentThreats = Array.isArray(alerts) ? [...alerts].slice(0, 5) : []
+  const recentHealing = Array.isArray(healingEvents) ? [...healingEvents].slice(0, 3) : []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -147,13 +147,15 @@ export default function DashboardPage() {
                     style={{
                       width: 36,
                       textAlign: 'right',
-                      color: alert.threat_score >= 0.75 ? '#E03C3C' : '#E8922A',
+                      color: (alert.threat_score ?? 0) >= 0.75 ? '#E03C3C' : '#E8922A',
                       fontSize: 11,
                       fontFamily: "'DM Mono', monospace",
                       fontWeight: 700,
                     }}
                   >
-                    {(alert.threat_score * 100).toFixed(0)}%
+                    {alert.threat_score !== undefined && alert.threat_score !== null
+                      ? `${(alert.threat_score * 100).toFixed(0)}%`
+                      : '—'}
                   </div>
                 </motion.div>
               ))
@@ -214,7 +216,7 @@ export default function DashboardPage() {
                         {ev.action}
                       </span>
                       <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#5A6480' }}>
-                        {ev.edges_severed} edges cut
+                        {ev.edges_severed || 0} edges cut
                       </span>
                     </div>
                     <div style={{ color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
@@ -223,10 +225,12 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ color: '#2ECC8A', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
-                      {ev.network_stability_before}%→{ev.network_stability_after}%
+                      {ev.network_stability_before !== undefined && ev.network_stability_after !== undefined
+                        ? `${ev.network_stability_before}%→${ev.network_stability_after}%`
+                        : (ev.network_stability_after !== undefined ? `${ev.network_stability_after}%` : '—')}
                     </div>
                     <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
-                      {ev.duration_ms}ms
+                      {ev.duration_ms || ev.responseTimeMs || 0}ms
                     </div>
                   </div>
                 </motion.div>
