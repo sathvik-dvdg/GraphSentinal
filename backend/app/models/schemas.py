@@ -1,4 +1,5 @@
 # [WSL2]
+from ipaddress import ip_address
 from math import isfinite
 from typing import Literal, Optional
 
@@ -9,8 +10,9 @@ NodeStatus = Literal["normal", "suspicious", "malicious", "blocked"]
 AttackType = Literal["DDoS", "PortScan", "SSHBrute", "Botnet", "DoSHulk"]
 Severity = Literal["info", "warning", "critical"]
 BlockAction = Literal["block", "unblock"]
-BlockReason = Literal["GNN_DETECTED", "MANUAL_OVERRIDE"]
+BlockReason = Literal["GNN_DETECTED", "HEURISTIC_DEGRADED", "MANUAL_OVERRIDE"]
 TxStatus = Literal["confirmed", "pending", "failed", "offline", "error"]
+
 
 
 class FlowRecord(BaseModel):
@@ -34,6 +36,26 @@ class FlowRecord(BaseModel):
     bwd_bytes: Optional[int] = Field(default=None, ge=0)
     syn_flag_count: Optional[int] = Field(default=None, ge=0)
     flow_bytes_per_s: Optional[float] = Field(default=None, ge=0)
+
+    @field_validator("src_ip", "dst_ip")
+    @classmethod
+    def validate_ip_address(cls, value: str) -> str:
+        """R-06 (M11-F01) — Reject malformed IP strings at the Pydantic schema
+        boundary before they can reach graph construction, snapshot persistence,
+        or enforcement.  Accepts standard IPv4 dotted-decimal addresses only
+        (matching the Mininet / OVS deployment target)."""
+        try:
+            parsed = ip_address(value.strip())
+        except (ValueError, AttributeError) as exc:
+            raise ValueError(f"Invalid IP address: {value!r}") from exc
+        # Enforce IPv4 only — the Mininet/OVS topology and enforcement CIDR
+        # (10.0.0.0/24) are strictly IPv4.  Accepting IPv6 here would create
+        # a validation gap: the address would pass schema validation but be
+        # rejected later by validate_mininet_ip() or silently bypass
+        # enforcement.
+        if parsed.version != 4:
+            raise ValueError(f"Only IPv4 addresses are supported, got IPv6: {value!r}")
+        return str(parsed)
 
     @field_validator("duration_sec", "flow_bytes_per_s")
     @classmethod
@@ -250,6 +272,9 @@ class ForensicsResponse(BaseModel):
     total_on_chain: int
     chain_id: Optional[int] = None
     contract_address: Optional[str] = None
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    has_more: Optional[bool] = None
 
 
 class SettingsResponse(BaseModel):
@@ -266,7 +291,7 @@ class SettingsUpdateResponse(BaseModel):
 
 # Error.md #35 — durable enforcement audit trail
 EnforcementActionType = Literal["block", "unblock"]
-EnforcementActionReason = Literal["GNN_DETECTED", "MANUAL_OVERRIDE", "RECONCILE_REAPPLY", "RECONCILE_REMOVE"]
+EnforcementActionReason = Literal["GNN_DETECTED", "HEURISTIC_DEGRADED", "MANUAL_OVERRIDE", "RECONCILE_REAPPLY", "RECONCILE_REMOVE"]
 
 
 class EnforcementActionRecord(BaseModel):
@@ -284,6 +309,28 @@ class EnforcementActionRecord(BaseModel):
 class EnforcementActionsResponse(BaseModel):
     actions: list[EnforcementActionRecord]
     count: int
+
+
+class AuditLogRecord(BaseModel):
+    id: int
+    actor_identity: str
+    actor_role: str
+    action: str
+    target_resource: str
+    details: Optional[str] = None
+    status: str
+    request_id: Optional[str] = None
+    timestamp: str
+
+
+class AuditLogsResponse(BaseModel):
+    audit_logs: list[AuditLogRecord]
+    count: int
+    total: int
+    limit: Optional[int] = None
+    offset: Optional[int] = None
+    has_more: Optional[bool] = None
+
 
 
 class FlowScore(BaseModel):
@@ -308,6 +355,7 @@ class AnalyzeResponse(BaseModel):
 class LoginResponse(BaseModel):
     token: str
     username: str
+    role: str = "operator"
     expires_in_hours: float
 
 
@@ -317,4 +365,12 @@ class LogoutResponse(BaseModel):
 
 class MeResponse(BaseModel):
     username: str
+    role: str = "operator"
+
+
+class MLReloadResponse(BaseModel):
+    status: Literal["ok", "degraded"]
+    mode: Literal["model", "degraded"]
+    degraded_reason: Optional[str] = None
+    weights_path: Optional[str] = None
 

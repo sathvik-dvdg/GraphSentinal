@@ -65,7 +65,7 @@ def test_analyze_rejects_outside_cidr_without_persisting_incident(monkeypatch):
     from app.database import SessionLocal
     from app.models.incident import Incident
 
-    monkeypatch.setattr(settings, "threat_threshold", 0.10)
+    monkeypatch.setattr(settings, "threat_threshold", 0.001)
 
     flows = [
         {
@@ -97,7 +97,7 @@ def test_analyze_rejects_invalid_ip_format_without_persisting_incident(monkeypat
     from app.database import SessionLocal
     from app.models.incident import Incident
 
-    monkeypatch.setattr(settings, "threat_threshold", 0.10)
+    monkeypatch.setattr(settings, "threat_threshold", 0.001)
 
     flows = [
         {
@@ -160,7 +160,7 @@ def test_analyze_valid_mininet_ip_persists_incident(monkeypatch):
     from app.database import SessionLocal
     from app.models.incident import Incident
 
-    monkeypatch.setattr(settings, "threat_threshold", 0.10)
+    monkeypatch.setattr(settings, "threat_threshold", 0.001)
 
     flows = [
         {

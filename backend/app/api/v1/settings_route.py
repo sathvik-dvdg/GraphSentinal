@@ -4,11 +4,14 @@
 # in-memory only (resets to the .env-configured value on restart); a
 # durable-config-file rewrite is a bigger, riskier scope than "wire this
 # slider to something real."
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Request
+from sqlalchemy.orm import Session
 
-from app.api.v1.deps import require_session_or_api_key
+from app.api.v1.deps import get_current_request_id, require_admin_privilege, require_session_or_api_key
 from app.config import settings
+from app.database import get_db
 from app.models.schemas import SettingsResponse, SettingsUpdateRequest, SettingsUpdateResponse
+from app.services.audit_service import log_audit_event
 
 router = APIRouter()
 
@@ -27,7 +30,23 @@ async def get_settings_endpoint(_: None = Depends(require_session_or_api_key)):
 @router.patch("/settings", response_model=SettingsUpdateResponse)
 async def update_settings_endpoint(
     request: SettingsUpdateRequest,
-    _: None = Depends(require_session_or_api_key),
+    identity: dict = Depends(require_admin_privilege),
+    db: Session = Depends(get_db),
+    req: Request = None,
 ):
+    old_threshold = settings.threat_threshold
     settings.threat_threshold = request.threat_threshold
+    req_id = get_current_request_id(req)
+    log_audit_event(
+        db=db,
+        actor_identity=identity.get("identity", "admin"),
+        actor_role=identity.get("role", "admin"),
+        action="settings_update",
+        target_resource="threat_threshold",
+        details={"old_threat_threshold": old_threshold, "new_threat_threshold": request.threat_threshold},
+        status="success",
+        request_id=req_id,
+    )
     return {"threat_threshold": settings.threat_threshold}
+
+

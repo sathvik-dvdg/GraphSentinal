@@ -17,12 +17,24 @@ router = APIRouter()
 
 @router.post("/auth/login", response_model=LoginResponse)
 async def login(request: LoginRequest, _: None = Depends(check_login_rate_limit)):
-    username_ok = secrets.compare_digest(request.username, settings.operator_username)
-    password_ok = secrets.compare_digest(request.password, settings.operator_password)
-    if not (username_ok and password_ok):
+    is_operator = secrets.compare_digest(request.username, settings.operator_username) and auth_service.verify_password(request.password, settings.operator_password)
+    is_readonly = (
+        bool(settings.readonly_username)
+        and bool(settings.readonly_password)
+        and secrets.compare_digest(request.username, settings.readonly_username)
+        and auth_service.verify_password(request.password, settings.readonly_password)
+    )
+    if not (is_operator or is_readonly):
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid username or password")
-    token = auth_service.create_session()
-    return {"token": token, "username": settings.operator_username, "expires_in_hours": settings.session_ttl_hours}
+    
+    role = settings.operator_role if is_operator else "readonly"
+    token = auth_service.create_session(username=request.username, role=role)
+    return {
+        "token": token,
+        "username": request.username,
+        "role": role,
+        "expires_in_hours": settings.session_ttl_hours,
+    }
 
 
 @router.post("/auth/logout", response_model=LogoutResponse)
@@ -35,6 +47,8 @@ async def logout(authorization: str | None = Header(default=None)):
 @router.get("/auth/me", response_model=MeResponse)
 async def me(authorization: str | None = Header(default=None)):
     token = auth_service.extract_bearer_token(authorization)
-    if not auth_service.validate_session(token):
+    session = auth_service.validate_session(token)
+    if not session:
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
-    return {"username": settings.operator_username}
+    return {"username": session.get("username", settings.operator_username), "role": session.get("role", "operator")}
+

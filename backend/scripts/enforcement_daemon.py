@@ -12,8 +12,8 @@ import subprocess
 import logging
 from ipaddress import ip_address, ip_network
 
-HOST = "0.0.0.0"
-PORT = 50051
+HOST = os.environ.get("DAEMON_HOST", "127.0.0.1")
+PORT = int(os.environ.get("DAEMON_PORT", 50051))
 CLIENT_TIMEOUT = 2.0
 
 SHARED_SECRET = os.environ.get("DAEMON_TOKEN")

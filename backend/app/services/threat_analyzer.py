@@ -30,9 +30,36 @@ def score_to_severity_int(score: float) -> int:
 
 
 def infer_attack_type(ip: str, score: float, flows: list[dict[str, Any]]) -> str:
-    ports = {int(flow.get("dst_port") or 0) for flow in flows}
-    total_packets = sum(int(flow.get("packet_count") or 0) for flow in flows)
-    http_bytes = sum(int(flow.get("byte_count") or 0) for flow in flows if int(flow.get("dst_port") or 0) in {80, 443, 8080})
+    """R-05 (M09-F01) — Robust deterministic heuristic attack classification with defensive attribute extraction."""
+    ports = set()
+    total_packets = 0
+    http_bytes = 0
+
+    for flow in flows:
+        if not isinstance(flow, dict):
+            continue
+        try:
+            p = int(flow.get("dst_port") or 0)
+            if 0 <= p <= 65535:
+                ports.add(p)
+        except (ValueError, TypeError):
+            pass
+
+        try:
+            pkt = int(flow.get("packet_count") or 0)
+            if pkt > 0:
+                total_packets += pkt
+        except (ValueError, TypeError):
+            pass
+
+        try:
+            b = int(flow.get("byte_count") or 0)
+            p = int(flow.get("dst_port") or 0)
+            if p in {80, 443, 8080} and b > 0:
+                http_bytes += b
+        except (ValueError, TypeError):
+            pass
+
     if 22 in ports and total_packets > 250:
         return "SSHBrute"
     if len(ports) >= 5:
@@ -67,16 +94,18 @@ class ThreatAnalyzer:
             incident, is_new = self._create_incident(clean_ip, attack_type, score, related_flows)
             if incident is None:
                 continue
-            # A duplicate landed on an existing incident whose enforcement
-            # already completed — nothing new to do. If enforcement is still
-            # pending (e.g. the daemon was down on the first attempt), fall
-            # through and retry instead of silently dropping the event.
-            if not is_new and incident.enforcement_status != "pending_enforcement":
+            # A duplicate landed on an existing incident. If enforcement
+            # already completed (enforced / simulated / already_blocked),
+            # nothing new to do. If enforcement was not requested (e.g. crashed
+            # before enforcement action) or is pending / failed, fall through
+            # and retry instead of silently dropping the event.
+            if not is_new and incident.enforcement_status not in ("not_requested", "pending_enforcement", "failed"):
                 continue
 
+            detection_reason = "HEURISTIC_DEGRADED" if prediction.get("ml_mode") == "degraded" else "GNN_DETECTED"
             healing_event = self.healer.block_ip(
                 clean_ip,
-                reason="GNN_DETECTED",
+                reason=detection_reason,
                 attack_type=attack_type,
                 threat_score=score,
             )
@@ -92,12 +121,13 @@ class ThreatAnalyzer:
             log_enforcement_action(
                 ip_address=clean_ip,
                 action="block",
-                reason="GNN_DETECTED",
+                reason=detection_reason,
                 status=healing_event.get("enforcement_status", "unknown"),
                 blockchain_tx=tx_result.get("tx_hash"),
                 incident_id=incident.id,
             )
             alerts.append(self._alert_record(incident.id, clean_ip, attack_type, score, True, tx_result.get("tx_hash"), incident.data_source))
+
 
         return alerts, healing_events
 

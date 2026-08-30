@@ -1,6 +1,7 @@
 # [WSL2]
 from datetime import timezone
-from fastapi import APIRouter, Depends
+from fastapi import APIRouter, Depends, Query
+from sqlalchemy import func
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import require_session_or_api_key
@@ -34,8 +35,20 @@ def _normalize_chain_record(raw: dict) -> dict:
 
 
 @router.get("/forensics", response_model=ForensicsResponse)
-async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require_session_or_api_key)):
-    incidents = db.query(Incident).order_by(Incident.created_at.desc()).all()
+async def get_forensics(
+    limit: int = Query(default=100, ge=1, le=500),
+    offset: int = Query(default=0, ge=0),
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session_or_api_key),
+):
+    total_count = db.query(func.count(Incident.id)).scalar() or 0
+    incidents = (
+        db.query(Incident)
+        .order_by(Incident.created_at.desc(), Incident.id.desc())
+        .offset(offset)
+        .limit(limit)
+        .all()
+    )
     adapter = BlockchainAdapter.get_instance()
     chain_records: list[dict] = []
     chain_error: str | None = None
@@ -94,8 +107,12 @@ async def get_forensics(db: Session = Depends(get_db), _: None = Depends(require
         "incidents": reconciled_incidents,
         "blockchain_records": chain_records,
         "blockchain_error": chain_error,
-        "total_incidents": len(incidents),
+        "total_incidents": total_count,
         "total_on_chain": len(chain_records),
         "chain_id": active_chain_id,
         "contract_address": active_contract,
+        "limit": limit,
+        "offset": offset,
+        "has_more": (offset + len(reconciled_incidents) < total_count),
     }
+

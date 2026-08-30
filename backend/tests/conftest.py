@@ -38,7 +38,18 @@ def client():
 
 @pytest.fixture(scope="session")
 def auth_headers():
+    return {"X-API-Key": settings.admin_api_token or settings.backend_api_token}
+
+
+@pytest.fixture(scope="session")
+def admin_headers():
+    return {"X-API-Key": settings.admin_api_token or settings.backend_api_token}
+
+
+@pytest.fixture(scope="session")
+def operator_headers():
     return {"X-API-Key": settings.backend_api_token}
+
 
 
 @pytest.fixture(autouse=True)

@@ -265,13 +265,12 @@ class GraphState:
                     )
                 )
             db.commit()
-            # Retention (Error.md #30) — flow_snapshots would otherwise grow
-            # unbounded on a long-running deployment. captured_at is indexed.
-            cutoff = datetime.now(timezone.utc) - timedelta(hours=settings.flow_snapshot_retention_hours)
-            db.query(FlowSnapshot).filter(FlowSnapshot.captured_at < cutoff).delete(synchronize_session=False)
-            db.commit()
+            # Retention (Error.md #30 / R-04 M12-F02) — cleanup expired flow snapshots
+            from app.services.retention import cleanup_expired_flow_snapshots
+            cleanup_expired_flow_snapshots(db)
         finally:
             db.close()
+
 
     @staticmethod
     def _blocked_ips(db: Session | None = None) -> set[str]:

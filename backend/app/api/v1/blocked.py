@@ -1,11 +1,12 @@
 from datetime import datetime, timezone
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.api.v1.deps import require_session_or_api_key
+from app.api.v1.deps import get_current_request_id, require_admin_privilege, require_session_or_api_key
 from app.database import get_db
 from app.models.incident import BlockedIP, Incident
 from app.models.schemas import BlockedResponse, BlockRequest, BlockResponse
+from app.services.audit_service import log_audit_event
 from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.enforcement_log import log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
@@ -36,10 +37,12 @@ async def get_blocked(db: Session = Depends(get_db), _: None = Depends(require_s
 @router.post("/block", response_model=BlockResponse)
 async def block_or_unblock(
     request: BlockRequest,
-    _: None = Depends(require_session_or_api_key),
+    identity: dict = Depends(require_admin_privilege),
     db: Session = Depends(get_db),
+    req: Request = None,
 ):
     healer = SelfHealingEngine()
+    req_id = get_current_request_id(req)
     try:
         if request.action == "unblock":
             result = healer.unblock_ip(request.ip, db=db)
@@ -89,6 +92,16 @@ async def block_or_unblock(
                 blockchain_tx=tx_result.get("tx_hash"),
                 incident_id=closure.id,
                 db=db,
+            )
+            log_audit_event(
+                db=db,
+                actor_identity=identity.get("identity", "admin"),
+                actor_role=identity.get("role", "admin"),
+                action="manual_unblock",
+                target_resource=f"ip:{result['ip']}",
+                details={"action": "unblock", "reason": request.reason, "enforcement_status": result["enforcement_status"]},
+                status="success",
+                request_id=req_id,
             )
 
             return {
@@ -160,6 +173,16 @@ async def block_or_unblock(
             incident_id=incident.id,
             db=db,
         )
+        log_audit_event(
+            db=db,
+            actor_identity=identity.get("identity", "admin"),
+            actor_role=identity.get("role", "admin"),
+            action="manual_block",
+            target_resource=f"ip:{event['ip']}",
+            details={"action": "block", "reason": request.reason, "enforcement_status": event["enforcement_status"]},
+            status="success",
+            request_id=req_id,
+        )
 
         return {
             "status": "blocked",
@@ -169,4 +192,5 @@ async def block_or_unblock(
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+
 

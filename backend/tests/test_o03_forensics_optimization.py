@@ -227,8 +227,13 @@ def test_forensics_response_contract_stability():
     body = response.json()
 
     # Top level fields
-    top_keys = {"incidents", "blockchain_records", "blockchain_error", "total_incidents", "total_on_chain", "chain_id", "contract_address"}
+    top_keys = {
+        "incidents", "blockchain_records", "blockchain_error",
+        "total_incidents", "total_on_chain", "chain_id", "contract_address",
+        "limit", "offset", "has_more",
+    }
     assert set(body.keys()) == top_keys
+
 
     # Incident record fields
     rec = body["incidents"][0]

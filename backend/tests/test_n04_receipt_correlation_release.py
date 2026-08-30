@@ -40,7 +40,7 @@ from web3_client import BlockchainClient
 
 
 client = TestClient(app)
-API_HEADERS = {"X-API-Key": settings.backend_api_token}
+API_HEADERS = {"X-API-Key": settings.admin_api_token or settings.backend_api_token}
 
 
 # ─── N04-T1: Receipt Event ID Extraction ─────────────────────────────────────

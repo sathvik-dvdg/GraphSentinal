@@ -2,17 +2,20 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    backend_host: str = "0.0.0.0"
+    environment: str = "development"  # development | production | testing
+    backend_host: str = "127.0.0.1"
     backend_port: int = 8000
     sqlite_path: str = "./graphsentinel.db"
     threat_threshold: float = 0.75
     poll_interval_seconds: int = 5
 
     weights_path: str = "../ML/GraphSage-model/graphsage_weights.pt"
+    stats_path: str = "../ML/GraphSage-model/inference_stats.pt"
     model_source_path: str = "../ml/src"
     blockchain_bridge_path: str = "../blockchain/web3_bridge"
     node_feature_count: int = 7
@@ -37,15 +40,16 @@ class Settings(BaseSettings):
     blockchain_claim_timeout_seconds: int = 60
 
     backend_api_token: str = "change-me-for-demo"
+    admin_api_token: str = "admin-secret-key-for-demo"
     max_analyze_flows: int = 5000
     analyze_rate_limit_per_minute: int = 30
 
-    # Single-operator session auth (Error.md #18/#27). Same "documented
-    # insecure default, change it for real use" convention as
-    # backend_api_token above — not a required-with-no-default field, so a
-    # fresh clone/Docker boot works with zero setup.
+    # Operator & Administrative session auth (R-03: M13-F01, M13-F02, M15-F03)
     operator_username: str = "admin"
     operator_password: str = "change-me-for-demo"
+    operator_role: str = "admin"
+    readonly_username: str = "readonly"
+    readonly_password: str = "readonly-for-demo"
     session_ttl_hours: int = 8
 
     enforcement_mode: str = "simulated"  # simulated | ovs
@@ -55,7 +59,7 @@ class Settings(BaseSettings):
     
     daemon_host: str = "127.0.0.1"
     daemon_port: int = 50051
-    daemon_token: str
+    daemon_token: str = "test-token"
 
     flow_snapshot_retention_hours: int = 24
 
@@ -73,6 +77,26 @@ class Settings(BaseSettings):
         extra="ignore",
     )
 
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.environment.lower() == "production":
+            insecure_defaults = {
+                "change-me-for-demo",
+                "admin-secret-key-for-demo",
+                "admin",
+                "password",
+                "root",
+                "123456",
+                "",
+            }
+            if self.operator_password.lower() in insecure_defaults or "change-me" in self.operator_password.lower():
+                raise ValueError("FATAL [Security]: Insecure default operator password cannot be used in production environment.")
+            if self.backend_api_token.lower() in insecure_defaults or "change-me" in self.backend_api_token.lower():
+                raise ValueError("FATAL [Security]: Insecure default backend API token cannot be used in production environment.")
+            if self.admin_api_token and (self.admin_api_token.lower() in insecure_defaults or "change-me" in self.admin_api_token.lower()):
+                raise ValueError("FATAL [Security]: Insecure default admin API token cannot be used in production environment.")
+        return self
+
     @property
     def sqlite_url(self) -> str:
         return f"sqlite:///{self.sqlite_path}"
@@ -87,6 +111,14 @@ class Settings(BaseSettings):
         if configured.is_absolute():
             return [configured]
         # Resolve strictly relative to the backend directory (where config.py lives)
+        backend_dir = Path(__file__).resolve().parent.parent
+        return [(backend_dir / configured).resolve()]
+
+    @property
+    def resolved_stats_candidates(self) -> list[Path]:
+        configured = Path(self.stats_path)
+        if configured.is_absolute():
+            return [configured]
         backend_dir = Path(__file__).resolve().parent.parent
         return [(backend_dir / configured).resolve()]
 

@@ -346,6 +346,18 @@ class ReconciliationWorker:
             try:
                 ovs_result = reconcile_once() if settings.enforcement_mode == "ovs" else {"status": "skipped"}
                 bc_result = reconcile_blockchain_outbox()
+                
+                # R-04 (M12-F02) — Periodic flow snapshot retention cleanup
+                retention_deleted = 0
+                ret_db = SessionLocal()
+                try:
+                    from app.services.retention import cleanup_expired_flow_snapshots
+                    retention_deleted = cleanup_expired_flow_snapshots(ret_db)
+                except Exception:
+                    pass
+                finally:
+                    ret_db.close()
+
                 ovs_status = ovs_result.get("status", "ok")
                 bc_status = bc_result.get("status", "ok")
                 if ovs_status in {"error", "degraded"} or bc_status in {"error", "degraded"}:
@@ -356,9 +368,11 @@ class ReconciliationWorker:
                 self.last_result = {
                     "ovs": ovs_result,
                     "blockchain": bc_result,
+                    "snapshots_cleaned": retention_deleted,
                     "status": overall_status,
                 }
             except Exception as exc:
                 self.last_result = {"status": "error", "error": str(exc)}
                 print(f"[Reconcile] Error: {exc}")
             time.sleep(self.interval)
+

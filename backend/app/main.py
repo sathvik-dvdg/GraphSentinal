@@ -1,6 +1,8 @@
-# [WSL2]
+import re
 import secrets
+import uuid
 from contextlib import asynccontextmanager
+from contextvars import ContextVar
 from datetime import datetime, timezone
 
 import socketio
@@ -16,10 +18,35 @@ from app.services.inference_service import InferenceService
 from app.services.reconciliation import ReconciliationWorker
 
 
+request_id_ctx_var: ContextVar[str] = ContextVar("request_id", default="")
+_REQ_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
+
+
+class RequestCorrelationMiddleware(BaseHTTPMiddleware):
+    """R-04 (M14-F01) — Assign or propagate a sanitized correlation/request ID."""
+
+    async def dispatch(self, request: Request, call_next) -> Response:
+        incoming_id = request.headers.get("x-request-id") or request.headers.get("x-correlation-id")
+        if incoming_id and _REQ_ID_PATTERN.match(incoming_id):
+            req_id = incoming_id
+        else:
+            req_id = uuid.uuid4().hex
+
+        token = request_id_ctx_var.set(req_id)
+        request.state.request_id = req_id
+        try:
+            response = await call_next(request)
+            response.headers["X-Request-ID"] = req_id
+            return response
+        finally:
+            request_id_ctx_var.reset(token)
+
+
 sio = socketio.AsyncServer(
     async_mode="asgi",
     cors_allowed_origins=settings.cors_origins_list,
 )
+
 
 
 @asynccontextmanager
@@ -80,8 +107,9 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
 
 app.add_middleware(RequestSizeLimitMiddleware)
+app.add_middleware(RequestCorrelationMiddleware)
 
-from app.api.v1 import alerts, analyze, auth, blocked, blockchain, enforcement_actions, forensics, graph, settings_route, stats, timeline  # noqa: E402
+from app.api.v1 import alerts, analyze, audit, auth, blocked, blockchain, enforcement_actions, forensics, graph, settings_route, stats, timeline  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(analyze.router, prefix="/api/v1", tags=["analyze"])
@@ -94,6 +122,8 @@ app.include_router(forensics.router, prefix="/api/v1", tags=["forensics"])
 app.include_router(blockchain.router, prefix="/api/v1", tags=["blockchain"])
 app.include_router(settings_route.router, prefix="/api/v1", tags=["settings"])
 app.include_router(enforcement_actions.router, prefix="/api/v1", tags=["enforcement-actions"])
+app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+
 
 
 @app.get("/health")
@@ -120,15 +150,21 @@ async def health():
 
 @sio.event
 async def connect(sid, environ, auth=None):
-    # Same auth gate as require_session_or_api_key, adapted for Socket.IO's
-    # connect-time auth payload (Error.md #18/#27 — this socket pushes the
-    # same live security data as the now-gated REST endpoints).
     token = (auth or {}).get("token") if isinstance(auth, dict) else None
     api_key = environ.get("HTTP_X_API_KEY")
-    key_ok = bool(api_key) and bool(settings.backend_api_token) and secrets.compare_digest(api_key, settings.backend_api_token)
+    key_ok = bool(api_key) and (
+        (bool(settings.backend_api_token) and secrets.compare_digest(api_key, settings.backend_api_token))
+        or (bool(settings.admin_api_token) and secrets.compare_digest(api_key, settings.admin_api_token))
+    )
     if not (key_ok or auth_service.validate_session(token)):
         raise ConnectionRefusedError("Authentication required")
     await sio.emit("connected", {"sid": sid, "service": "GraphSentinel"}, to=sid)
+
+
+@sio.event
+async def disconnect(sid):
+    """R-05 (M17-F01) — Clean disconnect handling for Socket.IO clients."""
+    pass
 
 
 socket_app = socketio.ASGIApp(sio, app)
