@@ -19,7 +19,7 @@ export default function DashboardPage() {
   const { stats = {}, alerts = [], healingEvents = [], timeline = [], dataErrors = {} } = useGraphStore()
 
   const health = Math.max(0, Math.min(100, stats?.system_health ?? 100))
-  const healthColor = health >= 80 ? '#2ECC8A' : health >= 50 ? '#E8922A' : '#E03C3C'
+  const healthColor = health >= 80 ? '#12a672' : health >= 50 ? '#b7791f' : '#E03C3C'
   const healthLabel = health >= 80 ? 'Healthy' : health >= 50 ? 'Degraded' : 'Critical'
 
   const recentThreats = Array.isArray(alerts) ? [...alerts].slice(0, 5) : []
@@ -29,11 +29,11 @@ export default function DashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Page header */}
       <div>
-        <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Dashboard
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
             Network overview · Real-time threat summary
           </p>
           <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
@@ -54,8 +54,8 @@ export default function DashboardPage() {
           title="Active Nodes"
           value={stats.total_nodes ?? 0}
           sub="Connected endpoints"
-          icon={<Network size={18} style={{ color: '#4F6EF7' }} />}
-          accent="#4F6EF7"
+          icon={<Network size={18} style={{ color: '#3b56d9' }} />}
+          accent="#3b56d9"
           delay={0.06}
         />
         <StatCard
@@ -71,8 +71,8 @@ export default function DashboardPage() {
           title="Nodes Isolated"
           value={stats.blocked_ips ?? 0}
           sub="Self-healing active"
-          icon={<Shield size={18} style={{ color: '#2ECC8A' }} />}
-          accent="#2ECC8A"
+          icon={<Shield size={18} style={{ color: '#12a672' }} />}
+          accent="#12a672"
           delay={0.18}
         />
       </div>
@@ -84,7 +84,7 @@ export default function DashboardPage() {
           <div
             style={{
               padding: '14px 16px',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              borderBottom: '1px solid rgba(17,20,26,0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -98,14 +98,14 @@ export default function DashboardPage() {
             </div>
             <Link
               to="/threats"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#4F6EF7', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
             >
               View all <ChevronRight size={12} />
             </Link>
           </div>
           <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentThreats.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#3D4560', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No threats detected. Network secure.
               </div>
             ) : (
@@ -121,25 +121,25 @@ export default function DashboardPage() {
                     gap: 10,
                     padding: '8px 10px',
                     borderRadius: 8,
-                    background: '#1E1E1E',
+                    background: '#f0f2f5',
                     border: `1px solid ${alert.severity === 'critical' ? 'rgba(224,60,60,0.2)' : 'rgba(232,146,42,0.15)'}`,
-                    borderLeft: `2px solid ${alert.severity === 'critical' ? '#E03C3C' : '#E8922A'}`,
+                    borderLeft: `2px solid ${alert.severity === 'critical' ? '#E03C3C' : '#b7791f'}`,
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: alert.severity === 'critical' ? '#E03C3C' : '#E8922A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: alert.severity === 'critical' ? '#E03C3C' : '#b7791f', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                         {alert.severity}
                       </span>
-                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#8A95B0' }}>
+                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#5a616e' }}>
                         {alert.attack_type}
                       </span>
                     </div>
-                    <div style={{ color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: '#1b1f27', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
                       {alert.source_ip}
                     </div>
                   </div>
-                  <div style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>
+                  <div style={{ color: '#9aa1ad', fontSize: 10, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>
                     {formatEventTimestamp(alert.timestamp)}
                   </div>
                   {/* Threat score */}
@@ -147,7 +147,7 @@ export default function DashboardPage() {
                     style={{
                       width: 36,
                       textAlign: 'right',
-                      color: (alert.threat_score ?? 0) >= 0.75 ? '#E03C3C' : '#E8922A',
+                      color: (alert.threat_score ?? 0) >= 0.75 ? '#E03C3C' : '#b7791f',
                       fontSize: 11,
                       fontFamily: "'DM Mono', monospace",
                       fontWeight: 700,
@@ -168,28 +168,28 @@ export default function DashboardPage() {
           <div
             style={{
               padding: '14px 16px',
-              borderBottom: '1px solid rgba(255,255,255,0.06)',
+              borderBottom: '1px solid rgba(17,20,26,0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Cpu size={14} style={{ color: '#2ECC8A' }} />
-              <span style={{ color: '#2ECC8A', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <Cpu size={14} style={{ color: '#12a672' }} />
+              <span style={{ color: '#12a672', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 Self-Healing Activity
               </span>
             </div>
             <Link
               to="/healing"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#4F6EF7', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
             >
               View all <ChevronRight size={12} />
             </Link>
           </div>
           <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentHealing.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#3D4560', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No healing events. System stable.
               </div>
             ) : (
@@ -205,31 +205,31 @@ export default function DashboardPage() {
                     gap: 10,
                     padding: '8px 10px',
                     borderRadius: 8,
-                    background: '#1E1E1E',
+                    background: '#f0f2f5',
                     border: '1px solid rgba(46,204,138,0.15)',
                     borderLeft: '2px solid rgba(46,204,138,0.5)',
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: '#2ECC8A', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: '#12a672', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                         {ev.action}
                       </span>
-                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#5A6480' }}>
+                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#727a86' }}>
                         {ev.edges_severed || 0} edges cut
                       </span>
                     </div>
-                    <div style={{ color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: '#1b1f27', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
                       {ev.ip}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: '#2ECC8A', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: '#12a672', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
                       {ev.network_stability_before !== undefined && ev.network_stability_after !== undefined
                         ? `${ev.network_stability_before}%→${ev.network_stability_after}%`
                         : (ev.network_stability_after !== undefined ? `${ev.network_stability_after}%` : '—')}
                     </div>
-                    <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
+                    <div style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
                       {ev.duration_ms || ev.responseTimeMs || 0}ms
                     </div>
                   </div>
@@ -245,21 +245,21 @@ export default function DashboardPage() {
         <div
           style={{
             padding: '12px 16px',
-            borderBottom: '1px solid rgba(255,255,255,0.06)',
+            borderBottom: '1px solid rgba(17,20,26,0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={14} style={{ color: '#4F6EF7' }} />
-            <span style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <TrendingUp size={14} style={{ color: '#3b56d9' }} />
+            <span style={{ color: '#3b56d9', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Threat Timeline
             </span>
           </div>
           <Link
             to="/timeline"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#4F6EF7', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
           >
             View full timeline <ChevronRight size={12} />
           </Link>
@@ -273,20 +273,20 @@ export default function DashboardPage() {
                   <stop offset="95%" stopColor="#E03C3C" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="dash-blocked-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#2ECC8A" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#2ECC8A" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="#12a672" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#12a672" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(38,45,63,0.8)" vertical={false} />
-              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.9)" vertical={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <Tooltip
                 labelFormatter={formatTimelineTick}
-                contentStyle={{ background: '#1E1E1E', border: '1px solid #262D3F', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#E8EDF5' }}
-                itemStyle={{ color: '#8A95B0' }}
+                contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#1b1f27' }}
+                itemStyle={{ color: '#5a616e' }}
               />
               <Area type="monotone" dataKey="threats" stroke="#E03C3C" fill="url(#dash-threats-grad)" strokeWidth={1.5} dot={false} name="Threats" />
-              <Area type="monotone" dataKey="blocked" stroke="#2ECC8A" fill="url(#dash-blocked-grad)" strokeWidth={1.5} dot={false} name="Blocked" />
+              <Area type="monotone" dataKey="blocked" stroke="#12a672" fill="url(#dash-blocked-grad)" strokeWidth={1.5} dot={false} name="Blocked" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -319,7 +319,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
         }}
       />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {title}
         </span>
         <div
@@ -350,7 +350,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
       >
         {value}
       </div>
-      <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+      <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
         {sub}
       </div>
     </motion.div>

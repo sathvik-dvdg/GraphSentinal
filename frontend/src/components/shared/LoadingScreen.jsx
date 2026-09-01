@@ -5,7 +5,7 @@ export default function LoadingScreen() {
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gs-mesh-bg"
-      style={{ backgroundColor: '#0A0A0A' }}
+      style={{ backgroundColor: '#f4f6f8' }}
     >
       {/* Subtle ambient glow */}
       <div
@@ -56,7 +56,7 @@ export default function LoadingScreen() {
             <motion.div
               key={i}
               className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: i % 2 === 0 ? '#4F6EF7' : '#2ECC8A' }}
+              style={{ backgroundColor: i % 2 === 0 ? '#3b56d9' : '#12a672' }}
               animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
               transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
             />

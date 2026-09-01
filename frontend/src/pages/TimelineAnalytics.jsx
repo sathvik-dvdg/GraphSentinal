@@ -11,7 +11,7 @@ import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatTimelineTick } from '../utils/formatTimestamp'
 
 const TIME_RANGES = ['1h', '6h', '24h', '7d']
-const ATTACK_COLORS_MAP = { DDoS: '#E03C3C', SSHBrute: '#E8922A', PortScan: '#4F6EF7', Botnet: '#8B5CF6' }
+const ATTACK_COLORS_MAP = { DDoS: '#E03C3C', SSHBrute: '#b7791f', PortScan: '#3b56d9', Botnet: '#7c3aed' }
 
 export default function TimelineAnalytics() {
   const { timeline, alerts, dataErrors } = useGraphStore()
@@ -52,11 +52,11 @@ export default function TimelineAnalytics() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+          <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Timeline Analytics
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
               Threat patterns over time · Anomaly detection
             </p>
             <DataFreshnessBadge dataErrors={{ timeline: dataErrors.timeline, alerts: dataErrors.alerts }} />
@@ -71,7 +71,7 @@ export default function TimelineAnalytics() {
               padding: '6px 14px', borderRadius: 6,
               border: `1px solid ${paused ? 'rgba(232,146,42,0.4)' : 'rgba(46,204,138,0.3)'}`,
               background: paused ? 'rgba(232,146,42,0.1)' : 'rgba(46,204,138,0.08)',
-              color: paused ? '#E8922A' : '#2ECC8A',
+              color: paused ? '#b7791f' : '#12a672',
               fontSize: 11, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
             }}
           >
@@ -80,7 +80,7 @@ export default function TimelineAnalytics() {
           </button>
 
           {/* Time range pills */}
-          <div style={{ display: 'flex', gap: 4, background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 8, padding: 3 }}>
+          <div style={{ display: 'flex', gap: 4, background: '#f0f2f5', border: '1px solid rgba(17,20,26,0.10)', borderRadius: 8, padding: 3 }}>
             {TIME_RANGES.map((t) => (
               <button
                 key={t}
@@ -88,7 +88,7 @@ export default function TimelineAnalytics() {
                 style={{
                   padding: '4px 12px', borderRadius: 6, border: 'none',
                   background: timeRange === t ? 'rgba(79,110,247,0.2)' : 'transparent',
-                  color: timeRange === t ? '#4F6EF7' : '#5A6480',
+                  color: timeRange === t ? '#3b56d9' : '#727a86',
                   fontSize: 11, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
                 }}
               >
@@ -101,22 +101,22 @@ export default function TimelineAnalytics() {
 
       {/* Main chart */}
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={14} style={{ color: '#4F6EF7' }} />
-            <span style={{ color: '#4F6EF7', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <TrendingUp size={14} style={{ color: '#3b56d9' }} />
+            <span style={{ color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               Threat Activity
             </span>
           </div>
           {/* Threshold control */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Anomaly threshold:</span>
+            <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Anomaly threshold:</span>
             <input
               type="range" min={1} max={10} value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
-              style={{ accentColor: '#E8922A', width: 80 }}
+              style={{ accentColor: '#b7791f', width: 80 }}
             />
-            <span style={{ color: '#E8922A', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 16 }}>
+            <span style={{ color: '#b7791f', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 16 }}>
               {threshold}
             </span>
           </div>
@@ -131,23 +131,23 @@ export default function TimelineAnalytics() {
                   <stop offset="95%" stopColor="#E03C3C" stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="full-blocked-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#2ECC8A" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#2ECC8A" stopOpacity={0} />
+                  <stop offset="5%"  stopColor="#12a672" stopOpacity={0.3} />
+                  <stop offset="95%" stopColor="#12a672" stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(38,45,63,0.8)" vertical={false} />
-              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.9)" vertical={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <Tooltip
                 labelFormatter={formatTimelineTick}
-                contentStyle={{ background: '#1E1E1E', border: '1px solid #262D3F', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#E8EDF5' }}
-                itemStyle={{ color: '#8A95B0' }}
+                contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#1b1f27' }}
+                itemStyle={{ color: '#5a616e' }}
               />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#5A6480', paddingTop: 8 }} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#727a86', paddingTop: 8 }} />
 
               {/* Threshold reference line */}
-              <ReferenceLine y={threshold} stroke="#E8922A" strokeDasharray="6 3" strokeOpacity={0.7}
-                label={{ value: `Threshold: ${threshold}`, fill: '#E8922A', fontSize: 10, fontFamily: "'DM Mono', monospace", position: 'insideTopRight' }} />
+              <ReferenceLine y={threshold} stroke="#b7791f" strokeDasharray="6 3" strokeOpacity={0.7}
+                label={{ value: `Threshold: ${threshold}`, fill: '#b7791f', fontSize: 10, fontFamily: "'DM Mono', monospace", position: 'insideTopRight' }} />
 
               {/* Anomaly spike markers */}
               {anomalyPeaks.map((peak) => (
@@ -155,7 +155,7 @@ export default function TimelineAnalytics() {
               ))}
 
               <Area type="monotone" dataKey="threats" stroke="#E03C3C" fill="url(#full-threats-grad)" strokeWidth={1.5} dot={false} name="Threats" />
-              <Area type="monotone" dataKey="blocked" stroke="#2ECC8A" fill="url(#full-blocked-grad)" strokeWidth={1.5} dot={false} name="Blocked" />
+              <Area type="monotone" dataKey="blocked" stroke="#12a672" fill="url(#full-blocked-grad)" strokeWidth={1.5} dot={false} name="Blocked" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -165,15 +165,15 @@ export default function TimelineAnalytics() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {/* Hourly breakdown table */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ color: '#8A95B0', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
+            <span style={{ color: '#5a616e', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               Hourly Breakdown
             </span>
           </div>
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
             {hourlyBreakdown.length > 0 ? (
               <table className="gs-table" style={{ width: '100%' }}>
-                <thead style={{ background: '#1E2436' }}>
+                <thead style={{ background: '#eef1f5' }}>
                   <tr>
                     <th>Hour</th>
                     <th>Threats</th>
@@ -183,15 +183,15 @@ export default function TimelineAnalytics() {
                 <tbody>
                   {hourlyBreakdown.map((row) => (
                     <tr key={row.hour}>
-                      <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace" }}>{row.hour}</td>
+                      <td style={{ color: '#727a86', fontFamily: "'DM Mono', monospace" }}>{row.hour}</td>
                       <td style={{ color: '#E03C3C', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{row.threats}</td>
-                      <td style={{ color: '#2ECC8A', fontFamily: "'DM Mono', monospace" }}>{row.blocked}</td>
+                      <td style={{ color: '#12a672', fontFamily: "'DM Mono', monospace" }}>{row.blocked}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: '#3D4560', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ textAlign: 'center', padding: '32px 0', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No hourly data yet
               </div>
             )}
@@ -200,8 +200,8 @@ export default function TimelineAnalytics() {
 
         {/* Attack type over time */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
-            <span style={{ color: '#8A95B0', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
+            <span style={{ color: '#5a616e', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               Attack Types Over Time
             </span>
           </div>
@@ -209,17 +209,17 @@ export default function TimelineAnalytics() {
             {typeOverTime.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={typeOverTime} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(38,45,63,0.6)" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: '#1E1E1E', border: '1px solid #262D3F', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#E8EDF5' }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.8)" vertical={false} />
+                  <XAxis dataKey="time" tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#1b1f27' }} />
                   {Object.entries(ATTACK_COLORS_MAP).map(([type, color]) => (
                     <Bar key={type} dataKey={type} stackId="a" fill={color} fillOpacity={0.8} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#3D4560', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No attack type data yet
               </div>
             )}

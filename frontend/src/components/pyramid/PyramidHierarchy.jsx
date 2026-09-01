@@ -48,7 +48,7 @@ export default function PyramidHierarchy() {
   if (!enrichedHierarchy) {
     return (
       <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: 'rgba(255,255,255,0.5)', fontFamily: "'DM Mono', monospace" }}>Loading hierarchy...</span>
+        <span style={{ color: 'rgba(27,31,39,0.55)', fontFamily: "'DM Mono', monospace" }}>Loading hierarchy...</span>
       </div>
     )
   }
@@ -77,7 +77,7 @@ export default function PyramidHierarchy() {
                 background: colors.bg,
               }}
             />
-            <span style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'capitalize' }}>
+            <span style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'capitalize' }}>
               {status}
             </span>
           </div>
@@ -85,9 +85,11 @@ export default function PyramidHierarchy() {
       </div>
 
       <svg
-        width={svgWidth + 40}
+        viewBox={`0 0 ${svgWidth + 40} ${svgHeight + 40}`}
+        width="100%"
         height={svgHeight + 40}
-        style={{ display: 'block', marginTop: 40 }}
+        preserveAspectRatio="xMidYMin meet"
+        style={{ display: 'block', marginTop: 40, maxWidth: '100%' }}
       >
         {/* Defs for attack path arrow marker + dashMove animation */}
         <defs>
@@ -124,7 +126,7 @@ export default function PyramidHierarchy() {
                    ${link.target.x + NODE_W / 2},${(link.source.y + link.target.y) / 2 + NODE_H / 2}
                    ${link.target.x + NODE_W / 2},${link.target.y}`}
               fill="none"
-              stroke="rgba(255,255,255,0.10)"
+              stroke="rgba(17,20,26,0.12)"
               strokeWidth={1}
             />
           ))}
@@ -208,14 +210,14 @@ export default function PyramidHierarchy() {
                   dominantBaseline="central"
                   fontSize={9}
                   fontFamily="'DM Mono', monospace"
-                  fill="rgba(255,255,255,0.30)"
+                  fill="rgba(27,31,39,0.40)"
                 >
                   {d.sublabel}
                 </text>
 
                 {/* Level badge — top left */}
                 <rect x={2} y={2} width={24} height={13} rx={4} fill="rgba(79,110,247,0.15)" />
-                <text x={14} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill="#4F6EF7" fontWeight={700}>
+                <text x={14} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill="#3b56d9" fontWeight={700}>
                   L{d.level}
                 </text>
 
@@ -240,7 +242,7 @@ export default function PyramidHierarchy() {
 
                 {/* Infected pulsing dot */}
                 {isInfected && (
-                  <circle cx={NODE_W - 8} cy={8} r={4} fill="#E8922A">
+                  <circle cx={NODE_W - 8} cy={8} r={4} fill="#b7791f">
                     <animate attributeName="opacity" values="1;0.2;1" dur="1.4s" repeatCount="indefinite" />
                   </circle>
                 )}

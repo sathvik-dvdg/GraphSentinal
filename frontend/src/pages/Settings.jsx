@@ -75,16 +75,16 @@ export default function Settings() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div>
-        <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Settings
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+        <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
           System configuration · Detection tuning · Network management
         </p>
       </div>
 
       {/* Tab nav */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', gap: 2 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(17,20,26,0.08)', gap: 2 }}>
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -96,8 +96,8 @@ export default function Settings() {
               padding: '10px 18px',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #4F6EF7' : '2px solid transparent',
-              color: activeTab === tab.id ? '#4F6EF7' : '#5A6480',
+              borderBottom: activeTab === tab.id ? '2px solid #3b56d9' : '2px solid transparent',
+              color: activeTab === tab.id ? '#3b56d9' : '#727a86',
               fontSize: 12,
               fontFamily: "'DM Mono', monospace",
               cursor: 'pointer',
@@ -118,10 +118,10 @@ export default function Settings() {
             <Section title="Simulation Mode">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div>
-                  <div style={{ color: '#E8EDF5', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 500, marginBottom: 3 }}>
+                  <div style={{ color: '#1b1f27', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 500, marginBottom: 3 }}>
                     Enable Simulation
                   </div>
-                  <div style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                  <div style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
                     {isSimulating ? 'Demo attack sequence is running' : 'Live or mock mode active'}
                   </div>
                 </div>
@@ -135,7 +135,7 @@ export default function Settings() {
                   <button
                     key={s}
                     onClick={() => setSimSpeed(s)}
-                    style={optionBtnStyle(simSpeed === s, '#E8922A')}
+                    style={optionBtnStyle(simSpeed === s, '#b7791f')}
                   >
                     {s}
                   </button>
@@ -197,7 +197,7 @@ export default function Settings() {
                 >
                   {thresholdStatus === 'saving' ? 'Saving…' : 'Save'}
                 </button>
-                <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: thresholdStatus === 'error' ? '#E03C3C' : thresholdStatus === 'saved' ? '#2ECC8A' : '#3D4560' }}>
+                <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: thresholdStatus === 'error' ? '#E03C3C' : thresholdStatus === 'saved' ? '#12a672' : '#9aa1ad' }}>
                   {thresholdStatus === 'loading' && 'Loading current value from backend…'}
                   {thresholdStatus === 'error' && 'Failed to reach the backend'}
                   {thresholdStatus === 'saved' && `Saved — live threshold is now ${(savedThreshold / 100).toFixed(2)}`}
@@ -212,15 +212,15 @@ export default function Settings() {
                 label="Not wired to the backend — see note below"
                 value={anomalyThreshold}
                 onChange={setAnomalyThreshold}
-                color="#E8922A"
+                color="#b7791f"
               />
-              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
                 The backend doesn't have a separate "flag but don't block" stage — scoring above the single Threat Threshold above both alerts and auto-isolates in one step. This slider is left as a UI-only preview until that two-stage behavior actually exists server-side.
               </div>
             </Section>
 
             <Section title="Lateral Movement Sensitivity (not implemented)">
-              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
                 The backend has no lateral-movement detection logic at all yet (no L3→L0 escalation tracking) — this control has nothing to connect to.
               </div>
             </Section>
@@ -237,10 +237,10 @@ export default function Settings() {
                 the controls rather than wiring up something that would
                 undermine that fix; explaining why instead. */}
             <Section title="Org Hierarchy Source">
-              <div style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
+              <div style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
                 The Org Hierarchy / Pyramid view is derived live from real network topology (<code>graphData.nodes</code>) — every host shown is a host that actually exists on the configured network, with its real IP and live status.
               </div>
-              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 10 }}>
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 10 }}>
                 A JSON import / manual node editor to override it was removed rather than wired up — either would reintroduce admin-entered data that could silently diverge from what's actually on the network, which is the exact problem the live-derived hierarchy was built to fix.
               </div>
             </Section>
@@ -268,11 +268,11 @@ export default function Settings() {
                 </div>
                 <div>
                   <Label>Gas Limit (fixed)</Label>
-                  <div style={{ color: '#8B5CF6', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                  <div style={{ color: '#7c3aed', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
                     1,000,000
                   </div>
                 </div>
-                <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
                   To change these, edit <code>GANACHE_URL</code> / <code>CONTRACT_ADDRESS</code> in the backend's env config and restart — reconnecting live from the UI isn't supported (it would mean silently switching which chain security incidents get written to while the app keeps running).
                 </div>
               </div>
@@ -287,7 +287,7 @@ export default function Settings() {
 function Section({ title, children }) {
   return (
     <div className="gs-panel" style={{ padding: '16px 18px' }}>
-      <div style={{ color: '#8A95B0', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>
+      <div style={{ color: '#5a616e', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>
         {title}
       </div>
       {children}
@@ -297,7 +297,7 @@ function Section({ title, children }) {
 
 function Label({ children }) {
   return (
-    <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+    <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
       {children}
     </div>
   )
@@ -309,7 +309,7 @@ function Toggle({ active, onClick }) {
       onClick={onClick}
       style={{
         width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-        background: active ? '#2ECC8A' : 'rgba(255,255,255,0.1)',
+        background: active ? '#12a672' : 'rgba(17,20,26,0.12)',
         position: 'relative', transition: 'background 200ms', flexShrink: 0,
       }}
     >
@@ -342,17 +342,17 @@ function SliderSetting({ label, value, onChange, color, disabled = false }) {
 }
 
 const inputStyle = {
-  width: '100%', background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 6, padding: '8px 12px', color: '#E8EDF5',
+  width: '100%', background: '#f0f2f5', border: '1px solid rgba(17,20,26,0.12)',
+  borderRadius: 6, padding: '8px 12px', color: '#1b1f27',
   fontSize: 12, fontFamily: "'DM Mono', monospace", outline: 'none',
 }
 
 function optionBtnStyle(active, color) {
   return {
     padding: '6px 16px', borderRadius: 6, cursor: 'pointer',
-    border: `1px solid ${active ? color : 'rgba(255,255,255,0.1)'}`,
+    border: `1px solid ${active ? color : 'rgba(17,20,26,0.12)'}`,
     background: active ? `${color}18` : 'transparent',
-    color: active ? color : '#5A6480',
+    color: active ? color : '#727a86',
     fontSize: 12, fontFamily: "'DM Mono', monospace",
     fontWeight: active ? 600 : 400, transition: 'all 150ms',
     textTransform: 'capitalize',

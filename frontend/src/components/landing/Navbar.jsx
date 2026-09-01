@@ -17,8 +17,8 @@ export default function Navbar() {
     <header
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{
-        backgroundColor: scrolled || menuOpen ? 'rgba(15,17,23,0.95)' : 'rgba(15,17,23,0.72)',
-        borderBottom: scrolled || menuOpen ? '1px solid #262D3F' : '1px solid rgba(38,45,63,0.35)',
+        backgroundColor: scrolled || menuOpen ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.80)',
+        borderBottom: scrolled || menuOpen ? '1px solid #e2e5ea' : '1px solid rgba(226,229,234,0.6)',
         backdropFilter: 'blur(12px)',
       }}
     >
@@ -74,7 +74,7 @@ export default function Navbar() {
       {menuOpen && (
         <div
           className="md:hidden border-t border-gs-border"
-          style={{ backgroundColor: 'rgba(15,17,23,0.98)', backdropFilter: 'blur(12px)' }}
+          style={{ backgroundColor: 'rgba(255,255,255,0.95)', backdropFilter: 'blur(12px)' }}
         >
           <div className="flex flex-col px-6 py-4 gap-3">
             <a href="#pipeline" className="text-sm text-gs-muted hover:text-gs-text transition-colors no-underline" onClick={() => setMenuOpen(false)}>

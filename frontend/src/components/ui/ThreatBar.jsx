@@ -4,8 +4,8 @@ import { motion } from 'framer-motion'
 
 function getThreatColor(score) {
   if (score >= 0.75) return '#E03C3C' // gs-threat
-  if (score >= 0.5)  return '#E8922A' // gs-warn
-  return '#2ECC8A'                    // gs-heal
+  if (score >= 0.5)  return '#b7791f' // gs-warn
+  return '#12a672'                    // gs-heal
 }
 
 /**

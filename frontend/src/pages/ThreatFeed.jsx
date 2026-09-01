@@ -50,11 +50,11 @@ export default function ThreatFeed() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 108px)' }}>
       {/* Page header */}
       <div style={{ flexShrink: 0 }}>
-        <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Threat Feed
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
             {filtered.length} event{filtered.length !== 1 ? 's' : ''} · Real-time threat intelligence
           </p>
           <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts }} />
@@ -66,42 +66,42 @@ export default function ThreatFeed() {
         className="gs-panel"
         style={{ padding: '12px 16px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}
       >
-        <Filter size={13} style={{ color: '#5A6480' }} />
+        <Filter size={13} style={{ color: '#727a86' }} />
 
         {/* Severity pills */}
         <div style={{ display: 'flex', gap: 4 }}>
           {SEVERITIES.map((s) => (
             <FilterPill key={s} label={s} active={severity === s} onClick={() => setSeverity(s)}
-              color={s === 'critical' ? '#E03C3C' : s === 'warning' ? '#E8922A' : s === 'info' ? '#4F6EF7' : '#5A6480'} />
+              color={s === 'critical' ? '#E03C3C' : s === 'warning' ? '#b7791f' : s === 'info' ? '#3b56d9' : '#727a86'} />
           ))}
         </div>
 
-        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)' }} />
+        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)' }} />
 
         {/* Type pills */}
         <div style={{ display: 'flex', gap: 4 }}>
           {TYPES.map((t) => (
-            <FilterPill key={t} label={t} active={attackType === t} onClick={() => setAttackType(t)} color="#8B5CF6" />
+            <FilterPill key={t} label={t} active={attackType === t} onClick={() => setAttackType(t)} color="#7c3aed" />
           ))}
         </div>
 
-        <div style={{ width: 1, height: 20, background: 'rgba(255,255,255,0.08)' }} />
+        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)' }} />
 
         {/* IP search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.08)', borderRadius: 6, padding: '4px 10px' }}>
-          <Search size={12} style={{ color: '#5A6480' }} />
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: '#f0f2f5', border: '1px solid rgba(17,20,26,0.10)', borderRadius: 6, padding: '4px 10px' }}>
+          <Search size={12} style={{ color: '#727a86' }} />
           <input
             value={ipSearch}
             onChange={(e) => setIpSearch(e.target.value)}
             placeholder="Search IP..."
-            style={{ background: 'none', border: 'none', outline: 'none', color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", width: 120 }}
+            style={{ background: 'none', border: 'none', outline: 'none', color: '#1b1f27', fontSize: 12, fontFamily: "'DM Mono', monospace", width: 120 }}
           />
         </div>
 
         {/* Time range */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
           {TIME_RANGES.map((t) => (
-            <FilterPill key={t} label={t} active={timeRange === t} onClick={() => setTimeRange(t)} color="#4F6EF7" />
+            <FilterPill key={t} label={t} active={timeRange === t} onClick={() => setTimeRange(t)} color="#3b56d9" />
           ))}
         </div>
       </div>
@@ -121,7 +121,7 @@ export default function ThreatFeed() {
                 className="gs-panel"
                 style={{
                   padding: '14px 16px',
-                  borderLeft: `3px solid ${alert.severity === 'critical' ? '#E03C3C' : alert.severity === 'warning' ? '#E8922A' : '#4F6EF7'}`,
+                  borderLeft: `3px solid ${alert.severity === 'critical' ? '#E03C3C' : alert.severity === 'warning' ? '#b7791f' : '#3b56d9'}`,
                   flexShrink: 0,
                 }}
               >
@@ -130,15 +130,15 @@ export default function ThreatFeed() {
                     {/* Row 1 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                       <SeverityBadge severity={alert.severity} />
-                      <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: '#8A95B0', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: 4 }}>
+                      <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: '#5a616e', background: 'rgba(17,20,26,0.08)', padding: '2px 8px', borderRadius: 4 }}>
                         {alert.attack_type}
                       </span>
-                      <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: '#9aa1ad', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                         {formatAlertTimestamp(alert.timestamp)}
                       </span>
                     </div>
                     {/* Source IP */}
-                    <div style={{ color: '#E8EDF5', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, marginBottom: 8 }}>
+                    <div style={{ color: '#1b1f27', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, marginBottom: 8 }}>
                       {alert.source_ip}
                     </div>
                     {/* Threat score bar */}
@@ -146,9 +146,9 @@ export default function ThreatFeed() {
                     {/* TX hash */}
                     {alert.blockchain_tx && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
-                        <span style={{ color: '#8B5CF6' }}>⛓</span>
-                        <CopyableHash value={alert.blockchain_tx} style={{ color: '#8B5CF6' }} iconSize={9} />
-                        <span style={{ color: '#2ECC8A', marginLeft: 4 }}>✓ on-chain</span>
+                        <span style={{ color: '#7c3aed' }}>⛓</span>
+                        <CopyableHash value={alert.blockchain_tx} style={{ color: '#7c3aed' }} iconSize={9} />
+                        <span style={{ color: '#12a672', marginLeft: 4 }}>✓ on-chain</span>
                       </div>
                     )}
                   </div>
@@ -163,7 +163,7 @@ export default function ThreatFeed() {
                       letterSpacing: '0.08em',
                       textTransform: 'uppercase',
                       background: alert.is_blocked ? 'rgba(46,204,138,0.12)' : 'rgba(224,60,60,0.12)',
-                      color: alert.is_blocked ? '#2ECC8A' : '#E03C3C',
+                      color: alert.is_blocked ? '#12a672' : '#E03C3C',
                       border: `1px solid ${alert.is_blocked ? 'rgba(46,204,138,0.25)' : 'rgba(224,60,60,0.25)'}`,
                     }}>
                       {alert.is_blocked ? 'ISOLATED' : 'ACTIVE'}
@@ -175,7 +175,7 @@ export default function ThreatFeed() {
           </AnimatePresence>
 
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: '#3D4560', fontSize: 13, fontFamily: "'DM Mono', monospace" }}>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: '#9aa1ad', fontSize: 13, fontFamily: "'DM Mono', monospace" }}>
               <ShieldAlert size={32} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
               <div>No threats matching current filters</div>
             </div>
@@ -186,33 +186,33 @@ export default function ThreatFeed() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
           {/* Mini stat cards */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Live Stats
             </div>
-            <StatTile layout="row" panel={false} label="Total alerts" value={alerts.length} color="#8A95B0" />
+            <StatTile layout="row" panel={false} label="Total alerts" value={alerts.length} color="#5a616e" />
             <StatTile layout="row" panel={false} label="Critical" value={criticalCount} color="#E03C3C" />
-            <StatTile layout="row" panel={false} label="Isolated" value={blockedCount} color="#2ECC8A" />
+            <StatTile layout="row" panel={false} label="Isolated" value={blockedCount} color="#12a672" />
           </div>
 
           {/* Top attacking IPs */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Top Attacking IPs
             </div>
             {topIPs.map(([ip, count]) => (
               <div key={ip} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ color: '#E8EDF5', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{ip}</span>
+                <span style={{ color: '#1b1f27', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{ip}</span>
                 <span style={{ color: '#E03C3C', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{count}</span>
               </div>
             ))}
             {topIPs.length === 0 && (
-              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>No data</div>
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>No data</div>
             )}
           </div>
 
           {/* Attack type distribution */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Attack Types
             </div>
             {TYPES.filter((t) => t !== 'All').map((type) => {
@@ -221,10 +221,10 @@ export default function ThreatFeed() {
               return (
                 <div key={type} style={{ marginBottom: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ color: '#8A95B0', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>{type}</span>
-                    <span style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>{count}</span>
+                    <span style={{ color: '#5a616e', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>{type}</span>
+                    <span style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>{count}</span>
                   </div>
-                  <div style={{ height: 3, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ height: 3, background: 'rgba(17,20,26,0.08)', borderRadius: 99, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: '#E03C3C', borderRadius: 99 }} />
                   </div>
                 </div>

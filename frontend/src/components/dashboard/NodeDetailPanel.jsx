@@ -21,7 +21,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
     <>
       {/* Backdrop — onClick original handler preserved */}
       <div
-        className="fixed inset-0 z-30 bg-black/50 backdrop-blur-[2px]"
+        className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -34,9 +34,9 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
         transition={{ type: 'spring', damping: 26, stiffness: 220 }}
         className="fixed top-0 right-0 w-72 h-full z-40 overflow-auto"
         style={{
-          background: '#1E1E1E',
-          borderLeft: '1px solid #262D3F',
-          boxShadow: '-16px 0 48px rgba(0,0,0,0.6)',
+          background: '#f0f2f5',
+          borderLeft: '1px solid #e2e5ea',
+          boxShadow: '-16px 0 48px rgba(17,20,26,0.12)',
         }}
         role="dialog"
         aria-label={`Node details: ${node.label}`}
@@ -93,7 +93,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
               </span>
               <span
                 className="text-[11px] font-mono"
-                style={{ color: node.is_blocked ? '#4F6EF7' : '#2ECC8A' }}
+                style={{ color: node.is_blocked ? '#3b56d9' : '#12a672' }}
               >
                 {node.is_blocked
                   ? '⬡ Isolated — blocked'
@@ -109,7 +109,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
                 </span>
                 <span
                   className="text-[11px] font-mono"
-                  style={{ color: node.source === 'observed' ? '#2ECC8A' : '#5A6480' }}
+                  style={{ color: node.source === 'observed' ? '#12a672' : '#727a86' }}
                   title={node.source === 'observed'
                     ? 'This host appeared in real captured traffic'
                     : 'Configured topology baseline — no traffic seen from this host yet'}
