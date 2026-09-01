@@ -11,7 +11,7 @@ const HEADERS = ['ID', 'TX Hash', 'Block #', 'Attack', 'Severity', 'Gas', 'Statu
 export default function BlockchainRecordsTable({ records, blockchainError, stickyHeader = false }) {
   return (
     <table className="gs-table w-full">
-      <thead className={stickyHeader ? 'sticky top-0' : undefined} style={{ background: '#1E2436' }}>
+      <thead className={stickyHeader ? 'sticky top-0' : undefined} style={{ background: '#eef1f5' }}>
         <tr>
           {HEADERS.map((h) => <th key={h}>{h}</th>)}
         </tr>

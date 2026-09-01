@@ -74,20 +74,20 @@ export default function BlockchainLedger() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+          <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Audit & Ledger
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             {tab === 'blockchain' && (
-              <span style={{ color: '#8B5CF6', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Ganache · Chain {chainId ?? '—'}</span>
+              <span style={{ color: '#7c3aed', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Ganache · Chain {chainId ?? '—'}</span>
             )}
             <DataFreshnessBadge dataErrors={{ forensics: dataErrors.forensics, enforcement: dataErrors.enforcement }} />
             <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
               <div style={{
                 width: 7, height: 7, borderRadius: '50%',
-                background: isConnected ? '#2ECC8A' : '#5A6480',
+                background: isConnected ? '#12a672' : '#727a86',
               }} />
-              <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+              <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
                 {isConnected ? 'Connected' : 'Offline'}
               </span>
             </div>
@@ -95,17 +95,17 @@ export default function BlockchainLedger() {
         </div>
         {/* Export buttons */}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={exportCSV} style={exportBtnStyle('#2ECC8A')}>
+          <button onClick={exportCSV} style={exportBtnStyle('#12a672')}>
             <Download size={12} /> CSV
           </button>
-          <button onClick={exportJSON} style={exportBtnStyle('#4F6EF7')}>
+          <button onClick={exportJSON} style={exportBtnStyle('#3b56d9')}>
             <Download size={12} /> JSON
           </button>
         </div>
       </div>
 
       {/* Tabs */}
-      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid rgba(255,255,255,0.06)' }}>
+      <div style={{ display: 'flex', gap: 12, borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
         <TabButton label="Blockchain Records" active={tab === 'blockchain'} onClick={() => setTab('blockchain')} />
         <TabButton label="Enforcement Log" active={tab === 'enforcement'} onClick={() => setTab('enforcement')} />
       </div>
@@ -114,19 +114,19 @@ export default function BlockchainLedger() {
         <>
           {/* Stats row */}
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
-            <StatTile label="Total Records" value={chainTxs.length} color="#8B5CF6" valueFontSize={22} />
-            <StatTile label="Confirmed" value={confirmedCount} color="#2ECC8A" valueFontSize={22} />
-            <StatTile label="Gas Used Today" value={formatGas(totalGas)} color="#E8922A" valueFontSize={22} />
-            <StatTile label="Last Block" value={lastBlock} color="#4F6EF7" valueFontSize={22} />
+            <StatTile label="Total Records" value={chainTxs.length} color="#7c3aed" valueFontSize={22} />
+            <StatTile label="Confirmed" value={confirmedCount} color="#12a672" valueFontSize={22} />
+            <StatTile label="Gas Used Today" value={formatGas(totalGas)} color="#b7791f" valueFontSize={22} />
+            <StatTile label="Last Block" value={lastBlock} color="#3b56d9" valueFontSize={22} />
           </div>
 
           {/* Filters */}
           <div className="gs-panel" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
-            <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Filter:</span>
+            <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Filter:</span>
             {STATUSES.map((s) => (
-              <FilterPill key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} color="#2ECC8A" />
+              <FilterPill key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} color="#12a672" />
             ))}
-            <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.08)' }} />
+            <div style={{ width: 1, height: 18, background: 'rgba(17,20,26,0.10)' }} />
             {ATTACK_TYPES.map((t) => (
               <FilterPill key={t} label={t} active={typeFilter === t} onClick={() => setTypeFilter(t)} color="#E03C3C" />
             ))}
@@ -136,7 +136,7 @@ export default function BlockchainLedger() {
           <div className="gs-panel" style={{ overflow: 'hidden' }}>
             <div style={{ overflowX: 'auto' }}>
               <table className="gs-table" style={{ width: '100%' }}>
-                <thead style={{ background: '#1E2436' }}>
+                <thead style={{ background: '#eef1f5' }}>
                   <tr>
                     {['TX Hash', 'Attack Type', 'Source IP', 'Block #', 'Gas Used', 'Severity', 'Status', 'Time'].map((h) => (
                       <th key={h}>{h}</th>
@@ -154,7 +154,7 @@ export default function BlockchainLedger() {
                         style={{ cursor: 'pointer' }}
                         onClick={() => setExpandedRow(expandedRow === (tx.id || i) ? null : (tx.id || i))}
                       >
-                        <td style={{ color: '#8B5CF6', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
+                        <td style={{ color: '#7c3aed', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
                           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                             <Link2 size={10} style={{ flexShrink: 0 }} />
                             <CopyableHash value={tx.tx_hash} iconSize={9} />
@@ -162,7 +162,7 @@ export default function BlockchainLedger() {
                               marginLeft: 4,
                               transform: expandedRow === (tx.id || i) ? 'rotate(180deg)' : 'rotate(0)',
                               transition: 'transform 200ms',
-                              color: '#5A6480',
+                              color: '#727a86',
                             }} />
                           </div>
                         </td>
@@ -171,18 +171,18 @@ export default function BlockchainLedger() {
                             {tx.attack_type}
                           </span>
                         </td>
-                        <td style={{ color: '#E8EDF5', fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{tx.source_ip}</td>
-                        <td style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>#{tx.block_number}</td>
-                        <td style={{ color: '#8A95B0', fontFamily: "'DM Mono', monospace" }}>{tx.gas_used?.toLocaleString()}</td>
+                        <td style={{ color: '#1b1f27', fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{tx.source_ip}</td>
+                        <td style={{ color: '#3b56d9', fontFamily: "'DM Mono', monospace" }}>#{tx.block_number}</td>
+                        <td style={{ color: '#5a616e', fontFamily: "'DM Mono', monospace" }}>{tx.gas_used?.toLocaleString()}</td>
                         <td>
-                          <span style={{ color: tx.severity >= 8 ? '#E03C3C' : tx.severity >= 5 ? '#E8922A' : '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>
+                          <span style={{ color: tx.severity >= 8 ? '#E03C3C' : tx.severity >= 5 ? '#b7791f' : '#3b56d9', fontFamily: "'DM Mono', monospace" }}>
                             {tx.severity}/10
                           </span>
                         </td>
                         <td>
                           <BlockchainStatusBadge status={tx.status} />
                         </td>
-                        <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
+                        <td style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
                           {formatEventTimestamp(tx.timestamp)}
                         </td>
                       </motion.tr>
@@ -196,20 +196,20 @@ export default function BlockchainLedger() {
                                 initial={{ height: 0, opacity: 0 }}
                                 animate={{ height: 'auto', opacity: 1 }}
                                 exit={{ height: 0, opacity: 0 }}
-                                style={{ overflow: 'hidden', background: 'rgba(79,110,247,0.04)', borderTop: '1px solid rgba(255,255,255,0.04)' }}
+                                style={{ overflow: 'hidden', background: 'rgba(79,110,247,0.04)', borderTop: '1px solid rgba(17,20,26,0.05)' }}
                               >
                                 <div style={{ padding: '12px 16px', fontFamily: "'DM Mono', monospace", fontSize: 11 }}>
                                   <div style={{ marginBottom: 6 }}>
-                                    <span style={{ color: '#3D4560' }}>Full TX Hash: </span>
-                                    <span style={{ color: '#8B5CF6' }}>{tx.tx_hash || '—'}</span>
+                                    <span style={{ color: '#9aa1ad' }}>Full TX Hash: </span>
+                                    <span style={{ color: '#7c3aed' }}>{tx.tx_hash || '—'}</span>
                                   </div>
                                   <div style={{ marginBottom: 6 }}>
-                                    <span style={{ color: '#3D4560' }}>Incident Hash: </span>
-                                    <span style={{ color: '#5A6480' }}>{tx.incident_hash}</span>
+                                    <span style={{ color: '#9aa1ad' }}>Incident Hash: </span>
+                                    <span style={{ color: '#727a86' }}>{tx.incident_hash}</span>
                                   </div>
                                   <div>
-                                    <span style={{ color: '#3D4560' }}>Forensics URI: </span>
-                                    <span style={{ color: '#4F6EF7' }}>{tx.forensics_uri}</span>
+                                    <span style={{ color: '#9aa1ad' }}>Forensics URI: </span>
+                                    <span style={{ color: '#3b56d9' }}>{tx.forensics_uri}</span>
                                   </div>
                                 </div>
                               </motion.div>
@@ -222,7 +222,7 @@ export default function BlockchainLedger() {
 
                   {filtered.length === 0 && (
                     <tr>
-                      <td colSpan={8} style={{ textAlign: 'center', padding: '48px 0', color: '#3D4560', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+                      <td colSpan={8} style={{ textAlign: 'center', padding: '48px 0', color: '#9aa1ad', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
                         No blockchain records match the current filter.
                       </td>
                     </tr>
@@ -245,8 +245,8 @@ function EnforcementTable({ actions }) {
   if (!actions || actions.length === 0) {
     return (
       <div className="gs-panel" style={{ padding: '48px 0', textAlign: 'center' }}>
-        <ShieldCheck size={32} style={{ color: '#3D4560', margin: '0 auto 12px' }} />
-        <div style={{ color: '#3D4560', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+        <ShieldCheck size={32} style={{ color: '#9aa1ad', margin: '0 auto 12px' }} />
+        <div style={{ color: '#9aa1ad', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
           No enforcement actions have been logged yet.
         </div>
       </div>
@@ -257,7 +257,7 @@ function EnforcementTable({ actions }) {
     <div className="gs-panel" style={{ overflow: 'hidden' }}>
       <div style={{ overflowX: 'auto' }}>
         <table className="gs-table" style={{ width: '100%' }}>
-          <thead style={{ background: '#1E2436' }}>
+          <thead style={{ background: '#eef1f5' }}>
             <tr>
               {['ID', 'IP Address', 'Action', 'Reason', 'Status', 'Blockchain TX', 'Time'].map((h) => (
                 <th key={h}>{h}</th>
@@ -272,12 +272,12 @@ function EnforcementTable({ actions }) {
                 animate={{ opacity: 1 }}
                 transition={{ delay: i * 0.03 }}
               >
-                <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>#{act.id}</td>
-                <td style={{ color: '#E8EDF5', fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{act.ip_address}</td>
+                <td style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>#{act.id}</td>
+                <td style={{ color: '#1b1f27', fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{act.ip_address}</td>
                 <td>
                   <span style={{
                     fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase',
-                    color: act.action === 'block' ? '#E03C3C' : '#4F6EF7',
+                    color: act.action === 'block' ? '#E03C3C' : '#3b56d9',
                     background: act.action === 'block' ? 'rgba(224,60,60,0.1)' : 'rgba(79,110,247,0.1)',
                     border: `1px solid ${act.action === 'block' ? 'rgba(224,60,60,0.2)' : 'rgba(79,110,247,0.2)'}`,
                     padding: '2px 7px', borderRadius: 4,
@@ -285,14 +285,14 @@ function EnforcementTable({ actions }) {
                     {act.action}
                   </span>
                 </td>
-                <td style={{ color: '#8A95B0', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>{act.reason}</td>
+                <td style={{ color: '#5a616e', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>{act.reason}</td>
                 <td>
                   <EnforcementStatusBadge status={act.status} error={act.error} />
                 </td>
-                <td style={{ color: '#8B5CF6', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
-                  {act.blockchain_tx ? <CopyableHash value={act.blockchain_tx} iconSize={9} /> : <span style={{ color: '#5A6480' }}>—</span>}
+                <td style={{ color: '#7c3aed', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
+                  {act.blockchain_tx ? <CopyableHash value={act.blockchain_tx} iconSize={9} /> : <span style={{ color: '#727a86' }}>—</span>}
                 </td>
-                <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
+                <td style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
                   {formatEventTimestamp(act.created_at)}
                 </td>
               </motion.tr>
@@ -305,17 +305,17 @@ function EnforcementTable({ actions }) {
 }
 
 function EnforcementStatusBadge({ status, error }) {
-  let color = '#5A6480'
-  let bg = 'rgba(255,255,255,0.05)'
+  let color = '#727a86'
+  let bg = 'rgba(17,20,26,0.06)'
   
   if (status === 'enforced' || status === 'removed') {
-    color = '#2ECC8A'
+    color = '#12a672'
     bg = 'rgba(46,204,138,0.1)'
   } else if (status === 'simulated') {
-    color = '#4F6EF7'
+    color = '#3b56d9'
     bg = 'rgba(79,110,247,0.1)'
   } else if (status === 'pending_enforcement' || status === 'pending_unblock') {
-    color = '#E8922A'
+    color = '#b7791f'
     bg = 'rgba(232,146,42,0.1)'
   } else if (status === 'failed') {
     color = '#E03C3C'
@@ -348,8 +348,8 @@ function TabButton({ label, active, onClick }) {
         padding: '10px 16px',
         background: 'transparent',
         border: 'none',
-        borderBottom: active ? '2px solid #4F6EF7' : '2px solid transparent',
-        color: active ? '#4F6EF7' : '#5A6480',
+        borderBottom: active ? '2px solid #3b56d9' : '2px solid transparent',
+        color: active ? '#3b56d9' : '#727a86',
         fontFamily: "'DM Mono', monospace",
         fontSize: 12,
         cursor: 'pointer',

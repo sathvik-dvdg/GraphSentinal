@@ -9,14 +9,14 @@ import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
 
 const NAV_ITEMS = [
-  { path: '/dashboard',  Icon: LayoutDashboard, label: 'Dashboard',         color: '#8A95B0' },
+  { path: '/dashboard',  Icon: LayoutDashboard, label: 'Dashboard',         color: '#5a616e' },
   { path: '/network',    Icon: Network,          label: 'Network Topology',  color: '#1D9E75' },
   { path: '/threats',    Icon: ShieldAlert,      label: 'Threat Feed',       color: '#E03C3C' },
-  { path: '/forensics',  Icon: Search,           label: 'Forensics',         color: '#4F6EF7' },
-  { path: '/blockchain', Icon: Link2,            label: 'Audit & Ledger',    color: '#8B5CF6' },
+  { path: '/forensics',  Icon: Search,           label: 'Forensics',         color: '#3b56d9' },
+  { path: '/blockchain', Icon: Link2,            label: 'Audit & Ledger',    color: '#7c3aed' },
   { path: '/timeline',   Icon: TrendingUp,       label: 'Timeline',          color: '#1D9E75' },
-  { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: '#2ECC8A' },
-  { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: '#E8922A' },
+  { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: '#12a672' },
+  { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: '#b7791f' },
 ]
 
 export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }) {
@@ -28,8 +28,8 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
     <aside
       style={{
         height: '100%',
-        background: '#111115',
-        borderRight: '1px solid rgba(255,255,255,0.06)',
+        background: '#ffffff',
+        borderRight: '1px solid rgba(17,20,26,0.08)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -46,7 +46,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
           alignItems: 'center',
           padding: '0 16px',
           gap: 10,
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid rgba(17,20,26,0.08)',
           flexShrink: 0,
         }}
       >
@@ -64,7 +64,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             flexShrink: 0,
           }}
         >
-          <svg viewBox="0 0 24 24" fill="none" style={{ width: 14, height: 14, color: '#4F6EF7' }} stroke="currentColor" strokeWidth={2}>
+          <svg viewBox="0 0 24 24" fill="none" style={{ width: 14, height: 14, color: '#3b56d9' }} stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" />
           </svg>
         </div>
@@ -72,7 +72,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
         {expanded && (
           <span
             style={{
-              color: '#E8EDF5',
+              color: '#1b1f27',
               fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
               fontWeight: 600,
               fontSize: 13,
@@ -93,7 +93,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             marginLeft: expanded ? 0 : 'auto',
             background: pinned ? 'rgba(79,110,247,0.12)' : 'none',
             border: 'none',
-            color: pinned ? '#4F6EF7' : 'rgba(255,255,255,0.25)',
+            color: pinned ? '#3b56d9' : 'rgba(27,31,39,0.32)',
             cursor: 'pointer',
             padding: 4,
             borderRadius: 6,
@@ -119,7 +119,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               padding: '9px 16px',
               textDecoration: 'none',
               borderLeft: isActive ? `3px solid ${color}` : '3px solid transparent',
-              background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+              background: isActive ? 'rgba(17,20,26,0.08)' : 'transparent',
               transition: 'background 150ms, border-color 150ms',
               position: 'relative',
               overflow: 'hidden',
@@ -133,7 +133,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             {expanded && (
               <span
                 style={{
-                  color: 'rgba(255,255,255,0.75)',
+                  color: 'rgba(27,31,39,0.80)',
                   fontSize: 12,
                   fontFamily: "'DM Mono', monospace",
                   whiteSpace: 'nowrap',
@@ -151,7 +151,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               <span
                 style={{
                   marginLeft: 'auto',
-                  background: '#E8922A',
+                  background: '#b7791f',
                   color: '#fff',
                   borderRadius: 999,
                   fontSize: 9,
@@ -170,7 +170,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
       </nav>
 
       {/* Bottom: Settings + user strip */}
-      <div style={{ borderTop: '1px solid rgba(255,255,255,0.06)', flexShrink: 0 }}>
+      <div style={{ borderTop: '1px solid rgba(17,20,26,0.08)', flexShrink: 0 }}>
         <NavLink
           to="/settings"
           title={!expanded ? 'Settings' : undefined}
@@ -180,14 +180,14 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             gap: 12,
             padding: '9px 16px',
             textDecoration: 'none',
-            borderLeft: isActive ? '3px solid #8A95B0' : '3px solid transparent',
-            background: isActive ? 'rgba(255,255,255,0.06)' : 'transparent',
+            borderLeft: isActive ? '3px solid #5a616e' : '3px solid transparent',
+            background: isActive ? 'rgba(17,20,26,0.08)' : 'transparent',
             transition: 'background 150ms',
           })}
         >
-          <Settings size={18} style={{ color: '#8A95B0', flexShrink: 0 }} />
+          <Settings size={18} style={{ color: '#5a616e', flexShrink: 0 }} />
           {expanded && (
-            <span style={{ color: 'rgba(255,255,255,0.75)', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+            <span style={{ color: 'rgba(27,31,39,0.80)', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
               Settings
             </span>
           )}
@@ -199,9 +199,9 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             style={{
               margin: '6px 10px 10px',
               padding: '8px 10px',
-              background: 'rgba(255,255,255,0.04)',
+              background: 'rgba(17,20,26,0.05)',
               borderRadius: 8,
-              border: '1px solid rgba(255,255,255,0.06)',
+              border: '1px solid rgba(17,20,26,0.08)',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
@@ -212,7 +212,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1D9E75, #4F6EF7)',
+                background: 'linear-gradient(135deg, #1D9E75, #3b56d9)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
@@ -226,10 +226,10 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               {useAuthStore.getState().user?.username ? useAuthStore.getState().user.username.substring(0,2).toUpperCase() : 'SD'}
             </div>
             <div>
-              <div style={{ color: '#E8EDF5', fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <div style={{ color: '#1b1f27', fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {useAuthStore.getState().user?.username || 'admin'}
               </div>
-              <div style={{ color: 'rgba(255,255,255,0.35)', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ color: 'rgba(27,31,39,0.45)', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                 Admin
               </div>
             </div>
@@ -244,7 +244,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1D9E75, #4F6EF7)',
+                background: 'linear-gradient(135deg, #1D9E75, #3b56d9)',
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',

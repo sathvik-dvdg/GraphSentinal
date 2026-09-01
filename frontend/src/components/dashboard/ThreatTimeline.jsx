@@ -38,38 +38,38 @@ export default function ThreatTimeline({ data }) {
                 <stop offset="95%" stopColor="#E03C3C" stopOpacity={0} />
               </linearGradient>
               <linearGradient id="blocked-grad" x1="0" y1="0" x2="0" y2="1">
-                <stop offset="5%"  stopColor="#2ECC8A" stopOpacity={0.3} />
-                <stop offset="95%" stopColor="#2ECC8A" stopOpacity={0} />
+                <stop offset="5%"  stopColor="#12a672" stopOpacity={0.3} />
+                <stop offset="95%" stopColor="#12a672" stopOpacity={0} />
               </linearGradient>
             </defs>
 
             <CartesianGrid
               strokeDasharray="3 3"
-              stroke="rgba(38,45,63,0.8)"
+              stroke="rgba(226,229,234,0.9)"
               vertical={false}
             />
             <XAxis
               dataKey="time"
-              tick={{ fill: '#3D4560', fontSize: 9, fontFamily: '"DM Mono", monospace' }}
-              axisLine={{ stroke: 'rgba(38,45,63,0.6)' }}
+              tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: '"DM Mono", monospace' }}
+              axisLine={{ stroke: 'rgba(226,229,234,0.8)' }}
               tickLine={false}
             />
             <YAxis
-              tick={{ fill: '#3D4560', fontSize: 9, fontFamily: '"DM Mono", monospace' }}
+              tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: '"DM Mono", monospace' }}
               axisLine={false}
               tickLine={false}
             />
             <Tooltip
               contentStyle={{
-                background: '#1E1E1E',
-                border: '1px solid #262D3F',
+                background: '#f0f2f5',
+                border: '1px solid #e2e5ea',
                 borderRadius: '8px',
                 fontFamily: '"DM Mono", monospace',
                 fontSize: '10px',
-                color: '#E8EDF5',
-                boxShadow: '0 8px 24px rgba(0,0,0,0.5)',
+                color: '#1b1f27',
+                boxShadow: '0 8px 24px rgba(17,20,26,0.10)',
               }}
-              itemStyle={{ color: '#8A95B0' }}
+              itemStyle={{ color: '#5a616e' }}
               cursor={{ stroke: 'rgba(79,110,247,0.3)', strokeDasharray: '3 3' }}
             />
             {/* Original Area components — dataKey, stroke, fill preserved */}
@@ -85,7 +85,7 @@ export default function ThreatTimeline({ data }) {
             <Area
               type="monotone"
               dataKey="blocked"
-              stroke="#2ECC8A"
+              stroke="#12a672"
               fill="url(#blocked-grad)"
               strokeWidth={1.5}
               dot={false}

@@ -73,9 +73,9 @@ export default function NodeInspector({ node, onClose }) {
         right: 0,
         height: '100%',
         width: 300,
-        background: '#141418',
-        borderLeft: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '-12px 0 40px rgba(0,0,0,0.5)',
+        background: '#ffffff',
+        borderLeft: '1px solid rgba(17,20,26,0.10)',
+        boxShadow: '-12px 0 40px rgba(17,20,26,0.10)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 20,
@@ -86,7 +86,7 @@ export default function NodeInspector({ node, onClose }) {
       <div
         style={{
           padding: '14px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid rgba(17,20,26,0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -97,7 +97,7 @@ export default function NodeInspector({ node, onClose }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span
               style={{
-                color: '#E8EDF5',
+                color: '#1b1f27',
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 fontWeight: 600,
                 fontSize: 14,
@@ -124,7 +124,7 @@ export default function NodeInspector({ node, onClose }) {
               </span>
             )}
           </div>
-          <div style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+          <div style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
             {node.ip}
           </div>
         </div>
@@ -132,8 +132,8 @@ export default function NodeInspector({ node, onClose }) {
           onClick={onClose}
           style={{
             background: 'none',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: '#5A6480',
+            border: '1px solid rgba(17,20,26,0.10)',
+            color: '#727a86',
             cursor: 'pointer',
             borderRadius: 6,
             padding: 5,
@@ -154,7 +154,7 @@ export default function NodeInspector({ node, onClose }) {
               display: 'inline-block',
               background: 'rgba(79,110,247,0.12)',
               border: '1px solid rgba(79,110,247,0.3)',
-              color: '#4F6EF7',
+              color: '#3b56d9',
               fontSize: 11,
               fontFamily: "'DM Mono', monospace",
               fontWeight: 600,
@@ -187,7 +187,7 @@ export default function NodeInspector({ node, onClose }) {
           <div style={{ marginBottom: 16 }}>
             <Label>Data Source</Label>
             <span
-              style={{ color: realNode.source === 'observed' ? '#2ECC8A' : '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}
+              style={{ color: realNode.source === 'observed' ? '#12a672' : '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}
               title={realNode.source === 'observed'
                 ? 'This host appeared in real captured traffic'
                 : 'Configured topology baseline — no traffic seen from this host yet'}
@@ -205,7 +205,7 @@ export default function NodeInspector({ node, onClose }) {
               style={{
                 flex: 1,
                 height: 6,
-                background: 'rgba(255,255,255,0.06)',
+                background: 'rgba(17,20,26,0.08)',
                 borderRadius: 99,
                 overflow: 'hidden',
               }}
@@ -214,13 +214,13 @@ export default function NodeInspector({ node, onClose }) {
                 style={{
                   height: '100%',
                   width: `${anomalyScore}%`,
-                  background: anomalyScore > 75 ? '#E03C3C' : anomalyScore > 50 ? '#E8922A' : '#4F6EF7',
+                  background: anomalyScore > 75 ? '#E03C3C' : anomalyScore > 50 ? '#b7791f' : '#3b56d9',
                   borderRadius: 99,
                   transition: 'width 600ms ease',
                 }}
               />
             </div>
-            <span style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 32 }}>
+            <span style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 32 }}>
               {anomalyScore}%
             </span>
           </div>
@@ -230,7 +230,7 @@ export default function NodeInspector({ node, onClose }) {
         <div style={{ marginBottom: 20 }}>
           <Label>Blockchain Events ({nodeChainEvents.length})</Label>
           {nodeChainEvents.length === 0 ? (
-            <span style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+            <span style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
               No on-chain records for this node
             </span>
           ) : (
@@ -245,10 +245,10 @@ export default function NodeInspector({ node, onClose }) {
                     padding: '6px 10px',
                   }}
                 >
-                  <div style={{ color: '#8B5CF6', fontSize: 10, fontFamily: "'DM Mono', monospace", marginBottom: 2 }}>
+                  <div style={{ color: '#7c3aed', fontSize: 10, fontFamily: "'DM Mono', monospace", marginBottom: 2 }}>
                     {tx.tx_hash?.slice(0, 14)}…
                   </div>
-                  <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                  <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                     {tx.attack_type} · #{tx.block_number}
                   </div>
                 </div>
@@ -262,7 +262,7 @@ export default function NodeInspector({ node, onClose }) {
       <div
         style={{
           padding: 16,
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid rgba(17,20,26,0.08)',
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
@@ -272,21 +272,21 @@ export default function NodeInspector({ node, onClose }) {
         <button
           onClick={handleToggleIsolate}
           disabled={isToggling}
-          style={{ ...actionBtnStyle(isIsolated ? '#2ECC8A' : '#E03C3C'), opacity: isToggling ? 0.6 : 1, cursor: isToggling ? 'default' : 'pointer' }}
+          style={{ ...actionBtnStyle(isIsolated ? '#12a672' : '#E03C3C'), opacity: isToggling ? 0.6 : 1, cursor: isToggling ? 'default' : 'pointer' }}
         >
           <Shield size={12} />
           {isToggling ? 'Working…' : isIsolated ? 'Deisolate Node' : 'Isolate Node'}
         </button>
         <button
           onClick={() => navigate('/forensics')}
-          style={actionBtnStyle('#4F6EF7')}
+          style={actionBtnStyle('#3b56d9')}
         >
           <ExternalLink size={12} />
           Open Forensics
         </button>
         <button
           onClick={() => navigate('/network')}
-          style={actionBtnStyle('#2ECC8A')}
+          style={actionBtnStyle('#12a672')}
         >
           <Zap size={12} />
           View in 3D Graph
@@ -298,7 +298,7 @@ export default function NodeInspector({ node, onClose }) {
 
 function Label({ children }) {
   return (
-    <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+    <div style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
       {children}
     </div>
   )
@@ -306,7 +306,7 @@ function Label({ children }) {
 
 function Value({ children }) {
   return (
-    <div style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+    <div style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
       {children}
     </div>
   )

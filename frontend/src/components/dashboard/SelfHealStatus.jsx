@@ -33,7 +33,7 @@ export default function SelfHealStatus({ events }) {
               transition={{ duration: 0.25 }}
               className="rounded-lg overflow-hidden cursor-default"
               style={{
-                background: '#1E1E1E',
+                background: '#f0f2f5',
                 border: '1px solid rgba(46,204,138,0.12)',
                 borderLeft: '2px solid rgba(46,204,138,0.45)',
               }}
@@ -44,7 +44,7 @@ export default function SelfHealStatus({ events }) {
                   {/* Healing status dot — animated color transition */}
                   <motion.div
                     className="w-2 h-2 rounded-full shrink-0"
-                    animate={{ backgroundColor: ['#E03C3C', '#4F6EF7', '#2ECC8A'] }}
+                    animate={{ backgroundColor: ['#E03C3C', '#3b56d9', '#12a672'] }}
                     transition={{ duration: 2, repeat: Infinity }}
                     aria-hidden="true"
                   />
@@ -80,7 +80,7 @@ export default function SelfHealStatus({ events }) {
                   </div>
                   <div
                     className="relative rounded-full overflow-hidden"
-                    style={{ height: 3, background: '#262D3F' }}
+                    style={{ height: 3, background: '#e2e5ea' }}
                     role="progressbar"
                     aria-valuenow={event.network_stability_after}
                     aria-valuemin={0}
@@ -98,7 +98,7 @@ export default function SelfHealStatus({ events }) {
                     {/* After recovery bar */}
                     <motion.div
                       className="absolute top-0 h-full rounded-full motion-functional"
-                      style={{ background: 'linear-gradient(90deg, #4F6EF7, #2ECC8A)' }}
+                      style={{ background: 'linear-gradient(90deg, #3b56d9, #12a672)' }}
                       initial={{ width: `${event.network_stability_before}%` }}
                       animate={{ width: `${event.network_stability_after}%` }}
                       transition={{ duration: 1.5, ease: 'easeOut' }}
