@@ -148,6 +148,14 @@ class BlockRequest(BaseModel):
     reason: BlockReason = "MANUAL_OVERRIDE"
     action: BlockAction = "block"
 
+    @field_validator("ip")
+    @classmethod
+    def validate_ip_format(cls, value: str) -> str:
+        try:
+            return str(ip_address(value.strip()))
+        except ValueError as exc:
+            raise ValueError(f"Invalid IP address format: {value}") from exc
+
 
 class BlockResponse(BaseModel):
     status: Literal["blocked", "unblocked"]
