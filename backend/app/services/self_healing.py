@@ -30,28 +30,40 @@ class SelfHealingEngine:
             status = self._enforce_block(clean_ip)
             duration_ms = max(1, int((time.perf_counter() - start_time) * 1000))
 
-            stmt = (
-                sqlite_upsert(BlockedIP)
-                .values(
-                    ip_address=clean_ip,
-                    reason=reason,
-                    attack_type=attack_type,
-                    threat_score=float(threat_score),
-                    enforcement_status=status,
-                    blocked_at=datetime.now(timezone.utc),
+            try:
+                stmt = (
+                    sqlite_upsert(BlockedIP)
+                    .values(
+                        ip_address=clean_ip,
+                        reason=reason,
+                        attack_type=attack_type,
+                        threat_score=float(threat_score),
+                        enforcement_status=status,
+                        blocked_at=datetime.now(timezone.utc),
+                    )
+                    .on_conflict_do_update(
+                        index_elements=[BlockedIP.ip_address],
+                        set_={
+                            "reason": reason,
+                            "attack_type": attack_type,
+                            "threat_score": float(threat_score),
+                            "enforcement_status": status,
+                        },
+                    )
                 )
-                .on_conflict_do_update(
-                    index_elements=[BlockedIP.ip_address],
-                    set_={
-                        "reason": reason,
-                        "attack_type": attack_type,
-                        "threat_score": float(threat_score),
-                        "enforcement_status": status,
-                    },
-                )
-            )
-            db.execute(stmt)
-            db.commit()
+                db.execute(stmt)
+                db.commit()
+            except Exception:
+                db.rollback()
+                row = db.query(BlockedIP).filter(BlockedIP.ip_address == clean_ip).one_or_none()
+                if row is None:
+                    row = BlockedIP(ip_address=clean_ip)
+                    db.add(row)
+                row.reason = reason
+                row.attack_type = attack_type
+                row.threat_score = float(threat_score)
+                row.enforcement_status = status
+                db.commit()
             return self._healing_event(
                 ip=clean_ip,
                 attack_type=attack_type or ("Manual" if reason == "MANUAL_OVERRIDE" else "DDoS"),

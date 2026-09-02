@@ -49,7 +49,7 @@ async def block_or_unblock(
     req_id = get_current_request_id(req)
     try:
         if request.action == "unblock":
-            result = await run_in_threadpool(healer.unblock_ip, request.ip, db=db)
+            result = healer.unblock_ip(request.ip, db=db)
 
             # Reflect the unblock in incident history so it doesn't keep
             # claiming the IP is still blocked (Error.md #14), and record a
@@ -73,11 +73,15 @@ async def block_or_unblock(
             db.add(closure)
             db.commit()
             db.refresh(closure)
-            tx_result = await run_in_threadpool(
-                BlockchainAdapter.get_instance().release_node,
-                ip=result["ip"],
-                reason="MANUAL_OVERRIDE",
-            )
+            try:
+                tx_result = await run_in_threadpool(
+                    BlockchainAdapter.get_instance().release_node,
+                    ip=result["ip"],
+                    reason="MANUAL_OVERRIDE",
+                )
+            except Exception as exc:
+                _logger.warning("Blockchain release_node failed for %s: %s", result["ip"], exc)
+                tx_result = {"status": "error", "error": str(exc), "tx_hash": None}
             closure.blockchain_tx = tx_result.get("tx_hash")
             # N-03: persist chain context for forensic reconciliation
             closure.blockchain_chain_id = tx_result.get("chain_id")
@@ -116,7 +120,7 @@ async def block_or_unblock(
                 "enforcement_status": result["enforcement_status"],
             }
 
-        event = await run_in_threadpool(healer.block_ip, request.ip, reason=request.reason, db=db)
+        event = healer.block_ip(request.ip, reason=request.reason, db=db)
 
         now = datetime.now(timezone.utc)
         incident = Incident(
@@ -135,14 +139,18 @@ async def block_or_unblock(
         db.add(incident)
         db.commit()
         db.refresh(incident)
-        tx_result = await run_in_threadpool(
-            BlockchainAdapter.get_instance().store_incident,
-            source_ip=event["ip"],
-            attack_type="Manual",
-            severity=score_to_severity_int(event.get("trigger_score") or 0.0) or 1,
-            is_blocked=True,
-            incident_id=incident.id,
-        )
+        try:
+            tx_result = await run_in_threadpool(
+                BlockchainAdapter.get_instance().store_incident,
+                source_ip=event["ip"],
+                attack_type="Manual",
+                severity=score_to_severity_int(event.get("trigger_score") or 0.0) or 1,
+                is_blocked=True,
+                incident_id=incident.id,
+            )
+        except Exception as exc:
+            _logger.warning("Blockchain store_incident failed for %s: %s", event["ip"], exc)
+            tx_result = {"status": "retry", "error": str(exc), "tx_hash": None}
         incident.blockchain_tx = tx_result.get("tx_hash")
         # N-03: persist chain context for forensic reconciliation
         incident.blockchain_chain_id = tx_result.get("chain_id")

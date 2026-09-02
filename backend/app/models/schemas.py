@@ -152,9 +152,12 @@ class BlockRequest(BaseModel):
     @classmethod
     def validate_ip_format(cls, value: str) -> str:
         try:
-            return str(ip_address(value.strip()))
+            addr = ip_address(value.strip())
+            if addr.version != 4:
+                raise ValueError(f"Only IPv4 addresses are supported: {value}")
+            return str(addr)
         except ValueError as exc:
-            raise ValueError(f"Invalid IP address format: {value}") from exc
+            raise ValueError(f"Invalid IPv4 address: {value}") from exc
 
 
 class BlockResponse(BaseModel):
