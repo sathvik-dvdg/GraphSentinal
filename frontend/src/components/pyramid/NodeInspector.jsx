@@ -57,13 +57,12 @@ export default function NodeInspector({ node, onClose }) {
       if (blockRes?.healing_event) {
         addHealingEvent(blockRes.healing_event)
       }
-      const [graphRes, blockedRes, statsRes, healingRes] = await Promise.allSettled([
-        getGraph(), getBlocked(), getStats(), getHealingEvents(),
+      const [graphRes, blockedRes, statsRes] = await Promise.allSettled([
+        getGraph(), getBlocked(), getStats(),
       ])
       if (graphRes.status === 'fulfilled') setGraphData(graphRes.value)
       if (blockedRes.status === 'fulfilled') setBlockedIPs(blockedRes.value.blocked_ips)
       if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
-      if (healingRes.status === 'fulfilled') setHealingEvents(healingRes.value.events)
     } catch (err) {
       console.error(`[NodeInspector] Failed to ${isIsolated ? 'unblock' : 'block'} ${ip} — backend rejected or is unreachable:`, err)
     } finally {

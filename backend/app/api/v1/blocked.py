@@ -1,3 +1,4 @@
+import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
@@ -11,7 +12,9 @@ from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.enforcement_log import log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
 from app.services.threat_analyzer import score_to_severity_int
+from app.websocket.server import sio
 
+_logger = logging.getLogger("graphsentinel.blocked")
 
 router = APIRouter()
 
@@ -185,10 +188,9 @@ async def block_or_unblock(
         )
 
         try:
-            from app.main import sio
             await sio.emit("healing_triggered", event)
-        except Exception:
-            pass
+        except Exception as exc:
+            _logger.warning("Failed to emit healing_triggered event for IP %s: %s", event.get("ip"), exc)
 
         return {
             "status": "blocked",

@@ -9,7 +9,7 @@ from pydantic import BaseModel, Field, field_validator
 
 
 NodeStatus = Literal["normal", "suspicious", "malicious", "blocked"]
-AttackType = Literal["DDoS", "PortScan", "SSHBrute", "Botnet", "DoSHulk"]
+AttackType = Literal["DDoS", "PortScan", "SSHBrute", "Botnet", "DoSHulk", "Manual", "Heuristic", "Unknown"]
 Severity = Literal["info", "warning", "critical"]
 BlockAction = Literal["block", "unblock"]
 BlockReason = Literal["GNN_DETECTED", "HEURISTIC_DEGRADED", "MANUAL_OVERRIDE"]
@@ -220,12 +220,12 @@ class HealingEvent(BaseModel):
     timestamp: str
     ip: str
     action: Literal["ISOLATED"]
-    attack_type: str
+    attack_type: AttackType
     trigger_score: float
-    edges_severed: int
-    duration_ms: int
-    network_stability_before: int
-    network_stability_after: int
+    edges_severed: Optional[int] = None
+    duration_ms: Optional[int] = None
+    network_stability_before: Optional[int] = None
+    network_stability_after: Optional[int] = None
     enforcement_status: str
 
 

@@ -42,10 +42,7 @@ class RequestCorrelationMiddleware(BaseHTTPMiddleware):
             request_id_ctx_var.reset(token)
 
 
-sio = socketio.AsyncServer(
-    async_mode="asgi",
-    cors_allowed_origins=settings.cors_origins_list,
-)
+from app.websocket.server import sio
 
 
 
