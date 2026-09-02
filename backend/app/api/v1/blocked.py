@@ -81,8 +81,8 @@ async def block_or_unblock(
                     reason="MANUAL_OVERRIDE",
                 )
             except Exception as exc:
-                _logger.warning("Blockchain release_node failed for %s: %s", result["ip"], exc)
-                tx_result = {"status": "retry", "error": str(exc), "tx_hash": None}
+                _logger.warning("[req_id=%s] Blockchain release_node failed for %s: %s", req_id, result["ip"], exc)
+                tx_result = {"status": "retry", "error": "Blockchain write failed or offline", "tx_hash": None}
             closure.blockchain_tx = tx_result.get("tx_hash")
             # N-03: persist chain context for forensic reconciliation
             closure.blockchain_chain_id = tx_result.get("chain_id")
@@ -150,8 +150,8 @@ async def block_or_unblock(
                 incident_id=incident.id,
             )
         except Exception as exc:
-            _logger.warning("Blockchain store_incident failed for %s: %s", event["ip"], exc)
-            tx_result = {"status": "retry", "error": str(exc), "tx_hash": None}
+            _logger.warning("[req_id=%s] Blockchain store_incident failed for %s: %s", req_id, event["ip"], exc)
+            tx_result = {"status": "retry", "error": "Blockchain write failed or offline", "tx_hash": None}
         incident.blockchain_tx = tx_result.get("tx_hash")
         # N-03: persist chain context for forensic reconciliation
         incident.blockchain_chain_id = tx_result.get("chain_id")
@@ -212,6 +212,11 @@ async def block_or_unblock(
             "healing_event": event,
         }
     except ValueError as exc:
+        db.rollback()
         raise HTTPException(status_code=400, detail=str(exc)) from exc
+    except Exception as exc:
+        db.rollback()
+        _logger.exception("[req_id=%s] Unexpected error in block_or_unblock: %s", req_id, exc)
+        raise
 
 
