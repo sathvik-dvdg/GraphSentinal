@@ -8,7 +8,24 @@ import { STATUS_COLORS, ATTACK_COLORS } from '../../constants/theme'
 
 export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }) {
   const fgRef = useRef()
+  const containerRef = useRef()
+  const orbitRadiusRef = useRef(200)
   const [animatedNodeId, setAnimatedNodeId] = useState(null)
+  // react-force-graph-3d's own container auto-sizing was measuring the full
+  // viewport instead of this panel (visible as a tiny, off-center scene
+  // clipped inside the actual panel bounds) — track the real container size
+  // ourselves and pass it explicitly rather than relying on that detection.
+  const [size, setSize] = useState({ width: 0, height: 0 })
+
+  useEffect(() => {
+    const el = containerRef.current
+    if (!el) return
+    const update = () => setSize({ width: el.clientWidth, height: el.clientHeight })
+    update()
+    const observer = new ResizeObserver(update)
+    observer.observe(el)
+    return () => observer.disconnect()
+  }, [])
 
   // ── Cached per-status objects — built ONCE on mount using useMemo ──
   const statusObjects = useMemo(() => {
@@ -93,9 +110,10 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
     const timer = setInterval(() => {
       if (fgRef.current) {
         angle += 0.003
+        const r = orbitRadiusRef.current
         fgRef.current.cameraPosition({
-          x: 200 * Math.sin(angle),
-          z: 200 * Math.cos(angle),
+          x: r * Math.sin(angle),
+          z: r * Math.cos(angle),
         })
       }
     }, 50)
@@ -112,7 +130,16 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
       const group = new THREE.Group()
 
       // Main sphere — cloned from cached geometry/material (no new allocation)
+      // for the common case. Configured-but-unobserved baseline hosts (no
+      // traffic seen yet) get a dimmed material clone so they read as
+      // visually distinct from hosts that actually appeared in captured
+      // traffic (Error.md #9) — cloning only this material, not the shared
+      // one, so it doesn't dim every other node of the same status.
       const mesh = new THREE.Mesh(cached.geo, cached.mat)
+      if (node.source === 'configured') {
+        mesh.material = cached.mat.clone()
+        mesh.material.opacity = cached.mat.opacity * 0.4
+      }
       group.add(mesh)
 
       // Suspicious ring
@@ -200,9 +227,12 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
   const getParticleW = useCallback((link) => (link.value > 0.75 ? 3 : 2), [])
 
   return (
-    <div className="w-full h-full bg-transparent">
+    <div ref={containerRef} className="w-full h-full bg-transparent">
+      {size.width > 0 && size.height > 0 && (
       <ForceGraph3D
         ref={fgRef}
+        width={size.width}
+        height={size.height}
         graphData={graphData}
         nodeThreeObject={nodeThreeObject}
         nodeThreeObjectExtend={false}
@@ -216,6 +246,26 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
         enableNodeDrag={true}
         enableNavigationControls={true}
         showNavInfo={false}
+        cooldownTicks={100}
+        d3AlphaDecay={0.05}
+        d3VelocityDecay={0.4}
+        onEngineTick={() => {
+          if (fgRef.current) {
+            fgRef.current.d3Force('charge').distanceMax(220)
+          }
+        }}
+        onEngineStop={() => {
+          if (fgRef.current) {
+            fgRef.current.zoomToFit(400, 60)
+            const nodes = graphData.nodes || []
+            let maxDist = 150
+            nodes.forEach(n => {
+              const d = Math.sqrt((n.x||0)**2 + (n.y||0)**2 + (n.z||0)**2)
+              if (d > maxDist) maxDist = d
+            })
+            orbitRadiusRef.current = maxDist + 100
+          }
+        }}
         onNodeClick={(node) => {
           if (onNodeClick) onNodeClick(node)
           const d = 80
@@ -233,9 +283,11 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
             Status: <span style="color:${STATUS_COLORS[node.status]}">${node.status?.toUpperCase()}</span>
             ${node.status === 'malicious' ? ' ▲' : node.status === 'blocked' ? ' ⬡' : node.status === 'suspicious' ? ' ◆' : ' ●'}<br/>
             Threat: ${(node.threat_score * 100).toFixed(1)}% | Conns: ${node.connections}
+            ${node.source ? `<br/><span style="color:${node.source === 'observed' ? '#2ECC8A' : '#5A6480'}">${node.source === 'observed' ? '◆ Observed traffic' : '○ Configured, no traffic yet'}</span>` : ''}
           </div>`
         }
       />
+      )}
     </div>
   )
 }

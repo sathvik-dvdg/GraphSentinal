@@ -33,7 +33,6 @@ export default function SimulationProvider({ children }) {
   }, [addAlert, addTimelinePoint, connectionMode])
 
   const handleHealingTriggered = useCallback((event) => {
-    if (connectionMode === 'simulating') return
     setHealingNode(event.ip)
     addHealingEvent(event)
     addTimelinePoint({
@@ -41,7 +40,7 @@ export default function SimulationProvider({ children }) {
       threats: 0,
       blocked: 1,
     })
-  }, [setHealingNode, addHealingEvent, addTimelinePoint, connectionMode])
+  }, [setHealingNode, addHealingEvent, addTimelinePoint])
 
   useWebSocket({
     onGraphUpdate: handleGraphUpdate,

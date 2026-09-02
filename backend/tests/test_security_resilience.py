@@ -57,7 +57,135 @@ def test_analyze_rejects_max_flows():
     headers = {"X-API-Key": settings.backend_api_token}
     response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
     assert response.status_code == 422
-    assert "List should have at most 5000 items" in response.text
+    assert "Too many flows" in response.text
+
+
+def test_analyze_rejects_outside_cidr_without_persisting_incident(monkeypatch):
+    """O-F01: /api/v1/analyze rejects IP outside 10.0.0.0/24 with 422 without creating orphan Incident in DB."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+
+    monkeypatch.setattr(settings, "threat_threshold", 0.001)
+
+    flows = [
+        {
+            "src_ip": "192.168.1.100",
+            "dst_ip": "10.0.0.1",
+            "src_port": 54321,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "packet_count": 25000,
+            "byte_count": 9000000,
+            "duration_sec": 1.5,
+            "tcp_flags": 2,
+        }
+    ]
+    headers = {"X-API-Key": settings.backend_api_token}
+    response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
+    assert response.status_code == 422
+    assert "is outside" in response.text
+
+    db = SessionLocal()
+    orphan = db.query(Incident).filter(Incident.source_ip == "192.168.1.100").first()
+    db.close()
+
+    assert orphan is None
+
+
+def test_analyze_rejects_invalid_ip_format_without_persisting_incident(monkeypatch):
+    """O-F01: /api/v1/analyze rejects malformed/injection IP with 422 without creating orphan Incident in DB."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+
+    monkeypatch.setattr(settings, "threat_threshold", 0.001)
+
+    flows = [
+        {
+            "src_ip": "10.0.0.1; rm -rf /",
+            "dst_ip": "10.0.0.2",
+            "src_port": 54321,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "packet_count": 25000,
+            "byte_count": 9000000,
+            "duration_sec": 1.5,
+            "tcp_flags": 2,
+        }
+    ]
+    headers = {"X-API-Key": settings.backend_api_token}
+    response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
+    assert response.status_code == 422
+    assert "Invalid IP address" in response.text
+
+    db = SessionLocal()
+    orphan = db.query(Incident).filter(Incident.source_ip == "10.0.0.1; rm -rf /").first()
+    db.close()
+
+    assert orphan is None
+
+
+def test_threat_analyzer_direct_outside_cidr_no_db_persistence():
+    """O-F01 Unit Test: ThreatAnalyzer.evaluate() raises ValueError on outside-CIDR IP before creating Incident."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+    from app.services.threat_analyzer import ThreatAnalyzer
+
+    analyzer = ThreatAnalyzer()
+    analyzer.threshold = 0.50
+
+    db = SessionLocal()
+    count_before = db.query(Incident).count()
+    db.close()
+
+    prediction = {
+        "source_scores": {"192.168.1.50": 0.95},
+        "flow_scores": [{"flow_index": 0, "src_ip": "192.168.1.50", "dst_ip": "10.0.0.1", "score": 0.95}],
+    }
+    flows = [{"src_ip": "192.168.1.50", "dst_ip": "10.0.0.1", "packet_count": 1000, "byte_count": 50000}]
+
+    with pytest.raises(ValueError, match="is outside"):
+        analyzer.evaluate(prediction, flows)
+
+    db = SessionLocal()
+    count_after = db.query(Incident).count()
+    orphan = db.query(Incident).filter(Incident.source_ip == "192.168.1.50").first()
+    db.close()
+
+    assert count_after == count_before
+    assert orphan is None
+
+
+def test_analyze_valid_mininet_ip_persists_incident(monkeypatch):
+    """O-F01: /api/v1/analyze accepts valid Mininet host IP (e.g. 10.0.0.2) and persists Incident successfully."""
+    from app.database import SessionLocal
+    from app.models.incident import Incident
+
+    monkeypatch.setattr(settings, "threat_threshold", 0.001)
+
+    flows = [
+        {
+            "src_ip": "10.0.0.2",
+            "dst_ip": "10.0.0.1",
+            "src_port": 54321,
+            "dst_port": 80,
+            "protocol": "TCP",
+            "packet_count": 25000,
+            "byte_count": 9000000,
+            "duration_sec": 1.5,
+            "tcp_flags": 2,
+        }
+    ]
+    headers = {"X-API-Key": settings.backend_api_token}
+    response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
+    assert response.status_code == 200
+    data = response.json()
+    assert "10.0.0.2" in data["predictions"]
+
+    db = SessionLocal()
+    incident = db.query(Incident).filter(Incident.source_ip == "10.0.0.2").order_by(Incident.id.desc()).first()
+    db.close()
+
+    assert incident is not None
 
 
 def test_graph_builder_rejects_nan_and_negative():
@@ -150,6 +278,12 @@ def test_sqlite_concurrency_locking():
 
 def test_model_shape_mismatch_fails_gracefully():
     """If graph_builder produces 8 features instead of 7, InferenceService degrades gracefully."""
+    try:
+        import torch as _torch
+    except Exception:
+        pytest.skip("torch not available on this platform (e.g. missing fbgemm.dll)")
+        return
+
     from app.services.inference_service import InferenceService
     
     # Reset instance for testing
@@ -172,10 +306,9 @@ def test_model_shape_mismatch_fails_gracefully():
     
     with patch("app.services.inference_service.build_pyg_graph") as mock_build:
         # Mock graph returning x with 8 features
-        import torch
         class MockGraph:
-            x = torch.zeros((1, 8))
-            edge_index = torch.zeros((2, 0), dtype=torch.long)
+            x = _torch.zeros((1, 8))
+            edge_index = _torch.zeros((2, 0), dtype=_torch.long)
             flow_sources = ["10.0.0.2"]
             flow_destinations = ["10.0.0.1"]
             
@@ -188,3 +321,123 @@ def test_model_shape_mismatch_fails_gracefully():
         # If it was already in degraded mode, heuristic predicts successfully
         assert "flow_scores" in result
         assert len(result["flow_scores"]) == 1
+
+
+def test_k03_daemon_policy_validation_rejections():
+    """K-03: Privileged daemon independently rejects non-Mininet, loopback, multicast, broadcast, and IPv6 IPs."""
+    import importlib.util
+    from pathlib import Path
+
+    daemon_path = Path(__file__).resolve().parent.parent / "scripts" / "enforcement_daemon.py"
+    spec = importlib.util.spec_from_file_location("enforcement_daemon", daemon_path)
+    daemon_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(daemon_mod)
+
+    # Rejection of loopback, unspecified, multicast
+    with pytest.raises(ValueError, match="not enforceable"):
+        daemon_mod.validate_ip("127.0.0.1")
+    with pytest.raises(ValueError, match="not enforceable"):
+        daemon_mod.validate_ip("0.0.0.0")
+    with pytest.raises(ValueError, match="not enforceable"):
+        daemon_mod.validate_ip("224.0.0.1")
+
+    # Rejection of outside CIDR
+    with pytest.raises(ValueError, match="is outside"):
+        daemon_mod.validate_ip("192.168.1.1")
+    with pytest.raises(ValueError, match="is outside"):
+        daemon_mod.validate_ip("8.8.8.8")
+
+    # Rejection of network and broadcast addresses
+    with pytest.raises(ValueError, match="is not a host address"):
+        daemon_mod.validate_ip("10.0.0.0")
+    with pytest.raises(ValueError, match="is not a host address"):
+        daemon_mod.validate_ip("10.0.0.255")
+
+    # Rejection of IPv6
+    with pytest.raises(ValueError, match="IPv6 address"):
+        daemon_mod.validate_ip("2001:db8::1")
+    with pytest.raises(ValueError, match="IPv6 address"):
+        daemon_mod.validate_ip("::1")
+
+
+def test_k03_daemon_policy_validation_acceptance():
+    """K-03: Privileged daemon accepts valid Mininet host IPs."""
+    import importlib.util
+    from pathlib import Path
+
+    daemon_path = Path(__file__).resolve().parent.parent / "scripts" / "enforcement_daemon.py"
+    spec = importlib.util.spec_from_file_location("enforcement_daemon", daemon_path)
+    daemon_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(daemon_mod)
+
+    assert daemon_mod.validate_ip("10.0.0.5") == "10.0.0.5"
+    assert daemon_mod.validate_ip("10.0.0.1") == "10.0.0.1"
+    assert daemon_mod.validate_ip("10.0.0.254") == "10.0.0.254"
+
+
+def test_k02_daemon_connection_timeout_and_liveness():
+    """K-02: Real run_daemon() terminates idle client connection on timeout, remains alive, and processes subsequent request."""
+    import importlib.util
+    import json
+    import socket
+    import threading
+    import time
+    from pathlib import Path
+
+    daemon_path = Path(__file__).resolve().parent.parent / "scripts" / "enforcement_daemon.py"
+    spec = importlib.util.spec_from_file_location("enforcement_daemon", daemon_path)
+    daemon_mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(daemon_mod)
+
+    # Find a free local port for test isolation
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as s:
+        s.bind(("127.0.0.1", 0))
+        free_port = s.getsockname()[1]
+
+    original_host = daemon_mod.HOST
+    original_port = daemon_mod.PORT
+    original_timeout = daemon_mod.CLIENT_TIMEOUT
+
+    daemon_mod.HOST = "127.0.0.1"
+    daemon_mod.PORT = free_port
+    daemon_mod.CLIENT_TIMEOUT = 0.3
+
+    # Run the real production run_daemon() in a daemon thread
+    worker = threading.Thread(target=daemon_mod.run_daemon, daemon=True)
+    worker.start()
+    time.sleep(0.1)  # Allow socket bind and listen
+
+    try:
+        # 1. Connect idle client, send no data, and hold connection beyond CLIENT_TIMEOUT
+        idle_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        idle_client.connect(("127.0.0.1", free_port))
+        time.sleep(0.5)  # Exceeds CLIENT_TIMEOUT (0.3s)
+
+        # 2. Verify real run_daemon() closed the idle client connection
+        idle_client.settimeout(0.2)
+        assert len(idle_client.recv(1024)) == 0  # EOF -> closed by server
+        idle_client.close()
+
+        # 3. Connect a second legitimate client to verify daemon is still alive and accepting
+        legit_client = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+        legit_client.connect(("127.0.0.1", free_port))
+        req_payload = {
+            "token": daemon_mod.SHARED_SECRET,
+            "action": "block",
+            "switch": "s1",
+            "ip": "10.0.0.5",
+        }
+
+        with patch.object(daemon_mod.subprocess, "run") as mock_subproc:
+            mock_subproc.return_value = MagicMock(returncode=0, stdout="", stderr="")
+            legit_client.sendall(json.dumps(req_payload).encode("utf-8"))
+            resp_bytes = legit_client.recv(4096)
+            resp = json.loads(resp_bytes.decode("utf-8"))
+
+        assert resp.get("status") == "success"
+        assert resp.get("ip") == "10.0.0.5"
+        legit_client.close()
+    finally:
+        daemon_mod.HOST = original_host
+        daemon_mod.PORT = original_port
+        daemon_mod.CLIENT_TIMEOUT = original_timeout

@@ -12,16 +12,18 @@ import {
   AreaChart, Area, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContainer,
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
+import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
 
 export default function DashboardPage() {
-  const { stats, alerts, healingEvents, timeline } = useGraphStore()
+  const { stats = {}, alerts = [], healingEvents = [], timeline = [], dataErrors = {} } = useGraphStore()
 
-  const health = Math.max(0, Math.min(100, stats.system_health ?? 100))
+  const health = Math.max(0, Math.min(100, stats?.system_health ?? 100))
   const healthColor = health >= 80 ? '#2ECC8A' : health >= 50 ? '#E8922A' : '#E03C3C'
   const healthLabel = health >= 80 ? 'Healthy' : health >= 50 ? 'Degraded' : 'Critical'
 
-  const recentThreats = [...alerts].slice(0, 5)
-  const recentHealing = [...healingEvents].slice(0, 3)
+  const recentThreats = Array.isArray(alerts) ? [...alerts].slice(0, 5) : []
+  const recentHealing = Array.isArray(healingEvents) ? [...healingEvents].slice(0, 3) : []
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -30,9 +32,12 @@ export default function DashboardPage() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Dashboard
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          Network overview · Real-time threat summary
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            Network overview · Real-time threat summary
+          </p>
+          <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
+        </div>
       </div>
 
       {/* ── Row 1: 4 stat cards ── */}
@@ -135,20 +140,22 @@ export default function DashboardPage() {
                     </div>
                   </div>
                   <div style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>
-                    {new Date(alert.timestamp).toLocaleTimeString()}
+                    {formatEventTimestamp(alert.timestamp)}
                   </div>
                   {/* Threat score */}
                   <div
                     style={{
                       width: 36,
                       textAlign: 'right',
-                      color: alert.threat_score >= 0.75 ? '#E03C3C' : '#E8922A',
+                      color: (alert.threat_score ?? 0) >= 0.75 ? '#E03C3C' : '#E8922A',
                       fontSize: 11,
                       fontFamily: "'DM Mono', monospace",
                       fontWeight: 700,
                     }}
                   >
-                    {(alert.threat_score * 100).toFixed(0)}%
+                    {alert.threat_score !== undefined && alert.threat_score !== null
+                      ? `${(alert.threat_score * 100).toFixed(0)}%`
+                      : '—'}
                   </div>
                 </motion.div>
               ))
@@ -209,7 +216,7 @@ export default function DashboardPage() {
                         {ev.action}
                       </span>
                       <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#5A6480' }}>
-                        {ev.edges_severed} edges cut
+                        {ev.edges_severed || 0} edges cut
                       </span>
                     </div>
                     <div style={{ color: '#E8EDF5', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
@@ -218,10 +225,12 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ color: '#2ECC8A', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
-                      {ev.network_stability_before}%→{ev.network_stability_after}%
+                      {ev.network_stability_before !== undefined && ev.network_stability_after !== undefined
+                        ? `${ev.network_stability_before}%→${ev.network_stability_after}%`
+                        : (ev.network_stability_after !== undefined ? `${ev.network_stability_after}%` : '—')}
                     </div>
                     <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
-                      {ev.duration_ms}ms
+                      {ev.duration_ms || ev.responseTimeMs || 0}ms
                     </div>
                   </div>
                 </motion.div>
@@ -269,9 +278,10 @@ export default function DashboardPage() {
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(38,45,63,0.8)" vertical={false} />
-              <XAxis dataKey="time" tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <YAxis tick={{ fill: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <Tooltip
+                labelFormatter={formatTimelineTick}
                 contentStyle={{ background: '#1E1E1E', border: '1px solid #262D3F', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#E8EDF5' }}
                 itemStyle={{ color: '#8A95B0' }}
               />

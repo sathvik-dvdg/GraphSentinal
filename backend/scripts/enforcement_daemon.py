@@ -1,33 +1,101 @@
 #!/usr/bin/env python3
 """
 GraphSentinel Enforcement Daemon
-Runs as root. Listens on a local UNIX socket for JSON requests from the unprivileged FastAPI process.
+Runs as root. Listens on a local TCP socket for JSON requests from the unprivileged FastAPI process.
 Safely executes OVS commands.
 """
 import socket
 import os
+import sys
 import json
 import subprocess
 import logging
-from ipaddress import ip_address
+from ipaddress import ip_address, ip_network
 
-SOCKET_PATH = "/tmp/graphsentinel-enforcer.sock"
+HOST = os.environ.get("DAEMON_HOST", "127.0.0.1")
+PORT = int(os.environ.get("DAEMON_PORT", 50051))
+CLIENT_TIMEOUT = 2.0
+
+SHARED_SECRET = os.environ.get("DAEMON_TOKEN")
+if not SHARED_SECRET:
+    sys.exit("ERROR: DAEMON_TOKEN environment variable must be set.")
+
+MININET_CIDR = os.environ.get("MININET_CIDR", "10.0.0.0/24")
+try:
+    MININET_NETWORK = ip_network(MININET_CIDR, strict=False)
+except ValueError as exc:
+    sys.exit(f"ERROR: Invalid MININET_CIDR '{MININET_CIDR}': {exc}")
+
+ALLOWED_SWITCHES = {"s1", "s2", "s3"}
 
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [DAEMON] %(message)s")
 
 
 def validate_ip(value: str) -> str:
-    # Basic structural validation to prevent command injection
-    return str(ip_address(value))
+    """Validate and sanitize an IP for enforcement.
+
+    Independently enforces:
+    - IPv4 parsing (rejects non-IP strings and IPv6)
+    - Mininet CIDR restriction (must belong to MININET_NETWORK)
+    - Rejection of multicast, loopback, and unspecified addresses
+    - Rejection of network and broadcast addresses
+    """
+    try:
+        parsed = ip_address(value)
+    except ValueError as exc:
+        raise ValueError(f"Invalid IP address: {value}") from exc
+
+    if parsed.version != 4:
+        raise ValueError(f"IPv6 address {value} is not supported")
+
+    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified:
+        raise ValueError(f"IP {value} is not enforceable")
+
+    if parsed not in MININET_NETWORK:
+        raise ValueError(f"IP {value} is outside {MININET_NETWORK}")
+
+    if parsed in {MININET_NETWORK.network_address, MININET_NETWORK.broadcast_address}:
+        raise ValueError(f"IP {value} is not a host address")
+
+    return str(parsed)
 
 
 def handle_request(payload: dict) -> dict:
+    token = payload.get("token")
+    if token != SHARED_SECRET:
+        return {"status": "error", "error": "Unauthorized"}
+
     action = payload.get("action")
-    ip = payload.get("ip")
     switch = payload.get("switch")
 
-    if not action or not ip or not switch:
-        return {"status": "error", "error": "Missing required fields"}
+    if not action or not switch:
+        return {"status": "error", "error": "Missing required fields (action, switch)"}
+
+    if switch not in ALLOWED_SWITCHES:
+        return {"status": "error", "error": "Invalid switch"}
+
+    if action == "dump_flows":
+        try:
+            cmd = ["sudo", "ovs-ofctl", "dump-flows", switch]
+            result = subprocess.run(
+                cmd,
+                check=True,
+                capture_output=True,
+                text=True,
+                timeout=3
+            )
+            return {"status": "success", "action": action, "output": result.stdout}
+        except subprocess.CalledProcessError as exc:
+            logging.error("OVS command failed: %s", exc.stderr)
+            return {"status": "error", "error": f"Command failed: {exc.stderr.strip()}"}
+        except Exception as exc:
+            logging.error("Exception: %s", exc)
+            return {"status": "error", "error": str(exc)}
+
+    # For block/unblock, IP is required
+    ip = payload.get("ip")
+    if not ip:
+        return {"status": "error", "error": "Missing required field (ip)"}
 
     try:
         clean_ip = validate_ip(ip)
@@ -35,19 +103,15 @@ def handle_request(payload: dict) -> dict:
         return {"status": "error", "error": f"Invalid IP: {exc}"}
 
     if action == "block":
-        cmd = ["ovs-ofctl", "add-flow", switch, f"priority=1000,ip,nw_src={clean_ip},actions=drop"]
+        cmd = ["sudo", "ovs-ofctl", "add-flow", switch, f"priority=1000,ip,nw_src={clean_ip},actions=drop"]
     elif action == "unblock":
-        cmd = ["ovs-ofctl", "del-flows", switch, f"ip,nw_src={clean_ip}"]
+        cmd = ["sudo", "ovs-ofctl", "del-flows", switch, f"ip,nw_src={clean_ip}"]
     else:
         return {"status": "error", "error": "Invalid action"}
 
     try:
-        # Note: We run as root, so no 'sudo' needed here. But if testing locally without root, 
-        # using 'sudo' inside the daemon is fine too. However, best practice is run this script as root.
-        # We'll use sudo anyway in case it's run as normal user by accident (though that defeats the purpose).
-        # Actually, let's just run the command. The env requires this script to be run with root privileges.
         subprocess.run(
-            ["sudo"] + cmd,  # Keeping sudo in case the dev runs daemon without root, but array args are safe
+            cmd,
             check=True,
             capture_output=True,
             text=True,
@@ -64,31 +128,30 @@ def handle_request(payload: dict) -> dict:
 
 
 def run_daemon():
-    if os.path.exists(SOCKET_PATH):
-        os.remove(SOCKET_PATH)
-
-    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as server:
-        server.bind(SOCKET_PATH)
-        # Allow any local process to connect and send requests.
-        # In a strict environment, change permissions to a specific group.
-        os.chmod(SOCKET_PATH, 0o666)
+    with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as server:
+        server.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
+        server.bind((HOST, PORT))
         server.listen()
-        logging.info("Enforcement daemon listening on %s", SOCKET_PATH)
+        logging.info("Enforcement daemon listening on TCP %s:%s", HOST, PORT)
 
         while True:
-            conn, _ = server.accept()
+            conn, addr = server.accept()
             with conn:
                 try:
+                    conn.settimeout(CLIENT_TIMEOUT)
                     data = conn.recv(4096)
                     if not data:
                         continue
                     payload = json.loads(data.decode("utf-8"))
                     response = handle_request(payload)
+                    
                     conn.sendall(json.dumps(response).encode("utf-8"))
+                except (socket.timeout, TimeoutError):
+                    logging.warning("Connection from %s timed out waiting for data", addr)
                 except json.JSONDecodeError:
                     conn.sendall(json.dumps({"status": "error", "error": "Invalid JSON"}).encode("utf-8"))
                 except Exception as exc:
-                    logging.error("Connection error: %s", exc)
+                    logging.error("Connection error from %s: %s", addr, exc)
 
 
 if __name__ == "__main__":
@@ -96,6 +159,3 @@ if __name__ == "__main__":
         run_daemon()
     except KeyboardInterrupt:
         logging.info("Daemon stopped.")
-    finally:
-        if os.path.exists(SOCKET_PATH):
-            os.remove(SOCKET_PATH)

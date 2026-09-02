@@ -1,0 +1,11 @@
+{
+  "name": "graphsentinel-e2e-regressions",
+  "private": true,
+  "description": "Playwright dependency scoped to this test directory only — kept out of the main frontend package.json so the app's install footprint stays untouched.",
+  "scripts": {
+    "test": "node error-md-regressions.cjs"
+  },
+  "devDependencies": {
+    "playwright": "^1.62.1"
+  }
+}

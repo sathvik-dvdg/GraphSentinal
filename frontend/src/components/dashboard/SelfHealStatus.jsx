@@ -3,6 +3,7 @@
 // ── All props and data bindings preserved verbatim ──
 import { motion, AnimatePresence } from 'framer-motion'
 import { Cpu, ShieldCheck } from 'lucide-react'
+import { formatEventTimestamp } from '../../utils/formatTimestamp'
 
 export default function SelfHealStatus({ events }) {
   return (
@@ -54,7 +55,7 @@ export default function SelfHealStatus({ events }) {
                     {event.action}
                   </span>
                   <span className="text-gs-muted text-[9px] ml-auto font-mono tabular-nums shrink-0">
-                    {new Date(event.timestamp).toLocaleTimeString()}
+                    {formatEventTimestamp(event.timestamp)}
                   </span>
                 </div>
 

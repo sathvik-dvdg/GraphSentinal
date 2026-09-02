@@ -7,6 +7,7 @@ import NetworkGraph3D from '../components/dashboard/NetworkGraph3D'
 import NetworkGraph2D from '../components/dashboard/NetworkGraph2D'
 import PyramidHierarchy from '../components/pyramid/PyramidHierarchy'
 import ConnectionModeBadge from '../components/ui/ConnectionModeBadge'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 
 const VIEW_MODES = [
   { id: 'split',   label: 'Split View' },
@@ -17,7 +18,7 @@ const VIEW_MODES = [
 
 export default function NetworkTopology() {
   const [viewMode, setViewMode] = useState('split')
-  const { graphData, healingNodeId, connectionMode, setSelectedNode } = useGraphStore()
+  const { graphData, healingNodeId, connectionMode, setSelectedNode, dataErrors } = useGraphStore()
 
   const show3D = viewMode === '3d' || viewMode === 'split'
   const show2D = viewMode === '2d'
@@ -32,9 +33,12 @@ export default function NetworkTopology() {
           <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Network Topology
           </h1>
-          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-            Live network graph · Org hierarchy · Threat vectors
-          </p>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+            <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+              Live network graph · Org hierarchy · Threat vectors
+            </p>
+            <DataFreshnessBadge dataErrors={{ graph: dataErrors.graph }} />
+          </div>
         </div>
 
         {/* View mode toggle */}
@@ -116,7 +120,11 @@ export default function NetworkTopology() {
             </div>
 
             {show2D ? (
-              <NetworkGraph2D graphData={graphData} healingNodeId={healingNodeId} />
+              <NetworkGraph2D
+                graphData={graphData}
+                healingNodeId={healingNodeId}
+                onNodeClick={(node) => setSelectedNode(node)}
+              />
             ) : (
               <NetworkGraph3D
                 graphData={graphData}

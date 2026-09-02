@@ -10,6 +10,10 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
+import StatTile from '../components/ui/StatTile'
+import FilterPill from '../components/ui/FilterPill'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
+import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITY_COLORS = { critical: '#E03C3C', warning: '#E8922A', info: '#4F6EF7' }
 const SOURCE_LABELS = {
@@ -30,7 +34,7 @@ const STATUS_CYCLE = { open: 'acknowledged', acknowledged: 'resolved', resolved:
 export default function AlertCentre() {
   const navigate = useNavigate()
   const { alerts: unified, stats } = useAlerts()
-  const { timeline } = useGraphStore()
+  const { timeline, dataErrors } = useGraphStore()
 
   const [localStatuses, setLocalStatuses] = useState({})
   const [filterSeverity, setFilterSeverity] = useState('All')
@@ -70,11 +74,14 @@ export default function AlertCentre() {
   // Last 6h sparkline — reuse timeline data
   const sparkData = timeline.slice(-12)
 
+  // Error.md #37 pattern: a relative label past ~1 day is ambiguous ("29h
+  // ago" doesn't say which day) — fall back to a real date+time.
   const relativeTime = (ts) => {
     const diff = Date.now() - ts
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-    return `${Math.floor(diff / 3600000)}h ago`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+    return formatEventTimestamp(ts)
   }
 
   return (
@@ -84,33 +91,36 @@ export default function AlertCentre() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Alert Centre
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          Unified incident hub · Acknowledge and resolve alerts
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            Unified incident hub · Acknowledge and resolve alerts
+          </p>
+          <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
+        </div>
       </div>
 
       {/* Stats bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, flexShrink: 0 }}>
-        <StatBadge label="Open" value={stats.open} color="#E03C3C" />
-        <StatBadge label="Acknowledged" value={stats.acked} color="#E8922A" />
-        <StatBadge label="Resolved" value={stats.resolved} color="#2ECC8A" />
-        <StatBadge label="MTTA" value={`${stats.mttaMin}m`} color="#4F6EF7" />
+        <StatTile layout="row" label="Open" value={stats.open} color="#E03C3C" />
+        <StatTile layout="row" label="Acknowledged" value={stats.acked} color="#E8922A" />
+        <StatTile layout="row" label="Resolved" value={stats.resolved} color="#2ECC8A" />
+        <StatTile layout="row" label="MTTA" value={`${stats.mttaMin}m`} color="#4F6EF7" />
       </div>
 
       {/* Filter bar */}
       <div className="gs-panel" style={{ padding: '10px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
         <Filter size={13} style={{ color: '#5A6480' }} />
         {['All', 'critical', 'warning', 'info'].map((s) => (
-          <Pill key={s} label={s} active={filterSeverity === s} onClick={() => setFilterSeverity(s)}
+          <FilterPill key={s} label={s} active={filterSeverity === s} onClick={() => setFilterSeverity(s)}
             color={SEVERITY_COLORS[s] || '#5A6480'} />
         ))}
         <Sep />
         {['All', 'open', 'acknowledged', 'resolved'].map((s) => (
-          <Pill key={s} label={s} active={filterStatus === s} onClick={() => setFilterStatus(s)} color="#8A95B0" />
+          <FilterPill key={s} label={s} active={filterStatus === s} onClick={() => setFilterStatus(s)} color="#8A95B0" />
         ))}
         <Sep />
         {['All', 'threat_feed', 'self_healing', 'blockchain', 'system'].map((s) => (
-          <Pill key={s} label={s === 'All' ? 'All' : SOURCE_LABELS[s] || s} active={filterSource === s}
+          <FilterPill key={s} label={s === 'All' ? 'All' : SOURCE_LABELS[s] || s} active={filterSource === s}
             onClick={() => setFilterSource(s)} color={SOURCE_COLORS[s] || '#5A6480'} />
         ))}
       </div>
@@ -271,32 +281,6 @@ export default function AlertCentre() {
   )
 }
 
-function StatBadge({ label, value, color }) {
-  return (
-    <div className="gs-panel" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
-      <span style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22 }}>{value}</span>
-    </div>
-  )
-}
-
-function Pill({ label, active, onClick, color }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '3px 9px', borderRadius: 5,
-        border: `1px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
-        background: active ? `${color}15` : 'transparent',
-        color: active ? color : '#5A6480',
-        fontSize: 10, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
-        transition: 'all 150ms', textTransform: 'capitalize',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
 
 function Sep() {
   return <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />

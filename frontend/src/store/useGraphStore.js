@@ -3,35 +3,53 @@
 // § 4.5 Fix: connectionMode state machine replaces isMockMode + isSimulating booleans
 // MOCK data is untangled from initial state.
 import { create } from 'zustand'
-import {
-  MOCK_GRAPH_DATA,
-  MOCK_ALERTS,
-  MOCK_BLOCKED,
-  MOCK_BLOCKCHAIN_TXS,
-  MOCK_HEALING_EVENTS,
-  MOCK_TIMELINE,
-  MOCK_STATS,
-} from '../services/mockData'
+import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealingEvents } from '../services/api'
 
 // connectionMode values:
 //   'connecting'  — app just started, trying to reach backend
 //   'live'        — WebSocket/REST returning real data from backend
-//   'mock'        — backend unreachable; displaying mock/offline data
-//   'simulating'  — demo attack sequence is running
+//   'mock'        — backend unreachable; UI shows an explicit empty/offline state (never fabricated data)
+//   'simulating'  — a real attack burst was sent to POST /api/v1/analyze and results are loading
+
+const EMPTY_STATE = {
+  graphData: { nodes: [], links: [] },
+  alerts: [],
+  blockedIPs: [],
+  chainTxs: [],
+  timeline: [],
+  enforcementActions: [],
+  stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
+  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null },
+}
 
 const useGraphStore = create((set, get) => ({
   // ── Data ──────────────────────────────────────────────────
   graphData: { nodes: [], links: [] },
-  orgHierarchy: null,
   alerts: [],
   blockedIPs: [],
   chainTxs: [],
+  chainId: null, // Error.md #17 — real chain ID from the connected Web3 provider, not hardcoded
+  // Error.md #4 — the API already returned ml.mode/degraded_reason via
+  // /health, but nothing in the frontend fetched or displayed it, so an
+  // operator couldn't tell real GraphSAGE scores from the heuristic fallback.
+  mlHealth: { mode: 'model', degraded_reason: null },
+  setMlHealth: (health) => set({ mlHealth: health }),
   healingEvents: [],
   healingNodeId: null,
   timeline: [],
-  stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0 },
+  enforcementActions: [],
+  stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
   nodeOverrides: {},
   resolvedIncidentIds: [],
+
+  // Per-resource freshness (Error.md #22/#26): Promise.allSettled in
+  // useGraphData.js updates each panel's data independently, so a panel can
+  // silently go stale if only its own fetch keeps failing while others
+  // succeed. This lets the UI show that panel is stale instead of pretending
+  // null (last fetch OK) or an error message string.
+  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null },
+  setDataError: (resource, error) =>
+    set((state) => ({ dataErrors: { ...state.dataErrors, [resource]: error } })),
 
   // ── Connection state machine ───────────────────────────────
   connectionMode: 'connecting', // 'connecting' | 'live' | 'mock' | 'simulating'
@@ -53,22 +71,15 @@ const useGraphStore = create((set, get) => ({
   },
 
   // ── Connection mode setter ─────────────────────────────────
+  // 'mock' means the backend is unreachable — show an explicit empty/offline
+  // state (ConnectionModeBadge already renders this as "OFFLINE"), never
+  // fabricated numbers. See Error.md #1.
   setConnectionMode: (mode) => {
     set({ connectionMode: mode })
     if (mode === 'mock') {
-      get().loadMockData()
+      set(EMPTY_STATE)
     }
   },
-
-  loadMockData: () => set({
-    graphData: MOCK_GRAPH_DATA,
-    alerts: MOCK_ALERTS,
-    blockedIPs: MOCK_BLOCKED.blocked_ips,
-    chainTxs: MOCK_BLOCKCHAIN_TXS,
-    healingEvents: MOCK_HEALING_EVENTS,
-    timeline: MOCK_TIMELINE,
-    stats: MOCK_STATS,
-  }),
 
   // Legacy setters — kept for backward compat, mapped to connectionMode
   setMockMode: (isMock) =>
@@ -82,8 +93,21 @@ const useGraphStore = create((set, get) => ({
         : get().connectionMode),
 
   // ── Data setters ──────────────────────────────────────────
-  setGraphData: (data) => set({ graphData: data }),
-  setOrgHierarchy: (hierarchy) => set({ orgHierarchy: hierarchy }),
+  setGraphData: (newData) =>
+    set((state) => {
+      // Preserve node object references so react-force-graph-3d doesn't lose
+      // their x, y, z physics coordinates on every 10s polling tick.
+      const existingNodes = new Map(state.graphData.nodes.map(n => [n.id, n]))
+      const mergedNodes = newData.nodes.map(newNode => {
+        const existing = existingNodes.get(newNode.id)
+        if (existing) {
+          // Update properties in place, preserving physics coords & object ref
+          return Object.assign(existing, newNode)
+        }
+        return newNode
+      })
+      return { graphData: { nodes: mergedNodes, links: newData.links } }
+    }),
 
   addAlert: (alert) =>
     set((state) => ({
@@ -138,153 +162,103 @@ const useGraphStore = create((set, get) => ({
       }
     })),
 
-  simulateAttack: () => {
+  // Sends a real DDoS-shaped flow burst through the actual backend pipeline
+  // (POST /api/v1/analyze — the same code path real OVS flows go through:
+  // real GNN scoring, real incident creation, real self-healing/blocking,
+  // real blockchain write). No fabricated hashes or optimistic local state —
+  // see Error.md #3. `targetIp` is the attacker source; `victimIp` is who
+  // it's attacking.
+  simulateAttack: async ({ attackType, targetIp, victimIp } = {}) => {
+    // Randomize defaults so each Simulate click hits different hosts/attacks
+    const allHosts = Array.from({ length: 10 }, (_, i) => `10.0.0.${i + 1}`)
+    const attackTypes = ['DDoS', 'PortScan', 'SSHBrute', 'Botnet']
+    if (!attackType) attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)]
+    if (!targetIp) targetIp = allHosts[Math.floor(Math.random() * allHosts.length)]
+    if (!victimIp) {
+      const others = allHosts.filter((h) => h !== targetIp)
+      victimIp = others[Math.floor(Math.random() * others.length)]
+    }
     const state = get()
     if (state.connectionMode === 'simulating') return
-    
+
     state.setConnectionMode('simulating')
 
-    const resetGraph = {
-      ...state.graphData,
-      nodes: state.graphData.nodes.map((n) =>
-        n.id === '10.0.0.2'
-          ? { ...n, status: 'normal', threat_score: 0.05, is_blocked: false }
-          : n
-      ),
-      links: state.graphData.links.some((l) => {
-        const src = typeof l.source === 'object' ? l.source.id : l.source
-        return src === '10.0.0.2'
-      })
-        ? state.graphData.links
-        : [
-            ...state.graphData.links,
-            { source: '10.0.0.2', target: '10.0.0.1', value: 0.94, attack_type: 'DDoS', packet_count: 15000 },
-            { source: '10.0.0.2', target: '10.0.0.3', value: 0.87, attack_type: 'DDoS', packet_count: 8200 },
-          ],
+    const attackFlows = {
+      DDoS: [
+        { src_ip: targetIp, dst_ip: victimIp, src_port: 54321, dst_port: 80, protocol: 'TCP', packet_count: 15000, byte_count: 5120000, duration_sec: 3.5, tcp_flags: 2 },
+        { src_ip: targetIp, dst_ip: victimIp, src_port: 54322, dst_port: 443, protocol: 'TCP', packet_count: 12000, byte_count: 4300000, duration_sec: 3.5, tcp_flags: 2 },
+      ],
+      PortScan: Array.from({ length: 12 }, (_, i) => ({
+        src_ip: targetIp, dst_ip: victimIp, src_port: 40000 + i, dst_port: 20 + i * 5,
+        protocol: 'TCP', packet_count: 3, byte_count: 180, duration_sec: 0.05, tcp_flags: 2,
+      })),
+      SSHBrute: Array.from({ length: 8 }, (_, i) => ({
+        src_ip: targetIp, dst_ip: victimIp, src_port: 50000 + i, dst_port: 22,
+        protocol: 'TCP', packet_count: 40, byte_count: 6400, duration_sec: 1.2, tcp_flags: 2,
+      })),
+      Botnet: [
+        { src_ip: targetIp, dst_ip: victimIp, src_port: 51234, dst_port: 6667, protocol: 'TCP', packet_count: 500, byte_count: 64000, duration_sec: 8.0, tcp_flags: 2 },
+      ],
     }
-    state.setGraphData(resetGraph)
+    // Error.md #34 — tag every synthetic flow as simulation-sourced so it's
+    // distinguishable from real OVS traffic everywhere downstream (graph
+    // nodes, incidents, alerts, forensics) instead of blending in silently.
+    const flows = (attackFlows[attackType] || attackFlows.DDoS).map((f) => ({ ...f, data_source: 'simulation' }))
 
-    const cleanedAlerts = state.alerts.filter((a) => a.source_ip !== '10.0.0.2')
-    state.setAlerts(cleanedAlerts)
-
-    setTimeout(() => {
-      const demoAlert = {
-        id: `demo-${Date.now()}`,
-        timestamp: new Date().toISOString(),
-        source_ip: '10.0.0.2',
-        attack_type: 'DDoS',
-        severity: 'critical',
-        threat_score: 0.94,
-        description: 'DEMO: DDoS attack from 10.0.0.2',
-        is_blocked: false,
-        blockchain_tx: null,
+    try {
+      const analyzeResult = await analyzeFlows(flows)
+      if (analyzeResult?.ml_mode) {
+        state.setMlHealth({ mode: analyzeResult.ml_mode, degraded_reason: analyzeResult.degraded_reason ?? null })
       }
-      
-      // Manually apply the effects of handleAlert since it's local
-      state.addAlert(demoAlert)
-      state.addTimelinePoint({
-        time: new Date().toLocaleTimeString().slice(0, 5),
-        threats: 1,
-        blocked: 0,
-      })
-      
-      // Optimistically update the node graph representation
-      state.setGraphData({
-        ...state.graphData,
-        nodes: state.graphData.nodes.map((n) =>
-          n.id === demoAlert.source_ip
-            ? {
-                ...n,
-                status: 'malicious',
-                threat_score: demoAlert.threat_score,
-                attack_type: demoAlert.attack_type,
-                connections: n.connections > 0 ? n.connections : 12,
-              }
-            : n
-        ),
-      })
-      state.updateStats({
-        active_threats: state.stats.active_threats + 1,
-        system_health: Math.max(50, state.stats.system_health - 15),
-      })
 
+      // Pull the real resulting state back via REST — same normalization
+      // path as normal polling (useGraphData.js), just triggered immediately
+      // instead of waiting for the next 10s tick.
+      const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes, healingRes] =
+        await Promise.allSettled([
+          getGraph(), getAlerts(), getBlocked(), getForensics(), getStats(), getTimeline(), getHealingEvents(),
+        ])
+
+      if (graphRes.status === 'fulfilled') state.setGraphData(graphRes.value)
+      if (alertsRes.status === 'fulfilled') state.setAlerts(alertsRes.value.alerts)
+      if (blockedRes.status === 'fulfilled') state.setBlockedIPs(blockedRes.value.blocked_ips)
+      if (forensicsRes.status === 'fulfilled') {
+        state.setChainTxs(forensicsRes.value.blockchain_records ?? [])
+        state.setChainId(forensicsRes.value.chain_id ?? null)
+      }
+      if (statsRes.status === 'fulfilled') state.updateStats(statsRes.value)
+      if (timelineRes.status === 'fulfilled') state.setTimeline(timelineRes.value.data_points)
+      if (healingRes.status === 'fulfilled') {
+        state.setHealingEvents(healingRes.value.events)
+      } else if (analyzeResult?.healing_events?.length) {
+        analyzeResult.healing_events.forEach((e) => state.addHealingEvent(e))
+      }
+
+      if (blockedRes.status === 'fulfilled' && blockedRes.value.blocked_ips?.some((b) => b.ip === targetIp)) {
+        state.setHealingNode(targetIp)
+      }
+    } catch (err) {
+      console.error('[simulateAttack] POST /api/v1/analyze failed — backend may be unreachable:', err)
+    } finally {
       setTimeout(() => {
-        const event = {
-          id: `heal-${Date.now()}`,
-          timestamp: new Date().toISOString(),
-          ip: '10.0.0.2',
-          action: 'ISOLATED',
-          attack_type: 'DDoS',
-          trigger_score: 0.94,
-          edges_severed: 6,
-          duration_ms: 312,
-          network_stability_before: 76,
-          network_stability_after: 94,
-        }
-        
-        state.setHealingNode(event.ip)
-        state.addHealingEvent(event)
-        state.addTimelinePoint({
-          time: new Date().toLocaleTimeString().slice(0, 5),
-          threats: 0,
-          blocked: 1,
-        })
-        
-        // Optimistic UI for blocking
-        const txHash = '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
-        const incidentHash = '0x' + Array.from({ length: 40 }, () => Math.floor(Math.random() * 16).toString(16)).join('')
-
-        const demoTx = {
-          id: Date.now(),
-          incident_hash: incidentHash,
-          timestamp: new Date().toISOString(),
-          source_ip: event.ip,
-          attack_type: event.attack_type,
-          severity: 9,
-          is_blocked: true,
-          forensics_uri: `local://incident/${event.id}`,
-          tx_hash: txHash,
-          block_number: Math.floor(Math.random() * 100) + 150,
-          gas_used: 68000 + Math.floor(Math.random() * 5000),
-          status: 'confirmed',
-        }
-
-        // Apply optimistic severed edges UI updates without relying on WS
-        state.setGraphData({
-          ...state.graphData,
-          nodes: state.graphData.nodes.map((n) =>
-            n.id === event.ip
-              ? { ...n, status: 'blocked', connections: 0, is_blocked: true }
-              : n
-          ),
-          links: state.graphData.links.filter((l) => {
-            const srcId = typeof l.source === 'object' ? l.source.id : l.source
-            const tgtId = typeof l.target === 'object' ? l.target.id : l.target
-            return srcId !== event.ip && tgtId !== event.ip
-          }),
-        })
-
-        const activeCount = Math.max(0, state.stats.active_threats)
-        const blockedCount = state.stats.blocked_ips + 1
-        const sysHealth = Math.min(100, Math.max(0, 100 - activeCount * 12 - blockedCount * 4))
-
-        state.updateStats({
-          active_threats: activeCount,
-          blocked_ips: blockedCount,
-          system_health: sysHealth,
-        })
-
-        state.setChainTxs([demoTx, ...state.chainTxs])
-        const updatedAlerts = state.alerts.map((a) =>
-          a.source_ip === event.ip ? { ...a, is_blocked: true, blockchain_tx: txHash } : a
-        )
-        state.setAlerts(updatedAlerts)
-
-        setTimeout(() => {
+        if (get().connectionMode === 'simulating') {
           get().setConnectionMode(get().isConnected ? 'live' : 'mock')
-        }, 30000)
-      }, 3000)
-    }, 1000)
+        }
+      }, 8000)
+    }
+  },
+
+  // The Topbar's "Stop Sim" button previously called simulateAttack() again
+  // while already simulating, which just hit simulateAttack's own re-entrancy
+  // guard (`if connectionMode === 'simulating') return`) and did nothing —
+  // clicking it looked like it should cancel, but was inert. This ends the
+  // simulating UI state immediately; the in-flight /api/v1/analyze request
+  // (if any) still completes server-side since it's a real backend action,
+  // it just won't hold the UI in "simulating" waiting for it.
+  stopSimulation: () => {
+    const state = get()
+    if (state.connectionMode !== 'simulating') return
+    state.setConnectionMode(state.isConnected ? 'live' : 'mock')
   },
 
   resolveIncident: (incidentId) =>
@@ -310,7 +284,10 @@ const useGraphStore = create((set, get) => ({
   setAlerts: (alerts) => set({ alerts }),
   setBlockedIPs: (ips) => set({ blockedIPs: ips }),
   setChainTxs: (txs) => set({ chainTxs: txs }),
+  setChainId: (id) => set({ chainId: id }),
   setTimeline: (data) => set({ timeline: data }),
+  setEnforcementActions: (actions) => set({ enforcementActions: actions }),
+  setHealingEvents: (events) => set({ healingEvents: events }),
 }))
 
 export default useGraphStore

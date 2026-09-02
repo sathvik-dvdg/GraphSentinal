@@ -4,8 +4,14 @@
 //   → on reconnect, trigger onReconnect() so caller can REST-fetch fresh state
 import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
+import { SESSION_STORAGE_KEY } from '../store/useAuthStore'
 
-const WS_URL = import.meta.env.VITE_BACKEND_URL || 'http://localhost:8000'
+// Same-origin by default — rides the Vite (or Docker) proxy exactly like REST
+// calls already do (see vite.config.js / vite.config.docker.js). Only set
+// VITE_BACKEND_URL to point elsewhere for an unusual cross-origin deployment
+// (Error.md #20 — REST and WS previously could silently target different
+// backends).
+const WS_URL = import.meta.env.VITE_BACKEND_URL || undefined
 
 // Prop names are stable — do not rename (§5 integration constraint)
 export function useWebSocket({
@@ -19,49 +25,66 @@ export function useWebSocket({
   const socketRef = useRef(null)
   const [isConnected, setIsConnected] = useState(false)
 
+  // Error.md #21: the socket effect intentionally runs once (see empty deps
+  // below) so callback identity changes never force a reconnect. But that
+  // means the handlers below must never close over onGraphUpdate/onAlert/etc
+  // directly — they'd freeze at whatever those props were on first render.
+  // Refs updated every render keep the handlers reading current logic
+  // (e.g. connectionMode-dependent behavior in SimulationProvider) while the
+  // socket connection itself stays stable.
+  const callbacksRef = useRef({})
+  callbacksRef.current = { onGraphUpdate, onAlert, onHealingTriggered, onConnect, onDisconnect, onReconnect }
+
   useEffect(() => {
+    // This hook only mounts inside ProtectedRoute (via SimulationProvider),
+    // so a valid session token is already guaranteed to exist by the time
+    // this runs — the socket used to push the same live security data
+    // (graph updates, alerts, healing events) as the REST endpoints with no
+    // auth at all, which would have made the new REST session gate pointless
+    // for anyone who just connected a socket.io client directly instead.
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
       reconnectionAttempts: 5,
       reconnectionDelay: 2000,
       timeout: 5000,
+      auth: { token: sessionStorage.getItem(SESSION_STORAGE_KEY) },
     })
 
     socket.on('connect', () => {
       const wasConnected = socketRef.current?._wasConnected
       setIsConnected(true)
       console.log('[WS] Connected to GraphSentinel backend ✓')
-      if (onConnect) onConnect()
+      callbacksRef.current.onConnect?.()
 
       // § 2 soft spot: reconnect does not re-emit graph_update
       // Trigger a REST refresh so the UI doesn't show stale state after a reconnect
-      if (wasConnected && onReconnect) {
+      if (wasConnected) {
         console.log('[WS] Reconnect detected — triggering REST refresh')
-        onReconnect()
+        callbacksRef.current.onReconnect?.()
       }
       if (socketRef.current) socketRef.current._wasConnected = true
     })
 
     socket.on('graph_update', (data) => {
-      if (onGraphUpdate) onGraphUpdate(data)
+      callbacksRef.current.onGraphUpdate?.(data)
     })
 
     socket.on('alert', (data) => {
-      if (onAlert) onAlert(data)
+      callbacksRef.current.onAlert?.(data)
     })
 
     socket.on('healing_triggered', (data) => {
-      if (onHealingTriggered) onHealingTriggered(data)
+      callbacksRef.current.onHealingTriggered?.(data)
     })
 
     socket.on('disconnect', () => {
       setIsConnected(false)
-      console.warn('[WS] Disconnected — mock data stays active')
-      if (onDisconnect) onDisconnect()
+      console.warn('[WS] Disconnected from backend — falling back to REST polling')
+      callbacksRef.current.onDisconnect?.()
     })
 
     socket.on('connect_error', () => {
-      console.info('[WS] Backend not reachable — running in simulation mode')
+      console.info('[WS] Backend not reachable — falling back to REST polling')
     })
 
     socketRef.current = socket
@@ -69,7 +92,7 @@ export function useWebSocket({
       socket.disconnect()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps
-  // Callbacks are stable refs — intentionally not in deps to avoid re-connecting
+  // Intentionally empty — see callbacksRef comment above for why this is safe
 
   return { isConnected }
 }

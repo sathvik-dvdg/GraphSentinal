@@ -1,0 +1,14 @@
+# ── .gitattributes ─────────────────────────────────────────────────────────────
+# Force LF line endings for shell scripts so they aren't corrupted by
+# Windows autocrlf when checked out on Windows and run inside Linux containers.
+# Without this, bash inside the container fails with:
+#   /usr/local/bin/docker-entrypoint.sh: \r: bad interpreter
+# ──────────────────────────────────────────────────────────────────────────────
+
+# Shell scripts must always have LF line endings in the repo
+*.sh       text eol=lf
+
+# Dockerfiles and YAML are platform-agnostic — let them use native endings
+Dockerfile text
+*.yml      text
+*.yaml     text

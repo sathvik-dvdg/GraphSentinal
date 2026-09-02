@@ -21,11 +21,14 @@ def _import_torch():
 
 class InferenceService:
     _instance: "InferenceService | None" = None
+    _lock = __import__("threading").Lock()
 
     @classmethod
     def get_instance(cls) -> "InferenceService":
         if cls._instance is None:
-            cls._instance = cls()
+            with cls._lock:
+                if cls._instance is None:  # double-checked locking
+                    cls._instance = cls()
         return cls._instance
 
     def __init__(self):
@@ -33,7 +36,10 @@ class InferenceService:
         self.degraded_reason = ""
         try:
             self.torch = _import_torch()
-            self.torch.set_num_threads(min(4, os.cpu_count() or 1))
+            try:
+                self.torch.set_num_threads(min(4, os.cpu_count() or 1))
+            except AttributeError:
+                pass  # torch partially loaded (e.g. Windows DLL issue) — continue in degraded mode
         except RuntimeError as exc:
             self.torch = None
             self.degraded_reason = str(exc)
@@ -84,7 +90,7 @@ class InferenceService:
                 out_channels=2,
                 num_layers=3,
             )
-            state_dict = self.torch.load(weights_path, map_location="cpu")
+            state_dict = self.torch.load(weights_path, map_location="cpu", weights_only=True)
             self.model.load_state_dict(state_dict)
             self.model.eval()
             self.mode = "model"
@@ -99,6 +105,23 @@ class InferenceService:
         self.model = None
         self.mode = "degraded"
         self.degraded_reason = reason
+
+    def reload_model(self) -> bool:
+        """R-05 (M10-F01) — Dynamically re-attempt model loading to recover from degraded mode without service restart."""
+        with self._lock:
+            if self.torch is None:
+                try:
+                    self.torch = _import_torch()
+                    try:
+                        self.torch.set_num_threads(min(4, os.cpu_count() or 1))
+                    except AttributeError:
+                        pass
+                except RuntimeError as exc:
+                    self.torch = None
+                    self.degraded_reason = str(exc)
+                    return False
+            self._load_model()
+            return self.mode == "model"
 
     def health(self) -> dict[str, Any]:
         return {
@@ -122,9 +145,9 @@ class InferenceService:
                 else:
                     logits = self.model(graph.x, graph.edge_index)
                     probs = self.torch.softmax(logits, dim=1)[:, 1]
-            # Clamp NaN/Inf scores to prevent propagation through threat analysis
+            # Clamp NaN/Inf scores to prevent propagation through threat analysis (preserve full precision float)
             scores = [
-                round(max(0.0, min(float(v), 1.0)), 4) if not (v != v) else 0.0  # NaN != NaN
+                max(0.0, min(float(v), 1.0)) if not (v != v) else 0.0  # NaN != NaN
                 for v in probs.tolist()
             ]
         except Exception as exc:

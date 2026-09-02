@@ -1,0 +1,197 @@
+# ── GraphSentinel — docker-compose.yml ────────────────────────────────────────
+# Containerized stack for consistent team environments.
+#
+# HOST PORTS (Docker)  vs  LOCAL DEV PORTS — intentionally different so both
+# can run simultaneously during verification:
+#
+#   Service     | Docker host port | Local dev port
+#   ------------|------------------|---------------
+#   frontend    | 5174             | 5173
+#   backend     | 8001             | 8000
+#   blockchain  | 8546             | 8545
+#
+# STARTUP ORDER (enforced by healthchecks):
+#   blockchain → backend → frontend
+#
+# HEALTHCHECK RACE-CONDITION FIX:
+#   The blockchain healthcheck does NOT just probe Ganache RPC.
+#   It tests for /shared/contract_address.env — a file that only exists
+#   AFTER the entrypoint has successfully deployed the contract.
+#   This guarantees backend never starts before CONTRACT_ADDRESS is ready.
+# ──────────────────────────────────────────────────────────────────────────────
+
+services:
+
+  # ── Ganache + Hardhat deploy ────────────────────────────────────────────────
+  blockchain:
+    build:
+      context: ./blockchain
+      dockerfile: Dockerfile
+    container_name: graphsentinel-blockchain
+    volumes:
+      # Named volume shared with backend — entrypoint writes contract_address.env here
+      - contract-shared:/shared
+      # N-03: Persistent Ganache EVM state — survives container restart/recreation.
+      # Remove ONLY with `docker compose down -v` when a genuinely fresh chain is required.
+      - ganache-data:/data
+    ports:
+      # 8546 on host → 8545 inside container (leaves local dev port 8545 free)
+      - "8546:8545"
+    networks:
+      - graphsentinel-net
+    # ── HEALTHCHECK: gates on contract deploy completion, NOT just RPC ────────
+    # test -f checks that the entrypoint finished writing contract_address.env.
+    # Only after this file exists will the backend start.
+    healthcheck:
+      test: ["CMD", "sh", "-c", "test -f /shared/contract_address.env"]
+      interval: 5s
+      timeout: 3s
+      retries: 20        # up to 100s total (deploy + compile can take ~30s)
+      start_period: 10s  # grace period before first check
+
+  # ── FastAPI Backend ─────────────────────────────────────────────────────────
+  backend:
+    build:
+      context: ./backend
+      dockerfile: Dockerfile
+    container_name: graphsentinel-backend
+    depends_on:
+      blockchain:
+        condition: service_healthy   # waits for contract_address.env to exist
+    env_file:
+      - .env.docker               # base env for Docker (committed, no secrets)
+      - path: .env.docker.local   # optional, gitignored: real DAEMON_TOKEN / ENFORCEMENT_MODE=ovs
+        required: false           # for teammates bridging to a real WSL2 Mininet daemon
+    volumes:
+      # ── Source bind-mounts for hot-reload ──────────────────────────────────
+      # Editing any file in backend/app/ triggers uvicorn --reload automatically.
+      # NO rebuild needed. Only requirements.txt changes need --build.
+      - ./backend/app:/app/app:ro
+      # ── Alembic migrations (Error.md #29) — bind-mounted for the same
+      # reason as backend/app: a new migration file should apply on the
+      # next container restart, not require a full image rebuild.
+      - ./backend/migrations:/app/migrations:ro
+      - ./backend/alembic.ini:/app/alembic.ini:ro
+      # ── ML model weights (read-only, from repo) ────────────────────────────
+      # Weights are committed (560 KB); bind-mounted so they're always in sync.
+      - ./ML:/app/ML:ro
+      # ── Blockchain web3 bridge (Python client + ABI) ──────────────────────
+      - ./blockchain/web3_bridge:/app/blockchain_bridge:ro
+      # ── Shared volume: read the contract address written by blockchain ──────
+      - contract-shared:/shared:ro
+      # ── SQLite database: isolated named volume (no host DB access) ──────────
+      - backend-db:/app/data
+    ports:
+      # 8001 on host → 8000 inside container (leaves local dev port 8000 free)
+      - "8001:8000"
+    networks:
+      - graphsentinel-net
+    # CORS: backend allows containerized frontend (port 5174) AND local dev
+    environment:
+      # Override paths for Docker filesystem layout
+      SQLITE_PATH: /app/data/graphsentinel.db
+      WEIGHTS_PATH: /app/ML/GraphSage-model/graphsage_weights.pt
+      SCALER_PATH: /app/ML/GraphSage-model/scaler.pkl
+      MODEL_SOURCE_PATH: /app/ML/src
+      # web3_bridge is bind-mounted at /app/blockchain_bridge
+      BLOCKCHAIN_BRIDGE_PATH: /app/blockchain_bridge
+      # DEMO_FALLBACK_FLOWS / ENFORCEMENT_MODE / THREAT_THRESHOLD / DAEMON_TOKEN come
+      # from env_file (.env.docker, optionally overridden by .env.docker.local) —
+      # deliberately NOT interpolated as ${VAR} here, since that would read the
+      # repo-root .env (used for local/WSL2 dev) and silently override these Docker
+      # defaults. Docker must stay self-contained: `docker compose up` alone always
+      # gets safe demo/simulated defaults regardless of what's in the root .env.
+      DAEMON_HOST: host.docker.internal
+      DAEMON_PORT: 50051
+    # Compose Watch: sync source changes without rebuild
+    # Run: docker compose watch
+    develop:
+      watch:
+        # backend/app/** → hot-reload (uvicorn --reload, no rebuild)
+        - path: ./backend/app
+          target: /app/app
+          action: sync
+        # requirements.txt change → must rebuild image
+        - path: ./backend/requirements.txt
+          action: rebuild
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 15s
+
+  # ── React + Vite Frontend ───────────────────────────────────────────────────
+  frontend:
+    build:
+      context: ./frontend
+      dockerfile: Dockerfile
+    container_name: graphsentinel-frontend
+    depends_on:
+      backend:
+        condition: service_healthy
+    env_file:
+      - .env.docker
+      - path: .env.docker.local
+        required: false
+    volumes:
+      # ── Source bind-mount for Vite HMR ─────────────────────────────────────
+      # Editing frontend/src/ reloads the browser instantly (Vite HMR).
+      # node_modules is NOT bind-mounted — it lives inside the image, preventing
+      # native binary conflicts between host OS and the Linux container.
+      - ./frontend/src:/app/src:ro
+      - ./frontend/public:/app/public:ro
+    ports:
+      # 5174 on host → 5173 inside container (leaves local dev port 5173 free)
+      - "5174:5173"
+    networks:
+      - graphsentinel-net
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://127.0.0.1:5173"]
+      interval: 10s
+      timeout: 5s
+      retries: 6
+      start_period: 20s
+    # Compose Watch: sync source changes without rebuild
+    develop:
+      watch:
+        # frontend/src/** → Vite HMR handles browser reload (no rebuild)
+        - path: ./frontend/src
+          target: /app/src
+          action: sync
+        # package-lock.json change → must rebuild image (npm ci)
+        - path: ./frontend/package-lock.json
+          action: rebuild
+
+# ── Named Volumes ──────────────────────────────────────────────────────────────
+volumes:
+  # Shared between blockchain (write) and backend (read): holds contract_address.env
+  contract-shared:
+    driver: local
+
+  # Backend SQLite database: isolated from any host database files
+  # WARNING: Do NOT add this to any `docker compose down -v` command.
+  # Use `make clean` (which prompts before wiping) if you need a truly fresh start.
+  backend-db:
+    driver: local
+
+  # N-03: Persistent Ganache EVM state. Ganache writes its LevelDB data here.
+  # This makes blockchain state survive container restart and recreation.
+  # WARNING: Do NOT wipe this with `docker compose down -v` unless a fresh
+  # chain is genuinely required (e.g. contract ABI breakage).
+  ganache-data:
+    driver: local
+
+# ── Internal network ──────────────────────────────────────────────────────────
+networks:
+  graphsentinel-net:
+    driver: bridge
+
+# ── Compose Watch (live-reload without rebuilds) ──────────────────────────────
+# Run with: docker compose watch
+# Or use: make watch
+#
+# Sync actions (no rebuild): source code changes → hot-reload inside container
+# Rebuild actions: dependency manifest changes → docker compose up --build required
+#
+# This is defined as an x-develop extension so it works with compose watch.

@@ -56,15 +56,32 @@ class EnforcementAgent:
         self.switch = switch or settings.enforcement_switch
         self.mode = mode or settings.enforcement_mode
         self.last_error: str | None = None
+        # Decision #5 (decisions.md) — Option C: a log-visible warning rather
+        # than rejecting `simulated` outright. `simulated` stays a legitimate
+        # mode (Docker/dev workflows depend on it); this just makes it
+        # impossible to miss in the container log that no real OVS rules are
+        # being applied. A stronger `require_real_enforcement` guard is
+        # deferred until a real-network production deployment is an actual
+        # goal (there isn't one defined yet).
+        if self.mode != 'ovs':
+            _audit_log.warning('Enforcement mode is SIMULATED — no OVS flow rules will be applied.')
 
     def _send_to_daemon(self, payload: dict) -> dict:
-        sock_path = settings.enforcement_agent_socket
+        payload["token"] = getattr(settings, "daemon_token", None)
         try:
-            with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as sock:
+            with socket.socket(socket.AF_INET, socket.SOCK_STREAM) as sock:
                 sock.settimeout(3.0)
-                sock.connect(sock_path)
+                sock.connect((settings.daemon_host, settings.daemon_port))
                 sock.sendall(json.dumps(payload).encode('utf-8'))
-                response = sock.recv(4096)
+                
+                response_data = []
+                while True:
+                    chunk = sock.recv(4096)
+                    if not chunk:
+                        break
+                    response_data.append(chunk)
+                
+                response = b"".join(response_data)
                 if not response:
                     raise RuntimeError('Empty response from daemon')
                 return json.loads(response.decode('utf-8'))

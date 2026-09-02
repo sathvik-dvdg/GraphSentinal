@@ -7,20 +7,24 @@ import { motion } from 'framer-motion'
 import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
+import EnforcementModeBadge from '../ui/EnforcementModeBadge'
+import DataFreshnessBadge from '../ui/DataFreshnessBadge'
+import MlModeBadge from '../ui/MlModeBadge'
+import DemoModeBadge from '../ui/DemoModeBadge'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
   '/network':    'Network Topology',
   '/threats':    'Threat Feed',
   '/forensics':  'Forensics',
-  '/blockchain': 'Blockchain Ledger',
+  '/blockchain': 'Audit & Ledger',
   '/timeline':   'Timeline Analytics',
   '/healing':    'Self-Healing Engine',
   '/alerts':     'Alert Centre',
   '/settings':   'Settings',
 }
 
-export default function Topbar({ onSimulate, onForensicsClick }) {
+export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
   const { logout } = useAuthStore()
@@ -28,6 +32,8 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
   const {
     stats,
     connectionMode,
+    dataErrors,
+    mlHealth,
   } = useGraphStore()
 
   const [time, setTime] = useState(new Date().toLocaleTimeString())
@@ -44,8 +50,10 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
 
   const isSimulating = connectionMode === 'simulating'
 
-  const handleLogout = () => {
-    logout()
+  const handleLogout = async () => {
+    // logout() calls POST /api/v1/auth/logout to invalidate the session
+    // server-side too, not just forget the token client-side.
+    await logout()
     navigate('/')
   }
 
@@ -78,6 +86,11 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
         </span>
 
         <ConnectionModeBadge mode={connectionMode} />
+        <EnforcementModeBadge mode={stats.enforcement_mode} />
+        <MlModeBadge mlHealth={mlHealth} />
+        <DataFreshnessBadge dataErrors={dataErrors} />
+        <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />
+
 
         {isSimulating && (
           <span
@@ -190,7 +203,7 @@ export default function Topbar({ onSimulate, onForensicsClick }) {
         {onSimulate && (
           <button
             id="topbar-simulate"
-            onClick={onSimulate}
+            onClick={isSimulating ? onStopSimulate : onSimulate}
             style={{
               display: 'flex',
               alignItems: 'center',

@@ -6,13 +6,18 @@ import { ShieldAlert, Search, Filter } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import SeverityBadge from '../components/ui/SeverityBadge'
 import ThreatBar from '../components/ui/ThreatBar'
+import CopyableHash from '../components/ui/CopyableHash'
+import StatTile from '../components/ui/StatTile'
+import FilterPill from '../components/ui/FilterPill'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
+import { formatEventTimestamp as formatAlertTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITIES = ['All', 'critical', 'warning', 'info']
 const TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 const TIME_RANGES = ['1h', '6h', '24h', '7d']
 
 export default function ThreatFeed() {
-  const { alerts } = useGraphStore()
+  const { alerts, dataErrors } = useGraphStore()
 
   const [severity, setSeverity] = useState('All')
   const [attackType, setAttackType] = useState('All')
@@ -48,9 +53,12 @@ export default function ThreatFeed() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Threat Feed
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          {filtered.length} event{filtered.length !== 1 ? 's' : ''} · Real-time threat intelligence
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            {filtered.length} event{filtered.length !== 1 ? 's' : ''} · Real-time threat intelligence
+          </p>
+          <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts }} />
+        </div>
       </div>
 
       {/* Filter bar */}
@@ -63,7 +71,7 @@ export default function ThreatFeed() {
         {/* Severity pills */}
         <div style={{ display: 'flex', gap: 4 }}>
           {SEVERITIES.map((s) => (
-            <Pill key={s} label={s} active={severity === s} onClick={() => setSeverity(s)}
+            <FilterPill key={s} label={s} active={severity === s} onClick={() => setSeverity(s)}
               color={s === 'critical' ? '#E03C3C' : s === 'warning' ? '#E8922A' : s === 'info' ? '#4F6EF7' : '#5A6480'} />
           ))}
         </div>
@@ -73,7 +81,7 @@ export default function ThreatFeed() {
         {/* Type pills */}
         <div style={{ display: 'flex', gap: 4 }}>
           {TYPES.map((t) => (
-            <Pill key={t} label={t} active={attackType === t} onClick={() => setAttackType(t)} color="#8B5CF6" />
+            <FilterPill key={t} label={t} active={attackType === t} onClick={() => setAttackType(t)} color="#8B5CF6" />
           ))}
         </div>
 
@@ -93,7 +101,7 @@ export default function ThreatFeed() {
         {/* Time range */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>
           {TIME_RANGES.map((t) => (
-            <Pill key={t} label={t} active={timeRange === t} onClick={() => setTimeRange(t)} color="#4F6EF7" />
+            <FilterPill key={t} label={t} active={timeRange === t} onClick={() => setTimeRange(t)} color="#4F6EF7" />
           ))}
         </div>
       </div>
@@ -125,8 +133,8 @@ export default function ThreatFeed() {
                       <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: '#8A95B0', background: 'rgba(255,255,255,0.06)', padding: '2px 8px', borderRadius: 4 }}>
                         {alert.attack_type}
                       </span>
-                      <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
-                        {new Date(alert.timestamp).toLocaleTimeString()}
+                      <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                        {formatAlertTimestamp(alert.timestamp)}
                       </span>
                     </div>
                     {/* Source IP */}
@@ -139,7 +147,7 @@ export default function ThreatFeed() {
                     {alert.blockchain_tx && (
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                         <span style={{ color: '#8B5CF6' }}>⛓</span>
-                        <span style={{ color: '#8B5CF6' }}>{alert.blockchain_tx.slice(0, 14)}…</span>
+                        <CopyableHash value={alert.blockchain_tx} style={{ color: '#8B5CF6' }} iconSize={9} />
                         <span style={{ color: '#2ECC8A', marginLeft: 4 }}>✓ on-chain</span>
                       </div>
                     )}
@@ -181,9 +189,9 @@ export default function ThreatFeed() {
             <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Live Stats
             </div>
-            <StatRow label="Total alerts" value={alerts.length} color="#8A95B0" />
-            <StatRow label="Critical" value={criticalCount} color="#E03C3C" />
-            <StatRow label="Isolated" value={blockedCount} color="#2ECC8A" />
+            <StatTile layout="row" panel={false} label="Total alerts" value={alerts.length} color="#8A95B0" />
+            <StatTile layout="row" panel={false} label="Critical" value={criticalCount} color="#E03C3C" />
+            <StatTile layout="row" panel={false} label="Isolated" value={blockedCount} color="#2ECC8A" />
           </div>
 
           {/* Top attacking IPs */}
@@ -225,38 +233,6 @@ export default function ThreatFeed() {
           </div>
         </div>
       </div>
-    </div>
-  )
-}
-
-function Pill({ label, active, onClick, color }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '4px 10px',
-        borderRadius: 6,
-        border: `1px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
-        background: active ? `${color}18` : 'transparent',
-        color: active ? color : '#5A6480',
-        fontSize: 10,
-        fontFamily: "'DM Mono', monospace",
-        cursor: 'pointer',
-        transition: 'all 150ms',
-        fontWeight: active ? 600 : 400,
-        textTransform: 'capitalize',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
-
-function StatRow({ label, value, color }) {
-  return (
-    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 8 }}>
-      <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
-      <span style={{ color, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{value}</span>
     </div>
   )
 }

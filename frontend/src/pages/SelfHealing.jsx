@@ -4,17 +4,21 @@ import { useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Cpu, ShieldCheck, Zap } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import StatTile from '../components/ui/StatTile'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
+import { formatEventTimestamp } from '../utils/formatTimestamp'
 
 export default function SelfHealing() {
-  const { healingEvents, stats } = useGraphStore()
+  const { healingEvents, stats, dataErrors } = useGraphStore()
 
   const stability = Math.max(0, Math.min(100, stats.system_health ?? 100))
   const avgResponseMs = useMemo(() => {
-    if (healingEvents.length === 0) return 0
-    const total = healingEvents.reduce((s, e) => s + (e.duration_ms || e.responseTimeMs || 0), 0)
-    return Math.round(total / healingEvents.length)
+    const timed = healingEvents.filter((e) => e.duration_ms != null || e.responseTimeMs != null)
+    if (timed.length === 0) return 0
+    const total = timed.reduce((s, e) => s + (e.duration_ms || e.responseTimeMs || 0), 0)
+    return Math.round(total / timed.length)
   }, [healingEvents])
-  const totalIsolations = healingEvents.filter((e) => e.action === 'ISOLATED').length
+  const totalIsolations = healingEvents.filter((e) => e.action === 'ISOLATED' || e.action === 'block' || e.action === 'BLOCKED').length
 
   const stabilityColor =
     stability >= 80 ? '#2ECC8A' :
@@ -37,30 +41,36 @@ export default function SelfHealing() {
         <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Self-Healing Engine
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          Autonomous threat response · Network stability monitoring
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            Autonomous threat response · Network stability monitoring
+          </p>
+          <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, healing: dataErrors.healing }} />
+        </div>
       </div>
 
       {/* Stat cards row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
-        <StatCard
+        <StatTile
           label="Total Isolations Today"
           value={totalIsolations}
           color="#E03C3C"
           icon={<Zap size={16} style={{ color: '#E03C3C' }} />}
+          valueFontSize={26}
         />
-        <StatCard
+        <StatTile
           label="Avg Response Time"
           value={`${avgResponseMs}ms`}
           color="#4F6EF7"
           icon={<Cpu size={16} style={{ color: '#4F6EF7' }} />}
+          valueFontSize={26}
         />
-        <StatCard
+        <StatTile
           label="Network Stability"
           value={`${stability}%`}
           color={stabilityColor}
           icon={<ShieldCheck size={16} style={{ color: stabilityColor }} />}
+          valueFontSize={26}
         />
       </div>
 
@@ -109,7 +119,7 @@ export default function SelfHealing() {
                       {event.action}
                     </span>
                     <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
-                      {new Date(event.timestamp).toLocaleTimeString()}
+                      {formatEventTimestamp(event.timestamp)}
                     </span>
                   </div>
 
@@ -122,31 +132,33 @@ export default function SelfHealing() {
                       {event.edges_severed || 0} edges cut
                     </span>
                     <span style={{ color: '#4F6EF7', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
-                      {event.duration_ms || event.responseTimeMs || 0}ms
+                      {event.duration_ms != null ? `${event.duration_ms}ms` : (event.responseTimeMs != null ? `${event.responseTimeMs}ms` : '—')}
                     </span>
                   </div>
 
-                  {/* Stability bar */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        Network Stability
-                      </span>
-                      <span style={{ color: '#2ECC8A', fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
-                        {event.network_stability_before}% → {event.network_stability_after}%
-                      </span>
+                  {/* Stability bar — only shown if real telemetry was captured */}
+                  {event.network_stability_before != null && event.network_stability_after != null && (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          Network Stability
+                        </span>
+                        <span style={{ color: '#2ECC8A', fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                          {event.network_stability_before}% → {event.network_stability_after}%
+                        </span>
+                      </div>
+                      <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ position: 'absolute', top: 0, height: '100%', width: `${event.network_stability_before}%`, background: 'rgba(232,146,42,0.3)', borderRadius: 99 }} />
+                        <motion.div
+                          style={{ position: 'absolute', top: 0, height: '100%', background: 'linear-gradient(90deg, #4F6EF7, #2ECC8A)', borderRadius: 99 }}
+                          initial={{ width: `${event.network_stability_before}%` }}
+                          animate={{ width: `${event.network_stability_after}%` }}
+                          transition={{ duration: 1.5, ease: 'easeOut' }}
+                          className="motion-functional"
+                        />
+                      </div>
                     </div>
-                    <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ position: 'absolute', top: 0, height: '100%', width: `${event.network_stability_before}%`, background: 'rgba(232,146,42,0.3)', borderRadius: 99 }} />
-                      <motion.div
-                        style={{ position: 'absolute', top: 0, height: '100%', background: 'linear-gradient(90deg, #4F6EF7, #2ECC8A)', borderRadius: 99 }}
-                        initial={{ width: `${event.network_stability_before}%` }}
-                        animate={{ width: `${event.network_stability_after}%` }}
-                        transition={{ duration: 1.5, ease: 'easeOut' }}
-                        className="motion-functional"
-                      />
-                    </div>
-                  </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -237,7 +249,7 @@ export default function SelfHealing() {
               {healingEvents.map((ev, i) => (
                 <tr key={ev.id || i}>
                   <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
-                    {new Date(ev.timestamp).toLocaleTimeString()}
+                    {formatEventTimestamp(ev.timestamp)}
                   </td>
                   <td style={{ color: '#E8EDF5', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{ev.ip}</td>
                   <td>
@@ -246,9 +258,13 @@ export default function SelfHealing() {
                     </span>
                   </td>
                   <td style={{ color: '#8A95B0', fontFamily: "'DM Mono', monospace" }}>{ev.edges_severed || 0}</td>
-                  <td style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>{ev.duration_ms || ev.responseTimeMs || 0}</td>
+                  <td style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>
+                    {ev.duration_ms != null ? `${ev.duration_ms}ms` : (ev.responseTimeMs != null ? `${ev.responseTimeMs}ms` : '—')}
+                  </td>
                   <td style={{ color: '#2ECC8A', fontFamily: "'DM Mono', monospace" }}>
-                    {ev.network_stability_before}% → {ev.network_stability_after}%
+                    {ev.network_stability_before != null && ev.network_stability_after != null
+                      ? `${ev.network_stability_before}% → ${ev.network_stability_after}%`
+                      : '—'}
                   </td>
                   <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
                     {ev.attack_type || ev.triggeredBy || '—'}
@@ -270,27 +286,7 @@ export default function SelfHealing() {
   )
 }
 
-function StatCard({ label, value, color, icon }) {
-  return (
-    <div className="gs-panel" style={{ padding: '16px 20px', position: 'relative', overflow: 'hidden' }}>
-      <div style={{
-        position: 'absolute', top: 0, right: 0, width: 60, height: 60,
-        background: `${color}08`, filter: 'blur(20px)',
-      }} />
-      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
-        <span style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-          {label}
-        </span>
-        <div style={{ width: 28, height: 28, borderRadius: 8, background: `${color}12`, border: `1px solid ${color}25`, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
-          {icon}
-        </div>
-      </div>
-      <div style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 26 }}>
-        {value}
-      </div>
-    </div>
-  )
-}
+
 
 function LegendRow({ label, value, color, active }) {
   return (

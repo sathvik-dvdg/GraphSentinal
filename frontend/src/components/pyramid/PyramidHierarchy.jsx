@@ -161,13 +161,17 @@ export default function PyramidHierarchy() {
             const colors = STATUS_COLORS[d.status] || STATUS_COLORS.normal
             const isAttacking = d.status === 'attacking'
             const isInfected = d.status === 'infected'
+            // Configured-but-unobserved baseline host — dim the whole card so
+            // it reads as distinct from hosts that actually appeared in
+            // captured traffic (Error.md #9).
+            const isConfiguredOnly = d.source === 'configured'
 
             return (
               <g
                 key={d.id}
                 className="node-group"
                 transform={`translate(${node.x}, ${node.y})`}
-                style={{ cursor: 'pointer' }}
+                style={{ cursor: 'pointer', opacity: isConfiguredOnly ? 0.45 : 1 }}
                 onClick={() => setSelectedNode(d)}
               >
                 {/* Node card */}
@@ -178,6 +182,7 @@ export default function PyramidHierarchy() {
                   fill={colors.bg}
                   stroke={colors.border}
                   strokeWidth={isAttacking ? 1.5 : 0.75}
+                  strokeDasharray={isConfiguredOnly ? '3,2' : undefined}
                   className={isAttacking ? 'attacking-border' : ''}
                 />
 
