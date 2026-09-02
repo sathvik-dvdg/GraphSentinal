@@ -5,7 +5,7 @@ from ipaddress import ip_address
 from math import isfinite
 from typing import Literal, Optional
 
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, Field, IPvAnyAddress, field_validator
 
 
 NodeStatus = Literal["normal", "suspicious", "malicious", "blocked"]
@@ -144,17 +144,9 @@ class BlockedResponse(BaseModel):
 
 
 class BlockRequest(BaseModel):
-    ip: str
+    ip: IPvAnyAddress
     reason: BlockReason = "MANUAL_OVERRIDE"
     action: BlockAction = "block"
-
-    @field_validator("ip")
-    @classmethod
-    def validate_ip_format(cls, value: str) -> str:
-        try:
-            return str(ip_address(value.strip()))
-        except ValueError as exc:
-            raise ValueError(f"Invalid IP address format: {value}") from exc
 
 
 class BlockResponse(BaseModel):
