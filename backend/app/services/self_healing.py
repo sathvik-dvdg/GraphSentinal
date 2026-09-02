@@ -2,6 +2,7 @@ import time
 from datetime import datetime, timezone
 from uuid import uuid4
 
+from sqlalchemy.dialects.sqlite import insert as sqlite_upsert
 from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
@@ -29,14 +30,27 @@ class SelfHealingEngine:
             status = self._enforce_block(clean_ip)
             duration_ms = max(1, int((time.perf_counter() - start_time) * 1000))
 
-            row = db.query(BlockedIP).filter(BlockedIP.ip_address == clean_ip).one_or_none()
-            if row is None:
-                row = BlockedIP(ip_address=clean_ip)
-                db.add(row)
-            row.reason = reason
-            row.attack_type = attack_type
-            row.threat_score = float(threat_score)
-            row.enforcement_status = status
+            stmt = (
+                sqlite_upsert(BlockedIP)
+                .values(
+                    ip_address=clean_ip,
+                    reason=reason,
+                    attack_type=attack_type,
+                    threat_score=float(threat_score),
+                    enforcement_status=status,
+                    blocked_at=datetime.now(timezone.utc),
+                )
+                .on_conflict_do_update(
+                    index_elements=[BlockedIP.ip_address],
+                    set_={
+                        "reason": reason,
+                        "attack_type": attack_type,
+                        "threat_score": float(threat_score),
+                        "enforcement_status": status,
+                    },
+                )
+            )
+            db.execute(stmt)
             db.commit()
             return self._healing_event(
                 ip=clean_ip,
@@ -58,9 +72,7 @@ class SelfHealingEngine:
                 status = self.agent.unblock_ip(clean_ip)
             except EnforcementError:
                 status = "pending_unblock"
-            row = db.query(BlockedIP).filter(BlockedIP.ip_address == clean_ip).one_or_none()
-            if row is not None:
-                db.delete(row)
+            db.query(BlockedIP).filter(BlockedIP.ip_address == clean_ip).delete()
             db.commit()
             return {"status": "unblocked", "ip": clean_ip, "enforcement_status": status}
         finally:

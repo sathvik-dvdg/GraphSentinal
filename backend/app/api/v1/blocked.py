@@ -1,6 +1,7 @@
 import logging
 from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
+from starlette.concurrency import run_in_threadpool
 from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_request_id, require_admin_privilege, require_session_or_api_key
@@ -48,7 +49,7 @@ async def block_or_unblock(
     req_id = get_current_request_id(req)
     try:
         if request.action == "unblock":
-            result = healer.unblock_ip(request.ip, db=db)
+            result = await run_in_threadpool(healer.unblock_ip, request.ip, db=db)
 
             # Reflect the unblock in incident history so it doesn't keep
             # claiming the IP is still blocked (Error.md #14), and record a
@@ -72,7 +73,8 @@ async def block_or_unblock(
             db.add(closure)
             db.commit()
             db.refresh(closure)
-            tx_result = BlockchainAdapter.get_instance().release_node(
+            tx_result = await run_in_threadpool(
+                BlockchainAdapter.get_instance().release_node,
                 ip=result["ip"],
                 reason="MANUAL_OVERRIDE",
             )
@@ -114,7 +116,7 @@ async def block_or_unblock(
                 "enforcement_status": result["enforcement_status"],
             }
 
-        event = healer.block_ip(request.ip, reason=request.reason, db=db)
+        event = await run_in_threadpool(healer.block_ip, request.ip, reason=request.reason, db=db)
 
         now = datetime.now(timezone.utc)
         incident = Incident(
@@ -133,7 +135,8 @@ async def block_or_unblock(
         db.add(incident)
         db.commit()
         db.refresh(incident)
-        tx_result = BlockchainAdapter.get_instance().store_incident(
+        tx_result = await run_in_threadpool(
+            BlockchainAdapter.get_instance().store_incident,
             source_ip=event["ip"],
             attack_type="Manual",
             severity=score_to_severity_int(event.get("trigger_score") or 0.0) or 1,
