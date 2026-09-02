@@ -47,9 +47,10 @@ async def block_or_unblock(
 ):
     healer = SelfHealingEngine()
     req_id = get_current_request_id(req)
+    clean_ip = str(request.ip)
     try:
         if request.action == "unblock":
-            result = healer.unblock_ip(request.ip, db=db)
+            result = await run_in_threadpool(healer.unblock_ip, clean_ip)
 
             # Reflect the unblock in incident history so it doesn't keep
             # claiming the IP is still blocked (Error.md #14), and record a
@@ -81,7 +82,7 @@ async def block_or_unblock(
                 )
             except Exception as exc:
                 _logger.warning("Blockchain release_node failed for %s: %s", result["ip"], exc)
-                tx_result = {"status": "error", "error": str(exc), "tx_hash": None}
+                tx_result = {"status": "retry", "error": str(exc), "tx_hash": None}
             closure.blockchain_tx = tx_result.get("tx_hash")
             # N-03: persist chain context for forensic reconciliation
             closure.blockchain_chain_id = tx_result.get("chain_id")
@@ -90,7 +91,7 @@ async def block_or_unblock(
             # N-04: releaseNode is an on-chain state transition, not an incident creation
             closure.blockchain_incident_id = None
             # N-05: record outbox status
-            closure.blockchain_status = tx_result.get("status", "pending") if tx_result.get("tx_hash") else tx_result.get("status", "no_tx")
+            closure.blockchain_status = tx_result.get("status", "pending") if tx_result.get("tx_hash") else tx_result.get("status", "retry")
             closure.blockchain_last_error = tx_result.get("error") if tx_result.get("status") != "confirmed" else None
             db.commit()
             log_enforcement_action(
@@ -120,7 +121,7 @@ async def block_or_unblock(
                 "enforcement_status": result["enforcement_status"],
             }
 
-        event = healer.block_ip(request.ip, reason=request.reason, db=db)
+        event = await run_in_threadpool(healer.block_ip, clean_ip, reason=request.reason)
 
         now = datetime.now(timezone.utc)
         incident = Incident(
