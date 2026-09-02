@@ -17,7 +17,7 @@ export default function SelfHealing() {
     const total = healingEvents.reduce((s, e) => s + (e.duration_ms || e.responseTimeMs || 0), 0)
     return Math.round(total / healingEvents.length)
   }, [healingEvents])
-  const totalIsolations = healingEvents.filter((e) => e.action === 'ISOLATED').length
+  const totalIsolations = healingEvents.filter((e) => e.action === 'ISOLATED' || e.action === 'block' || e.action === 'BLOCKED').length
 
   const stabilityColor =
     stability >= 80 ? '#2ECC8A' :
@@ -44,7 +44,7 @@ export default function SelfHealing() {
           <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
             Autonomous threat response · Network stability monitoring
           </p>
-          <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats }} />
+          <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, healing: dataErrors.healing }} />
         </div>
       </div>
 

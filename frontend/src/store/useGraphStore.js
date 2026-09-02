@@ -3,7 +3,7 @@
 // § 4.5 Fix: connectionMode state machine replaces isMockMode + isSimulating booleans
 // MOCK data is untangled from initial state.
 import { create } from 'zustand'
-import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline } from '../services/api'
+import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealingEvents } from '../services/api'
 
 // connectionMode values:
 //   'connecting'  — app just started, trying to reach backend
@@ -19,7 +19,7 @@ const EMPTY_STATE = {
   timeline: [],
   enforcementActions: [],
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
-  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null },
+  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null },
 }
 
 const useGraphStore = create((set, get) => ({
@@ -47,7 +47,7 @@ const useGraphStore = create((set, get) => ({
   // silently go stale if only its own fetch keeps failing while others
   // succeed. This lets the UI show that panel is stale instead of pretending
   // null (last fetch OK) or an error message string.
-  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null },
+  dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null },
   setDataError: (resource, error) =>
     set((state) => ({ dataErrors: { ...state.dataErrors, [resource]: error } })),
 
@@ -214,9 +214,9 @@ const useGraphStore = create((set, get) => ({
       // Pull the real resulting state back via REST — same normalization
       // path as normal polling (useGraphData.js), just triggered immediately
       // instead of waiting for the next 10s tick.
-      const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes] =
+      const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes, healingRes] =
         await Promise.allSettled([
-          getGraph(), getAlerts(), getBlocked(), getForensics(), getStats(), getTimeline(),
+          getGraph(), getAlerts(), getBlocked(), getForensics(), getStats(), getTimeline(), getHealingEvents(),
         ])
 
       if (graphRes.status === 'fulfilled') state.setGraphData(graphRes.value)
@@ -228,6 +228,11 @@ const useGraphStore = create((set, get) => ({
       }
       if (statsRes.status === 'fulfilled') state.updateStats(statsRes.value)
       if (timelineRes.status === 'fulfilled') state.setTimeline(timelineRes.value.data_points)
+      if (healingRes.status === 'fulfilled') {
+        state.setHealingEvents(healingRes.value.events)
+      } else if (analyzeResult?.healing_events?.length) {
+        analyzeResult.healing_events.forEach((e) => state.addHealingEvent(e))
+      }
 
       if (blockedRes.status === 'fulfilled' && blockedRes.value.blocked_ips?.some((b) => b.ip === targetIp)) {
         state.setHealingNode(targetIp)
@@ -282,6 +287,7 @@ const useGraphStore = create((set, get) => ({
   setChainId: (id) => set({ chainId: id }),
   setTimeline: (data) => set({ timeline: data }),
   setEnforcementActions: (actions) => set({ enforcementActions: actions }),
+  setHealingEvents: (events) => set({ healingEvents: events }),
 }))
 
 export default useGraphStore

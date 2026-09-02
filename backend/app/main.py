@@ -109,7 +109,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(RequestCorrelationMiddleware)
 
-from app.api.v1 import alerts, analyze, audit, auth, blocked, blockchain, enforcement_actions, forensics, graph, settings_route, stats, timeline  # noqa: E402
+from app.api.v1 import alerts, analyze, audit, auth, blocked, blockchain, enforcement_actions, forensics, graph, healing, settings_route, stats, timeline  # noqa: E402
 
 app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(analyze.router, prefix="/api/v1", tags=["analyze"])
@@ -118,6 +118,7 @@ app.include_router(stats.router, prefix="/api/v1", tags=["stats"])
 app.include_router(timeline.router, prefix="/api/v1", tags=["timeline"])
 app.include_router(alerts.router, prefix="/api/v1", tags=["alerts"])
 app.include_router(blocked.router, prefix="/api/v1", tags=["blocked"])
+app.include_router(healing.router, prefix="/api/v1", tags=["healing"])
 app.include_router(forensics.router, prefix="/api/v1", tags=["forensics"])
 app.include_router(blockchain.router, prefix="/api/v1", tags=["blockchain"])
 app.include_router(settings_route.router, prefix="/api/v1", tags=["settings"])
