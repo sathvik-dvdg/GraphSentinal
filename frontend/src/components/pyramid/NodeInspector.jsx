@@ -5,7 +5,7 @@ import { useNavigate } from 'react-router-dom'
 import { X, Shield, AlertTriangle, Zap, ExternalLink } from 'lucide-react'
 import { LEVEL_LABELS, STATUS_COLORS } from './pyramidConfig'
 import useGraphStore from '../../store/useGraphStore'
-import { blockIP, getGraph, getBlocked, getStats } from '../../services/api'
+import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../../services/api'
 
 export default function NodeInspector({ node, onClose }) {
   const navigate = useNavigate()
@@ -14,6 +14,8 @@ export default function NodeInspector({ node, onClose }) {
   const setGraphData = useGraphStore((s) => s.setGraphData)
   const setBlockedIPs = useGraphStore((s) => s.setBlockedIPs)
   const updateStats = useGraphStore((s) => s.updateStats)
+  const setHealingEvents = useGraphStore((s) => s.setHealingEvents)
+  const addHealingEvent = useGraphStore((s) => s.addHealingEvent)
   const [isToggling, setIsToggling] = useState(false)
 
   if (!node) return null
@@ -51,13 +53,17 @@ export default function NodeInspector({ node, onClose }) {
     if (!ip || isToggling) return
     setIsToggling(true)
     try {
-      await blockIP(ip, isIsolated ? 'unblock' : 'block')
-      const [graphRes, blockedRes, statsRes] = await Promise.allSettled([
-        getGraph(), getBlocked(), getStats(),
+      const blockRes = await blockIP(ip, isIsolated ? 'unblock' : 'block')
+      if (blockRes?.healing_event) {
+        addHealingEvent(blockRes.healing_event)
+      }
+      const [graphRes, blockedRes, statsRes, healingRes] = await Promise.allSettled([
+        getGraph(), getBlocked(), getStats(), getHealingEvents(),
       ])
       if (graphRes.status === 'fulfilled') setGraphData(graphRes.value)
       if (blockedRes.status === 'fulfilled') setBlockedIPs(blockedRes.value.blocked_ips)
       if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
+      if (healingRes.status === 'fulfilled') setHealingEvents(healingRes.value.events)
     } catch (err) {
       console.error(`[NodeInspector] Failed to ${isIsolated ? 'unblock' : 'block'} ${ip} — backend rejected or is unreachable:`, err)
     } finally {

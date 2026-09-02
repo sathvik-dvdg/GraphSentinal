@@ -75,6 +75,8 @@ export const getHealth = () => api.get('/health')
 
 export const blockIP = (ip, action = 'block', reason = 'MANUAL_OVERRIDE') =>
   api.post('/api/v1/block', { ip, action, reason })
+export const getHealingEvents = (limit = 50) =>
+  api.get('/api/v1/healing', { params: { limit } })
 export const getEnforcementActions = (limit = 100) =>
   api.get('/api/v1/enforcement-actions', { params: { limit } })
 

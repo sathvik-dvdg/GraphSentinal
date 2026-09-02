@@ -1,4 +1,6 @@
 # [WSL2]
+from __future__ import annotations
+
 from ipaddress import ip_address
 from math import isfinite
 from typing import Literal, Optional
@@ -155,6 +157,7 @@ class BlockResponse(BaseModel):
     # this schema — same class of drift response_model= would have silently
     # stripped (Error.md #25).
     enforcement_status: str
+    healing_event: Optional[HealingEvent] = None
 
 
 class BlockchainStoreRequest(BaseModel):
@@ -217,13 +220,18 @@ class HealingEvent(BaseModel):
     timestamp: str
     ip: str
     action: Literal["ISOLATED"]
-    attack_type: AttackType
+    attack_type: str
     trigger_score: float
     edges_severed: int
     duration_ms: int
     network_stability_before: int
     network_stability_after: int
     enforcement_status: str
+
+
+class HealingEventsResponse(BaseModel):
+    events: list[HealingEvent]
+    count: int
 
 
 class IncidentRecord(BaseModel):

@@ -184,11 +184,18 @@ async def block_or_unblock(
             request_id=req_id,
         )
 
+        try:
+            from app.main import sio
+            await sio.emit("healing_triggered", event)
+        except Exception:
+            pass
+
         return {
             "status": "blocked",
             "ip": event["ip"],
             "blockchain_tx": tx_result.get("tx_hash"),
             "enforcement_status": event["enforcement_status"],
+            "healing_event": event,
         }
     except ValueError as exc:
         raise HTTPException(status_code=400, detail=str(exc)) from exc
