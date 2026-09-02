@@ -13,9 +13,10 @@ export default function SelfHealing() {
 
   const stability = Math.max(0, Math.min(100, stats.system_health ?? 100))
   const avgResponseMs = useMemo(() => {
-    if (healingEvents.length === 0) return 0
-    const total = healingEvents.reduce((s, e) => s + (e.duration_ms || e.responseTimeMs || 0), 0)
-    return Math.round(total / healingEvents.length)
+    const timed = healingEvents.filter((e) => e.duration_ms != null || e.responseTimeMs != null)
+    if (timed.length === 0) return 0
+    const total = timed.reduce((s, e) => s + (e.duration_ms || e.responseTimeMs || 0), 0)
+    return Math.round(total / timed.length)
   }, [healingEvents])
   const totalIsolations = healingEvents.filter((e) => e.action === 'ISOLATED' || e.action === 'block' || e.action === 'BLOCKED').length
 
@@ -131,31 +132,33 @@ export default function SelfHealing() {
                       {event.edges_severed || 0} edges cut
                     </span>
                     <span style={{ color: '#4F6EF7', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
-                      {event.duration_ms || event.responseTimeMs || 0}ms
+                      {event.duration_ms != null ? `${event.duration_ms}ms` : (event.responseTimeMs != null ? `${event.responseTimeMs}ms` : '—')}
                     </span>
                   </div>
 
-                  {/* Stability bar */}
-                  <div>
-                    <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                      <span style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-                        Network Stability
-                      </span>
-                      <span style={{ color: '#2ECC8A', fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
-                        {event.network_stability_before}% → {event.network_stability_after}%
-                      </span>
+                  {/* Stability bar — only shown if real telemetry was captured */}
+                  {event.network_stability_before != null && event.network_stability_after != null && (
+                    <div>
+                      <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
+                        <span style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                          Network Stability
+                        </span>
+                        <span style={{ color: '#2ECC8A', fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                          {event.network_stability_before}% → {event.network_stability_after}%
+                        </span>
+                      </div>
+                      <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ position: 'absolute', top: 0, height: '100%', width: `${event.network_stability_before}%`, background: 'rgba(232,146,42,0.3)', borderRadius: 99 }} />
+                        <motion.div
+                          style={{ position: 'absolute', top: 0, height: '100%', background: 'linear-gradient(90deg, #4F6EF7, #2ECC8A)', borderRadius: 99 }}
+                          initial={{ width: `${event.network_stability_before}%` }}
+                          animate={{ width: `${event.network_stability_after}%` }}
+                          transition={{ duration: 1.5, ease: 'easeOut' }}
+                          className="motion-functional"
+                        />
+                      </div>
                     </div>
-                    <div style={{ height: 4, background: 'rgba(255,255,255,0.06)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
-                      <div style={{ position: 'absolute', top: 0, height: '100%', width: `${event.network_stability_before}%`, background: 'rgba(232,146,42,0.3)', borderRadius: 99 }} />
-                      <motion.div
-                        style={{ position: 'absolute', top: 0, height: '100%', background: 'linear-gradient(90deg, #4F6EF7, #2ECC8A)', borderRadius: 99 }}
-                        initial={{ width: `${event.network_stability_before}%` }}
-                        animate={{ width: `${event.network_stability_after}%` }}
-                        transition={{ duration: 1.5, ease: 'easeOut' }}
-                        className="motion-functional"
-                      />
-                    </div>
-                  </div>
+                  )}
                 </motion.div>
               ))}
             </AnimatePresence>
@@ -255,9 +258,13 @@ export default function SelfHealing() {
                     </span>
                   </td>
                   <td style={{ color: '#8A95B0', fontFamily: "'DM Mono', monospace" }}>{ev.edges_severed || 0}</td>
-                  <td style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>{ev.duration_ms || ev.responseTimeMs || 0}</td>
+                  <td style={{ color: '#4F6EF7', fontFamily: "'DM Mono', monospace" }}>
+                    {ev.duration_ms != null ? `${ev.duration_ms}ms` : (ev.responseTimeMs != null ? `${ev.responseTimeMs}ms` : '—')}
+                  </td>
                   <td style={{ color: '#2ECC8A', fontFamily: "'DM Mono', monospace" }}>
-                    {ev.network_stability_before}% → {ev.network_stability_after}%
+                    {ev.network_stability_before != null && ev.network_stability_after != null
+                      ? `${ev.network_stability_before}% → ${ev.network_stability_after}%`
+                      : '—'}
                   </td>
                   <td style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
                     {ev.attack_type || ev.triggeredBy || '—'}
