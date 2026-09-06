@@ -13,7 +13,7 @@ from app.database import SessionLocal
 from app.models.incident import BlockedIP, Incident, utc_now
 from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.enforcement_agent import validate_mininet_ip
-from app.services.enforcement_log import log_enforcement_action
+from app.services.enforcement_log import capture_network_stability, count_host_edges, log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
 
 
@@ -103,12 +103,21 @@ class ThreatAnalyzer:
                 continue
 
             detection_reason = "HEURISTIC_DEGRADED" if prediction.get("ml_mode") == "degraded" else "GNN_DETECTED"
+            # Error.md N2/H1 — capture real healing telemetry around the block.
+            stability_before = capture_network_stability()
+            edges_severed = count_host_edges(clean_ip)
             healing_event = self.healer.block_ip(
                 clean_ip,
                 reason=detection_reason,
                 attack_type=attack_type,
                 threat_score=score,
             )
+            stability_after = capture_network_stability()
+            # Surface the telemetry on the live event too, so the WebSocket
+            # push carries it before the next REST poll reconciles from the DB.
+            healing_event["edges_severed"] = edges_severed if edges_severed is not None else healing_event.get("edges_severed")
+            healing_event["network_stability_before"] = stability_before
+            healing_event["network_stability_after"] = stability_after
             healing_events.append(healing_event)
             tx_result = self.blockchain.store_incident(
                 source_ip=clean_ip,
@@ -125,6 +134,10 @@ class ThreatAnalyzer:
                 status=healing_event.get("enforcement_status", "unknown"),
                 blockchain_tx=tx_result.get("tx_hash"),
                 incident_id=incident.id,
+                duration_ms=healing_event.get("duration_ms"),
+                edges_severed=edges_severed,
+                network_stability_before=stability_before,
+                network_stability_after=stability_after,
             )
             alerts.append(self._alert_record(incident.id, clean_ip, attack_type, score, True, tx_result.get("tx_hash"), incident.data_source))
 

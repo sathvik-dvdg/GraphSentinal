@@ -19,6 +19,12 @@ const useAuthStore = create((set, get) => ({
   // getMe() comes back 401 — ProtectedRoute treats this as "not yet decided."
   authStatus: 'checking', // checking | authenticated | unauthenticated
   loginError: null,
+  // Error.md #5 — set when a 401 lands on a previously-authenticated session
+  // (expired, revoked, or the backend restarted and lost its in-memory
+  // sessions). Lets the app show one clear "session ended" banner instead of
+  // every poll failing silently for up to 10s.
+  sessionExpired: false,
+  clearSessionExpired: () => set({ sessionExpired: false }),
 
   login: async (username, password) => {
     set({ loginError: null })
@@ -26,7 +32,7 @@ const useAuthStore = create((set, get) => ({
       const res = await apiLogin(username.trim(), password)
       sessionStorage.setItem(STORAGE_KEY, res.token)
       setSessionToken(res.token)
-      set({ isAuthenticated: true, user: { username: res.username }, authStatus: 'authenticated' })
+      set({ isAuthenticated: true, user: { username: res.username }, authStatus: 'authenticated', sessionExpired: false })
       return true
     } catch (err) {
       const detail = err.response?.data?.detail
@@ -71,9 +77,16 @@ const useAuthStore = create((set, get) => ({
 // sessions. Force back to a real logged-out state instead of the app
 // silently failing every subsequent poll.
 setUnauthorizedHandler(() => {
+  const wasAuthed = useAuthStore.getState().isAuthenticated
   sessionStorage.removeItem(STORAGE_KEY)
   clearSessionToken()
-  useAuthStore.setState({ isAuthenticated: false, user: null, authStatus: 'unauthenticated' })
+  useAuthStore.setState({
+    isAuthenticated: false,
+    user: null,
+    authStatus: 'unauthenticated',
+    // Only flag "expired" if we were logged in — not on a fresh boot with no token.
+    sessionExpired: wasAuthed,
+  })
 })
 
 export default useAuthStore

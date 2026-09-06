@@ -6,6 +6,7 @@ import useGraphStore from '../store/useGraphStore'
 import NetworkGraph3D from '../components/dashboard/NetworkGraph3D'
 import NetworkGraph2D from '../components/dashboard/NetworkGraph2D'
 import PyramidHierarchy from '../components/pyramid/PyramidHierarchy'
+import ErrorBoundary from '../components/shared/ErrorBoundary'
 import ConnectionModeBadge from '../components/ui/ConnectionModeBadge'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { withTopologyScaffold } from '../utils/topologyScaffold'
@@ -136,17 +137,21 @@ export default function NetworkTopology() {
             {!hasTopology ? (
               <TopologyEmptyState connectionMode={connectionMode} />
             ) : show2D ? (
-              <NetworkGraph2D
-                graphData={topologyData}
-                healingNodeId={healingNodeId}
-                onNodeClick={handleNodeClick}
-              />
+              <ErrorBoundary label="The 2D network graph">
+                <NetworkGraph2D
+                  graphData={topologyData}
+                  healingNodeId={healingNodeId}
+                  onNodeClick={handleNodeClick}
+                />
+              </ErrorBoundary>
             ) : (
-              <NetworkGraph3D
-                graphData={topologyData}
-                healingNodeId={healingNodeId}
-                onNodeClick={handleNodeClick}
-              />
+              <ErrorBoundary label="The 3D network graph">
+                <NetworkGraph3D
+                  graphData={topologyData}
+                  healingNodeId={healingNodeId}
+                  onNodeClick={handleNodeClick}
+                />
+              </ErrorBoundary>
             )}
           </motion.div>
         )}

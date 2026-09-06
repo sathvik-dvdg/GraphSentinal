@@ -3,7 +3,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import require_session_or_api_key
 from app.database import get_db
-from app.models.incident import EnforcementAction, Incident
+from app.models.incident import EnforcementAction, Incident, iso_utc
 from app.models.schemas import AttackType, HealingEvent, HealingEventsResponse
 
 router = APIRouter()
@@ -44,15 +44,18 @@ async def get_healing_events(
         events.append(
             HealingEvent(
                 id=f"heal-{action.id}",
-                timestamp=action.created_at.isoformat(),
+                timestamp=iso_utc(action.created_at),
                 ip=action.ip_address,
                 action="ISOLATED",
                 attack_type=attack_type,
                 trigger_score=threat_score,
-                edges_severed=1,
-                duration_ms=None,
-                network_stability_before=None,
-                network_stability_after=None,
+                # Error.md N2/H1 — real telemetry captured at block time
+                # (enforcement_log columns). NULL on rows written before the
+                # telemetry migration, which the frontend renders as '—'.
+                edges_severed=action.edges_severed,
+                duration_ms=action.duration_ms,
+                network_stability_before=action.network_stability_before,
+                network_stability_after=action.network_stability_after,
                 enforcement_status=action.status,
             )
         )

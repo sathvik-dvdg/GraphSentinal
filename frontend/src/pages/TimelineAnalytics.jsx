@@ -1,6 +1,6 @@
 // [Windows] GraphSentinel — Susheep
 // TimelineAnalytics — full-page timeline chart with controls and breakdowns
-import { useState, useMemo } from 'react'
+import { useState, useMemo, useRef } from 'react'
 import {
   AreaChart, Area, BarChart, Bar, XAxis, YAxis,
   CartesianGrid, Tooltip, ResponsiveContainer, ReferenceLine, Legend,
@@ -18,6 +18,13 @@ export default function TimelineAnalytics() {
   const [timeRange, setTimeRange] = useState('24h')
   const [paused, setPaused] = useState(false)
   const [threshold, setThreshold] = useState(3)
+
+  // Error.md H4 — "Pause" now actually freezes the chart: when paused we keep
+  // rendering the snapshot captured at the moment the button was pressed
+  // instead of the live `timeline` from the store.
+  const frozenRef = useRef(timeline)
+  if (!paused) frozenRef.current = timeline
+  const chartData = paused ? frozenRef.current : timeline
 
   // Hourly breakdown from alerts
   const hourlyBreakdown = useMemo(() => {
@@ -45,7 +52,7 @@ export default function TimelineAnalytics() {
   }, [alerts])
 
   // Find anomaly spikes (>= threshold)
-  const anomalyPeaks = timeline.filter((d) => d.threats >= threshold)
+  const anomalyPeaks = chartData.filter((d) => d.threats >= threshold)
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
@@ -124,7 +131,7 @@ export default function TimelineAnalytics() {
 
         <div style={{ height: 320, padding: '12px 8px 8px' }}>
           <ResponsiveContainer width="100%" height="100%">
-            <AreaChart data={timeline} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
+            <AreaChart data={chartData} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="full-threats-grad" x1="0" y1="0" x2="0" y2="1">
                   <stop offset="5%"  stopColor="#E03C3C" stopOpacity={0.35} />

@@ -49,12 +49,16 @@ export default function AppShell() {
       if (blockRes?.healing_event) {
         addHealingEvent(blockRes.healing_event)
       }
-      const [graphRes, blockedRes, statsRes] = await Promise.allSettled([
-        getGraph(), getBlocked(), getStats(),
+      // Error.md #9/N4 — also refresh the healing feed so the Self-Healing
+      // page reflects a manual block/unblock immediately instead of waiting
+      // for the next 10s poll (the other views were already refreshed here).
+      const [graphRes, blockedRes, statsRes, healingRes] = await Promise.allSettled([
+        getGraph(), getBlocked(), getStats(), getHealingEvents(),
       ])
       if (graphRes.status === 'fulfilled') setGraphData(graphRes.value)
       if (blockedRes.status === 'fulfilled') setBlockedIPs(blockedRes.value.blocked_ips)
       if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
+      if (healingRes.status === 'fulfilled') setHealingEvents(healingRes.value.events)
       setSelectedNode(null)
     } catch (err) {
       console.error(`[AppShell] Failed to ${action} ${ip} — backend rejected or is unreachable:`, err)

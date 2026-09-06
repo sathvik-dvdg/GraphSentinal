@@ -1,9 +1,9 @@
 // [Windows] GraphSentinel — Susheep
 // Settings — tabbed configuration page: Simulation / Detection / Network / Blockchain
 import { useState, useEffect } from 'react'
-import { Settings as SettingsIcon, Zap, Shield, Network, Link2 } from 'lucide-react'
+import { Zap, Shield, Network, Link2, Lock, RefreshCw } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
-import { getSettings, updateThreatThreshold } from '../services/api'
+import { getSettings, updateThreatThreshold, reloadMlModel } from '../services/api'
 
 const TABS = [
   { id: 'simulation',  label: 'Simulation',           icon: <Zap size={14} /> },
@@ -23,6 +23,7 @@ export default function Settings() {
   const [simSpeed, setSimSpeed] = useState('1x')
   const [injectType, setInjectType] = useState('DDoS')
   const [injectTarget, setInjectTarget] = useState('10.0.0.2')
+  const [injectVictim, setInjectVictim] = useState('')  // '' = random
 
   // Detection
   const [anomalyThreshold, setAnomalyThreshold] = useState(70)
@@ -129,7 +130,7 @@ export default function Settings() {
               </div>
             </Section>
 
-            <Section title="Simulation Speed">
+            <Section title="Simulation Intensity">
               <div style={{ display: 'flex', gap: 8 }}>
                 {['1x', '5x', '10x'].map((s) => (
                   <button
@@ -140,6 +141,9 @@ export default function Settings() {
                     {s}
                   </button>
                 ))}
+              </div>
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+                Multiplies the synthetic flow volume (packets / bytes) sent by "Inject Attack" below — higher values push scores harder toward the isolation threshold.
               </div>
             </Section>
 
@@ -155,18 +159,34 @@ export default function Settings() {
                     ))}
                   </div>
                 </div>
-                <div>
-                  <Label>Target IP</Label>
-                  <input
-                    value={injectTarget}
-                    onChange={(e) => setInjectTarget(e.target.value)}
-                    style={inputStyle}
-                    placeholder="10.0.0.x"
-                  />
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <Label>Attacker IP (source)</Label>
+                    <input
+                      value={injectTarget}
+                      onChange={(e) => setInjectTarget(e.target.value)}
+                      style={inputStyle}
+                      placeholder="10.0.0.x"
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Label>Victim IP (blank = random)</Label>
+                    <input
+                      value={injectVictim}
+                      onChange={(e) => setInjectVictim(e.target.value)}
+                      style={inputStyle}
+                      placeholder="auto"
+                    />
+                  </div>
                 </div>
                 <button style={{ ...primaryBtnStyle('#E03C3C'), alignSelf: 'flex-start' }}
                   disabled={isSimulating}
-                  onClick={() => simulateAttack({ attackType: injectType, targetIp: injectTarget })}>
+                  onClick={() => simulateAttack({
+                    attackType: injectType,
+                    targetIp: injectTarget,
+                    victimIp: injectVictim.trim() || undefined,
+                    speedMultiplier: parseInt(simSpeed, 10) || 1,
+                  })}>
                   {isSimulating ? 'Injecting…' : 'Inject Attack'}
                 </button>
               </div>
@@ -209,14 +229,22 @@ export default function Settings() {
 
             <Section title="Anomaly Score Threshold (display only)">
               <SliderSetting
-                label="Not wired to the backend — see note below"
+                label="Display only — not wired to the backend"
                 value={anomalyThreshold}
                 onChange={setAnomalyThreshold}
                 color="#b7791f"
+                readOnly
               />
               <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
                 The backend doesn't have a separate "flag but don't block" stage — scoring above the single Threat Threshold above both alerts and auto-isolates in one step. This slider is left as a UI-only preview until that two-stage behavior actually exists server-side.
               </div>
+            </Section>
+
+            {/* Error.md H8 — POST /api/v1/ml/reload exists but nothing in the
+                UI could trigger it; an operator who saw HEURISTIC in the topbar
+                badge had to curl the endpoint. Admin-only, so it can 403. */}
+            <Section title="GraphSAGE Model">
+              <MlReloadControl />
             </Section>
 
             <Section title="Lateral Movement Sensitivity (not implemented)">
@@ -322,16 +350,23 @@ function Toggle({ active, onClick }) {
   )
 }
 
-function SliderSetting({ label, value, onChange, color, disabled = false }) {
+function SliderSetting({ label, value, onChange, color, disabled = false, readOnly = false }) {
+  // Error.md U1 — a display-only slider must look non-interactive: dimmed,
+  // not-allowed cursor, a lock icon, and a real `disabled` on the input so
+  // clicking/dragging does nothing.
+  const inert = disabled || readOnly
   return (
     <div>
-      <Label>{label}</Label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: disabled ? 0.5 : 1 }}>
+      <Label>
+        {readOnly && <Lock size={10} style={{ verticalAlign: '-1px', marginRight: 4, opacity: 0.6 }} />}
+        {label}
+      </Label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: inert ? 0.4 : 1, cursor: readOnly ? 'not-allowed' : 'default' }}>
         <input
           type="range" min={0} max={100}
-          value={value} onChange={(e) => onChange(Number(e.target.value))}
-          disabled={disabled}
-          style={{ flex: 1, accentColor: color }}
+          value={value} onChange={(e) => onChange && onChange(Number(e.target.value))}
+          disabled={inert}
+          style={{ flex: 1, accentColor: color, cursor: readOnly ? 'not-allowed' : 'pointer', pointerEvents: readOnly ? 'none' : 'auto' }}
         />
         <span style={{ color, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 36 }}>
           {value}
@@ -365,4 +400,66 @@ function primaryBtnStyle(color) {
     border: `1px solid ${color}40`, background: `${color}15`, color,
     fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 500, transition: 'all 150ms',
   }
+}
+
+function MlReloadControl() {
+  const mlHealth = useGraphStore((s) => s.mlHealth)
+  const setMlHealth = useGraphStore((s) => s.setMlHealth)
+  const [state, setState] = useState('idle') // idle | loading | ok | error
+  const [msg, setMsg] = useState('')
+
+  const mode = mlHealth?.mode || 'model'
+  const degraded = mode !== 'model'
+
+  const run = () => {
+    setState('loading')
+    setMsg('')
+    reloadMlModel()
+      .then((res) => {
+        setMlHealth({ mode: res.mode, degraded_reason: res.degraded_reason ?? null })
+        setState(res.mode === 'model' ? 'ok' : 'error')
+        setMsg(res.mode === 'model' ? 'Model reloaded — scoring is live GraphSAGE again' : (res.degraded_reason || 'Still degraded after reload'))
+      })
+      .catch((err) => {
+        setState('error')
+        setMsg(err?.response?.status === 403 ? 'Admin privilege required' : 'Reload failed — backend unreachable')
+      })
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <span style={{
+          fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+          background: degraded ? 'rgba(232,146,42,0.12)' : 'rgba(46,204,138,0.1)',
+          color: degraded ? '#b7791f' : '#12a672',
+          border: `1px solid ${degraded ? 'rgba(232,146,42,0.3)' : 'rgba(46,204,138,0.25)'}`,
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+        }}>
+          {degraded ? 'Heuristic scoring' : 'GraphSAGE model'}
+        </span>
+        {mlHealth?.degraded_reason && (
+          <span style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{mlHealth.degraded_reason}</span>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          style={{ ...primaryBtnStyle('#3b56d9'), opacity: state === 'loading' ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+          disabled={state === 'loading'}
+          onClick={run}
+        >
+          <RefreshCw size={12} className={state === 'loading' ? 'spin-slow' : undefined} />
+          {state === 'loading' ? 'Reloading…' : 'Reload Model'}
+        </button>
+        {msg && (
+          <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: state === 'ok' ? '#12a672' : state === 'error' ? '#E03C3C' : '#9aa1ad' }}>
+            {msg}
+          </span>
+        )}
+      </div>
+      <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+        Reloads GraphSAGE weights from disk and clears degraded mode. Admin only.
+      </div>
+    </div>
+  )
 }

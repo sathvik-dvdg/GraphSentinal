@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Network, Server, Brain, Shield, Link2, Globe } from 'lucide-react'
 import Navbar from '../components/landing/Navbar'
 import Footer from '../components/landing/Footer'
+import useAuthStore from '../store/useAuthStore'
 
 const PIPELINE_STAGES = [
   {
@@ -100,6 +101,14 @@ const fadeUp = {
 }
 
 export default function LandingPage() {
+  // Error.md U8 — a logged-in operator who lands on "/" should go straight to
+  // the dashboard instead of the marketing page. 'checking' falls through so
+  // we don't flash a redirect before the session is verified.
+  const { isAuthenticated, authStatus } = useAuthStore()
+  if (isAuthenticated && authStatus !== 'checking') {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return (
     <div
       className="antialiased min-h-screen flex flex-col"

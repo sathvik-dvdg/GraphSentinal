@@ -101,6 +101,10 @@ async def get_forensics(
             "created_at": row.created_at.replace(tzinfo=timezone.utc).isoformat(),
             "enforcement_status": row.enforcement_status,
             "data_source": row.data_source,
+            # Error.md H5 — server-authoritative triage state (shared with alerts)
+            "alert_status": getattr(row, "alert_status", None) or "open",
+            "acknowledged_at": row.acknowledged_at.replace(tzinfo=timezone.utc).isoformat() if getattr(row, "acknowledged_at", None) else None,
+            "resolved_at": row.resolved_at.replace(tzinfo=timezone.utc).isoformat() if getattr(row, "resolved_at", None) else None,
         })
 
     return {

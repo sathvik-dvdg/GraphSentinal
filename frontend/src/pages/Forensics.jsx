@@ -8,6 +8,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { Database, Link2, RefreshCw, ShieldAlert } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import { useForensicsData } from '../hooks/useForensicsData'
+import { updateIncidentStatus } from '../services/api'
 import CopyableHash from '../components/ui/CopyableHash'
 import BlockchainStatusBadge from '../components/ui/BlockchainStatusBadge'
 import StatTile from '../components/ui/StatTile'
@@ -22,7 +23,16 @@ export default function Forensics() {
   const resolvedIncidentIds = useGraphStore((s) => s.resolvedIncidentIds)
   const resolveIncident = useGraphStore((s) => s.resolveIncident)
 
-  const activeIncidents = data.incidents.filter((inc) => !resolvedIncidentIds.includes(inc.id))
+  // Error.md H5 — resolution is server-authoritative (`inc.alert_status`), with
+  // the local `resolvedIncidentIds` set kept only as an optimistic/offline
+  // fallback until the next poll reflects the PATCH.
+  const isResolved = (inc) => inc.alert_status === 'resolved' || resolvedIncidentIds.includes(inc.id)
+  const activeIncidents = data.incidents.filter((inc) => !isResolved(inc))
+
+  const markResolved = (incidentId) => {
+    resolveIncident(incidentId) // optimistic + offline fallback
+    updateIncidentStatus(incidentId, 'resolved').catch(() => { /* keep local */ })
+  }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16 }}>
@@ -292,13 +302,13 @@ export default function Forensics() {
                 {/* Actions */}
                 <div style={{ display: 'flex', gap: 10 }}>
                   <ActionBtn label="Export PDF Report" color="#3b56d9" onClick={() => window.print()} />
-                  <ActionBtn 
-                    label="Mark Resolved" 
-                    color="#12a672" 
+                  <ActionBtn
+                    label="Mark Resolved"
+                    color="#12a672"
                     onClick={() => {
-                      resolveIncident(selectedIncident.id)
+                      markResolved(selectedIncident.id)
                       setSelectedIncident(null)
-                    }} 
+                    }}
                   />
                 </div>
               </motion.div>

@@ -21,6 +21,7 @@ const ROUTE_TITLES = {
   '/timeline':   'Timeline Analytics',
   '/healing':    'Self-Healing Engine',
   '/alerts':     'Alert Centre',
+  '/audit':      'Audit Log',
   '/settings':   'Settings',
 }
 
@@ -70,8 +71,15 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
         overflow: 'hidden',
       }}
     >
-      {/* ── Left: Page title + connection badge ── */}
-      <div style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 200, flexShrink: 0 }}>
+      {/* ── Left: Page title + connection badges ──
+          Error.md U9 — this row used to be flexShrink:0 with a hard
+          `overflow:hidden` parent, so on laptop-width screens the trailing
+          badges were simply clipped. It now shrinks (min-width:0) and scrolls
+          its own overflow horizontally instead of losing badges. */}
+      <div
+        style={{ display: 'flex', alignItems: 'center', gap: 10, minWidth: 0, flex: '0 1 auto', overflowX: 'auto' }}
+        className="gs-no-scrollbar"
+      >
         <span
           style={{
             color: '#1b1f27',
@@ -80,6 +88,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
             fontSize: 13,
             letterSpacing: '0.02em',
             whiteSpace: 'nowrap',
+            flexShrink: 0,
           }}
         >
           {ROUTE_TITLES[pathname] || 'GraphSentinel'}
@@ -111,8 +120,12 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
         )}
       </div>
 
-      {/* ── Centre: Telemetry stats ── */}
+      {/* ── Centre: Telemetry stats ──
+          Error.md U9 — hidden below 1280px (xl); it's a secondary read that's
+          also on the Dashboard, so dropping it first keeps the badges and
+          action buttons legible on laptop widths. */}
       <div
+        className="gs-topbar-telemetry"
         style={{
           flex: 1,
           display: 'flex',

@@ -4,6 +4,7 @@
 // MOCK data is untangled from initial state.
 import { create } from 'zustand'
 import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealingEvents } from '../services/api'
+import { loadResolvedIncidentIds, saveResolvedIncidentIds } from '../utils/alertStatus'
 
 // connectionMode values:
 //   'connecting'  — app just started, trying to reach backend
@@ -18,6 +19,7 @@ const EMPTY_STATE = {
   chainTxs: [],
   timeline: [],
   enforcementActions: [],
+  lastDataAt: null,
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
   dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null },
 }
@@ -38,9 +40,15 @@ const useGraphStore = create((set, get) => ({
   healingNodeId: null,
   timeline: [],
   enforcementActions: [],
+  // Error.md U4 — wall-clock of the last time real data landed (REST poll or
+  // WebSocket push), so the UI can show "updated Ns ago" separately from the
+  // connection badge.
+  lastDataAt: null,
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
   nodeOverrides: {},
-  resolvedIncidentIds: [],
+  // Error.md H7 — persisted so incidents marked resolved in Forensics stay
+  // resolved across a refresh (still per-device until there's a backend).
+  resolvedIncidentIds: loadResolvedIncidentIds(),
 
   // Per-resource freshness (Error.md #22/#26): Promise.allSettled in
   // useGraphData.js updates each panel's data independently, so a panel can
@@ -106,7 +114,7 @@ const useGraphStore = create((set, get) => ({
         }
         return newNode
       })
-      return { graphData: { nodes: mergedNodes, links: newData.links } }
+      return { graphData: { nodes: mergedNodes, links: newData.links }, lastDataAt: Date.now() }
     }),
 
   addAlert: (alert) =>
@@ -168,7 +176,7 @@ const useGraphStore = create((set, get) => ({
   // real blockchain write). No fabricated hashes or optimistic local state —
   // see Error.md #3. `targetIp` is the attacker source; `victimIp` is who
   // it's attacking.
-  simulateAttack: async ({ attackType, targetIp, victimIp } = {}) => {
+  simulateAttack: async ({ attackType, targetIp, victimIp, speedMultiplier = 1 } = {}) => {
     // Randomize defaults so each Simulate click hits different hosts/attacks
     const allHosts = Array.from({ length: 10 }, (_, i) => `10.0.0.${i + 1}`)
     const attackTypes = ['DDoS', 'PortScan', 'SSHBrute', 'Botnet']
@@ -178,15 +186,24 @@ const useGraphStore = create((set, get) => ({
       const others = allHosts.filter((h) => h !== targetIp)
       victimIp = others[Math.floor(Math.random() * others.length)]
     }
+    // Error.md H2/H3 — the Settings "Simulation Speed" (1x/5x/10x) is now a
+    // real intensity multiplier on the synthetic flow volume, not dead state.
+    const mult = Math.max(1, Number(speedMultiplier) || 1)
     const state = get()
     if (state.connectionMode === 'simulating') return
 
     state.setConnectionMode('simulating')
 
     const attackFlows = {
+      // SYN flood: huge packet count, small packets, NON-HTTP ports. The old
+      // template hit ports 80/443 with ~9 MB, which the backend's
+      // infer_attack_type() correctly reads as an HTTP flood (DoSHulk, since
+      // `http_bytes > 1_000_000` is checked before the DDoS rule) — so every
+      // "DDoS" simulation came back labelled DoSHulk. High-numbered ports keep
+      // http_bytes at 0, so `total_packets > 5000` classifies it as DDoS.
       DDoS: [
-        { src_ip: targetIp, dst_ip: victimIp, src_port: 54321, dst_port: 80, protocol: 'TCP', packet_count: 15000, byte_count: 5120000, duration_sec: 3.5, tcp_flags: 2 },
-        { src_ip: targetIp, dst_ip: victimIp, src_port: 54322, dst_port: 443, protocol: 'TCP', packet_count: 12000, byte_count: 4300000, duration_sec: 3.5, tcp_flags: 2 },
+        { src_ip: targetIp, dst_ip: victimIp, src_port: 54321, dst_port: 8443, protocol: 'TCP', packet_count: 20000, byte_count: 1200000, duration_sec: 3.0, tcp_flags: 2 },
+        { src_ip: targetIp, dst_ip: victimIp, src_port: 54322, dst_port: 9090, protocol: 'TCP', packet_count: 16000, byte_count: 960000, duration_sec: 3.0, tcp_flags: 2 },
       ],
       PortScan: Array.from({ length: 12 }, (_, i) => ({
         src_ip: targetIp, dst_ip: victimIp, src_port: 40000 + i, dst_port: 20 + i * 5,
@@ -203,7 +220,13 @@ const useGraphStore = create((set, get) => ({
     // Error.md #34 — tag every synthetic flow as simulation-sourced so it's
     // distinguishable from real OVS traffic everywhere downstream (graph
     // nodes, incidents, alerts, forensics) instead of blending in silently.
-    const flows = (attackFlows[attackType] || attackFlows.DDoS).map((f) => ({ ...f, data_source: 'simulation' }))
+    // Error.md H2 — scale packet/byte volume by the chosen speed multiplier.
+    const flows = (attackFlows[attackType] || attackFlows.DDoS).map((f) => ({
+      ...f,
+      packet_count: Math.round((f.packet_count || 0) * mult),
+      byte_count: Math.round((f.byte_count || 0) * mult),
+      data_source: 'simulation',
+    }))
 
     try {
       const analyzeResult = await analyzeFlows(flows)
@@ -262,9 +285,13 @@ const useGraphStore = create((set, get) => ({
   },
 
   resolveIncident: (incidentId) =>
-    set((state) => ({
-      resolvedIncidentIds: [...state.resolvedIncidentIds, incidentId],
-    })),
+    set((state) => {
+      const next = state.resolvedIncidentIds.includes(incidentId)
+        ? state.resolvedIncidentIds
+        : [...state.resolvedIncidentIds, incidentId]
+      saveResolvedIncidentIds(next)
+      return { resolvedIncidentIds: next }
+    }),
 
   // ── UI setters ────────────────────────────────────────────
   toggleView: () => set((state) => ({ use3D: !state.use3D })),

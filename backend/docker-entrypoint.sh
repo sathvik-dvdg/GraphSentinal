@@ -27,7 +27,21 @@ else
 fi
 
 echo "[Backend] Starting uvicorn..."
-exec uvicorn app.main:socket_app \
-    --host 0.0.0.0 \
-    --port 8000 \
-    --reload
+# On Docker Desktop + WSL2, uvicorn's WatchFiles reloader recursively watches
+# the source bind mount and periodically crashes with "Input/output error
+# (os error 5)" when the virtiofs layer faults — putting the backend into a
+# restart loop (healthcheck: unhealthy, every API call returns nothing).
+#
+# RELOAD defaults to OFF so `docker compose up` is stable regardless of mount
+# health. Set RELOAD=1 in .env.docker.local for hot-reload once your mounts
+# are healthy (`wsl --shutdown` + Docker Desktop restart clears the fault).
+# Either way, editing backend/app/** while RELOAD is off just needs
+# `docker compose restart backend`; migrations apply on restart by design.
+if [ "${RELOAD:-0}" = "1" ] || [ "${RELOAD:-}" = "true" ]; then
+    echo "[Backend]   hot-reload ENABLED (watching /app/app)"
+    exec uvicorn app.main:socket_app --host 0.0.0.0 --port 8000 \
+        --reload --reload-dir /app/app
+else
+    echo "[Backend]   hot-reload disabled (set RELOAD=1 to enable)"
+    exec uvicorn app.main:socket_app --host 0.0.0.0 --port 8000
+fi

@@ -10,7 +10,7 @@ import CopyableHash from '../components/ui/CopyableHash'
 import StatTile from '../components/ui/StatTile'
 import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
-import { formatEventTimestamp as formatAlertTimestamp } from '../utils/formatTimestamp'
+import { formatEventTimestamp as formatAlertTimestamp, parseTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITIES = ['All', 'critical', 'warning', 'info']
 const TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
@@ -18,24 +18,38 @@ const TIME_RANGES = ['1h', '6h', '24h', '7d']
 
 export default function ThreatFeed() {
   const { alerts, dataErrors } = useGraphStore()
+  const resolvedIncidentIds = useGraphStore((s) => s.resolvedIncidentIds)
 
   const [severity, setSeverity] = useState('All')
   const [attackType, setAttackType] = useState('All')
   const [ipSearch, setIpSearch] = useState('')
   const [timeRange, setTimeRange] = useState('24h')
+  const [showResolved, setShowResolved] = useState(false)
 
   const timeRangeMs = { '1h': 3.6e6, '6h': 2.16e7, '24h': 8.64e7, '7d': 6.048e8 }
   const cutoff = Date.now() - (timeRangeMs[timeRange] || timeRangeMs['24h'])
 
+  // Error.md H5 — an incident resolved on the Forensics page (server
+  // `alert_status`, or the optimistic local set) should drop out of the feed
+  // here too, unless the operator opts to see resolved items.
+  const incidentIdOf = (id) => {
+    const m = /(\d+)\s*$/.exec(String(id ?? ''))
+    return m ? Number(m[1]) : null
+  }
+  const isResolved = (a) =>
+    a.alert_status === 'resolved' || resolvedIncidentIds.includes(incidentIdOf(a.id))
+
   const filtered = useMemo(() => {
     return alerts.filter((a) => {
+      if (!showResolved && isResolved(a)) return false
       if (severity !== 'All' && a.severity !== severity) return false
       if (attackType !== 'All' && a.attack_type !== attackType) return false
       if (ipSearch && !a.source_ip?.includes(ipSearch)) return false
-      if (new Date(a.timestamp).getTime() < cutoff) return false
+      const t = parseTimestamp(a.timestamp)
+      if (t && t.getTime() < cutoff) return false
       return true
     })
-  }, [alerts, severity, attackType, ipSearch, cutoff])
+  }, [alerts, severity, attackType, ipSearch, cutoff, showResolved, resolvedIncidentIds])
 
   // Stats for right sidebar
   const criticalCount = alerts.filter((a) => a.severity === 'critical').length
@@ -97,6 +111,14 @@ export default function ThreatFeed() {
             style={{ background: 'none', border: 'none', outline: 'none', color: '#1b1f27', fontSize: 12, fontFamily: "'DM Mono', monospace", width: 120 }}
           />
         </div>
+
+        {/* Show-resolved toggle (Error.md H5) — lit = resolved incidents hidden */}
+        <FilterPill
+          label="Hide resolved"
+          active={!showResolved}
+          onClick={() => setShowResolved((v) => !v)}
+          color="#12a672"
+        />
 
         {/* Time range */}
         <div style={{ display: 'flex', gap: 4, marginLeft: 'auto' }}>

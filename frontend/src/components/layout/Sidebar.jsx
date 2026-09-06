@@ -3,10 +3,11 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Network, ShieldAlert, Search,
-  Link2, TrendingUp, Zap, Bell, Settings, ChevronRight, Pin,
+  Link2, TrendingUp, Zap, Bell, Settings, ChevronRight, Pin, ScrollText,
 } from 'lucide-react'
 import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
+import { loadAlertStatuses } from '../../utils/alertStatus'
 
 const NAV_ITEMS = [
   { path: '/dashboard',  Icon: LayoutDashboard, label: 'Dashboard',         color: '#5a616e' },
@@ -17,12 +18,26 @@ const NAV_ITEMS = [
   { path: '/timeline',   Icon: TrendingUp,       label: 'Timeline',          color: '#1D9E75' },
   { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: '#12a672' },
   { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: '#b7791f' },
+  { path: '/audit',      Icon: ScrollText,       label: 'Audit Log',         color: '#5a616e' },
 ]
 
 export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }) {
-  const unread = useGraphStore((s) => 
-    s.alerts.filter((a) => !a.is_blocked && !a.acknowledged).length
-  )
+  // Error.md N5 / H5 — count alerts that aren't blocked and haven't been
+  // acknowledged/resolved. Server `alert_status` (from /api/v1/alerts) is the
+  // source of truth; the localStorage layer only covers un-synced optimism.
+  const alerts = useGraphStore((s) => s.alerts)
+  const statuses = loadAlertStatuses()
+  const unread = alerts.filter((a) => {
+    if (a.is_blocked) return false
+    const local = (statuses[`alert-${a.id}`] || statuses[a.id])?.status
+    const st = local || a.alert_status || 'open'
+    return st !== 'acknowledged' && st !== 'resolved'
+  }).length
+
+  // Error.md N6 — subscribe to the username so the strip re-renders when it
+  // loads, and use one consistent fallback everywhere.
+  const username = useAuthStore((s) => s.user?.username)
+  const initials = username ? username.substring(0, 2).toUpperCase() : 'OP'
 
   return (
     <aside
@@ -223,11 +238,11 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 flexShrink: 0,
               }}
             >
-              {useAuthStore.getState().user?.username ? useAuthStore.getState().user.username.substring(0,2).toUpperCase() : 'SD'}
+              {initials}
             </div>
             <div>
               <div style={{ color: '#1b1f27', fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
-                {useAuthStore.getState().user?.username || 'admin'}
+                {username || 'operator'}
               </div>
               <div style={{ color: 'rgba(27,31,39,0.45)', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                 Admin
@@ -253,7 +268,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 color: '#fff',
               }}
             >
-              {useAuthStore.getState().user?.username ? useAuthStore.getState().user.username.substring(0,2).toUpperCase() : 'KS'}
+              {initials}
             </div>
           </div>
         )}

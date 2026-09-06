@@ -27,7 +27,7 @@ class BlockchainClient:
                 f"expected {self.expected_chain_id}"
             )
 
-        abi_path = os.path.join(os.path.dirname(__file__), "contract_abi.json")
+        abi_path = os.getenv("BLOCKCHAIN_ABI_PATH") or os.path.join(os.path.dirname(__file__), "contract_abi.json")
         with open(abi_path) as f:
             self.abi = json.load(f)
 

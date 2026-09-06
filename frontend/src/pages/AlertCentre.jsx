@@ -13,7 +13,9 @@ import useGraphStore from '../store/useGraphStore'
 import StatTile from '../components/ui/StatTile'
 import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
-import { formatEventTimestamp } from '../utils/formatTimestamp'
+import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
+import { loadAlertStatuses, setAlertStatus, clearAlertStatus } from '../utils/alertStatus'
+import { updateIncidentStatus } from '../services/api'
 
 const SEVERITY_COLORS = { critical: '#E03C3C', warning: '#b7791f', info: '#3b56d9' }
 const SOURCE_LABELS = {
@@ -36,14 +38,17 @@ export default function AlertCentre() {
   const { alerts: unified, stats } = useAlerts()
   const { timeline, dataErrors } = useGraphStore()
 
-  const [localStatuses, setLocalStatuses] = useState({})
+  // Error.md H5 — triage is server-authoritative (PATCH /api/v1/incidents/{id}
+  // /status). localStorage is only an optimistic layer: written on click,
+  // cleared once the server confirms, kept if the backend was unreachable.
+  const [localStatuses, setLocalStatuses] = useState(() => loadAlertStatuses())
   const [filterSeverity, setFilterSeverity] = useState('All')
   const [filterStatus, setFilterStatus] = useState('All')
   const [filterSource, setFilterSource] = useState('All')
 
-  // Merge local overrides
+  // Merge local overrides ({status, at} shape from utils/alertStatus)
   const alertsWithLocal = useMemo(() =>
-    unified.map((a) => ({ ...a, status: localStatuses[a.id] || a.status })),
+    unified.map((a) => ({ ...a, status: localStatuses[a.id]?.status || a.status })),
     [unified, localStatuses]
   )
 
@@ -58,10 +63,17 @@ export default function AlertCentre() {
   )
 
   const cycleStatus = (id) => {
-    setLocalStatuses((prev) => {
-      const cur = prev[id] || unified.find((a) => a.id === id)?.status || 'open'
-      return { ...prev, [id]: STATUS_CYCLE[cur] || 'open' }
-    })
+    const alert = unified.find((a) => a.id === id)
+    const cur = localStatuses[id]?.status || alert?.status || 'open'
+    const next = STATUS_CYCLE[cur] || 'open'
+    // Optimistic local write for instant feedback.
+    setLocalStatuses((prev) => setAlertStatus(prev, id, next))
+    // Persist to the backend when this alert maps to a real incident row.
+    if (alert?.incidentId != null) {
+      updateIncidentStatus(alert.incidentId, next)
+        .then(() => setLocalStatuses((prev) => clearAlertStatus(prev, id)))
+        .catch(() => { /* keep the optimistic local value as an offline fallback */ })
+    }
   }
 
   // Donut data
@@ -93,7 +105,7 @@ export default function AlertCentre() {
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-            Unified incident hub · Acknowledge and resolve alerts
+            Unified incident hub · Acknowledge / resolve state saved on this device
           </p>
           <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
         </div>
@@ -104,7 +116,7 @@ export default function AlertCentre() {
         <StatTile layout="row" label="Open" value={stats.open} color="#E03C3C" />
         <StatTile layout="row" label="Acknowledged" value={stats.acked} color="#b7791f" />
         <StatTile layout="row" label="Resolved" value={stats.resolved} color="#12a672" />
-        <StatTile layout="row" label="MTTA" value={`${stats.mttaMin}m`} color="#3b56d9" />
+        <StatTile layout="row" label="MTTA" value={stats.mttaSamples > 0 ? `${stats.mttaMin}m` : '—'} color="#3b56d9" />
       </div>
 
       {/* Filter bar */}
@@ -256,8 +268,21 @@ export default function AlertCentre() {
             </div>
             <ResponsiveContainer width="100%" height={80}>
               <LineChart data={sparkData} margin={{ top: 4, right: 4, left: -30, bottom: 0 }}>
-                <XAxis dataKey="time" tick={{ fill: '#9aa1ad', fontSize: 8, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                {/* Error.md U5 — timeline points are ISO datetimes; without a
+                    tickFormatter the x-axis rendered the raw full ISO string. */}
+                <XAxis
+                  dataKey="time"
+                  tickFormatter={formatTimelineTick}
+                  minTickGap={32}
+                  tick={{ fill: '#9aa1ad', fontSize: 8, fontFamily: "'DM Mono', monospace" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis tick={false} axisLine={false} />
+                <Tooltip
+                  labelFormatter={formatTimelineTick}
+                  contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                />
                 <Line type="monotone" dataKey="threats" stroke="#E03C3C" strokeWidth={1.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -269,10 +294,12 @@ export default function AlertCentre() {
               Mean Time To Acknowledge
             </div>
             <div style={{ color: '#3b56d9', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 28 }}>
-              {stats.mttaMin}m
+              {stats.mttaSamples > 0 ? `${stats.mttaMin}m` : '—'}
             </div>
             <div style={{ color: '#9aa1ad', fontSize: 10, fontFamily: "'DM Mono', monospace", marginTop: 4 }}>
-              Based on {stats.acked} acknowledged alerts
+              {stats.mttaSamples > 0
+                ? `Based on ${stats.mttaSamples} acknowledged alert${stats.mttaSamples === 1 ? '' : 's'} (this device)`
+                : 'No alerts acknowledged yet'}
             </div>
           </div>
         </div>

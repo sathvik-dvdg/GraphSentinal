@@ -743,3 +743,22 @@ body {
 .login-back-link:hover {
   color: #5e5ce6;
 }
+
+/* Error.md U9 — topbar responsive behaviour: hide the centre telemetry on
+   laptop widths so the status badges and action buttons stay legible, and
+   let the left badge cluster scroll rather than clip. */
+@media (max-width: 1280px) {
+  .gs-topbar-telemetry { display: none !important; }
+}
+.gs-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
+.gs-no-scrollbar::-webkit-scrollbar { display: none; }
+
+/* Error.md H9 — a real print stylesheet for the Forensics "Export PDF Report"
+   button (window.print()): drop the app chrome and ambient layers so the
+   printed page is just the report content. */
+@media print {
+  aside, header, .gs-no-scrollbar, .fixed { display: none !important; }
+  main { overflow: visible !important; padding: 0 !important; }
+  .gs-panel { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
+  body { background: #fff !important; }
+}

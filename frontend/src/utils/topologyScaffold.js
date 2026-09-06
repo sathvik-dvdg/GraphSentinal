@@ -26,15 +26,21 @@ export function withTopologyScaffold(graphData) {
 
   if (nodes.length === 0) return { nodes: [], links: [] }
 
-  const hostNodes = nodes.filter((n) => IPV4.test(String(n.id)))
-  // Nothing recognisable to build a star around — leave the data untouched.
-  if (hostNodes.length === 0) return { nodes, links }
-
   // If the backend ever starts returning infrastructure nodes itself, defer
   // to it entirely rather than double-adding a switch.
   if (nodes.some((n) => n.id === SWITCH_ID || n.kind === 'switch')) {
     return { nodes, links }
   }
+
+  // Error.md #4 — prefer IPv4-keyed hosts, but if the backend keys hosts by
+  // hostname / datapath ID instead, don't fall through to a disconnected
+  // scatter: treat every non-infrastructure node as a host and still build
+  // the star around them.
+  const ipv4Hosts = nodes.filter((n) => IPV4.test(String(n.id)))
+  const hostNodes = ipv4Hosts.length > 0
+    ? ipv4Hosts
+    : nodes.filter((n) => !n.kind && n.id !== SWITCH_ID && n.id !== CONTROLLER_ID)
+  if (hostNodes.length === 0) return { nodes, links }
 
   const anyMalicious = hostNodes.some((n) => n.status === 'malicious')
 

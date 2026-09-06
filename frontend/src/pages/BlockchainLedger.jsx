@@ -2,6 +2,7 @@ import { Fragment, useState, useMemo } from 'react'
 import { motion, AnimatePresence } from 'framer-motion'
 import { Link2, CheckCircle, Loader2, Download, ChevronDown, ShieldCheck, XCircle } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import { getEnforcementActions, getForensicsPage } from '../services/api'
 import CopyableHash from '../components/ui/CopyableHash'
 import BlockchainStatusBadge from '../components/ui/BlockchainStatusBadge'
 import StatTile from '../components/ui/StatTile'
@@ -36,37 +37,62 @@ export default function BlockchainLedger() {
     ? Math.max(...chainTxs.map((tx) => tx.block_number || 0))
     : '—'
 
-  const exportCSV = () => {
+  const [exporting, setExporting] = useState(false)
+
+  // Error.md H9 — the poll only keeps the latest ~100 rows in the store, so
+  // exporting that slice silently truncated the audit trail. Pull a fuller
+  // set straight from the API at click time (backend caps a request at 500).
+  const fetchExportRows = async () => {
     if (tab === 'blockchain') {
-      const rows = [
-        ['TX Hash', 'Attack Type', 'Source IP', 'Block #', 'Gas Used', 'Status', 'Timestamp'],
-        ...chainTxs.map((tx) => [
-          tx.tx_hash, tx.attack_type, tx.source_ip, tx.block_number,
-          tx.gas_used, tx.status, tx.timestamp,
-        ]),
-      ]
-      downloadCSV(rows, 'blockchain_ledger.csv')
-    } else {
-      const rows = [
-        ['ID', 'IP Address', 'Action', 'Reason', 'Status', 'Error', 'Incident ID', 'Blockchain TX', 'Timestamp'],
-        ...enforcementActions.map((a) => [
-          a.id, a.ip_address, a.action, a.reason, a.status, a.error || '', a.incident_id || '', a.blockchain_tx || '', a.created_at,
-        ]),
-      ]
-      downloadCSV(rows, 'enforcement_audit.csv')
+      const res = await getForensicsPage(500, 0)
+      return res.blockchain_records ?? chainTxs
+    }
+    const res = await getEnforcementActions(500)
+    return res.actions ?? enforcementActions
+  }
+
+  const exportCSV = async () => {
+    setExporting(true)
+    try {
+      const data = await fetchExportRows()
+      if (tab === 'blockchain') {
+        const rows = [
+          ['TX Hash', 'Attack Type', 'Source IP', 'Block #', 'Gas Used', 'Status', 'Timestamp'],
+          ...data.map((tx) => [
+            tx.tx_hash, tx.attack_type, tx.source_ip, tx.block_number,
+            tx.gas_used, tx.status, tx.timestamp,
+          ]),
+        ]
+        downloadCSV(rows, 'blockchain_ledger.csv')
+      } else {
+        const rows = [
+          ['ID', 'IP Address', 'Action', 'Reason', 'Status', 'Error', 'Incident ID', 'Blockchain TX', 'Timestamp'],
+          ...data.map((a) => [
+            a.id, a.ip_address, a.action, a.reason, a.status, a.error || '', a.incident_id || '', a.blockchain_tx || '', a.created_at,
+          ]),
+        ]
+        downloadCSV(rows, 'enforcement_audit.csv')
+      }
+    } finally {
+      setExporting(false)
     }
   }
 
-  const exportJSON = () => {
-    const data = tab === 'blockchain' ? chainTxs : enforcementActions
-    const filename = tab === 'blockchain' ? 'blockchain_ledger.json' : 'enforcement_audit.json'
-    const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
-    const url = URL.createObjectURL(blob)
-    const a = document.createElement('a')
-    a.href = url
-    a.download = filename
-    a.click()
-    URL.revokeObjectURL(url)
+  const exportJSON = async () => {
+    setExporting(true)
+    try {
+      const data = await fetchExportRows()
+      const filename = tab === 'blockchain' ? 'blockchain_ledger.json' : 'enforcement_audit.json'
+      const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
+      const url = URL.createObjectURL(blob)
+      const a = document.createElement('a')
+      a.href = url
+      a.download = filename
+      a.click()
+      URL.revokeObjectURL(url)
+    } finally {
+      setExporting(false)
+    }
   }
 
   return (
@@ -93,13 +119,14 @@ export default function BlockchainLedger() {
             </div>
           </div>
         </div>
-        {/* Export buttons */}
+        {/* Export buttons — pull a fresh set from the API (up to 500 rows),
+            not the ~100-row polled slice held in the store (Error.md H9). */}
         <div style={{ display: 'flex', gap: 8 }}>
-          <button onClick={exportCSV} style={exportBtnStyle('#12a672')}>
-            <Download size={12} /> CSV
+          <button onClick={exportCSV} disabled={exporting} style={{ ...exportBtnStyle('#12a672'), opacity: exporting ? 0.5 : 1 }}>
+            <Download size={12} /> {exporting ? '…' : 'CSV'}
           </button>
-          <button onClick={exportJSON} style={exportBtnStyle('#3b56d9')}>
-            <Download size={12} /> JSON
+          <button onClick={exportJSON} disabled={exporting} style={{ ...exportBtnStyle('#3b56d9'), opacity: exporting ? 0.5 : 1 }}>
+            <Download size={12} /> {exporting ? '…' : 'JSON'}
           </button>
         </div>
       </div>

@@ -289,8 +289,19 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
             1000
           )
         }}
-        nodeLabel={(node) =>
-          `<div style="background:#ffffff;border:1px solid #e2e5ea;padding:6px 10px;
+        nodeLabel={(node) => {
+          // Error.md U3/N7 — the scaffold switch/controller aren't hosts, so
+          // don't show them a threat score / connection count / host status.
+          if (node.kind === 'switch' || node.kind === 'controller') {
+            const role = node.kind === 'switch' ? 'OpenvSwitch bridge' : 'OpenFlow controller'
+            return `<div style="background:#ffffff;border:1px solid #e2e5ea;padding:6px 10px;
+                         font-family:'DM Mono',monospace;font-size:11px;color:#1b1f27;border-radius:6px;line-height:1.6">
+              <b style="color:#3b56d9">${node.label || node.id}</b><br/>
+              ${role}<br/>
+              <span style="color:#727a86">Infrastructure · configured topology</span>
+            </div>`
+          }
+          return `<div style="background:#ffffff;border:1px solid #e2e5ea;padding:6px 10px;
                        font-family:'DM Mono',monospace;font-size:11px;color:#1b1f27;border-radius:6px;line-height:1.6">
             <b style="color:#3b56d9">${node.label}</b> (${node.id})<br/>
             Status: <span style="color:${STATUS_COLORS[node.status]}">${node.status?.toUpperCase()}</span>
@@ -298,7 +309,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
             Threat: ${(node.threat_score * 100).toFixed(1)}% | Conns: ${node.connections}
             ${node.source ? `<br/><span style="color:${node.source === 'observed' ? '#12a672' : '#727a86'}">${node.source === 'observed' ? '◆ Observed traffic' : '○ Configured, no traffic yet'}</span>` : ''}
           </div>`
-        }
+        }}
       />
       )}
     </div>

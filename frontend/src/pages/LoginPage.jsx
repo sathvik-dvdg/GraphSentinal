@@ -20,7 +20,7 @@ const TERMINAL_LINES = [
 
 export default function LoginPage() {
   const navigate = useNavigate()
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, sessionExpired } = useAuthStore()
 
   if (isAuthenticated) {
     return <Navigate to="/dashboard" replace />
@@ -85,6 +85,18 @@ export default function LoginPage() {
 
         {/* Right Panel — Login form */}
         <div className="login-form-panel">
+          {sessionExpired && (
+            <div
+              role="alert"
+              style={{
+                marginBottom: 14, padding: '10px 14px', borderRadius: 8,
+                border: '1px solid rgba(232,146,42,0.35)', background: 'rgba(232,146,42,0.1)',
+                color: '#b7791f', fontSize: 12, fontFamily: "'DM Mono', monospace",
+              }}
+            >
+              Your session ended (expired or the backend restarted). Sign in again to continue.
+            </div>
+          )}
           <LoginForm onSuccess={() => navigate('/dashboard')} />
 
           <motion.div

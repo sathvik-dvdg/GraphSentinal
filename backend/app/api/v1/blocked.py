@@ -6,11 +6,11 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import get_current_request_id, require_admin_privilege, require_session_or_api_key
 from app.database import get_db
-from app.models.incident import BlockedIP, Incident
+from app.models.incident import BlockedIP, Incident, iso_utc
 from app.models.schemas import BlockedResponse, BlockRequest, BlockResponse
 from app.services.audit_service import log_audit_event
 from app.services.blockchain_adapter import BlockchainAdapter
-from app.services.enforcement_log import log_enforcement_action
+from app.services.enforcement_log import capture_network_stability, count_host_edges, log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
 from app.services.threat_analyzer import score_to_severity_int
 from app.websocket.server import sio
@@ -26,7 +26,7 @@ async def get_blocked(db: Session = Depends(get_db), _: None = Depends(require_s
     blocked = [
         {
             "ip": row.ip_address,
-            "blocked_at": row.blocked_at.isoformat(),
+            "blocked_at": iso_utc(row.blocked_at),
             "reason": row.reason,
             "attack_type": row.attack_type,
             "threat_score": row.threat_score,
@@ -121,7 +121,15 @@ async def block_or_unblock(
                 "enforcement_status": result["enforcement_status"],
             }
 
+        # Error.md N2/H1 — sample real healing telemetry around the block so
+        # GET /api/v1/healing can report it instead of hardcoded None/1.
+        # Error.md C3 — run the graph_state reads off the event loop.
+        stability_before = await run_in_threadpool(capture_network_stability)
+        edges_severed = await run_in_threadpool(count_host_edges, clean_ip)
+
         event = await run_in_threadpool(healer.block_ip, clean_ip, reason=request.reason)
+
+        stability_after = await run_in_threadpool(capture_network_stability)
 
         now = datetime.now(timezone.utc)
         incident = Incident(
@@ -186,6 +194,10 @@ async def block_or_unblock(
             status=event["enforcement_status"],
             blockchain_tx=tx_result.get("tx_hash"),
             incident_id=incident.id,
+            duration_ms=event.get("duration_ms"),
+            edges_severed=edges_severed,
+            network_stability_before=stability_before,
+            network_stability_after=stability_after,
             db=db,
         )
         log_audit_event(

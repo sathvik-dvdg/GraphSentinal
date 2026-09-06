@@ -15,8 +15,28 @@ import useGraphStore from '../store/useGraphStore'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
 
+function LastUpdated({ ts }) {
+  // Error.md U4 — a freshness read distinct from the connection badge: shows
+  // how long ago real data actually landed, ticking every second.
+  const [, force] = useState(0)
+  useEffect(() => {
+    const id = setInterval(() => force((n) => n + 1), 1000)
+    return () => clearInterval(id)
+  }, [])
+  if (!ts) return null
+  const secs = Math.max(0, Math.round((Date.now() - ts) / 1000))
+  const label = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)}m ago`
+  const stale = secs > 15
+  return (
+    <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: stale ? '#b7791f' : '#12a672', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+      <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: stale ? 'none' : 'pulse-threat 2s infinite' }} />
+      Updated {label}
+    </span>
+  )
+}
+
 export default function DashboardPage() {
-  const { stats = {}, alerts = [], healingEvents = [], timeline = [], dataErrors = {} } = useGraphStore()
+  const { stats = {}, alerts = [], healingEvents = [], timeline = [], dataErrors = {}, lastDataAt = null } = useGraphStore()
 
   const health = Math.max(0, Math.min(100, stats?.system_health ?? 100))
   const healthColor = health >= 80 ? '#12a672' : health >= 50 ? '#b7791f' : '#E03C3C'
@@ -36,6 +56,7 @@ export default function DashboardPage() {
           <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
             Network overview · Real-time threat summary
           </p>
+          <LastUpdated ts={lastDataAt} />
           <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
         </div>
       </div>
@@ -225,12 +246,12 @@ export default function DashboardPage() {
                   </div>
                   <div style={{ textAlign: 'right' }}>
                     <div style={{ color: '#12a672', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
-                      {ev.network_stability_before !== undefined && ev.network_stability_after !== undefined
+                      {ev.network_stability_before != null && ev.network_stability_after != null
                         ? `${ev.network_stability_before}%→${ev.network_stability_after}%`
-                        : (ev.network_stability_after !== undefined ? `${ev.network_stability_after}%` : '—')}
+                        : (ev.network_stability_after != null ? `${ev.network_stability_after}%` : '—')}
                     </div>
                     <div style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
-                      {ev.duration_ms || ev.responseTimeMs || 0}ms
+                      {ev.duration_ms != null ? `${ev.duration_ms}ms` : (ev.responseTimeMs != null ? `${ev.responseTimeMs}ms` : '—')}
                     </div>
                   </div>
                 </motion.div>
