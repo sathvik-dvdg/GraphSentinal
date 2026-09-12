@@ -1,20 +1,24 @@
 // [Windows] GraphSentinel — Susheep
 // NodeInspector — slide-in panel showing details for a clicked pyramid node
+import { useState } from 'react'
 import { useNavigate } from 'react-router-dom'
 import { X, Shield, AlertTriangle, Zap, ExternalLink } from 'lucide-react'
 import { LEVEL_LABELS, STATUS_COLORS } from './pyramidConfig'
 import useGraphStore from '../../store/useGraphStore'
+import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../../services/api'
 
 export default function NodeInspector({ node, onClose }) {
   const navigate = useNavigate()
   const chainTxs = useGraphStore((s) => s.chainTxs)
-  const updateNodeStatus = useGraphStore((s) => s.updateNodeStatus)
   const graphData = useGraphStore((s) => s.graphData)
+  const setGraphData = useGraphStore((s) => s.setGraphData)
+  const setBlockedIPs = useGraphStore((s) => s.setBlockedIPs)
+  const updateStats = useGraphStore((s) => s.updateStats)
+  const setHealingEvents = useGraphStore((s) => s.setHealingEvents)
+  const addHealingEvent = useGraphStore((s) => s.addHealingEvent)
+  const [isToggling, setIsToggling] = useState(false)
 
   if (!node) return null
-
-  const colors = STATUS_COLORS[node.status] || STATUS_COLORS.normal
-  const levelLabel = LEVEL_LABELS[node.level] ?? `L${node.level}`
 
   // Last 5 blockchain records for this node IP
   const nodeChainEvents = chainTxs
@@ -22,17 +26,47 @@ export default function NodeInspector({ node, onClose }) {
     .slice(0, 5)
 
   const realNode = graphData?.nodes?.find(n => n.id === node.ip || n.ip === node.ip)
-  const anomalyScore = realNode?.threat_score !== undefined 
-    ? Math.floor(realNode.threat_score * 100) 
+  const anomalyScore = realNode?.threat_score !== undefined
+    ? Math.floor(realNode.threat_score * 100)
     : node.anomalyScore ?? 0
 
-  const isIsolated = node.status === 'isolated'
+  // `node` is a snapshot from whenever the panel was opened. Prefer the live
+  // graphData status so isolate/deisolate (and any other backend-driven
+  // change) is reflected immediately instead of looking reverted-but-not.
+  const displayStatus = realNode?.status ?? node.status
+  const colors = STATUS_COLORS[displayStatus] || STATUS_COLORS.normal
+  const levelLabel = LEVEL_LABELS[node.level] ?? `L${node.level}`
 
-  const handleToggleIsolate = () => {
-    if (isIsolated) {
-      updateNodeStatus(node.id || node.ip, 'normal')
-    } else {
-      updateNodeStatus(node.id || node.ip, 'isolated')
+  // realNode.is_blocked is the backend-authoritative flag. Fall back to the
+  // UI-derived pyramid status only if this IP isn't in the live graph yet.
+  const isIsolated = realNode ? realNode.is_blocked : node.status === 'isolated'
+
+  // This used to call the store's local-only updateNodeStatus(), which never
+  // touched the backend — it optimistically flipped graphData.node.status in
+  // place, then the next 10s poll's setGraphData() silently overwrote it with
+  // the (unchanged) real state, with no indication to the operator that
+  // nothing was actually enforced. Now it calls the same real /api/v1/block
+  // endpoint + immediate refresh that NodeDetailPanel's Block button uses
+  // (see AppShell.jsx handleBlock, Error.md #23).
+  const handleToggleIsolate = async () => {
+    const ip = node.ip || node.id
+    if (!ip || isToggling) return
+    setIsToggling(true)
+    try {
+      const blockRes = await blockIP(ip, isIsolated ? 'unblock' : 'block')
+      if (blockRes?.healing_event) {
+        addHealingEvent(blockRes.healing_event)
+      }
+      const [graphRes, blockedRes, statsRes] = await Promise.allSettled([
+        getGraph(), getBlocked(), getStats(),
+      ])
+      if (graphRes.status === 'fulfilled') setGraphData(graphRes.value)
+      if (blockedRes.status === 'fulfilled') setBlockedIPs(blockedRes.value.blocked_ips)
+      if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
+    } catch (err) {
+      console.error(`[NodeInspector] Failed to ${isIsolated ? 'unblock' : 'block'} ${ip} — backend rejected or is unreachable:`, err)
+    } finally {
+      setIsToggling(false)
     }
   }
 
@@ -44,9 +78,9 @@ export default function NodeInspector({ node, onClose }) {
         right: 0,
         height: '100%',
         width: 300,
-        background: '#141418',
-        borderLeft: '1px solid rgba(255,255,255,0.08)',
-        boxShadow: '-12px 0 40px rgba(0,0,0,0.5)',
+        background: '#ffffff',
+        borderLeft: '1px solid rgba(17,20,26,0.10)',
+        boxShadow: '-12px 0 40px rgba(17,20,26,0.10)',
         display: 'flex',
         flexDirection: 'column',
         zIndex: 20,
@@ -57,7 +91,7 @@ export default function NodeInspector({ node, onClose }) {
       <div
         style={{
           padding: '14px 16px',
-          borderBottom: '1px solid rgba(255,255,255,0.06)',
+          borderBottom: '1px solid rgba(17,20,26,0.08)',
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'space-between',
@@ -68,7 +102,7 @@ export default function NodeInspector({ node, onClose }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span
               style={{
-                color: '#E8EDF5',
+                color: '#1b1f27',
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 fontWeight: 600,
                 fontSize: 14,
@@ -77,7 +111,7 @@ export default function NodeInspector({ node, onClose }) {
               {node.label}
             </span>
             {/* Status badge */}
-            {node.status !== 'normal' && (
+            {displayStatus !== 'normal' && (
               <span
                 style={{
                   background: colors.border,
@@ -91,11 +125,11 @@ export default function NodeInspector({ node, onClose }) {
                   textTransform: 'uppercase',
                 }}
               >
-                {node.status}
+                {displayStatus}
               </span>
             )}
           </div>
-          <div style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+          <div style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
             {node.ip}
           </div>
         </div>
@@ -103,8 +137,8 @@ export default function NodeInspector({ node, onClose }) {
           onClick={onClose}
           style={{
             background: 'none',
-            border: '1px solid rgba(255,255,255,0.08)',
-            color: '#5A6480',
+            border: '1px solid rgba(17,20,26,0.10)',
+            color: '#727a86',
             cursor: 'pointer',
             borderRadius: 6,
             padding: 5,
@@ -125,7 +159,7 @@ export default function NodeInspector({ node, onClose }) {
               display: 'inline-block',
               background: 'rgba(79,110,247,0.12)',
               border: '1px solid rgba(79,110,247,0.3)',
-              color: '#4F6EF7',
+              color: '#3b56d9',
               fontSize: 11,
               fontFamily: "'DM Mono', monospace",
               fontWeight: 600,
@@ -148,9 +182,25 @@ export default function NodeInspector({ node, onClose }) {
         <div style={{ marginBottom: 16 }}>
           <Label>Status</Label>
           <span style={{ color: colors.text, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
-            {node.status}
+            {displayStatus}
           </span>
         </div>
+
+        {/* Error.md #9: baseline-topology nodes vs. nodes that actually
+            appeared in a flow are otherwise indistinguishable in the UI */}
+        {realNode?.source && (
+          <div style={{ marginBottom: 16 }}>
+            <Label>Data Source</Label>
+            <span
+              style={{ color: realNode.source === 'observed' ? '#12a672' : '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}
+              title={realNode.source === 'observed'
+                ? 'This host appeared in real captured traffic'
+                : 'Configured topology baseline — no traffic seen from this host yet'}
+            >
+              {realNode.source === 'observed' ? '◆ Observed traffic' : '○ Configured (no traffic yet)'}
+            </span>
+          </div>
+        )}
 
         {/* Anomaly score */}
         <div style={{ marginBottom: 20 }}>
@@ -160,7 +210,7 @@ export default function NodeInspector({ node, onClose }) {
               style={{
                 flex: 1,
                 height: 6,
-                background: 'rgba(255,255,255,0.06)',
+                background: 'rgba(17,20,26,0.08)',
                 borderRadius: 99,
                 overflow: 'hidden',
               }}
@@ -169,13 +219,13 @@ export default function NodeInspector({ node, onClose }) {
                 style={{
                   height: '100%',
                   width: `${anomalyScore}%`,
-                  background: anomalyScore > 75 ? '#E03C3C' : anomalyScore > 50 ? '#E8922A' : '#4F6EF7',
+                  background: anomalyScore > 75 ? '#E03C3C' : anomalyScore > 50 ? '#b7791f' : '#3b56d9',
                   borderRadius: 99,
                   transition: 'width 600ms ease',
                 }}
               />
             </div>
-            <span style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 32 }}>
+            <span style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 32 }}>
               {anomalyScore}%
             </span>
           </div>
@@ -185,7 +235,7 @@ export default function NodeInspector({ node, onClose }) {
         <div style={{ marginBottom: 20 }}>
           <Label>Blockchain Events ({nodeChainEvents.length})</Label>
           {nodeChainEvents.length === 0 ? (
-            <span style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+            <span style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
               No on-chain records for this node
             </span>
           ) : (
@@ -200,10 +250,10 @@ export default function NodeInspector({ node, onClose }) {
                     padding: '6px 10px',
                   }}
                 >
-                  <div style={{ color: '#8B5CF6', fontSize: 10, fontFamily: "'DM Mono', monospace", marginBottom: 2 }}>
+                  <div style={{ color: '#7c3aed', fontSize: 10, fontFamily: "'DM Mono', monospace", marginBottom: 2 }}>
                     {tx.tx_hash?.slice(0, 14)}…
                   </div>
-                  <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                  <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                     {tx.attack_type} · #{tx.block_number}
                   </div>
                 </div>
@@ -217,7 +267,7 @@ export default function NodeInspector({ node, onClose }) {
       <div
         style={{
           padding: 16,
-          borderTop: '1px solid rgba(255,255,255,0.06)',
+          borderTop: '1px solid rgba(17,20,26,0.08)',
           display: 'flex',
           flexDirection: 'column',
           gap: 8,
@@ -226,21 +276,22 @@ export default function NodeInspector({ node, onClose }) {
       >
         <button
           onClick={handleToggleIsolate}
-          style={actionBtnStyle(isIsolated ? '#2ECC8A' : '#E03C3C')}
+          disabled={isToggling}
+          style={{ ...actionBtnStyle(isIsolated ? '#12a672' : '#E03C3C'), opacity: isToggling ? 0.6 : 1, cursor: isToggling ? 'default' : 'pointer' }}
         >
           <Shield size={12} />
-          {isIsolated ? 'Deisolate Node' : 'Isolate Node'}
+          {isToggling ? 'Working…' : isIsolated ? 'Deisolate Node' : 'Isolate Node'}
         </button>
         <button
           onClick={() => navigate('/forensics')}
-          style={actionBtnStyle('#4F6EF7')}
+          style={actionBtnStyle('#3b56d9')}
         >
           <ExternalLink size={12} />
           Open Forensics
         </button>
         <button
           onClick={() => navigate('/network')}
-          style={actionBtnStyle('#2ECC8A')}
+          style={actionBtnStyle('#12a672')}
         >
           <Zap size={12} />
           View in 3D Graph
@@ -252,7 +303,7 @@ export default function NodeInspector({ node, onClose }) {
 
 function Label({ children }) {
   return (
-    <div style={{ color: '#3D4560', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+    <div style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
       {children}
     </div>
   )
@@ -260,7 +311,7 @@ function Label({ children }) {
 
 function Value({ children }) {
   return (
-    <div style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+    <div style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
       {children}
     </div>
   )

@@ -90,7 +90,7 @@ class InferenceService:
                 out_channels=2,
                 num_layers=3,
             )
-            state_dict = self.torch.load(weights_path, map_location="cpu")
+            state_dict = self.torch.load(weights_path, map_location="cpu", weights_only=True)
             self.model.load_state_dict(state_dict)
             self.model.eval()
             self.mode = "model"
@@ -105,6 +105,23 @@ class InferenceService:
         self.model = None
         self.mode = "degraded"
         self.degraded_reason = reason
+
+    def reload_model(self) -> bool:
+        """R-05 (M10-F01) — Dynamically re-attempt model loading to recover from degraded mode without service restart."""
+        with self._lock:
+            if self.torch is None:
+                try:
+                    self.torch = _import_torch()
+                    try:
+                        self.torch.set_num_threads(min(4, os.cpu_count() or 1))
+                    except AttributeError:
+                        pass
+                except RuntimeError as exc:
+                    self.torch = None
+                    self.degraded_reason = str(exc)
+                    return False
+            self._load_model()
+            return self.mode == "model"
 
     def health(self) -> dict[str, Any]:
         return {
@@ -128,9 +145,9 @@ class InferenceService:
                 else:
                     logits = self.model(graph.x, graph.edge_index)
                     probs = self.torch.softmax(logits, dim=1)[:, 1]
-            # Clamp NaN/Inf scores to prevent propagation through threat analysis
+            # Clamp NaN/Inf scores to prevent propagation through threat analysis (preserve full precision float)
             scores = [
-                round(max(0.0, min(float(v), 1.0)), 4) if not (v != v) else 0.0  # NaN != NaN
+                max(0.0, min(float(v), 1.0)) if not (v != v) else 0.0  # NaN != NaN
                 for v in probs.tolist()
             ]
         except Exception as exc:

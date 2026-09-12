@@ -31,7 +31,10 @@ def timeline_response(last: str = "60min") -> dict:
                 .filter(BlockedIP.blocked_at < bucket_end)
                 .count()
             )
-            points.append({"time": current.strftime("%H:%M"), "threats": threats, "blocked": blocked})
+            # ISO datetime, not just HH:MM (Error.md #16) — a bare time label
+            # is ambiguous once a window crosses midnight; let the frontend
+            # format it however each view needs.
+            points.append({"time": current.isoformat(), "threats": threats, "blocked": blocked})
             current = bucket_end
     finally:
         db.close()

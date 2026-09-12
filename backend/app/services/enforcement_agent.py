@@ -37,9 +37,14 @@ def validate_mininet_ip(value: str) -> str:
         _audit_log.warning('REJECTED invalid IP input: %r - %s', value, exc)
         raise ValueError(f'Invalid IP address: {value}') from exc
 
-    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified:
+    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified or parsed.is_link_local:
         _audit_log.warning('REJECTED IP %s - non-enforceable class', parsed)
-        raise ValueError(f'IP {value} is not enforceable')
+        raise ValueError(f'IP {value} is not enforceable or loopback/link-local')
+
+    protected_infra = {getattr(settings, "backend_host", "127.0.0.1"), getattr(settings, "daemon_host", "127.0.0.1"), "127.0.0.1", "0.0.0.0"}
+    if str(parsed) in protected_infra:
+        _audit_log.warning('REJECTED attempt to block protected infrastructure IP: %s', parsed)
+        raise ValueError(f'Cannot block critical infrastructure IP: {value}')
 
     network = ip_network(settings.mininet_cidr, strict=False)
     if parsed not in network:
@@ -56,6 +61,15 @@ class EnforcementAgent:
         self.switch = switch or settings.enforcement_switch
         self.mode = mode or settings.enforcement_mode
         self.last_error: str | None = None
+        # Decision #5 (decisions.md) — Option C: a log-visible warning rather
+        # than rejecting `simulated` outright. `simulated` stays a legitimate
+        # mode (Docker/dev workflows depend on it); this just makes it
+        # impossible to miss in the container log that no real OVS rules are
+        # being applied. A stronger `require_real_enforcement` guard is
+        # deferred until a real-network production deployment is an actual
+        # goal (there isn't one defined yet).
+        if self.mode != 'ovs':
+            _audit_log.warning('Enforcement mode is SIMULATED — no OVS flow rules will be applied.')
 
     def _send_to_daemon(self, payload: dict) -> dict:
         payload["token"] = getattr(settings, "daemon_token", None)

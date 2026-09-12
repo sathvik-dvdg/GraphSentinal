@@ -1,5 +1,6 @@
 // [Windows] GraphSentinel — Susheep
-// § 4.1 Fix: Honest demo framing — not fake "Operator Authentication"
+// Error.md #18/#27: real backend login (secrets.compare_digest against the
+// configured operator credentials), not a client-side "any input works" gate.
 import { useState } from 'react'
 import { motion } from 'framer-motion'
 import useAuthStore from '../../store/useAuthStore'
@@ -7,28 +8,17 @@ import useAuthStore from '../../store/useAuthStore'
 export default function LoginForm({ onSuccess }) {
   const [username, setUsername] = useState('')
   const [password, setPassword] = useState('')
-  const [error, setError]       = useState('')
   const [loading, setLoading]   = useState(false)
-  const { login } = useAuthStore()
+  const { login, loginError } = useAuthStore()
 
   const handleSubmit = async (e) => {
     e.preventDefault()
-    setError('')
-
-    if (!username.trim()) { setError('Username required'); return }
-    if (!password.trim()) { setError('Password required'); return }
+    if (!username.trim() || !password.trim()) return
 
     setLoading(true)
-    // Simulated delay for UX — no real backend round-trip
-    await new Promise((r) => setTimeout(r, 800))
-
-    const success = login(username.trim(), password)
-    if (success) {
-      onSuccess()
-    } else {
-      setError('Both fields must be non-empty')
-      setLoading(false)
-    }
+    const success = await login(username, password)
+    setLoading(false)
+    if (success) onSuccess()
   }
 
   return (
@@ -58,12 +48,13 @@ export default function LoginForm({ onSuccess }) {
         </p>
       </div>
 
-      {/* § 4.1 Demo disclaimer — prominent, not hidden */}
+      {/* Still a single shared operator credential, not multi-user/SSO —
+          but now a real one, checked server-side, not "anything works." */}
       <div className="login-demo-notice">
         <span className="login-demo-icon">◆</span>
         <p className="login-demo-text">
-          <span className="login-demo-label">LOCAL DEMO MODE</span>
-          {' '}— Any username and password grants access. This is not production authentication.
+          <span className="login-demo-label">SINGLE OPERATOR</span>
+          {' '}— One shared credential, checked by the backend. No per-user accounts or roles yet.
         </p>
       </div>
 
@@ -102,15 +93,15 @@ export default function LoginForm({ onSuccess }) {
           />
         </div>
 
-        {/* Error */}
-        {error && (
+        {/* Error — real backend response, not a client-side guess */}
+        {loginError && (
           <motion.p
             initial={{ opacity: 0, y: -4 }}
             animate={{ opacity: 1, y: 0 }}
             className="login-error"
             role="alert"
           >
-            <span>▲</span> {error}
+            <span>▲</span> {loginError}
           </motion.p>
         )}
 

@@ -33,17 +33,27 @@ Source columns from CICFlowMeter CSV:
   syn_flag_count ← " SYN Flag Count"
   Flow_Bytes_per_s ← " Flow Bytes/s"
 
-# ── Scaling (IMPORTANT — do NOT use scaler.pkl for node features) ─────────────
-  Per-window z-score normalization is applied INSIDE graph construction,
-  not via scaler.pkl. For each window of flows, after building the (N, 7)
-  feature matrix x:
+# ── Scaling & Normalization (R-01 Contract) ──────────────────────────────────
+  Global z-score normalization is applied using fixed training statistics from
+  `inference_stats.pt` (computed on the CICIDS2017 training split):
 
-      mean = x.mean(dim=0, keepdim=True)
-      std  = x.std(dim=0,  keepdim=True) + 1e-6
-      x    = (x - mean) / std
+      mean = [0.57097, 317.20, 3.5594, 0.10527, -0.31405, 0.014667, 0.37561]
+      std  = [0.18225, 431.65, 3.0131, 0.25896,  0.63054, 0.074798, 0.21965]
 
+  For each incoming flow batch, after constructing the raw (N, 7) feature matrix x:
+      std_safe = torch.where(std < 1e-6, torch.ones_like(std), std)
+      x_norm   = torch.nan_to_num((x - mean) / (std_safe + 1e-6), nan=0.0, posinf=0.0, neginf=0.0)
+
+  This ensures deterministic N=1 inference and batch-context independence.
   scaler.pkl (15-feature StandardScaler) is NOT used at inference time.
-  It was fitted during preprocessing only and does not apply to these 7 features.
+
+# ── Directional Counter Fallback (OVS Telemetry Semantics) ────────────────────
+  When flow telemetry arrives without separate forward/backward counters
+  (e.g., standard single-rule OpenFlow flow stats providing only packet_count and byte_count),
+  graph_builder.py defaults:
+      fwd_packets = packet_count, bwd_packets = 0
+      fwd_bytes   = byte_count,   bwd_bytes   = 0
+  This yields fwd_ratio = 1.0 and byte_asymmetry = +1.0 for non-empty unidirectional flows.
 
 # ── Model ─────────────────────────────────────────────────────────────────────
   File  : ml/src/model.py

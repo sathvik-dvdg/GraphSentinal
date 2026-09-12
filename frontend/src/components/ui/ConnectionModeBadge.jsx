@@ -6,28 +6,28 @@ import { motion } from 'framer-motion'
 const MODES = {
   live: {
     label: 'LIVE',
-    dot: '#2ECC8A',
+    dot: '#12a672',
     cls: 'badge-live',
     icon: '●',
     pulse: true,
   },
   simulating: {
     label: 'SIMULATION',
-    dot: '#E8922A',
+    dot: '#b7791f',
     cls: 'badge-sim',
     icon: '◆',
     pulse: true,
   },
   mock: {
     label: 'OFFLINE',
-    dot: '#5A6480',
+    dot: '#727a86',
     cls: 'badge-mock',
     icon: '○',
     pulse: false,
   },
   connecting: {
     label: 'CONNECTING',
-    dot: '#4F6EF7',
+    dot: '#3b56d9',
     cls: 'badge-connecting',
     icon: '◌',
     pulse: true,

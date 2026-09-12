@@ -97,6 +97,42 @@ def _edge_index(flows: list[dict[str, Any]]) -> "torch.Tensor":
     return torch.tensor(edges, dtype=torch.long).t().contiguous()
 
 
+# Fixed global normalization statistics from training (CICIDS2017 training set)
+DEFAULT_GLOBAL_MEAN = [0.57097, 317.20, 3.5594, 0.10527, -0.31405, 0.014667, 0.37561]
+DEFAULT_GLOBAL_STD = [0.18225, 431.65, 3.0131, 0.25896, 0.63054, 0.074798, 0.21965]
+
+_cached_stats: tuple[Any, Any] | None = None
+
+
+def get_global_stats(torch_mod: Any) -> tuple[Any, Any]:
+    global _cached_stats
+    if _cached_stats is not None:
+        return _cached_stats
+
+    try:
+        from app.config import settings
+        for candidate in getattr(settings, "resolved_stats_candidates", []):
+            if candidate.exists():
+                stats = torch_mod.load(candidate, map_location="cpu", weights_only=True)
+                if isinstance(stats, dict) and "mean" in stats and "std" in stats:
+                    mean = stats["mean"].to(dtype=torch_mod.float32)
+                    std = stats["std"].to(dtype=torch_mod.float32)
+                    _cached_stats = (mean, std)
+                    return _cached_stats
+    except Exception:
+        pass
+
+    mean = torch_mod.tensor([DEFAULT_GLOBAL_MEAN], dtype=torch_mod.float32)
+    std = torch_mod.tensor([DEFAULT_GLOBAL_STD], dtype=torch_mod.float32)
+    _cached_stats = (mean, std)
+    return _cached_stats
+
+
+def reset_global_stats_cache() -> None:
+    global _cached_stats
+    _cached_stats = None
+
+
 def build_pyg_graph(flows: list[Any]) -> GraphData:
     torch = _import_torch()
     flow_records = [_flow_dict(flow) for flow in flows]
@@ -110,10 +146,9 @@ def build_pyg_graph(flows: list[Any]) -> GraphData:
         )
 
     x = torch.tensor([_feature_row(flow) for flow in flow_records], dtype=torch.float32)
-    mean = x.mean(dim=0, keepdim=True)
-    std = x.std(dim=0, keepdim=True, unbiased=False)
+    mean, std = get_global_stats(torch)
     std = torch.where(std < 1e-6, torch.ones_like(std), std)
-    x = torch.nan_to_num((x - mean) / std, nan=0.0, posinf=0.0, neginf=0.0)
+    x = torch.nan_to_num((x - mean) / (std + 1e-6), nan=0.0, posinf=0.0, neginf=0.0)
 
     return GraphData(
         x=x,
