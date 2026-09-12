@@ -4,92 +4,92 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── New Design System Tokens ──────────────────────────────
+        // ── Clean White Design System Tokens ──────────────────────
         // Base surfaces
-        'gs-base':    '#0A0A0A',   // App background
-        'gs-surface': '#141414',   // Panel surface
-        'gs-surface-raised': '#1E1E1E', // Raised panel
-        'gs-border':  '#2A2A2A',   // Default 1px border
-        'gs-border-subtle': '#1F1F1F', // Hairline separator
+        'gs-base':    '#F4F6F8',   // App background
+        'gs-surface': '#FFFFFF',   // Panel surface
+        'gs-surface-raised': '#F0F2F5', // Raised panel
+        'gs-border':  '#E2E5EA',   // Default 1px border
+        'gs-border-subtle': '#ECEEF1', // Hairline separator
 
         // Text
-        'gs-text':     '#EAEAEA',  // Primary text
-        'gs-muted':    '#8B8B8B',  // Labels, timestamps
-        'gs-faint':    '#4D4D4D',  // Disabled, placeholder
+        'gs-text':     '#1B1F27',  // Primary text
+        'gs-muted':    '#5A616E',  // Labels, timestamps
+        'gs-faint':    '#9AA1AD',  // Disabled, placeholder
 
-        // Accent
-        'gs-accent':      '#EAEAEA',
-        'gs-accent-dim':  '#2A2A2A',
-        'gs-accent-soft': 'rgba(234,234,234,0.12)',
+        // Accent (now a dark ink so it reads on white)
+        'gs-accent':      '#1B1F27',
+        'gs-accent-dim':  '#E2E5EA',
+        'gs-accent-soft': 'rgba(27,31,39,0.06)',
 
         // Semantic: Threat
-        'gs-threat':      '#FF453A',
-        'gs-threat-dim':  '#7A1A1A',
-        'gs-threat-soft': 'rgba(255,69,58,0.12)',
+        'gs-threat':      '#D92D2D',
+        'gs-threat-dim':  '#F6C6C6',
+        'gs-threat-soft': 'rgba(217,45,45,0.10)',
 
         // Semantic: Warning
-        'gs-warn':        '#F5A623',
-        'gs-warn-dim':    '#7A4A10',
-        'gs-warn-soft':   'rgba(245,166,35,0.12)',
+        'gs-warn':        '#B7791F',
+        'gs-warn-dim':    '#EFD9B4',
+        'gs-warn-soft':   'rgba(183,121,31,0.12)',
 
         // Semantic: Heal/Safe/Blocked
         'gs-heal':        '#5E5CE6', // Indigo for isolated/blocked
-        'gs-heal-dim':    '#3D1E80',
-        'gs-heal-soft':   'rgba(94,92,230,0.12)',
+        'gs-heal-dim':    '#C7C6F5',
+        'gs-heal-soft':   'rgba(94,92,230,0.10)',
 
         // Semantic: Normal
-        'gs-normal':      '#8B8B8B',
-        'gs-normal-soft': 'rgba(139,139,139,0.12)',
+        'gs-normal':      '#5A616E',
+        'gs-normal-soft': 'rgba(90,97,110,0.10)',
 
         // Semantic: Chain
-        'gs-chain':       '#8B5CF6',
-        'gs-chain-dim':   '#3D1E80',
-        'gs-chain-soft':  'rgba(139,92,246,0.12)',
+        'gs-chain':       '#7C3AED',
+        'gs-chain-dim':   '#D9C7F5',
+        'gs-chain-soft':  'rgba(124,58,237,0.10)',
 
-        // ── Legacy tokens — kept for backward compat ──────────────
-        background: '#0F1117',
-        'on-background': '#E8EDF5',
-        surface: '#171B26',
-        'surface-dim': '#0F1117',
-        'surface-bright': '#1E2436',
-        'surface-container-lowest': '#0C0F18',
-        'surface-container-low': '#131724',
-        'surface-container': '#171B26',
-        'surface-container-high': '#1E2436',
-        'surface-container-highest': '#252D40',
-        'on-surface': '#E8EDF5',
-        'on-surface-variant': '#8A95B0',
-        'inverse-surface': '#E8EDF5',
-        'inverse-on-surface': '#171B26',
-        outline: '#3D4560',
-        'outline-variant': '#262D3F',
-        'surface-tint': '#4F6EF7',
-        primary: '#C5D0FF',
-        'on-primary': '#0F1840',
-        'primary-container': '#4F6EF7',
-        'on-primary-container': '#E8EDF5',
-        'inverse-primary': '#2D3D8A',
-        secondary: '#8A95B0',
-        'on-secondary': '#1E2436',
-        'secondary-container': '#262D3F',
-        'on-secondary-container': '#C5D0FF',
-        tertiary: '#C5C8D8',
-        'on-tertiary': '#1E2030',
-        'tertiary-container': '#2D3050',
-        'on-tertiary-container': '#A8ACCC',
-        error: '#E03C3C',
-        'on-error': '#5A0A0A',
-        'error-container': '#7A1A1A',
-        'on-error-container': '#FFB4B4',
-        'primary-fixed': '#E8922A',
-        'primary-fixed-dim': '#7A4A10',
+        // ── Legacy tokens — remapped to the light palette ─────────
+        background: '#F4F6F8',
+        'on-background': '#1B1F27',
+        surface: '#FFFFFF',
+        'surface-dim': '#F4F6F8',
+        'surface-bright': '#FFFFFF',
+        'surface-container-lowest': '#F4F6F8',
+        'surface-container-low': '#F7F8FA',
+        'surface-container': '#FFFFFF',
+        'surface-container-high': '#F0F2F5',
+        'surface-container-highest': '#E7EAF0',
+        'on-surface': '#1B1F27',
+        'on-surface-variant': '#5A616E',
+        'inverse-surface': '#1B1F27',
+        'inverse-on-surface': '#FFFFFF',
+        outline: '#9AA1AD',
+        'outline-variant': '#E2E5EA',
+        'surface-tint': '#3B56D9',
+        primary: '#3B56D9',
+        'on-primary': '#FFFFFF',
+        'primary-container': '#3B56D9',
+        'on-primary-container': '#FFFFFF',
+        'inverse-primary': '#C5D0FF',
+        secondary: '#5A616E',
+        'on-secondary': '#FFFFFF',
+        'secondary-container': '#EEF1F5',
+        'on-secondary-container': '#1B1F27',
+        tertiary: '#5A616E',
+        'on-tertiary': '#FFFFFF',
+        'tertiary-container': '#EEF1F5',
+        'on-tertiary-container': '#1B1F27',
+        error: '#D92D2D',
+        'on-error': '#FFFFFF',
+        'error-container': '#F6C6C6',
+        'on-error-container': '#5A0A0A',
+        'primary-fixed': '#B7791F',
+        'primary-fixed-dim': '#EFD9B4',
 
         // Kept legacy gs-* for any untouched components
-        'gs-bg':     '#0F1117',
-        'gs-card':   '#171B26',
-        'gs-mid':    '#131724',
-        'gs-alert':  '#E03C3C',
-        'gs-info':   '#4F6EF7',
+        'gs-bg':     '#F4F6F8',
+        'gs-card':   '#FFFFFF',
+        'gs-mid':    '#F0F2F5',
+        'gs-alert':  '#D92D2D',
+        'gs-info':   '#3B56D9',
       },
       fontFamily: {
         // New design system
@@ -102,27 +102,27 @@ export default {
         orbitron: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'], // Orbitron removed, redirected
       },
       boxShadow: {
-        // Functional only — no decorative glow
-        'threat': '0 0 16px rgba(224,60,60,0.25)',
-        'heal':   '0 0 16px rgba(46,204,138,0.25)',
-        'accent': '0 0 16px rgba(79,110,247,0.25)',
-        'panel':  '0 4px 24px rgba(0,0,0,0.4)',
-        'modal':  '0 24px 64px rgba(0,0,0,0.6)',
-        // Legacy
-        'glow-cyan':    '0 0 16px rgba(79,110,247,0.25)',
-        'glow-emerald': '0 0 16px rgba(46,204,138,0.25)',
-        'glow-rose':    '0 0 16px rgba(224,60,60,0.25)',
-        'glow-amber':   '0 0 16px rgba(232,146,42,0.25)',
-        'glow-primary': '0 0 16px rgba(79,110,247,0.25)',
-        'deep':         '0 25px 50px rgba(0,0,0,0.7)',
+        // Soft, functional shadows for the white theme
+        'threat': '0 4px 16px rgba(217,45,45,0.12)',
+        'heal':   '0 4px 16px rgba(94,92,230,0.12)',
+        'accent': '0 4px 16px rgba(59,86,217,0.12)',
+        'panel':  '0 1px 2px rgba(17,20,26,0.04), 0 8px 24px rgba(17,20,26,0.06)',
+        'modal':  '0 24px 64px rgba(17,20,26,0.14)',
+        // Legacy aliases
+        'glow-cyan':    '0 4px 16px rgba(59,86,217,0.12)',
+        'glow-emerald': '0 4px 16px rgba(18,166,114,0.12)',
+        'glow-rose':    '0 4px 16px rgba(217,45,45,0.12)',
+        'glow-amber':   '0 4px 16px rgba(183,121,31,0.12)',
+        'glow-primary': '0 4px 16px rgba(59,86,217,0.12)',
+        'deep':         '0 25px 50px rgba(17,20,26,0.16)',
       },
       backgroundImage: {
         // Minimal mesh — only used in dashboard graph canvas area
-        'gs-mesh': 'linear-gradient(rgba(79,110,247,0.025) 1px, transparent 1px), linear-gradient(90deg, rgba(79,110,247,0.025) 1px, transparent 1px)',
+        'gs-mesh': 'linear-gradient(rgba(59,86,217,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(59,86,217,0.05) 1px, transparent 1px)',
         // Legacy
-        'void-radial': 'radial-gradient(ellipse at 50% 0%, rgba(79,110,247,0.04) 0%, transparent 70%)',
-        'cyber-mesh':  'linear-gradient(rgba(79,110,247,0.03) 1px, transparent 1px), linear-gradient(90deg, rgba(79,110,247,0.03) 1px, transparent 1px)',
-        'digital-fortress-grid': 'linear-gradient(rgba(79,110,247,0.02) 1px, transparent 1px), linear-gradient(90deg, rgba(79,110,247,0.02) 1px, transparent 1px)',
+        'void-radial': 'radial-gradient(ellipse at 50% 0%, rgba(59,86,217,0.05) 0%, transparent 70%)',
+        'cyber-mesh':  'linear-gradient(rgba(59,86,217,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(59,86,217,0.06) 1px, transparent 1px)',
+        'digital-fortress-grid': 'linear-gradient(rgba(59,86,217,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(59,86,217,0.05) 1px, transparent 1px)',
       },
       backgroundSize: {
         'mesh-48': '48px 48px',

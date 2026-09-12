@@ -26,7 +26,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex justify-end"
-        style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(2px)' }}
+        style={{ background: 'rgba(17,20,26,0.12)', backdropFilter: 'blur(2px)' }}
         onClick={onClose}
         role="dialog"
         aria-label="Forensics Report"
@@ -40,8 +40,8 @@ export default function ForensicsModal({ isOpen, onClose }) {
           transition={{ type: 'spring', damping: 24, stiffness: 200 }}
           className="w-full max-w-2xl h-screen flex flex-col border-l border-gs-border"
           style={{
-            background: '#141414',
-            boxShadow: '-10px 0 30px rgba(0,0,0,0.5)',
+            background: '#ffffff',
+            boxShadow: '-10px 0 30px rgba(17,20,26,0.10)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -139,7 +139,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
           <div className="flex-1 overflow-auto">
             {tab === 'incidents' ? (
               <table className="gs-table w-full">
-                <thead className="sticky top-0" style={{ background: '#1E2436' }}>
+                <thead className="sticky top-0" style={{ background: '#eef1f5' }}>
                   <tr>
                     {['ID', 'Source IP', 'Attack', 'Threat %', 'Severity', 'Time', 'TX Hash'].map((h) => (
                       <th key={h}>{h}</th>
@@ -187,7 +187,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
           </div>
 
           {/* Footer explainer */}
-          <div className="px-5 py-3 border-t border-gs-border shrink-0" style={{ background: '#171B26' }}>
+          <div className="px-5 py-3 border-t border-gs-border shrink-0" style={{ background: '#ffffff' }}>
             <p className="text-[10px] text-gs-faint font-mono leading-relaxed">
               <span className="text-gs-accent/60">ℹ</span>{' '}
               Each <span className="text-gs-chain">keccak256</span> hash fingerprints the incident.

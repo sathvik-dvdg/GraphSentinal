@@ -19,11 +19,11 @@ export const LEVEL_LABELS = {
 // graphData.node.status can flow in directly now that the hierarchy is
 // built from live graph data (Error.md #2, #24) instead of a hardcoded tree.
 export const STATUS_COLORS = {
-  normal:     { border: 'rgba(255,255,255,0.12)', bg: 'transparent',          text: 'rgba(255,255,255,0.75)', badgeBg: 'transparent' },
-  suspicious: { border: '#E8922A',                bg: 'rgba(232,146,42,0.10)', text: '#EF9F27',               badgeBg: '#E8922A' },
-  infected:   { border: '#E8922A',                bg: 'rgba(232,146,42,0.10)', text: '#EF9F27',               badgeBg: '#E8922A' },
-  malicious:  { border: '#E03C3C',                bg: 'rgba(224,60,60,0.10)',  text: '#F0997B',               badgeBg: '#E03C3C' },
-  attacking:  { border: '#E03C3C',                bg: 'rgba(224,60,60,0.10)',  text: '#F0997B',               badgeBg: '#E03C3C' },
+  normal:     { border: 'rgba(17,20,26,0.12)', bg: 'transparent',          text: 'rgba(27,31,39,0.80)', badgeBg: 'transparent' },
+  suspicious: { border: '#b7791f',                bg: 'rgba(232,146,42,0.10)', text: '#b7791f',               badgeBg: '#b7791f' },
+  infected:   { border: '#b7791f',                bg: 'rgba(232,146,42,0.10)', text: '#b7791f',               badgeBg: '#b7791f' },
+  malicious:  { border: '#E03C3C',                bg: 'rgba(224,60,60,0.10)',  text: '#c2410c',               badgeBg: '#E03C3C' },
+  attacking:  { border: '#E03C3C',                bg: 'rgba(224,60,60,0.10)',  text: '#c2410c',               badgeBg: '#E03C3C' },
   isolated:   { border: '#A32D2D',                bg: 'rgba(163,45,45,0.15)', text: '#E03C3C',               badgeBg: '#A32D2D' },
   blocked:    { border: '#A32D2D',                bg: 'rgba(163,45,45,0.10)', text: '#E03C3C',               badgeBg: '#A32D2D' },
 }

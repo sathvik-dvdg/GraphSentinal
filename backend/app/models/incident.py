@@ -11,6 +11,18 @@ def utc_now() -> datetime:
     return datetime.now(timezone.utc)
 
 
+def iso_utc(dt: datetime | None) -> str | None:
+    """Serialize a stored datetime as an ISO string that always carries a
+    timezone. SQLite drops tzinfo on write, so `created_at` comes back naive;
+    without the +00:00 suffix the browser parses it as *local* time and shows
+    events hours off. All stored datetimes are UTC by construction (utc_now)."""
+    if dt is None:
+        return None
+    if dt.tzinfo is None:
+        dt = dt.replace(tzinfo=timezone.utc)
+    return dt.isoformat()
+
+
 class Incident(Base):
     __tablename__ = "incidents"
 
@@ -43,6 +55,12 @@ class Incident(Base):
     # manual | simulation. Lets forensics/alerts distinguish a real detection
     # from a demo-fallback or frontend-simulated one after the fact.
     data_source: Mapped[str] = mapped_column(String(20), default="manual")
+    # Error.md H5 — operator triage state, server-authoritative so it is
+    # consistent across Alert Centre / Forensics / Threat Feed and survives a
+    # refresh. open | acknowledged | resolved. Timestamps drive a real MTTA.
+    alert_status: Mapped[str] = mapped_column(String(20), default="open", index=True)
+    acknowledged_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
+    resolved_at: Mapped[datetime | None] = mapped_column(DateTime(timezone=True), nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
 
@@ -74,6 +92,13 @@ class EnforcementAction(Base):
     error: Mapped[str | None] = mapped_column(Text, nullable=True)
     blockchain_tx: Mapped[str | None] = mapped_column(String(120), nullable=True)
     incident_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Error.md N2/H1 — real self-healing telemetry, captured at block time and
+    # read back by GET /api/v1/healing instead of being hardcoded to None/1.
+    # NULL on pre-migration rows and on paths that don't measure it.
+    duration_ms: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    edges_severed: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    network_stability_before: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    network_stability_after: Mapped[int | None] = mapped_column(Integer, nullable=True)
     created_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=utc_now, index=True)
 
 

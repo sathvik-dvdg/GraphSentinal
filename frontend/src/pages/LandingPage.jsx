@@ -1,8 +1,9 @@
 import { motion } from 'framer-motion'
-import { Link } from 'react-router-dom'
+import { Link, Navigate } from 'react-router-dom'
 import { Network, Server, Brain, Shield, Link2, Globe } from 'lucide-react'
 import Navbar from '../components/landing/Navbar'
 import Footer from '../components/landing/Footer'
+import useAuthStore from '../store/useAuthStore'
 
 const PIPELINE_STAGES = [
   {
@@ -10,7 +11,7 @@ const PIPELINE_STAGES = [
     icon: Network,
     title: 'Mininet Network',
     desc: '10-host SDN topology simulating real enterprise traffic patterns',
-    color: '#2ECC8A',
+    color: '#12a672',
     owner: 'Sairaj',
   },
   {
@@ -18,7 +19,7 @@ const PIPELINE_STAGES = [
     icon: Server,
     title: 'FastAPI Backend',
     desc: 'Flow collection, graph construction, and API orchestration',
-    color: '#4F6EF7',
+    color: '#3b56d9',
     owner: 'Sairaj',
   },
   {
@@ -34,7 +35,7 @@ const PIPELINE_STAGES = [
     icon: Shield,
     title: 'Self-Healing Engine',
     desc: 'Autonomous node isolation via OVS flow rules in under 500ms',
-    color: '#E8922A',
+    color: '#b7791f',
     owner: 'Sairaj',
   },
   {
@@ -42,7 +43,7 @@ const PIPELINE_STAGES = [
     icon: Link2,
     title: 'Blockchain Ledger',
     desc: 'Tamper-proof keccak256 audit trail on local Ganache chain',
-    color: '#8B5CF6',
+    color: '#7c3aed',
     owner: 'Skanda',
   },
 ]
@@ -60,37 +61,37 @@ const CAPABILITIES = [
     title: 'Autonomous Self-Healing',
     body: 'When threat score exceeds 0.75, the system automatically isolates the malicious node via OVS drop rules. Network stability recovers in under 500ms with zero admin action.',
     badge: '< 500ms',
-    color: '#2ECC8A',
+    color: '#12a672',
   },
   {
     icon: Link2,
     title: 'Immutable Audit Trail',
     body: 'Every incident is fingerprinted with keccak256 and stored on a local Ganache blockchain. Tamper-proof proof-of-existence that survives even if the SQLite log is modified.',
     badge: 'Chain ID: 1337',
-    color: '#8B5CF6',
+    color: '#7c3aed',
   },
   {
     icon: Globe,
     title: 'Real-Time Dashboard',
     body: 'Force-directed network graph updates every 5 seconds via WebSocket. Node shapes encode threat levels. Animated particles show live traffic flows.',
     badge: 'WebSocket',
-    color: '#4F6EF7',
+    color: '#3b56d9',
   },
 ]
 
 const ATTACK_TYPES = [
   { name: 'DDoS', signal: 'Extreme connection_rate', dataset: 'Friday-DDos.csv', color: '#E03C3C' },
-  { name: 'PortScan', signal: 'High port_entropy', dataset: 'Friday-PortScan.csv', color: '#E8922A' },
-  { name: 'SSHBrute', signal: 'High syn_ratio + port 22', dataset: 'Tuesday.csv', color: '#E8CC2A' },
-  { name: 'Botnet', signal: 'byte_asymmetry + C2 ports', dataset: 'Friday-Morning.csv', color: '#8B5CF6' },
+  { name: 'PortScan', signal: 'High port_entropy', dataset: 'Friday-PortScan.csv', color: '#b7791f' },
+  { name: 'SSHBrute', signal: 'High syn_ratio + port 22', dataset: 'Tuesday.csv', color: '#a16207' },
+  { name: 'Botnet', signal: 'byte_asymmetry + C2 ports', dataset: 'Friday-Morning.csv', color: '#7c3aed' },
   { name: 'DoS Hulk', signal: 'HTTP flood + port 80', dataset: 'Wednesday.csv', color: '#EC4899' },
 ]
 
 const METRICS = [
-  { value: '10', label: 'Virtual Nodes', color: '#4F6EF7' },
+  { value: '10', label: 'Virtual Nodes', color: '#3b56d9' },
   { value: '5', label: 'Attack Types', color: '#E03C3C' },
-  { value: '< 5s', label: 'Response Time', color: '#2ECC8A' },
-  { value: '97.7%', label: 'GNN Accuracy', color: '#8B5CF6' },
+  { value: '< 5s', label: 'Response Time', color: '#12a672' },
+  { value: '97.7%', label: 'GNN Accuracy', color: '#7c3aed' },
 ]
 
 const fadeUp = {
@@ -100,10 +101,18 @@ const fadeUp = {
 }
 
 export default function LandingPage() {
+  // Error.md U8 — a logged-in operator who lands on "/" should go straight to
+  // the dashboard instead of the marketing page. 'checking' falls through so
+  // we don't flash a redirect before the session is verified.
+  const { isAuthenticated, authStatus } = useAuthStore()
+  if (isAuthenticated && authStatus !== 'checking') {
+    return <Navigate to="/dashboard" replace />
+  }
+
   return (
     <div
       className="antialiased min-h-screen flex flex-col"
-      style={{ backgroundColor: '#0A0A0A', color: '#EAEAEA' }}
+      style={{ backgroundColor: '#f4f6f8', color: '#1b1f27' }}
     >
       <div
         className="fixed inset-0 pointer-events-none z-0"
@@ -203,7 +212,7 @@ export default function LandingPage() {
         <section
           id="pipeline"
           className="py-16 sm:py-20 px-5 sm:px-6 border-t border-gs-border"
-          style={{ backgroundColor: '#141414' }}
+          style={{ backgroundColor: '#ffffff' }}
         >
           <div className="w-full max-w-6xl mx-auto">
             <motion.div {...fadeUp} className="text-center mb-14">
@@ -318,7 +327,7 @@ export default function LandingPage() {
         <section
           id="threats"
           className="py-16 sm:py-20 px-5 sm:px-6 border-t border-gs-border"
-          style={{ backgroundColor: '#141414' }}
+          style={{ backgroundColor: '#ffffff' }}
         >
           <div className="w-full max-w-5xl mx-auto">
             <motion.div {...fadeUp} className="text-center mb-12">

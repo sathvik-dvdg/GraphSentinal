@@ -16,6 +16,7 @@ import BlockchainLedger from './pages/BlockchainLedger'
 import TimelineAnalytics from './pages/TimelineAnalytics'
 import SelfHealing from './pages/SelfHealing'
 import AlertCentre from './pages/AlertCentre'
+import AuditLog from './pages/AuditLog'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ children }) {
@@ -59,6 +60,10 @@ export default function App() {
               </ProtectedRoute>
             }
           >
+            {/* Error.md U8 / #10 — "/" itself is owned by the public
+                LandingPage route above, which now redirects authenticated
+                users to /dashboard (see LandingPage.jsx). No index route here
+                to avoid two routes matching "/". */}
             <Route path="dashboard"   element={<DashboardPage />} />
             <Route path="network"     element={<NetworkTopology />} />
             <Route path="threats"     element={<ThreatFeed />} />
@@ -67,6 +72,7 @@ export default function App() {
             <Route path="timeline"    element={<TimelineAnalytics />} />
             <Route path="healing"     element={<SelfHealing />} />
             <Route path="alerts"      element={<AlertCentre />} />
+            <Route path="audit"       element={<AuditLog />} />
             <Route path="settings"    element={<Settings />} />
           </Route>
 

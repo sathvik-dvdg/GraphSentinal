@@ -117,11 +117,29 @@ class AlertRecord(BaseModel):
     is_blocked: bool
     blockchain_tx: Optional[str] = None
     data_source: str = "manual"
+    # Error.md H5 — server-authoritative triage state
+    alert_status: str = "open"
+    acknowledged_at: Optional[str] = None
+    resolved_at: Optional[str] = None
 
 
 class AlertsResponse(BaseModel):
     alerts: list[AlertRecord]
     total: int
+
+
+AlertStatus = Literal["open", "acknowledged", "resolved"]
+
+
+class IncidentStatusUpdateRequest(BaseModel):
+    status: AlertStatus
+
+
+class IncidentStatusResponse(BaseModel):
+    id: int
+    alert_status: str
+    acknowledged_at: Optional[str] = None
+    resolved_at: Optional[str] = None
 
 
 class BlockedIPRecord(BaseModel):
@@ -257,6 +275,10 @@ class IncidentRecord(BaseModel):
     created_at: str
     enforcement_status: str
     data_source: str = "manual"
+    # Error.md H5 — server-authoritative triage state (shared with alerts)
+    alert_status: str = "open"
+    acknowledged_at: Optional[str] = None
+    resolved_at: Optional[str] = None
 
 
 class ChainRecord(BaseModel):
@@ -299,15 +321,21 @@ class SettingsUpdateResponse(BaseModel):
 
 
 # Error.md #35 — durable enforcement audit trail
-EnforcementActionType = Literal["block", "unblock"]
-EnforcementActionReason = Literal["GNN_DETECTED", "HEURISTIC_DEGRADED", "MANUAL_OVERRIDE", "RECONCILE_REAPPLY", "RECONCILE_REMOVE"]
+# Error.md N3 — `action`/`reason` are stored as free strings in the DB
+# (incident.py:71-72). Keeping these as strict Literals here meant a single
+# row written with any out-of-set value (a new call site, a migrated older
+# DB, a direct API client) would fail FastAPI response validation and 500
+# the whole endpoint. These fields are display-only in the UI, so a plain
+# str is the correct type — the writers still pass known values.
+EnforcementActionType = str
+EnforcementActionReason = str
 
 
 class EnforcementActionRecord(BaseModel):
     id: int
     ip_address: str
-    action: EnforcementActionType
-    reason: EnforcementActionReason
+    action: str
+    reason: str
     status: str
     error: Optional[str] = None
     blockchain_tx: Optional[str] = None

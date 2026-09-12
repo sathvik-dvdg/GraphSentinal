@@ -14,7 +14,7 @@ export default function StatTile({ label, value, color, icon, layout = 'block', 
         className={wrapperClass}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: panel ? 0 : 8, ...wrapperStyle }}
       >
-        <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
+        <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
         <span
           style={{
             color,
@@ -37,7 +37,7 @@ export default function StatTile({ label, value, color, icon, layout = 'block', 
         background: `${color}08`, filter: 'blur(20px)', pointerEvents: 'none',
       }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
           {label}
         </div>
         {icon && (

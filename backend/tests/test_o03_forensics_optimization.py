@@ -243,5 +243,7 @@ def test_forensics_response_contract_stability():
         "blockchain_block_number", "blockchain_incident_id", "blockchain_status",
         "blockchain_retry_count", "blockchain_last_error", "tx_status", "created_at",
         "enforcement_status", "data_source",
+        # Error.md H5 — operator triage state, shared with /api/v1/alerts
+        "alert_status", "acknowledged_at", "resolved_at",
     }
     assert set(rec.keys()) == expected_rec_keys

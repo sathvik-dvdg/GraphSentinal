@@ -95,6 +95,7 @@ services:
       MODEL_SOURCE_PATH: /app/ML/src
       # web3_bridge is bind-mounted at /app/blockchain_bridge
       BLOCKCHAIN_BRIDGE_PATH: /app/blockchain_bridge
+      BLOCKCHAIN_ABI_PATH: /shared/contract_abi.json
       # DEMO_FALLBACK_FLOWS / ENFORCEMENT_MODE / THREAT_THRESHOLD / DAEMON_TOKEN come
       # from env_file (.env.docker, optionally overridden by .env.docker.local) —
       # deliberately NOT interpolated as ${VAR} here, since that would read the

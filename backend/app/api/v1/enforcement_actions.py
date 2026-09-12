@@ -11,7 +11,7 @@ from sqlalchemy.orm import Session
 
 from app.api.v1.deps import require_session_or_api_key
 from app.database import get_db
-from app.models.incident import EnforcementAction
+from app.models.incident import EnforcementAction, iso_utc
 from app.models.schemas import EnforcementActionsResponse
 
 
@@ -39,7 +39,7 @@ async def get_enforcement_actions(
             "error": row.error,
             "blockchain_tx": row.blockchain_tx,
             "incident_id": row.incident_id,
-            "created_at": row.created_at.isoformat(),
+            "created_at": iso_utc(row.created_at),
         }
         for row in rows
     ]

@@ -37,9 +37,14 @@ def validate_mininet_ip(value: str) -> str:
         _audit_log.warning('REJECTED invalid IP input: %r - %s', value, exc)
         raise ValueError(f'Invalid IP address: {value}') from exc
 
-    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified:
+    if parsed.is_multicast or parsed.is_loopback or parsed.is_unspecified or parsed.is_link_local:
         _audit_log.warning('REJECTED IP %s - non-enforceable class', parsed)
-        raise ValueError(f'IP {value} is not enforceable')
+        raise ValueError(f'IP {value} is not enforceable or loopback/link-local')
+
+    protected_infra = {getattr(settings, "backend_host", "127.0.0.1"), getattr(settings, "daemon_host", "127.0.0.1"), "127.0.0.1", "0.0.0.0"}
+    if str(parsed) in protected_infra:
+        _audit_log.warning('REJECTED attempt to block protected infrastructure IP: %s', parsed)
+        raise ValueError(f'Cannot block critical infrastructure IP: {value}')
 
     network = ip_network(settings.mininet_cidr, strict=False)
     if parsed not in network:

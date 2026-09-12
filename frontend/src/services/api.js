@@ -3,8 +3,17 @@
 // Vite proxy in vite.config.js redirects /api → http://localhost:8000
 import axios from 'axios'
 
+// Talk to the backend directly via VITE_BACKEND_URL when it's set
+// (frontend/.env → :8000 for local dev, .env.docker → :8001 for Docker),
+// the same origin the WebSocket already uses. In the Docker + WSL2 setup the
+// Vite dev-server proxy shares one Node event loop with a polling file watcher
+// on a virtiofs bind mount; under load it stalls and every pooled keep-alive
+// request from the browser times out as `[API] Error: undefined` (curl, which
+// opens a fresh socket each call, still works — masking it). Direct calls skip
+// that proxy entirely. Requires the backend to allow this origin — see
+// CORS_ORIGINS in .env.docker. Falls back to same-origin (proxied) if unset.
 const api = axios.create({
-  baseURL: '/',
+  baseURL: import.meta.env.VITE_BACKEND_URL || '/',
   // The FastAPI backend itself is consistently fast (single-digit ms,
   // confirmed by timing it directly) — but in the Docker dev environment,
   // Vite's dev-server proxy sits in front of it with `watch.usePolling: true`
@@ -77,13 +86,29 @@ export const blockIP = (ip, action = 'block', reason = 'MANUAL_OVERRIDE') =>
   api.post('/api/v1/block', { ip, action, reason })
 export const getHealingEvents = (limit = 50) =>
   api.get('/api/v1/healing', { params: { limit } })
+// Error.md H5 — server-authoritative alert/incident triage state.
+// status: 'open' | 'acknowledged' | 'resolved'
+export const updateIncidentStatus = (incidentId, status) =>
+  api.patch(`/api/v1/incidents/${incidentId}/status`, { status })
 export const getEnforcementActions = (limit = 100) =>
   api.get('/api/v1/enforcement-actions', { params: { limit } })
+// Error.md H9 — the poll keeps only the latest ~100 rows in the store; the
+// Audit & Ledger export uses this to pull a fuller set at click time (the
+// backend caps at 500 per request).
+export const getForensicsPage = (limit = 500, offset = 0) =>
+  api.get('/api/v1/forensics', { params: { limit, offset } })
 
 export const analyzeFlows = (flows) => api.post('/api/v1/analyze', { flows })
 
 export const getSettings = () => api.get('/api/v1/settings')
 export const updateThreatThreshold = (threat_threshold) =>
   api.patch('/api/v1/settings', { threat_threshold })
+
+// Error.md H8 — admin-only GraphSAGE weight reload (recovers from degraded mode)
+export const reloadMlModel = () => api.post('/api/v1/ml/reload')
+
+// Error.md H6 — admin-only control-plane audit log (who did what)
+export const getAuditLogs = (limit = 100, offset = 0) =>
+  api.get('/api/v1/audit-logs', { params: { limit, offset } })
 
 export default api

@@ -115,7 +115,9 @@ mkdir -p "${SHARED_DIR}"
 printf "CONTRACT_ADDRESS=%s\nGANACHE_URL=http://blockchain:8545\n" \
     "${CONTRACT_ADDRESS}" > "${CONTRACT_ENV_FILE}"
 
-echo "[Entrypoint] Wrote ${CONTRACT_ENV_FILE}"
+cp web3_bridge/contract_abi.json "${SHARED_DIR}/contract_abi.json"
+
+echo "[Entrypoint] Wrote ${CONTRACT_ENV_FILE} and copied ABI"
 echo "[Entrypoint] === Blockchain service READY ==="
 echo "[Entrypoint] Contract : ${CONTRACT_ADDRESS}"
 echo "[Entrypoint] Chain ID : 1337"
