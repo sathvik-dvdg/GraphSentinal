@@ -12,10 +12,10 @@ router = APIRouter()
 
 
 @router.get("/timeline", response_model=TimelineResponse)
-async def get_timeline(
+def get_timeline(
     last: str = "60min",
     db: Session = Depends(get_db),
     _: None = Depends(require_session_or_api_key),
 ):
-    return timeline_response(last=last, db=db)
+    return timeline_response(db=db, last=last)
 
