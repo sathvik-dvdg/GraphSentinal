@@ -13,8 +13,8 @@ import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp as formatAlertTimestamp, parseTimestamp } from '../utils/formatTimestamp'
 
 const SEVERITIES = ['All', 'critical', 'warning', 'info']
-const TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
-const TIME_RANGES = ['1h', '6h', '24h', '7d']
+const TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet', 'Manual']
+const TIME_RANGES = ['All', '1h', '6h', '24h', '7d', '30d']
 
 export default function ThreatFeed() {
   const { alerts, dataErrors } = useGraphStore()
@@ -23,11 +23,11 @@ export default function ThreatFeed() {
   const [severity, setSeverity] = useState('All')
   const [attackType, setAttackType] = useState('All')
   const [ipSearch, setIpSearch] = useState('')
-  const [timeRange, setTimeRange] = useState('24h')
+  const [timeRange, setTimeRange] = useState('All')
   const [showResolved, setShowResolved] = useState(false)
 
-  const timeRangeMs = { '1h': 3.6e6, '6h': 2.16e7, '24h': 8.64e7, '7d': 6.048e8 }
-  const cutoff = Date.now() - (timeRangeMs[timeRange] || timeRangeMs['24h'])
+  const timeRangeMs = { '1h': 3.6e6, '6h': 2.16e7, '24h': 8.64e7, '7d': 6.048e8, '30d': 2.592e9 }
+  const cutoff = timeRange === 'All' ? null : Date.now() - (timeRangeMs[timeRange] || timeRangeMs['24h'])
 
   // Error.md H5 — an incident resolved on the Forensics page (server
   // `alert_status`, or the optimistic local set) should drop out of the feed
@@ -45,8 +45,10 @@ export default function ThreatFeed() {
       if (severity !== 'All' && a.severity !== severity) return false
       if (attackType !== 'All' && a.attack_type !== attackType) return false
       if (ipSearch && !a.source_ip?.includes(ipSearch)) return false
-      const t = parseTimestamp(a.timestamp)
-      if (t && t.getTime() < cutoff) return false
+      if (cutoff !== null) {
+        const t = parseTimestamp(a.timestamp)
+        if (t && t.getTime() < cutoff) return false
+      }
       return true
     })
   }, [alerts, severity, attackType, ipSearch, cutoff, showResolved, resolvedIncidentIds])
