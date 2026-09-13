@@ -2,41 +2,61 @@
 from __future__ import annotations
 
 from datetime import datetime, timedelta, timezone
+from typing import Optional
 from cachetools import TTLCache
 from sqlalchemy import Integer, cast, func
+from sqlalchemy.orm import Session
 
 from app.database import SessionLocal
 from app.models.incident import BlockedIP, Incident
 
-_timeline_cache = TTLCache(maxsize=32, ttl=15)
+_timeline_cache = TTLCache(maxsize=64, ttl=30)
 
 
-def timeline_response(last: str = "60min") -> dict:
-    cache_key = (last or "60min").strip().lower()
+def _get_epoch_expr(column, bind):
+    """Return dialect-specific epoch expression for portable time grouping."""
+    dialect = bind.dialect.name if bind else "sqlite"
+    if dialect in ("postgresql", "postgres"):
+        return func.extract("epoch", column)
+    return func.strftime("%s", column)
+
+
+def timeline_response(last: str = "60min", db: Optional[Session] = None) -> dict:
+    raw_window = (last or "60min").strip().lower()
+    minutes, bucket_minutes = _parse_window_minutes(raw_window)
+    bucket_seconds = bucket_minutes * 60
+
+    # Snap time to nearest bucket boundary to stabilize caching and chart alignment
+    now_ts = int(datetime.now(timezone.utc).timestamp())
+    snapped_now_ts = (now_ts // bucket_seconds) * bucket_seconds
+    now = datetime.fromtimestamp(snapped_now_ts, tz=timezone.utc)
+    start = now - timedelta(minutes=minutes)
+
+    cache_key = f"{raw_window}_{snapped_now_ts}"
     cached = _timeline_cache.get(cache_key)
     if cached is not None:
         return cached
 
-    minutes, bucket_minutes = _parse_window_minutes(cache_key)
-    bucket_seconds = bucket_minutes * 60
-    now = datetime.now(timezone.utc)
-    start = now - timedelta(minutes=minutes)
-
-    db = SessionLocal()
+    owns_db = db is None
+    session = db or SessionLocal()
     try:
-        # SQL-level aggregation for Incidents (O(1) memory, database GROUP BY)
-        inc_bucket = cast(cast(func.strftime("%s", Incident.created_at), Integer) / bucket_seconds, Integer)
+        bind = session.get_bind() if hasattr(session, "get_bind") else session.bind
+
+        # SQL-level aggregation for Incidents (portable across SQLite & PostgreSQL)
+        epoch_inc = _get_epoch_expr(Incident.created_at, bind)
+        inc_bucket = cast(cast(epoch_inc, Integer) / bucket_seconds, Integer)
         incident_counts = dict(
-            db.query(inc_bucket, func.count(Incident.id))
+            session.query(inc_bucket, func.count(Incident.id))
             .filter(Incident.created_at >= start, Incident.created_at <= now)
             .group_by(inc_bucket)
             .all()
         )
 
         # SQL-level aggregation for BlockedIPs
-        blk_bucket = cast(cast(func.strftime("%s", BlockedIP.blocked_at), Integer) / bucket_seconds, Integer)
+        epoch_blk = _get_epoch_expr(BlockedIP.blocked_at, bind)
+        blk_bucket = cast(cast(epoch_blk, Integer) / bucket_seconds, Integer)
         blocked_counts = dict(
-            db.query(blk_bucket, func.count(BlockedIP.id))
+            session.query(blk_bucket, func.count(BlockedIP.id))
             .filter(BlockedIP.blocked_at >= start, BlockedIP.blocked_at <= now)
             .group_by(blk_bucket)
             .all()
@@ -60,7 +80,8 @@ def timeline_response(last: str = "60min") -> dict:
         _timeline_cache[cache_key] = result
         return result
     finally:
-        db.close()
+        if owns_db:
+            session.close()
 
 
 def _parse_window_minutes(value: str) -> tuple[int, int]:
