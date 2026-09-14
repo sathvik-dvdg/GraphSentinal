@@ -148,8 +148,24 @@ def verify_service_contract(state: InferenceV2State, served: dict[str, Any]) -> 
     """
     if state.contract is None:
         return
+    # A REACHABLE service that serves something other than a contract object is
+    # a mismatch, and must be as fatal as one. Without these checks, `.get` on a
+    # JSON list or string raises AttributeError -- neither ContractError (fatal,
+    # by design) nor InferenceUnavailable (deferred, by design) -- and the boot
+    # dies with an unhelpful traceback instead of a clear refusal.
+    if not isinstance(served, dict):
+        raise ContractError(
+            f"The inference service's /contract returned {type(served).__name__}, "
+            "not a model card object."
+        )
+    outputs = served.get("outputs")
+    if outputs is not None and not isinstance(outputs, dict):
+        raise ContractError(
+            f"The inference service's /contract has 'outputs' of type "
+            f"{type(outputs).__name__}, not an object."
+        )
     served_version = served.get("contract_version")
-    served_classes = (served.get("outputs") or {}).get("classes")
+    served_classes = (outputs or {}).get("classes")
     if served_version != state.contract.contract_version or list(served_classes or []) != list(state.contract.classes):
         raise ContractError(
             "The inference service is serving a different model contract than the "

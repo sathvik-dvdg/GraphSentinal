@@ -83,8 +83,14 @@ services:
     depends_on:
       blockchain:
         condition: service_healthy   # waits for contract_address.env to exist
+      # Start ORDER only, never a health gate. The backend is DESIGNED to run
+      # with the inference service down: it reports ml_v2 unreachable and
+      # produces no v2 scores (no fallback, INTEGRATION.md §5). A
+      # service_healthy gate would assert the opposite, and on a fresh clone
+      # without the gitignored weights.pt it would stop the backend from ever
+      # starting -- including in demo mode. Do not "restore" it.
       inference:
-        condition: service_healthy   # waits for the model to actually load
+        condition: service_started
     env_file:
       - .env.docker               # base env for Docker (committed, no secrets)
       - path: .env.docker.local   # optional, gitignored: real DAEMON_TOKEN / ENFORCEMENT_MODE=ovs
