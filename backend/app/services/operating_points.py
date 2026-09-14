@@ -3,32 +3,38 @@
 
 WHY THESE ARE NOT CONSTANTS IN THIS FILE
 
-A binary gate and an alert rule are claims about measured precision and recall.
-`ML/threshold_study.json` is the file that holds the fitted values, and it does
-not currently exist in this repo. Until it does, every operating point here is
-`TODO: unverified` and the backend REFUSES TO ALERT rather than invent one.
+A binary gate and an alert rule are claims about measured precision and recall,
+so they are read from the artefact that measured them, `ML/threshold_study.json`,
+and each loaded value records the key it came from. Nothing here restates a
+number.
 
-Three numbers have been discussed for this integration and none of them is
-usable as a fitted value today:
+WHAT IS READ, AND WHAT IS NOT
 
-  0.500   the binary attack gate, said to be fitted on validation at
-          precision 0.9910 / recall 0.9989. NOT traceable to any file in this
-          repo. (Corroboration, not verification: that precision/recall pair
-          implies F1 0.9949343, against model_card.json's VALIDATION
-          `edge_binary_f1` of 0.9950064 — a 7.2e-05 gap consistent with 4-dp
-          rounding. That makes the PAIR plausible; it says nothing about the
-          threshold being 0.500.)
+Exactly three top-level scalars: `binary_gate`, `alert_min_flows`,
+`alert_window_seconds`. The file's `flow_level` block and its
+`per_class_min_conf` fits are NOT read -- the SDN confidence floors in
+mitigation_policy.py are unaffected by this module.
 
-  >= 5    flows over the gate in a 60 s window, said to give test precision
-          1.000 across 486 attack-free windows. NOT traceable to any file.
+THE LOADED VALUES ARE PROVISIONAL
 
-  0.75    `InferenceEngine`'s default `threat_threshold`. This is a PACKAGE
-          DEFAULT, not a fitted value. It is not adopted here, silently or
-          otherwise. The engine is deliberately driven with no threshold at all
-          (it applies none to `WindowResult.flows`), so the gate lives here.
+A file that loads as `verified` is not a validated operating point
+(INTEGRATION.md §4):
 
-When `threshold_study.json` lands, `load_operating_points()` reads it and the
-comment on each field records the exact key it came from.
+  * `binary_gate` 0.5 is one of six fixed values the study script appended to
+    its quantile search grid; `idxmax` can return an appended value as the
+    "fitted" answer, and breaks ties by taking the lowest threshold. Whether 0.5
+    is a real optimum is being re-checked.
+  * the model's inference is not reproducible run to run, and that variation is
+    unmeasured. The committed notebook's saved output and threshold_study.json
+    already disagree by a few edges.
+
+The v2 path implements no alerting, so nothing acts on these values today. They
+must not be wired to anything that alerts until both points are resolved.
+
+`InferenceEngine`'s default `threat_threshold=0.75` is a PACKAGE DEFAULT, not a
+fitted value, and is not adopted here. The engine applies no threshold to
+`WindowResult.flows`; the gate is applied in the backend, where its provenance
+is recorded.
 """
 from __future__ import annotations
 

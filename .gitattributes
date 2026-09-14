@@ -12,3 +12,11 @@
 Dockerfile text
 *.yml      text
 *.yaml     text
+
+# Hash-bearing ML artefacts: their sha256 digests are recorded in ML/MANIFEST.json
+# and INTEGRATION.md, so git must store and check them out BYTE FOR BYTE. With
+# core.autocrlf=true and no attribute, git may normalise their line endings on a
+# later add or renormalise, and every recorded digest would silently stop
+# matching the file. Top-level ML/ only; the package's own files are unaffected.
+ML/*.json  -text
+ML/*.csv   -text

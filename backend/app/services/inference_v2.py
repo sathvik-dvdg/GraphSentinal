@@ -44,6 +44,21 @@ from app.services.operating_points import OperatingPointError, OperatingPoints, 
 
 _log = logging.getLogger("graphsentinel.inference_v2")
 
+#: The v2 path raises no alerts and creates no incidents: that is NOT IMPLEMENTED.
+#: A verified ML/threshold_study.json does not change this, and must not be read
+#: as if it did -- its binary_gate is provisional (INTEGRATION.md §4: the value
+#: sits on a fixed grid point, and run-to-run variation is unmeasured). Until
+#: alerting exists and the operating points are confirmed, every report of
+#: "alerting enabled" would be a false claim.
+V2_ALERTING_IMPLEMENTED = False
+
+# ASCII only: this string reaches logs and API responses, and a console on a
+# cp1252 default codec mangles anything outside it.
+ALERTING_DISABLED_REASON = (
+    "alerting is not implemented on the v2 path; the operating points in "
+    "ML/threshold_study.json are provisional (INTEGRATION.md section 4)"
+)
+
 #: Attack classes whose labels must be reported as unreliable wherever surfaced.
 #: Derived from measured numbers in ML/test_report.json, not from taste.
 UNRELIABLE_CLASSES: dict[str, str] = {
@@ -71,14 +86,20 @@ class InferenceV2State:
         return self.enabled and self.contract is not None and self.policy is not None
 
     @property
-    def can_alert(self) -> bool:
-        """True only when a fitted operating point exists to gate on.
+    def alerting_enabled(self) -> bool:
+        """Whether the v2 path raises alerts. Currently always False.
 
-        Without `ML/threshold_study.json` there is no measured precision behind
-        any threshold, so the backend scores flows and reports them but raises
-        no alerts and creates no incidents on the v2 path.
+        Requires, all at once: alerting to be implemented (it is not), the state
+        to be ready, and operating points loaded from a real file. The last
+        condition alone -- which is all this used to check -- turned true the
+        moment threshold_study.json landed, and would have reported alerting as
+        enabled on a path that has none.
         """
-        return self.ready and bool(self.operating_points and self.operating_points.verified)
+        return (
+            V2_ALERTING_IMPLEMENTED
+            and self.ready
+            and bool(self.operating_points and self.operating_points.verified)
+        )
 
     def class_note(self, class_name: str) -> str | None:
         """Reliability caveat for a class label, or None if it has none."""
@@ -133,7 +154,8 @@ class InferenceV2State:
             "operating_points": (
                 self.operating_points.describe() if self.operating_points else None
             ),
-            "can_alert": self.can_alert,
+            "alerting_enabled": self.alerting_enabled,
+            "alerting_disabled_reason": None if self.alerting_enabled else ALERTING_DISABLED_REASON,
             "unreliable_classes": dict(UNRELIABLE_CLASSES),
         }
 
@@ -217,12 +239,17 @@ def build_state() -> InferenceV2State:
             _log.warning("class %s: %s", class_name, note)
     if not points.verified:
         _log.warning(
-            "No fitted operating points (%s). The v2 path will SCORE flows but "
-            "raise NO alerts and create NO incidents: an alert is a claim about "
-            "precision, and there is no measured precision behind an unfitted "
-            "threshold. InferenceEngine's default threat_threshold=0.75 is a "
-            "package default and is deliberately NOT adopted here.",
+            "No operating points loaded (%s). The v2 path will SCORE flows but "
+            "raise NO alerts and create NO incidents. InferenceEngine's default "
+            "threat_threshold=0.75 is a package default and is deliberately NOT "
+            "adopted here.",
             points.source,
+        )
+    else:
+        _log.warning(
+            "Operating points loaded from %s (binary_gate=%s) and treated as "
+            "PROVISIONAL: %s. The v2 path scores flows; it raises no alerts.",
+            points.source, points.binary_gate, ALERTING_DISABLED_REASON,
         )
 
     return InferenceV2State(

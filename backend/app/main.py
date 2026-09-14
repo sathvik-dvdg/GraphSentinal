@@ -94,7 +94,7 @@ async def lifespan(app: FastAPI):
     if gs2.enabled:
         contract = gs2.contract
         print(f"[ML-v2] Contract {contract.contract_version} [OK] classes={list(contract.classes)}")
-        print(f"[ML-v2] Alerting: {'enabled' if gs2.can_alert else 'DISABLED (no fitted operating points)'}")
+        print(f"[ML-v2] Alerting: {'enabled' if gs2.alerting_enabled else 'NOT IMPLEMENTED (operating points provisional)'}")
     else:
         print(f"[ML-v2] Disabled: {gs2.disabled_reason}")
     print(f"[Blockchain] Connected: {blockchain._connected} {'[OK]' if blockchain._connected else '[ERROR]'}")

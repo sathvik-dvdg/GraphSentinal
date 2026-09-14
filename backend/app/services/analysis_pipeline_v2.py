@@ -11,11 +11,15 @@ WHAT THIS PATH DOES AND DOES NOT DO
             report per-flow verdicts, and track how often a window could not be
             scored at all.
 
-  does NOT  create incidents, raise alerts, block IPs, or write to the chain
-            while `can_alert` is False — which is the current state, because
-            `ML/threshold_study.json` does not exist and there is therefore no
-            fitted threshold with measured precision behind it. Scoring without
-            alerting is honest; alerting on an invented threshold is not.
+  does NOT  create incidents, raise alerts, block IPs, or write to the chain.
+            Alerting is not implemented on this path (`V2_ALERTING_IMPLEMENTED`
+            in inference_v2.py). `ML/threshold_study.json` now exists and loads,
+            but loading it changes only what is reported: its `binary_gate` is
+            provisional -- 0.5 sits on one of the fixed values the study script
+            appended to its search grid, and run-to-run variation of the model
+            is unmeasured (INTEGRATION.md §4). It must not be wired to anything
+            that alerts until both are resolved. `flows_over_gate` below is
+            reported for inspection only.
 
   does NOT  read the node head. `WindowResult.detections` is node-level
             (test binary F1 0.1407, PR-AUC below base rate for three of four
@@ -31,7 +35,7 @@ import time
 from typing import Any
 
 from app.services.inference_client import InferenceClient, InferenceUnavailable, WindowOutcome
-from app.services.inference_v2 import InferenceV2State, verify_service_contract
+from app.services.inference_v2 import ALERTING_DISABLED_REASON, InferenceV2State, verify_service_contract
 from app.services.model_contract import ContractError
 
 _log = logging.getLogger("graphsentinel.pipeline_v2")
@@ -139,11 +143,9 @@ def score_flows(
         "closed_windows": len(windows),
         "flows_submitted": len(flows),
         "unscored_rate": client.unscored_rate,
-        # Alerting is off until a fitted operating point exists. Stated in the
-        # response so a consumer cannot mistake "no alerts" for "nothing found".
-        "alerting_enabled": state.can_alert,
-        "alerting_disabled_reason": None if state.can_alert else (
-            state.operating_points.source if state.operating_points else "no operating points"
-        ),
+        # Alerting is not implemented on this path. Stated in the response so a
+        # consumer cannot mistake "no alerts" for "nothing found".
+        "alerting_enabled": state.alerting_enabled,
+        "alerting_disabled_reason": None if state.alerting_enabled else ALERTING_DISABLED_REASON,
         "elapsed_ms": round((time.perf_counter() - t0) * 1000.0, 3),
     }
