@@ -1,0 +1,126 @@
+{
+  "note": "Sensitivity control for phase2b_live_path_cost.py on the same sample. If all_zero_edge_features.argmax_changed is 0, the sample is separable without edge features and phase2b's deltas cannot measure edge-feature damage.",
+  "inputs": {
+    "sample": {
+      "path": "ML/testdata/cicids2017_sample.csv",
+      "sha256": "abe50f86fbf12eae94800acc1e44f9eadd3c6a79ea2541310d90c56569e0d910",
+      "rows_in_file": 20000,
+      "rows_after_preprocessing": 15833
+    },
+    "model_card_sha256": "d9637ea6b6846779ebdebcf763832b97341e1b752d68737fc430acca1ff3b996",
+    "weights_sha256": "0dbbaf388dbffc2ce0753553b346e520b3aa0b557cdb6c618792f51eb0a38989"
+  },
+  "windows": 19,
+  "real_edges": 15833,
+  "live_path_degradation": {
+    "argmax_changed": 0,
+    "max_abs_delta_prob": 0.23333054780960083,
+    "per_class_recall": {
+      "BENIGN": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "Volumetric_Flood": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "PortScan": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "BruteForce": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "Botnet": {
+        "baseline": 0.0,
+        "variant": 0.0
+      }
+    },
+    "edges_with_changed_features_share": 1.0
+  },
+  "all_zero_edge_features": {
+    "argmax_changed": 0,
+    "max_abs_delta_prob": 0.29566043615341187,
+    "per_class_recall": {
+      "BENIGN": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "Volumetric_Flood": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "PortScan": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "BruteForce": {
+        "baseline": 1.0,
+        "variant": 1.0
+      },
+      "Botnet": {
+        "baseline": 0.0,
+        "variant": 0.0
+      }
+    }
+  },
+  "baseline_confidence_of_correct_predictions": {
+    "BENIGN": {
+      "true_edges": 6312,
+      "correct": 6312,
+      "p05": 0.9903707176446914,
+      "p50": 0.9942572116851807,
+      "p95": 0.9958529472351074,
+      "max": 0.9970589876174927,
+      "share_at_or_above": {
+        "0.80": 0.9987325728770595,
+        "0.85": 0.9987325728770595,
+        "0.90": 0.9987325728770595
+      }
+    },
+    "Volumetric_Flood": {
+      "true_edges": 4614,
+      "correct": 4614,
+      "p05": 0.6938656061887741,
+      "p50": 0.7153847515583038,
+      "p95": 0.7230994552373886,
+      "max": 0.8369532823562622,
+      "share_at_or_above": {
+        "0.80": 0.00953619419159081,
+        "0.85": 0.0,
+        "0.90": 0.0
+      }
+    },
+    "PortScan": {
+      "true_edges": 3981,
+      "correct": 3981,
+      "p05": 0.8337757587432861,
+      "p50": 0.9370040893554688,
+      "p95": 0.9424858093261719,
+      "max": 0.9433925747871399,
+      "share_at_or_above": {
+        "0.80": 0.9979904546596332,
+        "0.85": 0.8924893242903793,
+        "0.90": 0.8841999497613665
+      }
+    },
+    "BruteForce": {
+      "true_edges": 382,
+      "correct": 382,
+      "p05": 0.7471883296966553,
+      "p50": 0.9477691054344177,
+      "p95": 0.9588311910629272,
+      "max": 0.9588404297828674,
+      "share_at_or_above": {
+        "0.80": 0.8010471204188482,
+        "0.85": 0.7984293193717278,
+        "0.90": 0.7696335078534031
+      }
+    },
+    "Botnet": {
+      "true_edges": 544,
+      "correct": 0
+    }
+  }
+}
