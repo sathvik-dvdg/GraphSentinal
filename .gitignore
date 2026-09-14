@@ -32,3 +32,4 @@ blockchain/.vscode_hardhat_config_*.ts
 # See INTEGRATION.md for how to fetch them.
 ML/weights.pt
 ML/model.ts
+ML\testdata\cicids2017_sample.csv
