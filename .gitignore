@@ -1,1 +1,35 @@
 ﻿.env
+.env.docker.local
+
+# AI/editor tool scaffolding (local-only, not for sharing)
+.agents/
+.cursor/
+.jetro/
+.mcp.json
+.windsurfrules
+.github/copilot-instructions.md
+AGENT.md
+CLAUDE.md
+skills-lock.json
+
+# Python cache
+__pycache__/
+*.pyc
+
+# Local virtualenvs
+.venv/
+.venv_linux/
+**/.venv/
+**/.venv_linux/
+
+# Local IDE-generated hardhat temp configs
+blockchain/.vscode_hardhat_config_*.ts
+
+# ── GraphSentinel v2 model binaries ───────────────────────────────────────────
+# weights.pt and model.ts are ~72.7 MiB each. Git cannot delta-compress them,
+# so every re-export would add ~145 MiB to history permanently. Their sha256
+# digests live in ML/MANIFEST.json, so integrity is verifiable without the blob.
+# See INTEGRATION.md for how to fetch them.
+ML/weights.pt
+ML/model.ts
+ML\testdata\cicids2017_sample.csv

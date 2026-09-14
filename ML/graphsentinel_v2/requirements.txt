@@ -1,0 +1,25 @@
+# ---------------------------------------------------------------------------
+#  WHAT A BACKEND ACTUALLY NEEDS vs WHAT TRAINING NEEDS.
+#
+#  A backend integration audit on 2026-09-13 installed this file, found
+#  pyarrow, matplotlib and onnx missing, and correctly declined to install
+#  them -- none are on the inference path. The split below makes that explicit
+#  so nobody has to work it out from a test failure again.
+#
+#      pip install -r requirements.txt                  # inference only
+#      pip install -r requirements.txt -r requirements-train.txt
+# ---------------------------------------------------------------------------
+
+# --- inference: everything the engine and the service need -----------------
+torch>=2.1
+torch-geometric>=2.5
+pandas>=2.0,<3
+numpy>=1.24
+
+# --- inference microservice (graphsentinel.inference.service) --------------
+fastapi>=0.110
+uvicorn>=0.29
+pydantic>=2.0
+
+# --- dev -------------------------------------------------------------------
+pytest>=7.4

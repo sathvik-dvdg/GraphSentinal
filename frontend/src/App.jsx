@@ -1,11 +1,13 @@
 // [Windows] GraphSentinel — Susheep
 // App.jsx — routing root with ProtectedRoute wrapping AppShell + all sub-routes
+import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
 import useAuthStore from './store/useAuthStore'
 import SimulationProvider from './providers/SimulationProvider'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
 import AppShell from './components/layout/AppShell'
+import LoadingScreen from './components/shared/LoadingScreen'
 import DashboardPage from './pages/DashboardPage'
 import NetworkTopology from './pages/NetworkTopology'
 import ThreatFeed from './pages/ThreatFeed'
@@ -14,15 +16,27 @@ import BlockchainLedger from './pages/BlockchainLedger'
 import TimelineAnalytics from './pages/TimelineAnalytics'
 import SelfHealing from './pages/SelfHealing'
 import AlertCentre from './pages/AlertCentre'
+import AuditLog from './pages/AuditLog'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated } = useAuthStore()
+  const { isAuthenticated, authStatus } = useAuthStore()
+  // A token can survive a page refresh in sessionStorage — 'checking' covers
+  // the round-trip to verify it's still valid server-side, so a stale token
+  // doesn't briefly flash the dashboard before an inevitable 401 bounces it
+  // back to /login, and a valid one doesn't bounce to /login first either.
+  if (authStatus === 'checking') return <LoadingScreen />
   if (!isAuthenticated) return <Navigate to="/login" replace />
   return children
 }
 
 export default function App() {
+  const checkSession = useAuthStore((s) => s.checkSession)
+
+  useEffect(() => {
+    checkSession()
+  }, [checkSession])
+
   return (
     <BrowserRouter
         future={{
@@ -46,6 +60,10 @@ export default function App() {
               </ProtectedRoute>
             }
           >
+            {/* Error.md U8 / #10 — "/" itself is owned by the public
+                LandingPage route above, which now redirects authenticated
+                users to /dashboard (see LandingPage.jsx). No index route here
+                to avoid two routes matching "/". */}
             <Route path="dashboard"   element={<DashboardPage />} />
             <Route path="network"     element={<NetworkTopology />} />
             <Route path="threats"     element={<ThreatFeed />} />
@@ -54,6 +72,7 @@ export default function App() {
             <Route path="timeline"    element={<TimelineAnalytics />} />
             <Route path="healing"     element={<SelfHealing />} />
             <Route path="alerts"      element={<AlertCentre />} />
+            <Route path="audit"       element={<AuditLog />} />
             <Route path="settings"    element={<Settings />} />
           </Route>
 

@@ -2,17 +2,20 @@
 from functools import lru_cache
 from pathlib import Path
 
+from pydantic import model_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 
 class Settings(BaseSettings):
-    backend_host: str = "0.0.0.0"
+    environment: str = "development"  # development | production | testing
+    backend_host: str = "127.0.0.1"
     backend_port: int = 8000
     sqlite_path: str = "./graphsentinel.db"
     threat_threshold: float = 0.75
     poll_interval_seconds: int = 5
 
     weights_path: str = "../ML/GraphSage-model/graphsage_weights.pt"
+    stats_path: str = "../ML/GraphSage-model/inference_stats.pt"
     model_source_path: str = "../ml/src"
     blockchain_bridge_path: str = "../blockchain/web3_bridge"
     node_feature_count: int = 7
@@ -22,13 +25,49 @@ class Settings(BaseSettings):
     scaler_path: str = "../ML/GraphSage-model/scaler.pkl"
     use_scaler_for_inference: bool = False
 
+    # ── GraphSentinel v2 (flow/edge-level model, contract 2.0.0) ──────────────
+    # The v2 model runs in its OWN process (graphsentinel.inference.service), not
+    # in this one: InferenceEngine is stateful (flow buffer, 60s window boundary,
+    # persistent host memory) and the MininetMonitor thread plus /analyze request
+    # handlers would interleave into one shared buffer if it were imported here.
+    gs2_enabled: bool = False
+    gs2_service_url: str = "http://127.0.0.1:8080"
+    gs2_request_timeout_seconds: float = 10.0
+    # Directory holding model_card.json (and, when fetched, weights.pt). The
+    # backend reads the CARD to learn the class list, feature names and their
+    # order; it never loads the weights itself.
+    gs2_model_dir: str = "../ML"
+    # Refuse to boot when gs2_enabled and the contract is missing or the wrong
+    # version. Failing loudly beats mislabelling traffic silently. Turning this
+    # off is a deliberate, logged choice for local work without the artefacts.
+    gs2_require_contract: bool = True
+
     ganache_url: str = "http://127.0.0.1:8545"
     contract_address: str = ""
     blockchain_tx_timeout_seconds: int = 5
+    # N-05: Signer, Gas, and Outbox configuration
+    blockchain_private_key: str = ""
+    blockchain_gas_multiplier: float = 1.2
+    blockchain_max_gas: int = 600000
+    blockchain_retry_interval_seconds: int = 10
+    blockchain_max_retries: int = 5
+    # N-06: Concurrency, claim lease, pending timeout & chain safety
+    blockchain_expected_chain_id: int | None = None
+    blockchain_pending_timeout_seconds: int = 180
+    blockchain_claim_timeout_seconds: int = 60
 
     backend_api_token: str = "change-me-for-demo"
+    admin_api_token: str = "admin-secret-key-for-demo"
     max_analyze_flows: int = 5000
     analyze_rate_limit_per_minute: int = 30
+
+    # Operator & Administrative session auth (R-03: M13-F01, M13-F02, M15-F03)
+    operator_username: str = "admin"
+    operator_password: str = "change-me-for-demo"
+    operator_role: str = "admin"
+    readonly_username: str = "readonly"
+    readonly_password: str = "readonly-for-demo"
+    session_ttl_hours: int = 8
 
     enforcement_mode: str = "simulated"  # simulated | ovs
     enforcement_switch: str = "s1"
@@ -37,17 +76,51 @@ class Settings(BaseSettings):
     
     daemon_host: str = "127.0.0.1"
     daemon_port: int = 50051
-    daemon_token: str
+    daemon_token: str = "test-token"
+
+    flow_snapshot_retention_hours: int = 24
+
+    # Comma-separated list — see cors_origins_list below (Error.md #28)
+    cors_origins: str = "http://localhost:5173,http://localhost:5174,http://localhost:3000"
 
     model_config = SettingsConfigDict(
-        env_file=".env",
+        # Absolute path so the backend always loads backend/.env regardless of
+        # the process's working directory — running pytest/uvicorn from the
+        # repo root must not pick up the root .env (which has frontend VITE_*
+        # keys and is meant for the WSL2/Docker daemon bridge, not the app).
+        env_file=str(Path(__file__).resolve().parent.parent / ".env"),
         env_file_encoding="utf-8",
         protected_namespaces=("settings_",),
+        extra="ignore",
     )
+
+    @model_validator(mode="after")
+    def validate_production_security(self) -> "Settings":
+        if self.environment.lower() == "production":
+            insecure_defaults = {
+                "change-me-for-demo",
+                "admin-secret-key-for-demo",
+                "admin",
+                "password",
+                "root",
+                "123456",
+                "",
+            }
+            if self.operator_password.lower() in insecure_defaults or "change-me" in self.operator_password.lower():
+                raise ValueError("FATAL [Security]: Insecure default operator password cannot be used in production environment.")
+            if self.backend_api_token.lower() in insecure_defaults or "change-me" in self.backend_api_token.lower():
+                raise ValueError("FATAL [Security]: Insecure default backend API token cannot be used in production environment.")
+            if self.admin_api_token and (self.admin_api_token.lower() in insecure_defaults or "change-me" in self.admin_api_token.lower()):
+                raise ValueError("FATAL [Security]: Insecure default admin API token cannot be used in production environment.")
+        return self
 
     @property
     def sqlite_url(self) -> str:
         return f"sqlite:///{self.sqlite_path}"
+
+    @property
+    def cors_origins_list(self) -> list[str]:
+        return [origin.strip() for origin in self.cors_origins.split(",") if origin.strip()]
 
     @property
     def resolved_weights_candidates(self) -> list[Path]:
@@ -57,6 +130,23 @@ class Settings(BaseSettings):
         # Resolve strictly relative to the backend directory (where config.py lives)
         backend_dir = Path(__file__).resolve().parent.parent
         return [(backend_dir / configured).resolve()]
+
+    @property
+    def resolved_stats_candidates(self) -> list[Path]:
+        configured = Path(self.stats_path)
+        if configured.is_absolute():
+            return [configured]
+        backend_dir = Path(__file__).resolve().parent.parent
+        return [(backend_dir / configured).resolve()]
+
+    @property
+    def resolved_gs2_model_dir(self) -> Path:
+        """Absolute path to the v2 artefact directory (holds model_card.json)."""
+        configured = Path(self.gs2_model_dir)
+        if configured.is_absolute():
+            return configured
+        backend_dir = Path(__file__).resolve().parent.parent
+        return (backend_dir / configured).resolve()
 
 
 @lru_cache

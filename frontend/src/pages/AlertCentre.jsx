@@ -10,8 +10,14 @@ import {
   LineChart, Line, XAxis, YAxis, CartesianGrid,
 } from 'recharts'
 import useGraphStore from '../store/useGraphStore'
+import StatTile from '../components/ui/StatTile'
+import FilterPill from '../components/ui/FilterPill'
+import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
+import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
+import { loadAlertStatuses, setAlertStatus, clearAlertStatus } from '../utils/alertStatus'
+import { updateIncidentStatus } from '../services/api'
 
-const SEVERITY_COLORS = { critical: '#E03C3C', warning: '#E8922A', info: '#4F6EF7' }
+const SEVERITY_COLORS = { critical: '#E03C3C', warning: '#b7791f', info: '#3b56d9' }
 const SOURCE_LABELS = {
   threat_feed: 'THREAT FEED',
   self_healing: 'SELF-HEALING',
@@ -20,9 +26,9 @@ const SOURCE_LABELS = {
 }
 const SOURCE_COLORS = {
   threat_feed: '#E03C3C',
-  self_healing: '#2ECC8A',
-  blockchain: '#8B5CF6',
-  system: '#5A6480',
+  self_healing: '#12a672',
+  blockchain: '#7c3aed',
+  system: '#727a86',
 }
 
 const STATUS_CYCLE = { open: 'acknowledged', acknowledged: 'resolved', resolved: 'open' }
@@ -30,16 +36,19 @@ const STATUS_CYCLE = { open: 'acknowledged', acknowledged: 'resolved', resolved:
 export default function AlertCentre() {
   const navigate = useNavigate()
   const { alerts: unified, stats } = useAlerts()
-  const { timeline } = useGraphStore()
+  const { timeline, dataErrors } = useGraphStore()
 
-  const [localStatuses, setLocalStatuses] = useState({})
+  // Error.md H5 — triage is server-authoritative (PATCH /api/v1/incidents/{id}
+  // /status). localStorage is only an optimistic layer: written on click,
+  // cleared once the server confirms, kept if the backend was unreachable.
+  const [localStatuses, setLocalStatuses] = useState(() => loadAlertStatuses())
   const [filterSeverity, setFilterSeverity] = useState('All')
   const [filterStatus, setFilterStatus] = useState('All')
   const [filterSource, setFilterSource] = useState('All')
 
-  // Merge local overrides
+  // Merge local overrides ({status, at} shape from utils/alertStatus)
   const alertsWithLocal = useMemo(() =>
-    unified.map((a) => ({ ...a, status: localStatuses[a.id] || a.status })),
+    unified.map((a) => ({ ...a, status: localStatuses[a.id]?.status || a.status })),
     [unified, localStatuses]
   )
 
@@ -54,64 +63,77 @@ export default function AlertCentre() {
   )
 
   const cycleStatus = (id) => {
-    setLocalStatuses((prev) => {
-      const cur = prev[id] || unified.find((a) => a.id === id)?.status || 'open'
-      return { ...prev, [id]: STATUS_CYCLE[cur] || 'open' }
-    })
+    const alert = unified.find((a) => a.id === id)
+    const cur = localStatuses[id]?.status || alert?.status || 'open'
+    const next = STATUS_CYCLE[cur] || 'open'
+    // Optimistic local write for instant feedback.
+    setLocalStatuses((prev) => setAlertStatus(prev, id, next))
+    // Persist to the backend when this alert maps to a real incident row.
+    if (alert?.incidentId != null) {
+      updateIncidentStatus(alert.incidentId, next)
+        .then(() => setLocalStatuses((prev) => clearAlertStatus(prev, id)))
+        .catch(() => { /* keep the optimistic local value as an offline fallback */ })
+    }
   }
 
   // Donut data
   const donutData = [
     { name: 'Critical', value: stats.open, color: '#E03C3C' },
-    { name: 'Warning', value: stats.acked, color: '#E8922A' },
-    { name: 'Resolved', value: stats.resolved, color: '#2ECC8A' },
+    { name: 'Warning', value: stats.acked, color: '#b7791f' },
+    { name: 'Resolved', value: stats.resolved, color: '#12a672' },
   ].filter((d) => d.value > 0)
 
   // Last 6h sparkline — reuse timeline data
   const sparkData = timeline.slice(-12)
 
+  // Error.md #37 pattern: a relative label past ~1 day is ambiguous ("29h
+  // ago" doesn't say which day) — fall back to a real date+time.
   const relativeTime = (ts) => {
     const diff = Date.now() - ts
     if (diff < 60000) return `${Math.floor(diff / 1000)}s ago`
     if (diff < 3600000) return `${Math.floor(diff / 60000)}m ago`
-    return `${Math.floor(diff / 3600000)}h ago`
+    if (diff < 86400000) return `${Math.floor(diff / 3600000)}h ago`
+    return formatEventTimestamp(ts)
   }
 
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 108px)' }}>
       {/* Header */}
       <div>
-        <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Alert Centre
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-          Unified incident hub · Acknowledge and resolve alerts
-        </p>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+          <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            Unified incident hub · Acknowledge / resolve state saved on this device
+          </p>
+          <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
+        </div>
       </div>
 
       {/* Stats bar */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12, flexShrink: 0 }}>
-        <StatBadge label="Open" value={stats.open} color="#E03C3C" />
-        <StatBadge label="Acknowledged" value={stats.acked} color="#E8922A" />
-        <StatBadge label="Resolved" value={stats.resolved} color="#2ECC8A" />
-        <StatBadge label="MTTA" value={`${stats.mttaMin}m`} color="#4F6EF7" />
+        <StatTile layout="row" label="Open" value={stats.open} color="#E03C3C" />
+        <StatTile layout="row" label="Acknowledged" value={stats.acked} color="#b7791f" />
+        <StatTile layout="row" label="Resolved" value={stats.resolved} color="#12a672" />
+        <StatTile layout="row" label="MTTA" value={stats.mttaSamples > 0 ? `${stats.mttaMin}m` : '—'} color="#3b56d9" />
       </div>
 
       {/* Filter bar */}
       <div className="gs-panel" style={{ padding: '10px 14px', flexShrink: 0, display: 'flex', alignItems: 'center', gap: 10, flexWrap: 'wrap' }}>
-        <Filter size={13} style={{ color: '#5A6480' }} />
+        <Filter size={13} style={{ color: '#727a86' }} />
         {['All', 'critical', 'warning', 'info'].map((s) => (
-          <Pill key={s} label={s} active={filterSeverity === s} onClick={() => setFilterSeverity(s)}
-            color={SEVERITY_COLORS[s] || '#5A6480'} />
+          <FilterPill key={s} label={s} active={filterSeverity === s} onClick={() => setFilterSeverity(s)}
+            color={SEVERITY_COLORS[s] || '#727a86'} />
         ))}
         <Sep />
         {['All', 'open', 'acknowledged', 'resolved'].map((s) => (
-          <Pill key={s} label={s} active={filterStatus === s} onClick={() => setFilterStatus(s)} color="#8A95B0" />
+          <FilterPill key={s} label={s} active={filterStatus === s} onClick={() => setFilterStatus(s)} color="#5a616e" />
         ))}
         <Sep />
         {['All', 'threat_feed', 'self_healing', 'blockchain', 'system'].map((s) => (
-          <Pill key={s} label={s === 'All' ? 'All' : SOURCE_LABELS[s] || s} active={filterSource === s}
-            onClick={() => setFilterSource(s)} color={SOURCE_COLORS[s] || '#5A6480'} />
+          <FilterPill key={s} label={s === 'All' ? 'All' : SOURCE_LABELS[s] || s} active={filterSource === s}
+            onClick={() => setFilterSource(s)} color={SOURCE_COLORS[s] || '#727a86'} />
         ))}
       </div>
 
@@ -121,8 +143,8 @@ export default function AlertCentre() {
         <div style={{ overflowY: 'auto', display: 'flex', flexDirection: 'column', gap: 8 }}>
           <AnimatePresence initial={false}>
             {filtered.map((alert, i) => {
-              const sevColor = SEVERITY_COLORS[alert.severity] || '#5A6480'
-              const srcColor = SOURCE_COLORS[alert.source] || '#5A6480'
+              const sevColor = SEVERITY_COLORS[alert.severity] || '#727a86'
+              const srcColor = SOURCE_COLORS[alert.source] || '#727a86'
               const status = alert.status
 
               return (
@@ -147,7 +169,7 @@ export default function AlertCentre() {
                         }}>
                           {SOURCE_LABELS[alert.source] || alert.source}
                         </span>
-                        <span style={{ color: '#E8EDF5', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600 }}>
+                        <span style={{ color: '#1b1f27', fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600 }}>
                           {alert.title}
                         </span>
                       </div>
@@ -155,11 +177,11 @@ export default function AlertCentre() {
                       {/* Row 2: IP + relative time */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {alert.nodeIp && (
-                          <span style={{ color: '#4F6EF7', fontSize: 11, fontFamily: "'DM Mono', monospace', cursor: 'pointer'" }}>
+                          <span style={{ color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace', cursor: 'pointer'" }}>
                             {alert.nodeIp}
                           </span>
                         )}
-                        <span style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                        <span style={{ color: '#9aa1ad', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                           {relativeTime(alert.createdAt)}
                         </span>
                       </div>
@@ -177,8 +199,8 @@ export default function AlertCentre() {
                           ...(status === 'open'
                             ? { background: 'rgba(224,60,60,0.1)', color: '#E03C3C', borderColor: 'rgba(224,60,60,0.3)' }
                             : status === 'acknowledged'
-                            ? { background: 'rgba(232,146,42,0.1)', color: '#E8922A', borderColor: 'rgba(232,146,42,0.3)' }
-                            : { background: 'rgba(46,204,138,0.1)', color: '#2ECC8A', borderColor: 'rgba(46,204,138,0.3)' }),
+                            ? { background: 'rgba(232,146,42,0.1)', color: '#b7791f', borderColor: 'rgba(232,146,42,0.3)' }
+                            : { background: 'rgba(46,204,138,0.1)', color: '#12a672', borderColor: 'rgba(46,204,138,0.3)' }),
                         }}
                         title="Click to cycle status"
                       >
@@ -191,7 +213,7 @@ export default function AlertCentre() {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 4,
                           background: 'none', border: 'none',
-                          color: '#4F6EF7', fontSize: 11, fontFamily: "'DM Mono', monospace",
+                          color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace",
                           cursor: 'pointer',
                         }}
                       >
@@ -205,7 +227,7 @@ export default function AlertCentre() {
           </AnimatePresence>
 
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: '#3D4560' }}>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: '#9aa1ad' }}>
               <Bell size={32} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
               <div style={{ fontSize: 12, fontFamily: "'DM Mono', monospace" }}>No alerts match the current filter</div>
             </div>
@@ -216,7 +238,7 @@ export default function AlertCentre() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
           {/* Donut chart */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Open by Severity
             </div>
             {donutData.length > 0 ? (
@@ -228,12 +250,12 @@ export default function AlertCentre() {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: '#1E1E1E', border: '1px solid #262D3F', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                    contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
                 All clear
               </div>
             )}
@@ -241,13 +263,26 @@ export default function AlertCentre() {
 
           {/* Sparkline: alerts per hour */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Alerts / Hour (last 6h)
             </div>
             <ResponsiveContainer width="100%" height={80}>
               <LineChart data={sparkData} margin={{ top: 4, right: 4, left: -30, bottom: 0 }}>
-                <XAxis dataKey="time" tick={{ fill: '#3D4560', fontSize: 8, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                {/* Error.md U5 — timeline points are ISO datetimes; without a
+                    tickFormatter the x-axis rendered the raw full ISO string. */}
+                <XAxis
+                  dataKey="time"
+                  tickFormatter={formatTimelineTick}
+                  minTickGap={32}
+                  tick={{ fill: '#9aa1ad', fontSize: 8, fontFamily: "'DM Mono', monospace" }}
+                  axisLine={false}
+                  tickLine={false}
+                />
                 <YAxis tick={false} axisLine={false} />
+                <Tooltip
+                  labelFormatter={formatTimelineTick}
+                  contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                />
                 <Line type="monotone" dataKey="threats" stroke="#E03C3C" strokeWidth={1.5} dot={false} />
               </LineChart>
             </ResponsiveContainer>
@@ -255,14 +290,16 @@ export default function AlertCentre() {
 
           {/* MTTA card */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+            <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
               Mean Time To Acknowledge
             </div>
-            <div style={{ color: '#4F6EF7', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 28 }}>
-              {stats.mttaMin}m
+            <div style={{ color: '#3b56d9', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 28 }}>
+              {stats.mttaSamples > 0 ? `${stats.mttaMin}m` : '—'}
             </div>
-            <div style={{ color: '#3D4560', fontSize: 10, fontFamily: "'DM Mono', monospace", marginTop: 4 }}>
-              Based on {stats.acked} acknowledged alerts
+            <div style={{ color: '#9aa1ad', fontSize: 10, fontFamily: "'DM Mono', monospace", marginTop: 4 }}>
+              {stats.mttaSamples > 0
+                ? `Based on ${stats.mttaSamples} acknowledged alert${stats.mttaSamples === 1 ? '' : 's'} (this device)`
+                : 'No alerts acknowledged yet'}
             </div>
           </div>
         </div>
@@ -271,33 +308,7 @@ export default function AlertCentre() {
   )
 }
 
-function StatBadge({ label, value, color }) {
-  return (
-    <div className="gs-panel" style={{ padding: '12px 16px', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
-      <span style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
-      <span style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22 }}>{value}</span>
-    </div>
-  )
-}
-
-function Pill({ label, active, onClick, color }) {
-  return (
-    <button
-      onClick={onClick}
-      style={{
-        padding: '3px 9px', borderRadius: 5,
-        border: `1px solid ${active ? color : 'rgba(255,255,255,0.08)'}`,
-        background: active ? `${color}15` : 'transparent',
-        color: active ? color : '#5A6480',
-        fontSize: 10, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
-        transition: 'all 150ms', textTransform: 'capitalize',
-      }}
-    >
-      {label}
-    </button>
-  )
-}
 
 function Sep() {
-  return <div style={{ width: 1, height: 18, background: 'rgba(255,255,255,0.08)', flexShrink: 0 }} />
+  return <div style={{ width: 1, height: 18, background: 'rgba(17,20,26,0.10)', flexShrink: 0 }} />
 }

@@ -39,6 +39,12 @@ contract IncidentLogger {
         incidentCount = 0;
     }
 
+    // ─── Authorization ────────────────────────────────────────────
+    modifier onlyDeployer() {
+        require(msg.sender == deployer, "Unauthorized");
+        _;
+    }
+
     // ─── Core Function: Log an incident ───────────────────────────
     function logIncident(
         string  memory _sourceIP,
@@ -46,7 +52,7 @@ contract IncidentLogger {
         uint8          _severity,
         bool           _isBlocked,
         string  memory _forensicsURI
-    ) external returns (uint256 newId) {
+    ) external onlyDeployer returns (uint256 newId) {
         require(bytes(_sourceIP).length > 0,    "IP cannot be empty");
         require(bytes(_attackLabel).length > 0, "Attack label required");
         require(_severity >= 1 && _severity <= 10, "Severity: 1-10 only");
@@ -118,7 +124,7 @@ contract IncidentLogger {
     }
 
     // ─── Admin: Release a blocked node ───────────────────────────
-    function releaseNode(string memory _ip, string memory _reason) external {
+    function releaseNode(string memory _ip, string memory _reason) external onlyDeployer {
         require(blockedIPs[_ip], "IP is not blocked");
         blockedIPs[_ip] = false;
         emit NodeReleased(_ip, block.timestamp, _reason);

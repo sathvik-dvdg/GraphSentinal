@@ -31,6 +31,9 @@ services:
     volumes:
       # Named volume shared with backend — entrypoint writes contract_address.env here
       - contract-shared:/shared
+      # N-03: Persistent Ganache EVM state — survives container restart/recreation.
+      # Remove ONLY with `docker compose down -v` when a genuinely fresh chain is required.
+      - ganache-data:/data
     ports:
       # 8546 on host → 8545 inside container (leaves local dev port 8545 free)
       - "8546:8545"
@@ -46,6 +49,31 @@ services:
       retries: 20        # up to 100s total (deploy + compile can take ~30s)
       start_period: 10s  # grace period before first check
 
+  # ── GraphSentinel v2 inference service ──────────────────────────────────────
+  # The ONLY container that imports torch. The backend talks to it over HTTP:
+  # InferenceEngine is stateful (flow buffer, 60s window, host memory), and
+  # in-process the monitor thread and /analyze handlers would interleave into
+  # one shared buffer. See docker/inference.Dockerfile and INTEGRATION.md.
+  #
+  # Needs ML/weights.pt, which is gitignored (72.7 MiB). Without it the service
+  # stays unhealthy and the backend reports ml_v2 unreachable — it does NOT
+  # silently fall back to a heuristic.
+  inference:
+    build:
+      context: .
+      dockerfile: docker/inference.Dockerfile
+    container_name: graphsentinel-inference
+    volumes:
+      # Model artefacts, read-only. Same bind-mount pattern as the backend.
+      - ./ML:/app/ML:ro
+    ports:
+      # 8081 on host → 8080 inside (leaves local dev port 8080 free)
+      - "8081:8080"
+    networks:
+      - graphsentinel-net
+    environment:
+      GRAPHSENTINEL_MODEL_DIR: /app/ML
+
   # ── FastAPI Backend ─────────────────────────────────────────────────────────
   backend:
     build:
@@ -55,13 +83,28 @@ services:
     depends_on:
       blockchain:
         condition: service_healthy   # waits for contract_address.env to exist
+      # Start ORDER only, never a health gate. The backend is DESIGNED to run
+      # with the inference service down: it reports ml_v2 unreachable and
+      # produces no v2 scores (no fallback, INTEGRATION.md §5). A
+      # service_healthy gate would assert the opposite, and on a fresh clone
+      # without the gitignored weights.pt it would stop the backend from ever
+      # starting -- including in demo mode. Do not "restore" it.
+      inference:
+        condition: service_started
     env_file:
       - .env.docker               # base env for Docker (committed, no secrets)
+      - path: .env.docker.local   # optional, gitignored: real DAEMON_TOKEN / ENFORCEMENT_MODE=ovs
+        required: false           # for teammates bridging to a real WSL2 Mininet daemon
     volumes:
       # ── Source bind-mounts for hot-reload ──────────────────────────────────
       # Editing any file in backend/app/ triggers uvicorn --reload automatically.
       # NO rebuild needed. Only requirements.txt changes need --build.
       - ./backend/app:/app/app:ro
+      # ── Alembic migrations (Error.md #29) — bind-mounted for the same
+      # reason as backend/app: a new migration file should apply on the
+      # next container restart, not require a full image rebuild.
+      - ./backend/migrations:/app/migrations:ro
+      - ./backend/alembic.ini:/app/alembic.ini:ro
       # ── ML model weights (read-only, from repo) ────────────────────────────
       # Weights are committed (560 KB); bind-mounted so they're always in sync.
       - ./ML:/app/ML:ro
@@ -83,14 +126,33 @@ services:
       WEIGHTS_PATH: /app/ML/GraphSage-model/graphsage_weights.pt
       SCALER_PATH: /app/ML/GraphSage-model/scaler.pkl
       MODEL_SOURCE_PATH: /app/ML/src
+      # ── GraphSentinel v2 ──────────────────────────────────────────────────
+      # The backend reads model_card.json from /app/ML to learn the class list
+      # and feature order; it never loads weights itself. GS2_SERVICE_URL uses
+      # the compose service name (internal DNS), not localhost.
+      #
+      # DISABLED until the v2 path gates on flow provenance. This stack loads
+      # DEMO_FALLBACK_FLOWS=true from .env.docker, so every poll that parses
+      # nothing (no Mininet in Docker, or a quiet network) is replaced with
+      # randomised flows from flow_parser.demo_flows(). With v2 on, those would
+      # be scored as if real: map_flow drops data_source, so the service cannot
+      # tell. See INTEGRATION.md §5 "Open defect". Set back to "true" only once
+      # the monitor refuses non-OVS input before it reaches the v2 client.
+      GS2_ENABLED: "false"
+      GS2_SERVICE_URL: http://inference:8080
+      GS2_MODEL_DIR: /app/ML
+      GS2_REQUIRE_CONTRACT: "true"
       # web3_bridge is bind-mounted at /app/blockchain_bridge
       BLOCKCHAIN_BRIDGE_PATH: /app/blockchain_bridge
-      # Demo mode: no Mininet/OVS in Docker — use synthetic fallback flows
-      DEMO_FALLBACK_FLOWS: ${DEMO_FALLBACK_FLOWS:-true}
-      ENFORCEMENT_MODE: ${ENFORCEMENT_MODE:-simulated}
+      BLOCKCHAIN_ABI_PATH: /shared/contract_abi.json
+      # DEMO_FALLBACK_FLOWS / ENFORCEMENT_MODE / THREAT_THRESHOLD / DAEMON_TOKEN come
+      # from env_file (.env.docker, optionally overridden by .env.docker.local) —
+      # deliberately NOT interpolated as ${VAR} here, since that would read the
+      # repo-root .env (used for local/WSL2 dev) and silently override these Docker
+      # defaults. Docker must stay self-contained: `docker compose up` alone always
+      # gets safe demo/simulated defaults regardless of what's in the root .env.
       DAEMON_HOST: host.docker.internal
       DAEMON_PORT: 50051
-      DAEMON_TOKEN: ${DAEMON_TOKEN:?DAEMON_TOKEN must be set in .env}
     # Compose Watch: sync source changes without rebuild
     # Run: docker compose watch
     develop:
@@ -120,6 +182,8 @@ services:
         condition: service_healthy
     env_file:
       - .env.docker
+      - path: .env.docker.local
+        required: false
     volumes:
       # ── Source bind-mount for Vite HMR ─────────────────────────────────────
       # Editing frontend/src/ reloads the browser instantly (Vite HMR).
@@ -159,6 +223,13 @@ volumes:
   # WARNING: Do NOT add this to any `docker compose down -v` command.
   # Use `make clean` (which prompts before wiping) if you need a truly fresh start.
   backend-db:
+    driver: local
+
+  # N-03: Persistent Ganache EVM state. Ganache writes its LevelDB data here.
+  # This makes blockchain state survive container restart and recreation.
+  # WARNING: Do NOT wipe this with `docker compose down -v` unless a fresh
+  # chain is genuinely required (e.g. contract ABI breakage).
+  ganache-data:
     driver: local
 
 # ── Internal network ──────────────────────────────────────────────────────────

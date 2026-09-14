@@ -1,8 +1,9 @@
 // [Windows] GraphSentinel — Susheep
 // Settings — tabbed configuration page: Simulation / Detection / Network / Blockchain
-import { useState } from 'react'
-import { Settings as SettingsIcon, Zap, Shield, Network, Link2 } from 'lucide-react'
+import { useState, useEffect } from 'react'
+import { Zap, Shield, Network, Link2, Lock, RefreshCw } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
+import { getSettings, updateThreatThreshold, reloadMlModel } from '../services/api'
 
 const TABS = [
   { id: 'simulation',  label: 'Simulation',           icon: <Zap size={14} /> },
@@ -15,23 +16,53 @@ const ATTACK_TYPES = ['DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('simulation')
-  const { connectionMode, setConnectionMode, isConnected } = useGraphStore()
+  const { connectionMode, setConnectionMode, isConnected, simulateAttack } = useGraphStore()
 
   // Simulation
   const isSimulating = connectionMode === 'simulating'
   const [simSpeed, setSimSpeed] = useState('1x')
   const [injectType, setInjectType] = useState('DDoS')
   const [injectTarget, setInjectTarget] = useState('10.0.0.2')
+  const [injectVictim, setInjectVictim] = useState('')  // '' = random
 
   // Detection
   const [anomalyThreshold, setAnomalyThreshold] = useState(70)
-  const [isolateThreshold, setIsolateThreshold] = useState(85)
-  const [lateralSensitivity, setLateralSensitivity] = useState('normal')
+  // Error.md #19 — this is the one control with a real backend equivalent
+  // (settings.threat_threshold). Starts null until the real value loads so
+  // the slider never shows a fabricated default that might not match what
+  // the backend is actually running.
+  const [isolateThreshold, setIsolateThreshold] = useState(null)
+  const [savedThreshold, setSavedThreshold] = useState(null)
+  const [thresholdStatus, setThresholdStatus] = useState('loading') // loading | idle | saving | saved | error
+  const [alertThreshold, setAlertThreshold] = useState(85)
 
-  // Blockchain
-  const [ganacheUrl, setGanacheUrl] = useState('http://127.0.0.1:8545')
-  const [contractAddr, setContractAddr] = useState('')
-  const [gasLimit, setGasLimit] = useState(200000)
+  // Blockchain — real values, read-only (see note in the Blockchain tab
+  // below for why these aren't live-editable)
+  const [chainConfig, setChainConfig] = useState({ ganache_url: null, contract_address: null })
+  const [chainConfigLoading, setChainConfigLoading] = useState(true)
+
+  useEffect(() => {
+    getSettings()
+      .then((res) => {
+        setIsolateThreshold(Math.round(res.threat_threshold * 100))
+        setSavedThreshold(Math.round(res.threat_threshold * 100))
+        setThresholdStatus('idle')
+        setChainConfig({ ganache_url: res.ganache_url, contract_address: res.contract_address })
+      })
+      .catch(() => setThresholdStatus('error'))
+      .finally(() => setChainConfigLoading(false))
+  }, [])
+
+  const saveThreshold = () => {
+    setThresholdStatus('saving')
+    updateThreatThreshold(isolateThreshold / 100)
+      .then((res) => {
+        setSavedThreshold(Math.round(res.threat_threshold * 100))
+        setThresholdStatus('saved')
+        setTimeout(() => setThresholdStatus('idle'), 2000)
+      })
+      .catch(() => setThresholdStatus('error'))
+  }
 
   const toggleSimulation = () => {
     if (isSimulating) {
@@ -45,16 +76,16 @@ export default function Settings() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div>
-        <h1 style={{ color: '#E8EDF5', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Settings
         </h1>
-        <p style={{ color: '#5A6480', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+        <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
           System configuration · Detection tuning · Network management
         </p>
       </div>
 
       {/* Tab nav */}
-      <div style={{ display: 'flex', borderBottom: '1px solid rgba(255,255,255,0.06)', gap: 2 }}>
+      <div style={{ display: 'flex', borderBottom: '1px solid rgba(17,20,26,0.08)', gap: 2 }}>
         {TABS.map((tab) => (
           <button
             key={tab.id}
@@ -66,8 +97,8 @@ export default function Settings() {
               padding: '10px 18px',
               background: 'none',
               border: 'none',
-              borderBottom: activeTab === tab.id ? '2px solid #4F6EF7' : '2px solid transparent',
-              color: activeTab === tab.id ? '#4F6EF7' : '#5A6480',
+              borderBottom: activeTab === tab.id ? '2px solid #3b56d9' : '2px solid transparent',
+              color: activeTab === tab.id ? '#3b56d9' : '#727a86',
               fontSize: 12,
               fontFamily: "'DM Mono', monospace",
               cursor: 'pointer',
@@ -88,10 +119,10 @@ export default function Settings() {
             <Section title="Simulation Mode">
               <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
                 <div>
-                  <div style={{ color: '#E8EDF5', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 500, marginBottom: 3 }}>
+                  <div style={{ color: '#1b1f27', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 500, marginBottom: 3 }}>
                     Enable Simulation
                   </div>
-                  <div style={{ color: '#5A6480', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                  <div style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
                     {isSimulating ? 'Demo attack sequence is running' : 'Live or mock mode active'}
                   </div>
                 </div>
@@ -99,17 +130,20 @@ export default function Settings() {
               </div>
             </Section>
 
-            <Section title="Simulation Speed">
+            <Section title="Simulation Intensity">
               <div style={{ display: 'flex', gap: 8 }}>
                 {['1x', '5x', '10x'].map((s) => (
                   <button
                     key={s}
                     onClick={() => setSimSpeed(s)}
-                    style={optionBtnStyle(simSpeed === s, '#E8922A')}
+                    style={optionBtnStyle(simSpeed === s, '#b7791f')}
                   >
                     {s}
                   </button>
                 ))}
+              </div>
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+                Multiplies the synthetic flow volume (packets / bytes) sent by "Inject Attack" below — higher values push scores harder toward the isolation threshold.
               </div>
             </Section>
 
@@ -125,18 +159,35 @@ export default function Settings() {
                     ))}
                   </div>
                 </div>
-                <div>
-                  <Label>Target IP</Label>
-                  <input
-                    value={injectTarget}
-                    onChange={(e) => setInjectTarget(e.target.value)}
-                    style={inputStyle}
-                    placeholder="10.0.0.x"
-                  />
+                <div style={{ display: 'flex', gap: 12 }}>
+                  <div style={{ flex: 1 }}>
+                    <Label>Attacker IP (source)</Label>
+                    <input
+                      value={injectTarget}
+                      onChange={(e) => setInjectTarget(e.target.value)}
+                      style={inputStyle}
+                      placeholder="10.0.0.x"
+                    />
+                  </div>
+                  <div style={{ flex: 1 }}>
+                    <Label>Victim IP (blank = random)</Label>
+                    <input
+                      value={injectVictim}
+                      onChange={(e) => setInjectVictim(e.target.value)}
+                      style={inputStyle}
+                      placeholder="auto"
+                    />
+                  </div>
                 </div>
                 <button style={{ ...primaryBtnStyle('#E03C3C'), alignSelf: 'flex-start' }}
-                  onClick={() => alert(`Inject ${injectType} → ${injectTarget} (connect to backend)`)}>
-                  Inject Attack
+                  disabled={isSimulating}
+                  onClick={() => simulateAttack({
+                    attackType: injectType,
+                    targetIp: injectTarget,
+                    victimIp: injectVictim.trim() || undefined,
+                    speedMultiplier: parseInt(simSpeed, 10) || 1,
+                  })}>
+                  {isSimulating ? 'Injecting…' : 'Inject Attack'}
                 </button>
               </div>
             </Section>
@@ -145,40 +196,60 @@ export default function Settings() {
 
         {activeTab === 'detection' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section title="Anomaly Score Threshold">
+            <Section title="Threat Threshold">
+              {/* Error.md #19: the backend has a single threat_threshold that
+                  gates both alerting and auto-block — there is no separate
+                  detect-only vs. isolate-only stage. This is the real,
+                  live-editable control; the old "Anomaly Score Threshold"
+                  slider below is informational only, see its own note. */}
               <SliderSetting
-                label="Alert fires above this score"
-                value={anomalyThreshold}
-                onChange={setAnomalyThreshold}
-                color="#E8922A"
-              />
-            </Section>
-
-            <Section title="Auto-Isolate Threshold">
-              <SliderSetting
-                label="Nodes are isolated above this score"
-                value={isolateThreshold}
+                label="Nodes are alerted AND auto-isolated above this score (live backend value)"
+                value={isolateThreshold ?? 0}
                 onChange={setIsolateThreshold}
                 color="#E03C3C"
+                disabled={thresholdStatus === 'loading'}
               />
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
+                <button
+                  style={{ ...primaryBtnStyle('#E03C3C'), opacity: (thresholdStatus === 'loading' || isolateThreshold === savedThreshold) ? 0.5 : 1 }}
+                  disabled={thresholdStatus === 'loading' || thresholdStatus === 'saving' || isolateThreshold === savedThreshold}
+                  onClick={saveThreshold}
+                >
+                  {thresholdStatus === 'saving' ? 'Saving…' : 'Save'}
+                </button>
+                <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: thresholdStatus === 'error' ? '#E03C3C' : thresholdStatus === 'saved' ? '#12a672' : '#9aa1ad' }}>
+                  {thresholdStatus === 'loading' && 'Loading current value from backend…'}
+                  {thresholdStatus === 'error' && 'Failed to reach the backend'}
+                  {thresholdStatus === 'saved' && `Saved — live threshold is now ${(savedThreshold / 100).toFixed(2)}`}
+                  {thresholdStatus === 'idle' && isolateThreshold !== savedThreshold && 'Unsaved change'}
+                  {thresholdStatus === 'idle' && isolateThreshold === savedThreshold && `Current live value: ${(savedThreshold / 100).toFixed(2)} (resets to .env default on backend restart)`}
+                </span>
+              </div>
             </Section>
 
-            <Section title="Lateral Movement Sensitivity">
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['strict', 'normal', 'permissive'].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setLateralSensitivity(s)}
-                    style={optionBtnStyle(lateralSensitivity === s, '#4F6EF7')}
-                  >
-                    {s}
-                  </button>
-                ))}
+            <Section title="Anomaly Score Threshold (display only)">
+              <SliderSetting
+                label="Display only — not wired to the backend"
+                value={anomalyThreshold}
+                onChange={setAnomalyThreshold}
+                color="#b7791f"
+                readOnly
+              />
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+                The backend doesn't have a separate "flag but don't block" stage — scoring above the single Threat Threshold above both alerts and auto-isolates in one step. This slider is left as a UI-only preview until that two-stage behavior actually exists server-side.
               </div>
-              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
-                {lateralSensitivity === 'strict' ? 'Any cross-level connection triggers alert'
-                  : lateralSensitivity === 'normal' ? 'L3→L0 escalations trigger alert'
-                  : 'Only confirmed attack patterns trigger alert'}
+            </Section>
+
+            {/* Error.md H8 — POST /api/v1/ml/reload exists but nothing in the
+                UI could trigger it; an operator who saw HEURISTIC in the topbar
+                badge had to curl the endpoint. Admin-only, so it can 403. */}
+            <Section title="GraphSAGE Model">
+              <MlReloadControl />
+            </Section>
+
+            <Section title="Lateral Movement Sensitivity (not implemented)">
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+                The backend has no lateral-movement detection logic at all yet (no L3→L0 escalation tracking) — this control has nothing to connect to.
               </div>
             </Section>
           </div>
@@ -186,24 +257,19 @@ export default function Settings() {
 
         {activeTab === 'network' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section title="Import Org Hierarchy">
-              <Label>Upload hierarchy JSON</Label>
-              <input
-                type="file"
-                accept=".json"
-                onChange={(e) => alert('JSON import — connect to pyramidConfig loader')}
-                style={{ color: '#8A95B0', fontSize: 12, fontFamily: "'DM Mono', monospace" }}
-              />
-              <div style={{ color: '#3D4560', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 6 }}>
-                Upload a JSON file matching the ORG_HIERARCHY schema to override the default hierarchy.
+            {/* Error.md #2 already replaced the hierarchy view with one
+                derived live from real graph data instead of an editable
+                admin-entered org chart — so "import a JSON to override it"
+                and a manual node editor are both stale ideas that would
+                reintroduce exactly the fake-data problem #2 fixed. Removed
+                the controls rather than wiring up something that would
+                undermine that fix; explaining why instead. */}
+            <Section title="Org Hierarchy Source">
+              <div style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace", lineHeight: 1.6 }}>
+                The Org Hierarchy / Pyramid view is derived live from real network topology (<code>graphData.nodes</code>) — every host shown is a host that actually exists on the configured network, with its real IP and live status.
               </div>
-            </Section>
-
-            <Section title="Node Editor">
-              <div style={{ color: '#5A6480', fontSize: 12, fontFamily: "'DM Mono', monospace", padding: '20px', textAlign: 'center', border: '1px dashed rgba(255,255,255,0.08)', borderRadius: 8 }}>
-                Node editor table (ID / IP / Label / Level / Department)
-                <br />
-                <span style={{ fontSize: 11, opacity: 0.6 }}>— Connect to hierarchy state to enable add/edit/delete —</span>
+              <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 10 }}>
+                A JSON import / manual node editor to override it was removed rather than wired up — either would reintroduce admin-entered data that could silently diverge from what's actually on the network, which is the exact problem the live-derived hierarchy was built to fix.
               </div>
             </Section>
           </div>
@@ -211,33 +277,32 @@ export default function Settings() {
 
         {activeTab === 'blockchain' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section title="Ganache Connection">
+            {/* Error.md #19: these used to be editable text fields that did
+                nothing on save. They're real values now (fetched from
+                /api/v1/settings), but read-only rather than fake-editable —
+                the blockchain adapter connects to Ganache once at process
+                startup and is a singleton; changing which chain/contract
+                security incidents get logged to, live, via a text field, is
+                a genuinely risky action, not just a missing wire-up. */}
+            <Section title="Ganache Connection (read-only — live backend values)">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
                   <Label>RPC URL</Label>
-                  <input value={ganacheUrl} onChange={(e) => setGanacheUrl(e.target.value)} style={inputStyle} />
+                  <input value={chainConfigLoading ? 'Loading…' : (chainConfig.ganache_url || '—')} readOnly style={{ ...inputStyle, opacity: 0.7, cursor: 'default' }} />
                 </div>
                 <div>
                   <Label>Contract Address</Label>
-                  <input value={contractAddr} onChange={(e) => setContractAddr(e.target.value)} style={inputStyle} placeholder="0x..." />
+                  <input value={chainConfigLoading ? 'Loading…' : (chainConfig.contract_address || 'Not deployed / not connected')} readOnly style={{ ...inputStyle, opacity: 0.7, cursor: 'default' }} />
                 </div>
                 <div>
-                  <Label>Gas Limit</Label>
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
-                    <input
-                      type="range" min={50000} max={500000} step={10000}
-                      value={gasLimit} onChange={(e) => setGasLimit(Number(e.target.value))}
-                      style={{ flex: 1, accentColor: '#8B5CF6' }}
-                    />
-                    <span style={{ color: '#8B5CF6', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 70 }}>
-                      {gasLimit.toLocaleString()}
-                    </span>
+                  <Label>Gas Limit (fixed)</Label>
+                  <div style={{ color: '#7c3aed', fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                    1,000,000
                   </div>
                 </div>
-                <button style={{ ...primaryBtnStyle('#8B5CF6'), alignSelf: 'flex-start' }}
-                  onClick={() => alert('Save blockchain config — connect to backend')}>
-                  Save Config
-                </button>
+                <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                  To change these, edit <code>GANACHE_URL</code> / <code>CONTRACT_ADDRESS</code> in the backend's env config and restart — reconnecting live from the UI isn't supported (it would mean silently switching which chain security incidents get written to while the app keeps running).
+                </div>
               </div>
             </Section>
           </div>
@@ -250,7 +315,7 @@ export default function Settings() {
 function Section({ title, children }) {
   return (
     <div className="gs-panel" style={{ padding: '16px 18px' }}>
-      <div style={{ color: '#8A95B0', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>
+      <div style={{ color: '#5a616e', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>
         {title}
       </div>
       {children}
@@ -260,7 +325,7 @@ function Section({ title, children }) {
 
 function Label({ children }) {
   return (
-    <div style={{ color: '#5A6480', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+    <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
       {children}
     </div>
   )
@@ -272,7 +337,7 @@ function Toggle({ active, onClick }) {
       onClick={onClick}
       style={{
         width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
-        background: active ? '#2ECC8A' : 'rgba(255,255,255,0.1)',
+        background: active ? '#12a672' : 'rgba(17,20,26,0.12)',
         position: 'relative', transition: 'background 200ms', flexShrink: 0,
       }}
     >
@@ -285,15 +350,23 @@ function Toggle({ active, onClick }) {
   )
 }
 
-function SliderSetting({ label, value, onChange, color }) {
+function SliderSetting({ label, value, onChange, color, disabled = false, readOnly = false }) {
+  // Error.md U1 — a display-only slider must look non-interactive: dimmed,
+  // not-allowed cursor, a lock icon, and a real `disabled` on the input so
+  // clicking/dragging does nothing.
+  const inert = disabled || readOnly
   return (
     <div>
-      <Label>{label}</Label>
-      <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
+      <Label>
+        {readOnly && <Lock size={10} style={{ verticalAlign: '-1px', marginRight: 4, opacity: 0.6 }} />}
+        {label}
+      </Label>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 12, opacity: inert ? 0.4 : 1, cursor: readOnly ? 'not-allowed' : 'default' }}>
         <input
           type="range" min={0} max={100}
-          value={value} onChange={(e) => onChange(Number(e.target.value))}
-          style={{ flex: 1, accentColor: color }}
+          value={value} onChange={(e) => onChange && onChange(Number(e.target.value))}
+          disabled={inert}
+          style={{ flex: 1, accentColor: color, cursor: readOnly ? 'not-allowed' : 'pointer', pointerEvents: readOnly ? 'none' : 'auto' }}
         />
         <span style={{ color, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 36 }}>
           {value}
@@ -304,17 +377,17 @@ function SliderSetting({ label, value, onChange, color }) {
 }
 
 const inputStyle = {
-  width: '100%', background: '#1E1E1E', border: '1px solid rgba(255,255,255,0.1)',
-  borderRadius: 6, padding: '8px 12px', color: '#E8EDF5',
+  width: '100%', background: '#f0f2f5', border: '1px solid rgba(17,20,26,0.12)',
+  borderRadius: 6, padding: '8px 12px', color: '#1b1f27',
   fontSize: 12, fontFamily: "'DM Mono', monospace", outline: 'none',
 }
 
 function optionBtnStyle(active, color) {
   return {
     padding: '6px 16px', borderRadius: 6, cursor: 'pointer',
-    border: `1px solid ${active ? color : 'rgba(255,255,255,0.1)'}`,
+    border: `1px solid ${active ? color : 'rgba(17,20,26,0.12)'}`,
     background: active ? `${color}18` : 'transparent',
-    color: active ? color : '#5A6480',
+    color: active ? color : '#727a86',
     fontSize: 12, fontFamily: "'DM Mono', monospace",
     fontWeight: active ? 600 : 400, transition: 'all 150ms',
     textTransform: 'capitalize',
@@ -327,4 +400,66 @@ function primaryBtnStyle(color) {
     border: `1px solid ${color}40`, background: `${color}15`, color,
     fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 500, transition: 'all 150ms',
   }
+}
+
+function MlReloadControl() {
+  const mlHealth = useGraphStore((s) => s.mlHealth)
+  const setMlHealth = useGraphStore((s) => s.setMlHealth)
+  const [state, setState] = useState('idle') // idle | loading | ok | error
+  const [msg, setMsg] = useState('')
+
+  const mode = mlHealth?.mode || 'model'
+  const degraded = mode !== 'model'
+
+  const run = () => {
+    setState('loading')
+    setMsg('')
+    reloadMlModel()
+      .then((res) => {
+        setMlHealth({ mode: res.mode, degraded_reason: res.degraded_reason ?? null })
+        setState(res.mode === 'model' ? 'ok' : 'error')
+        setMsg(res.mode === 'model' ? 'Model reloaded — scoring is live GraphSAGE again' : (res.degraded_reason || 'Still degraded after reload'))
+      })
+      .catch((err) => {
+        setState('error')
+        setMsg(err?.response?.status === 403 ? 'Admin privilege required' : 'Reload failed — backend unreachable')
+      })
+  }
+
+  return (
+    <div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+        <span style={{
+          fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700, padding: '2px 8px', borderRadius: 4,
+          background: degraded ? 'rgba(232,146,42,0.12)' : 'rgba(46,204,138,0.1)',
+          color: degraded ? '#b7791f' : '#12a672',
+          border: `1px solid ${degraded ? 'rgba(232,146,42,0.3)' : 'rgba(46,204,138,0.25)'}`,
+          textTransform: 'uppercase', letterSpacing: '0.06em',
+        }}>
+          {degraded ? 'Heuristic scoring' : 'GraphSAGE model'}
+        </span>
+        {mlHealth?.degraded_reason && (
+          <span style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{mlHealth.degraded_reason}</span>
+        )}
+      </div>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
+        <button
+          style={{ ...primaryBtnStyle('#3b56d9'), opacity: state === 'loading' ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
+          disabled={state === 'loading'}
+          onClick={run}
+        >
+          <RefreshCw size={12} className={state === 'loading' ? 'spin-slow' : undefined} />
+          {state === 'loading' ? 'Reloading…' : 'Reload Model'}
+        </button>
+        {msg && (
+          <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: state === 'ok' ? '#12a672' : state === 'error' ? '#E03C3C' : '#9aa1ad' }}>
+            {msg}
+          </span>
+        )}
+      </div>
+      <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+        Reloads GraphSAGE weights from disk and clears degraded mode. Admin only.
+      </div>
+    </div>
+  )
 }

@@ -2,8 +2,10 @@
 from fastapi import APIRouter, Depends
 from sqlalchemy.orm import Session
 
+from app.api.v1.deps import require_session_or_api_key
 from app.database import get_db
-from app.models.incident import Incident
+from app.models.incident import Incident, iso_utc
+from app.models.schemas import AlertsResponse
 from app.services.threat_analyzer import score_to_severity_label
 
 
@@ -16,8 +18,13 @@ _SEVERITY_THRESHOLDS = {
 }
 
 
-@router.get("/alerts")
-async def get_alerts(limit: int = 50, severity: str | None = None, db: Session = Depends(get_db)):
+@router.get("/alerts", response_model=AlertsResponse)
+async def get_alerts(
+    limit: int = 50,
+    severity: str | None = None,
+    db: Session = Depends(get_db),
+    _: None = Depends(require_session_or_api_key),
+):
     query = db.query(Incident)
     if severity and severity in _SEVERITY_THRESHOLDS:
         low, high = _SEVERITY_THRESHOLDS[severity]
@@ -26,7 +33,7 @@ async def get_alerts(limit: int = 50, severity: str | None = None, db: Session =
     alerts = [
         {
             "id": f"alert-{row.id}",
-            "timestamp": row.created_at.isoformat(),
+            "timestamp": iso_utc(row.created_at),
             "source_ip": row.source_ip,
             "attack_type": row.attack_type,
             "severity": score_to_severity_label(row.threat_score),
@@ -34,6 +41,11 @@ async def get_alerts(limit: int = 50, severity: str | None = None, db: Session =
             "description": f"{row.attack_type} detected from {row.source_ip} (score: {row.threat_score:.2f})",
             "is_blocked": row.is_blocked,
             "blockchain_tx": row.blockchain_tx,
+            "data_source": row.data_source,
+            # Error.md H5 — server-authoritative triage state
+            "alert_status": getattr(row, "alert_status", None) or "open",
+            "acknowledged_at": row.acknowledged_at.isoformat() if getattr(row, "acknowledged_at", None) else None,
+            "resolved_at": row.resolved_at.isoformat() if getattr(row, "resolved_at", None) else None,
         }
         for row in rows
     ]

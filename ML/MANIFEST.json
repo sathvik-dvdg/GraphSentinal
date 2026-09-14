@@ -1,0 +1,58 @@
+{
+  "bundle": "deploy",
+  "created_utc": "2026-09-13T12:54:25Z",
+  "files": [
+    {
+      "file": "model_card.json",
+      "bytes": 9792,
+      "sha256": "d9637ea6b6846779ebdebcf763832b97341e1b752d68737fc430acca1ff3b996",
+      "source": "/content/gs_models",
+      "from": "local mirror"
+    },
+    {
+      "file": "weights.pt",
+      "bytes": 76178229,
+      "sha256": "0dbbaf388dbffc2ce0753553b346e520b3aa0b557cdb6c618792f51eb0a38989",
+      "source": "/content/gs_models",
+      "from": "local mirror"
+    },
+    {
+      "file": "model.ts",
+      "bytes": 76277094,
+      "sha256": "2efbb012389977ee987ffabc0e01c47ed41328924784e37c46c3353631a72272",
+      "source": "/content/gs_models",
+      "from": "local mirror"
+    },
+    {
+      "file": "test_report.json",
+      "bytes": 91658,
+      "sha256": "308cb5e03dab69e7d0f08fd3272fed92bc3e9adedc027eab0bca914d85cbbd8b",
+      "source": "/content/gs_logs",
+      "from": "local mirror"
+    }
+  ],
+  "classes": [
+    "BENIGN",
+    "Volumetric_Flood",
+    "PortScan",
+    "BruteForce",
+    "Botnet"
+  ],
+  "contract_version": "2.0.0",
+  "headline": {
+    "edge_macro_f1": 0.7042062690991445,
+    "edge_binary_f1": 0.9973520774156276,
+    "edge_binary_pr_auc": 0.99974295209735,
+    "edge_recall_at_fpr_0.001": 0.9955240510219764,
+    "node_macro_f1": 0.26840749032007083
+  },
+  "per_class_edge_f1": {
+    "BENIGN": 0.9992160663635457,
+    "Volumetric_Flood": 0.9910030237260468,
+    "PortScan": 0.9800345792853614,
+    "BruteForce": 0.5507776761207686,
+    "Botnet": 0.0
+  },
+  "best_epoch": 31,
+  "split_protocol": "episode -- train and test can share a burst; these are NOT novel-attack numbers"
+}

@@ -31,22 +31,31 @@ COPY requirements.txt .
 # overridden by any requirement specifier.
 RUN pip install --no-cache-dir --upgrade pip
 
+# These wheels are large (torch ~200MB, scipy ~35MB). On a flaky link the
+# default 5s timeout / 5 retries gives up mid-download. Be patient instead.
+ENV PIP_RETRIES=10 \
+    PIP_TIMEOUT=120 \
+    PIP_RESUME_RETRIES=10
+
 # Write the constraints file. These are absolute ceilings.
 RUN printf 'torch==2.4.0\ntorch-geometric==2.5.0\n' > /build/constraints.txt
 
 # Install torch 2.4.0 CPU-only wheel from PyTorch index
-RUN pip install --no-cache-dir \
-        torch==2.4.0 \
+# NOTE: --mount=type=cache keeps downloaded wheels between builds, so a failed
+# build resumes from what it already fetched instead of re-downloading GBs.
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install torch==2.4.0 \
         --index-url https://download.pytorch.org/whl/cpu
 
 # Install torch-geometric 2.5.0 (no scatter/sparse needed for SAGEConv pure path)
-RUN pip install --no-cache-dir torch-geometric==2.5.0
+RUN --mount=type=cache,target=/root/.cache/pip \
+    pip install torch-geometric==2.5.0
 
 # Install the rest of requirements.txt, stripped of torch lines
 # We strip torch and torch-geometric so pip doesn't conflict with our constraints
-RUN grep -v 'torch' requirements.txt > requirements-docker.txt && \
-    pip install --no-cache-dir \
-        --constraint /build/constraints.txt \
+RUN --mount=type=cache,target=/root/.cache/pip \
+    grep -v 'torch' requirements.txt > requirements-docker.txt && \
+    pip install --constraint /build/constraints.txt \
         -r requirements-docker.txt
 
 # ── Stage 2: Runtime ──────────────────────────────────────────────────────────
