@@ -49,6 +49,31 @@ services:
       retries: 20        # up to 100s total (deploy + compile can take ~30s)
       start_period: 10s  # grace period before first check
 
+  # ── GraphSentinel v2 inference service ──────────────────────────────────────
+  # The ONLY container that imports torch. The backend talks to it over HTTP:
+  # InferenceEngine is stateful (flow buffer, 60s window, host memory), and
+  # in-process the monitor thread and /analyze handlers would interleave into
+  # one shared buffer. See docker/inference.Dockerfile and INTEGRATION.md.
+  #
+  # Needs ML/weights.pt, which is gitignored (72.7 MiB). Without it the service
+  # stays unhealthy and the backend reports ml_v2 unreachable — it does NOT
+  # silently fall back to a heuristic.
+  inference:
+    build:
+      context: .
+      dockerfile: docker/inference.Dockerfile
+    container_name: graphsentinel-inference
+    volumes:
+      # Model artefacts, read-only. Same bind-mount pattern as the backend.
+      - ./ML:/app/ML:ro
+    ports:
+      # 8081 on host → 8080 inside (leaves local dev port 8080 free)
+      - "8081:8080"
+    networks:
+      - graphsentinel-net
+    environment:
+      GRAPHSENTINEL_MODEL_DIR: /app/ML
+
   # ── FastAPI Backend ─────────────────────────────────────────────────────────
   backend:
     build:
@@ -58,6 +83,8 @@ services:
     depends_on:
       blockchain:
         condition: service_healthy   # waits for contract_address.env to exist
+      inference:
+        condition: service_healthy   # waits for the model to actually load
     env_file:
       - .env.docker               # base env for Docker (committed, no secrets)
       - path: .env.docker.local   # optional, gitignored: real DAEMON_TOKEN / ENFORCEMENT_MODE=ovs
@@ -93,6 +120,22 @@ services:
       WEIGHTS_PATH: /app/ML/GraphSage-model/graphsage_weights.pt
       SCALER_PATH: /app/ML/GraphSage-model/scaler.pkl
       MODEL_SOURCE_PATH: /app/ML/src
+      # ── GraphSentinel v2 ──────────────────────────────────────────────────
+      # The backend reads model_card.json from /app/ML to learn the class list
+      # and feature order; it never loads weights itself. GS2_SERVICE_URL uses
+      # the compose service name (internal DNS), not localhost.
+      #
+      # DISABLED until the v2 path gates on flow provenance. This stack loads
+      # DEMO_FALLBACK_FLOWS=true from .env.docker, so every poll that parses
+      # nothing (no Mininet in Docker, or a quiet network) is replaced with
+      # randomised flows from flow_parser.demo_flows(). With v2 on, those would
+      # be scored as if real: map_flow drops data_source, so the service cannot
+      # tell. See INTEGRATION.md §5 "Open defect". Set back to "true" only once
+      # the monitor refuses non-OVS input before it reaches the v2 client.
+      GS2_ENABLED: "false"
+      GS2_SERVICE_URL: http://inference:8080
+      GS2_MODEL_DIR: /app/ML
+      GS2_REQUIRE_CONTRACT: "true"
       # web3_bridge is bind-mounted at /app/blockchain_bridge
       BLOCKCHAIN_BRIDGE_PATH: /app/blockchain_bridge
       BLOCKCHAIN_ABI_PATH: /shared/contract_abi.json
