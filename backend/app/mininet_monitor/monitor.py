@@ -10,7 +10,14 @@ from datetime import datetime, timezone
 from typing import Any
 
 from app.config import settings
-from app.mininet_monitor.flow_parser import parse_ovs_flows
+from app.mininet_monitor.flow_parser import (
+    POLL_FAILED,
+    POLL_OK,
+    POLL_OK_EMPTY,
+    PollResult,
+    demo_flows,
+    poll_ovs_flows,
+)
 from app.models.schemas import FlowRecord
 from app.services.analysis_pipeline import analyze_flows
 from app.websocket.events import emit_analysis_events
@@ -63,6 +70,15 @@ class MininetMonitor:
         self.last_poll_at: str | None = None
         self.last_flow_count: int = 0
         self.last_error: str | None = None
+        # Poll status: whether the switch actually answered. Reported, never
+        # turned into an overall "degraded" status -- "degraded after N
+        # failures" would be an operating point, and none has been fitted.
+        self.last_poll_status: str | None = None
+        self.consecutive_failures: int = 0
+        self.last_successful_poll_at: str | None = None
+        self.last_lines_in_dump: int | None = None
+        self.last_demo_substituted: bool = False
+        self.poll_counts: dict[str, int] = {POLL_OK: 0, POLL_OK_EMPTY: 0, POLL_FAILED: 0}
         # v2 scoring runs alongside v1 on the same poll. Additive: a failure
         # here must never stop the v1 poll, and v2 never falls back to a
         # heuristic when its service is down.
@@ -94,6 +110,12 @@ class MininetMonitor:
             "last_poll_at": self.last_poll_at,
             "last_flow_count": self.last_flow_count,
             "last_error": self.last_error,
+            "last_poll_status": self.last_poll_status,
+            "consecutive_failures": self.consecutive_failures,
+            "last_successful_poll_at": self.last_successful_poll_at,
+            "last_lines_in_dump": self.last_lines_in_dump,
+            "last_demo_substituted": self.last_demo_substituted,
+            "poll_counts": dict(self.poll_counts),
             "v2_last_error": self.last_v2_error,
             "v2_windows_closed": self.last_v2_windows,
             "v2_provenance": {
@@ -105,6 +127,35 @@ class MininetMonitor:
                 "last_refused_at": self.v2_last_refused_at,
             },
         }
+
+    def _poll(self) -> PollResult:
+        """Poll the switch, record whether it answered, and apply demo policy.
+
+        Demo substitution happens ONLY when the poll FAILED and
+        DEMO_FALLBACK_FLOWS is on. A successful poll that parsed nothing
+        (`ok_empty`) stays empty: a quiet network must look quiet. Docker has no
+        daemon, so its polls are `failed` and the demo workflow is unaffected.
+
+        When flows are substituted, `last_error` still carries the real failure,
+        so a stack serving demo traffic cannot also report a healthy poll.
+        """
+        result = poll_ovs_flows(settings.enforcement_switch)
+        self.poll_counts[result.status] = self.poll_counts.get(result.status, 0) + 1
+        self.last_poll_status = result.status
+        self.last_lines_in_dump = result.lines_in_dump
+        self.last_error = result.error
+
+        if result.status == POLL_FAILED:
+            self.consecutive_failures += 1
+            if settings.demo_fallback_flows:
+                result.flows = demo_flows()
+                result.demo_substituted = True
+        else:
+            self.consecutive_failures = 0
+            self.last_successful_poll_at = datetime.now(timezone.utc).isoformat()
+
+        self.last_demo_substituted = result.demo_substituted
+        return result
 
     def _set_v2_state(self, new_state: str) -> None:
         """Record the poll's v2 outcome, logging when refusal ENDS.
@@ -157,17 +208,18 @@ class MininetMonitor:
 
         Never raises into the poll.
 
-        THE GATE. `parse_ovs_flows` can return randomised flows from
-        `demo_flows()` in place of a real poll (DEMO_FALLBACK_FLOWS), and
-        `map_flow` does not carry `data_source` into the record the service
-        receives, so the service cannot tell. The check therefore happens here,
-        at the single producer, before anything is mapped or sent:
+        THE GATE. `_poll` replaces a FAILED poll's flows with randomised output
+        of `demo_flows()` when DEMO_FALLBACK_FLOWS is on, and `map_flow` does not
+        carry `data_source` into the record the service receives, so the service
+        cannot tell. The check therefore happens here, at the single producer,
+        before anything is mapped or sent:
 
           * allowlist -- `data_source == "ovs"`, never `!= "demo"`;
           * fail closed -- an untagged flow gets FlowRecord's default, which is
             not "ovs", so it is refused;
-          * whole batch -- `parse_ovs_flows` never mixes sources, so a mixed
-            batch means something upstream changed; none of it is salvaged.
+          * whole batch -- a poll is either all OVS or all substituted, never
+            mixed, so a mixed batch means something upstream changed; none of it
+            is salvaged.
 
         The service request carries no provenance field, by construction: the
         check reads the tag here, so it does not depend on a mapping surviving a
@@ -210,7 +262,7 @@ class MininetMonitor:
         while not self._stop_event.is_set():
             try:
                 observed_at = time.time()
-                flows = parse_ovs_flows(settings.enforcement_switch)
+                flows = self._poll().flows
                 # Always analyze — even an empty batch — so graph state
                 # reflects "no current traffic" instead of leaving stale
                 # threats/nodes on screen after traffic actually stops.
@@ -230,7 +282,8 @@ class MininetMonitor:
                     print(f"[Monitor] v2 scoring error: {exc}")
                 self.last_poll_at = datetime.now(timezone.utc).isoformat()
                 self.last_flow_count = len(flows)
-                self.last_error = None
+                # last_error is NOT reset here: _poll set it from the poll
+                # itself, and a failed poll must stay visible as failed.
             except Exception as exc:
                 self.last_error = str(exc)
                 print(f"[Monitor] Tick error: {exc}")

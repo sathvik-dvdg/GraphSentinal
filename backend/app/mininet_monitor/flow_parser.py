@@ -2,16 +2,49 @@
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass, field
 from typing import Any
 
 from app.config import settings
 
+# ── Poll status ───────────────────────────────────────────────────────────────
+# The parser REPORTS what the switch said. It never invents traffic: substituting
+# demo flows is policy, and lives in MininetMonitor._poll. Before this split the
+# parser swallowed every failure and returned normally, so an hour-long daemon
+# outage was indistinguishable from an hour of quiet traffic.
+POLL_OK = "ok"              # daemon answered and at least one flow parsed
+POLL_OK_EMPTY = "ok_empty"  # daemon answered, but nothing parseable (quiet network,
+                            # or a dump holding only a table-miss rule)
+POLL_FAILED = "failed"      # no usable answer: unreachable, timeout, error status,
+                            # empty response, invalid JSON
 
-def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
+
+@dataclass
+class PollResult:
+    status: str
+    flows: list[dict[str, Any]] = field(default_factory=list)
+    #: Why the poll failed. None unless status == "failed".
+    error: str | None = None
+    #: Non-empty lines in the dump the daemon returned. Makes a dump holding only
+    #: a table-miss rule visible as such. None when the poll failed.
+    lines_in_dump: int | None = None
+    #: Set by the MONITOR when it replaced a failed poll's (empty) flows with
+    #: demo_flows(). The parser itself never sets it.
+    demo_substituted: bool = False
+
+
+def result_from_output(raw: str) -> PollResult:
+    """Classify a successful daemon answer: `ok` or `ok_empty`."""
+    flows = _parse_output(raw)
+    lines = sum(1 for line in raw.splitlines() if line.strip())
+    return PollResult(status=POLL_OK if flows else POLL_OK_EMPTY, flows=flows, lines_in_dump=lines)
+
+
+def poll_ovs_flows(switch: str = "s1") -> PollResult:
+    """One poll of the switch via the enforcement daemon. Never raises."""
     import json
     import socket
-    import time
-    
+
     try:
         payload = {
             "token": settings.daemon_token,
@@ -22,33 +55,34 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
             sock.settimeout(3.0)
             sock.connect((settings.daemon_host, settings.daemon_port))
             sock.sendall(json.dumps(payload).encode("utf-8"))
-            
+
             response_data = []
             while True:
                 chunk = sock.recv(4096)
                 if not chunk:
                     break
                 response_data.append(chunk)
-                
+
             response = b"".join(response_data).decode("utf-8")
             if not response:
                 raise RuntimeError("Empty response from daemon")
-                
+
             result = json.loads(response)
             if result.get("status") != "success":
                 raise RuntimeError(result.get("error", "Unknown error from daemon"))
-                
-            flows = _parse_output(result.get("output", ""))
-            if flows:
-                return flows
-    except ConnectionError as exc:
-        print(f"[FlowParser] Daemon connection failed (retrying/fallback): {exc}")
-        # The user requested to fallback to demo flows if it crashes or hangs
-        # We also want to give a chance for it to recover.
-    except Exception as exc:
-        print(f"[FlowParser] OVS unavailable via daemon: {exc}")
-        
-    return demo_flows() if settings.demo_fallback_flows else []
+
+            return result_from_output(result.get("output", ""))
+    except Exception as exc:  # noqa: BLE001 - a poll must report, never raise
+        message = f"{type(exc).__name__}: {exc}"
+        print(f"[FlowParser] OVS poll failed via daemon: {message}")
+        return PollResult(status=POLL_FAILED, error=message)
+
+
+def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
+    """The flows from one poll. NO demo substitution -- that is monitor policy
+    now (MininetMonitor._poll). Use poll_ovs_flows() to learn whether the poll
+    actually succeeded."""
+    return poll_ovs_flows(switch).flows
 
 
 def _parse_output(raw: str) -> list[dict[str, Any]]:
