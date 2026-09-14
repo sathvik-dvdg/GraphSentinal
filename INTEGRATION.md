@@ -440,7 +440,7 @@ Limits:
 
 **The estimate has been run and cannot settle this.** On the delivered sample,
 re-counting moved nothing, but neither did removing every edge feature (see
-"PHASE 2b ran, and its result is uninformative" below). At `IDLE_TIMEOUT=0`,
+"PHASE 2b run 1 (density-selected sample): uninformative" below). At `IDLE_TIMEOUT=0`,
 re-counting turned 15,833 flows into only 37,195 submissions (2.3×,
 `phase2b_results.json`), far lighter than a real idle timeout would give. **v2
 scores on live OVS traffic are still not interpretable.**
@@ -577,7 +577,25 @@ than a zero in one respect, because 1.0 is a legitimate in-distribution value
 meaning "purely unidirectional", so the model cannot distinguish a genuinely
 one-way flow from an artefact of our ingestion.
 
-### PHASE 2b ran, and its result is uninformative
+### Rule: the sensitivity control gates PHASE 2b
+
+**The sensitivity control gates the measurement. A PHASE 2b result obtained
+without it says nothing.**
+
+On any new sample, run `ML/phase2b_sensitivity_check.py` **before**
+`ML/phase2b_live_path_cost.py`, and read
+`all_zero_edge_features.argmax_changed` in `ML/phase2b_sensitivity.json`:
+
+- **0 means the sample cannot measure edge-feature damage.** Zeroing every edge
+  feature changed no prediction, so no 2b delta on that sample, zero or
+  otherwise, is evidence about the live path. Do not run 2b on it, or record
+  its output as uninformative.
+- **Above 0 means the sample can register damage.** 2b's deltas on it are worth
+  reading.
+
+The first run below is the reason this rule exists.
+
+### PHASE 2b run 1 (density-selected sample): uninformative
 
 **The run.** `ML/phase2b_live_path_cost.py` ran on
 `ML/testdata/cicids2017_sample.csv` (sha256 `abe50f86fbf12eae94800acc1e44f9eadd3c6a79ea2541310d90c56569e0d910`,
@@ -596,16 +614,29 @@ control that can fail, and it writes `ML/phase2b_sensitivity.json`:
   and graph structure alone. The measurement cannot detect edge-feature damage
   here, whatever that damage is.
 
-**Why this sample is so easy.** It is not the contiguous capture the spec asked
-for. It holds five 4,000-row blocks from four different days, and every
-timestamp is minute-resolution:
+**Why this sample is so easy.** The blocks were selected for attack density,
+not for windows that mix attack and benign traffic, so each attack class landed
+in one or two near-pure minutes. The sample holds five contiguous 4,000-row
+blocks from four days, and every timestamp is minute-resolution:
 
 - Volumetric_Flood is two blocks (DDoS, DoS Hulk), each inside a single minute,
   with no BENIGN traffic in the same minute.
 - PortScan is 3,984 rows inside a single minute.
 
-A sample that could measure the damage needs attack traffic interleaved with
-benign traffic within the same windows.
+A window that is one class end to end can be separated from destination port,
+protocol and graph structure alone, which is what the all-zero control found.
+
+**The replacement sample** is built by a Colab cell
+(`make_testdata_sample.py`, not in this repo) that searches windows rather than
+rows. It keeps the run of consecutive 60 s windows holding the most "usable"
+windows: at or above `min_edges_per_graph`, with both target-class and BENIGN
+traffic. Ties go to the fewest rows, so an adjacent pure burst isn't swept in.
+Mixed windows are necessary, not sufficient, so that sample must also pass the
+rule above before any 2b number from it is believed.
+
+**This run's record is kept deliberately.** When a new sample's run is added,
+it goes beside this one, not in its place. Together the two runs are the
+argument for the control.
 
 **What stays unknown.** The §3 figures still describe the model on CICIDS2017
 flows with the full feature set. The model's accuracy **on flows from this
@@ -872,7 +903,7 @@ curl -s localhost:8001/health | jq .ml_v2
 | Backend client against the live service | ✅ verified: `probe()` reports true when the service is up and false on a dead port. The contract check accepts the live `/contract`, and refuses it once the classes are reordered or the version is changed to 2.1.0. With the service down, `score_flows` returns `available: false` and no windows, with no fallback |
 | Malformed flow (bad IP, missing `dst_port`) dropped per-flow with a logged reason; rest of batch kept | ✅ verified |
 | Service `/contract` cross-checked against the backend's card at boot and before the first scoring | ✅ wired and verified against the live service (see above) |
-| **PHASE 2b: cost of missing live-path features** (§5) | ⚠️ **ran, uninformative.** All deltas +0.0000 on the delivered sample, but zeroing all 20 edge features also changes 0 of 15,833 predictions, so this sample cannot measure edge-feature damage. Needs a sample with attack and benign traffic interleaved in the same windows |
+| **PHASE 2b: cost of missing live-path features** (§5) | ⚠️ **run 1 uninformative.** All deltas +0.0000 on the density-selected sample, but zeroing all 20 edge features also changes 0 of 15,833 predictions. A mixed-window sample is being generated; per the §5 rule, its sensitivity control runs **before** 2b |
 | **OVS poll re-counting: size of the damage** (§5) | ⚠️ **ran, uninformative** for the same reason, and at the optimistic `IDLE_TIMEOUT=0` |
 | **OVS poll re-counting: choice of fix** (§5) | ❌ **open** — needs `ML/testdata/ovs_dump_flows.txt` for real entry granularity and `idle_timeout` |
 | **Randomised flows reaching v2** (§5) | ✅ **fixed** (`2adaec5`): allowlist provenance gate at the monitor. 7 tests with real `demo_flows()` output and a verbatim captured OVS line; a denylist version and a deleted gate are both caught. `GS2_ENABLED` stays `false` while the operating points are provisional |
