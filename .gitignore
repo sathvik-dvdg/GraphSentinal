@@ -24,3 +24,11 @@ __pycache__/
 
 # Local IDE-generated hardhat temp configs
 blockchain/.vscode_hardhat_config_*.ts
+
+# ── GraphSentinel v2 model binaries ───────────────────────────────────────────
+# weights.pt and model.ts are ~72.7 MiB each. Git cannot delta-compress them,
+# so every re-export would add ~145 MiB to history permanently. Their sha256
+# digests live in ML/MANIFEST.json, so integrity is verifiable without the blob.
+# See INTEGRATION.md for how to fetch them.
+ML/weights.pt
+ML/model.ts

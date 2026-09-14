@@ -1,0 +1,358 @@
+{
+  "name": "GraphSentinel",
+  "contract_version": "2.0.0",
+  "created_at": 1789303532.56048,
+  "created_at_iso": "2026-09-13T12:45:32Z",
+  "git_sha": null,
+  "framework": {
+    "torch": "2.11.0+cu128",
+    "python": "3.13.15"
+  },
+  "graph": {
+    "node_entity": "ip_address",
+    "edge_entity": "network_flow",
+    "directed": true,
+    "reverse_edges_added": true,
+    "window_seconds": 60,
+    "window_stride_seconds": 60
+  },
+  "inputs": {
+    "node_features": {
+      "count": 16,
+      "names": [
+        "log_out_degree",
+        "log_in_degree",
+        "degree_ratio",
+        "log_unique_dst_ips",
+        "log_unique_src_ips",
+        "log_unique_dst_ports",
+        "dst_port_entropy",
+        "peer_entropy",
+        "reciprocity",
+        "log_total_bytes_out",
+        "log_total_bytes_in",
+        "mean_inter_flow_dt",
+        "std_inter_flow_dt",
+        "is_private_addr",
+        "log_windows_seen",
+        "burst_score"
+      ],
+      "dtype": "float32",
+      "shape": [
+        "num_nodes",
+        16
+      ]
+    },
+    "edge_features": {
+      "count": 20,
+      "names": [
+        "log_duration_s",
+        "log_total_packets",
+        "log_total_bytes",
+        "fwd_packet_ratio",
+        "byte_asymmetry",
+        "avg_packet_size",
+        "log_max_fwd_len",
+        "log_max_bwd_len",
+        "syn_ratio",
+        "rst_ratio",
+        "ack_ratio",
+        "psh_ratio",
+        "log_iat_mean",
+        "iat_burstiness",
+        "log_dt_since_pair",
+        "log_dt_since_src",
+        "window_position",
+        "direction_flag",
+        "log_bytes_per_s",
+        "log_packets_per_s"
+      ],
+      "dtype": "float32",
+      "shape": [
+        "num_edges",
+        20
+      ],
+      "volumetric_indices": [
+        18,
+        19
+      ]
+    },
+    "categorical": {
+      "edge_dst_port": {
+        "dtype": "int64",
+        "vocab": 101
+      },
+      "edge_src_port": {
+        "dtype": "int64",
+        "vocab": 101
+      },
+      "edge_proto": {
+        "dtype": "int64",
+        "vocab": 8
+      }
+    },
+    "edge_index": {
+      "dtype": "int64",
+      "shape": [
+        2,
+        "num_edges"
+      ]
+    },
+    "node_ip_int": {
+      "dtype": "int64",
+      "shape": [
+        "num_nodes"
+      ],
+      "note": "uint32 form of the IPv4 address; keys the memory store"
+    }
+  },
+  "outputs": {
+    "node_logits": {
+      "shape": [
+        "num_nodes",
+        5
+      ]
+    },
+    "edge_logits": {
+      "shape": [
+        "num_edges",
+        5
+      ]
+    },
+    "classes": [
+      "BENIGN",
+      "Volumetric_Flood",
+      "PortScan",
+      "BruteForce",
+      "Botnet"
+    ],
+    "threat_score": "1 - softmax(logits)[BENIGN]",
+    "edge_logit_bias": null
+  },
+  "port_vocabulary": {
+    "port_vocab_size": 101,
+    "named_ports": 89,
+    "num_buckets": 10,
+    "bucket_edges": [
+      0,
+      1,
+      512,
+      1024,
+      2048,
+      4096,
+      8192,
+      16384,
+      32768,
+      49152,
+      65536
+    ],
+    "pad_token": 0,
+    "oov_token": 1,
+    "proto_vocab_size": 8
+  },
+  "scaling": {
+    "mode": "ema_streaming",
+    "note": "Do NOT use a frozen StandardScaler. Load edge_scaler.json / node_scaler.json into graphsentinel.inference.ema_scaler.EMAScaler and call partial_fit() per window before transform()."
+  },
+  "memory": {
+    "enabled": true,
+    "dim": 64,
+    "capacity_slots": 262144,
+    "ttl_seconds": 1800,
+    "footprint_bytes": 71303168
+  },
+  "parameters": 654851,
+  "config": {
+    "data": {
+      "dataset_dir": "datasets/cicids2017/",
+      "processed_dir": "/content/gs_processed/",
+      "require_ip_columns": true,
+      "csv_files": [
+        "Tuesday-WorkingHours.pcap_ISCX.csv",
+        "Wednesday-workingHours.pcap_ISCX.csv",
+        "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+        "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+        "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv"
+      ],
+      "taxonomy": "flood4",
+      "unseen_family_files": [
+        "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+        "Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv"
+      ],
+      "edge_feature_cols": [
+        "Flow Duration",
+        "Total Fwd Packets",
+        "Total Backward Packets",
+        "Total Length of Fwd Packets",
+        "Total Length of Bwd Packets",
+        "Fwd Packet Length Max",
+        "Bwd Packet Length Max",
+        "Flow IAT Mean",
+        "Fwd IAT Total",
+        "Bwd IAT Total",
+        "SYN Flag Count",
+        "RST Flag Count",
+        "ACK Flag Count",
+        "PSH Flag Count"
+      ],
+      "drop_edge_features": [],
+      "volumetric_cols": [
+        "Flow Bytes/s",
+        "Flow Packets/s"
+      ],
+      "clip_quantile": 0.999,
+      "drop_duplicates": true,
+      "split_strategy": "episode",
+      "train_frac": 0.7,
+      "val_frac": 0.15,
+      "holdout_days": [
+        "friday_pm_ddos",
+        "friday_pm_portscan"
+      ],
+      "holdout_attacks": [
+        "Botnet"
+      ],
+      "split_gap_seconds": 300,
+      "episode_gap_seconds": 120,
+      "min_episodes_for_split": 3
+    },
+    "graph": {
+      "window_seconds": 60,
+      "window_stride_seconds": 60,
+      "min_edges_per_graph": 8,
+      "max_edges_per_graph": 200000,
+      "node_key": "ip",
+      "subnet_fallback_prefix": 24,
+      "use_structural_features": true,
+      "add_reverse_edges": true,
+      "label_mode": "max_severity"
+    },
+    "model": {
+      "name": "GraphSentinelNet",
+      "port_vocab_size": 1024,
+      "port_embed_dim": 16,
+      "proto_vocab_size": 8,
+      "proto_embed_dim": 4,
+      "edge_hidden": 64,
+      "node_hidden": 128,
+      "hidden_channels": 128,
+      "conv_type": "gatv2",
+      "num_layers": 2,
+      "heads": 4,
+      "dropout": 0.3,
+      "attn_dropout": 0.1,
+      "residual": true,
+      "jumping_knowledge": "cat",
+      "use_memory": true,
+      "memory_dim": 64,
+      "memory_capacity": 262144,
+      "memory_ttl_seconds": 1800,
+      "memory_hash_tail": true,
+      "num_classes": 5,
+      "edge_head": true,
+      "node_head": true,
+      "recon_enabled": true,
+      "recon_weight": 0.3,
+      "recon_edge_weight": 1.0,
+      "recon_link_weight": 0.5,
+      "recon_node_weight": 0.2,
+      "edge_mask_rate": 0.15,
+      "recon_warmup_epochs": 3
+    },
+    "loss": {
+      "focal_gamma": 2.0,
+      "focal_alpha": null,
+      "effective_number_beta": 0.9999,
+      "label_smoothing": 0.02,
+      "degree_penalty_weight": 0.05,
+      "edge_loss_weight": 2.0
+    },
+    "train": {
+      "epochs": 40,
+      "batch_size": 16,
+      "grad_accum_steps": 8,
+      "learning_rate": 0.002,
+      "weight_decay": 0.0001,
+      "gradient_clip": 1.0,
+      "mixed_precision": false,
+      "scheduler": "cosine_warmup",
+      "warmup_epochs": 3,
+      "early_stop_patience": 12,
+      "early_stop_metric": "edge_macro_f1",
+      "max_class_edge_loss": 0.02,
+      "fit_logit_adjustment": false,
+      "min_holdout_per_class": 200,
+      "max_class_f1_drop": 0.05,
+      "num_workers": 2,
+      "seed": 42,
+      "preserve_temporal_order": true,
+      "memory_detach_every": 1
+    },
+    "export": {
+      "model_dir": "models/",
+      "export_torchscript": true,
+      "export_onnx": true,
+      "onnx_opset": 18,
+      "write_compat_shim": true,
+      "contract_version": "2.0.0"
+    },
+    "base_dir": "/content/drive/MyDrive/GraphsentinalV2",
+    "log_dir": "logs/",
+    "checkpoint_dir": "checkpoints/"
+  },
+  "metrics": {
+    "node_macro_f1": 0.31142702074183426,
+    "node_macro_f1_all_classes": 0.31142702074183426,
+    "node_classes_present": 5.0,
+    "node_weighted_f1": 0.9942543250109497,
+    "node_accuracy": 0.9918146913632336,
+    "node_f1_BENIGN": 0.9960785976217225,
+    "node_f1_Volumetric_Flood": 0.3902439024390244,
+    "node_f1_PortScan": 0.05970149253731343,
+    "node_f1_BruteForce": 0.1111111111111111,
+    "node_f1_Botnet": 0.0,
+    "node_binary_pr_auc": 0.31755668735544873,
+    "node_binary_roc_auc": 0.9891367726433574,
+    "node_recall_at_fpr_0.01": 0.4791666666666667,
+    "node_recall_at_fpr_0.001": 0.3125,
+    "node_binary_f1": 0.17777777777777778,
+    "node_pr_auc_Volumetric_Flood": 1.0,
+    "node_pr_auc_PortScan": 1.0,
+    "node_pr_auc_BruteForce": 0.09579315268043229,
+    "node_pr_auc_Botnet": 0.029095285298825345,
+    "edge_macro_f1": 0.7567619377362611,
+    "edge_macro_f1_all_classes": 0.7567619377362611,
+    "edge_classes_present": 5.0,
+    "edge_weighted_f1": 0.9971927435261566,
+    "edge_accuracy": 0.9973156781469642,
+    "edge_f1_BENIGN": 0.9987559241706161,
+    "edge_f1_Volumetric_Flood": 0.9999147799903417,
+    "edge_f1_PortScan": 0.9895896103896104,
+    "edge_f1_BruteForce": 0.7955493741307371,
+    "edge_f1_Botnet": 0.0,
+    "edge_binary_pr_auc": 0.9995071802576906,
+    "edge_binary_roc_auc": 0.9998800552071777,
+    "edge_recall_at_fpr_0.01": 0.9997135217723453,
+    "edge_recall_at_fpr_0.001": 0.939696333078686,
+    "edge_binary_f1": 0.9950064203167356,
+    "edge_pr_auc_Volumetric_Flood": 1.0,
+    "edge_pr_auc_PortScan": 0.9998970920353816,
+    "edge_pr_auc_BruteForce": 0.9909104358677134,
+    "edge_pr_auc_Botnet": 0.12488202764393548
+  },
+  "deprecations": {
+    "in_channels_7": "The 7-feature node contract is retired. Node features are now 16 structural values and flow features moved to edges. graphsentinel.models.compat.GraphSAGEClassifier still loads v1 weights for a transition period.",
+    "scaler_pkl": "Replaced by the EMA scaler JSON files."
+  },
+  "artifacts": {
+    "weights": {
+      "path": "weights.pt",
+      "sha256": "0dbbaf388dbffc2ce0753553b346e520b3aa0b557cdb6c618792f51eb0a38989"
+    },
+    "torchscript": {
+      "path": "model.ts",
+      "sha256": "2efbb012389977ee987ffabc0e01c47ed41328924784e37c46c3353631a72272"
+    },
+    "onnx": "SKIPPED: onnxscript not installed (pip install onnx onnxscript onnxruntime)"
+  }
+}
