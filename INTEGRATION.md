@@ -593,6 +593,24 @@ On any new sample, run `ML/phase2b_sensitivity_check.py` **before**
 - **Above 0 means the sample can register damage.** 2b's deltas on it are worth
   reading.
 
+**Enforced in code, not only here.** `phase2b_live_path_cost.py` refuses to
+start, before loading the model, in any of these cases:
+
+- `phase2b_sensitivity.json` is missing;
+- it was run on a different sample, different weights or a different model card
+  (all three compared by sha256);
+- it reports `argmax_changed = 0`.
+
+When the gate passes, the script prints that count as a share of real edges.
+That share is the sample's resolution: 2b cannot show damage finer than it. The
+gate sets no minimum, because any bar would be a judgement rather than a fitted
+number. `--force-uninformative` runs anyway and stamps the results file
+`sensitivity_gate: OVERRIDDEN (...)`.
+
+It also refuses to start if `phase2b_results.json` already holds a run on a
+different sample, so a new run cannot silently replace an earlier record. Move
+the earlier run under `ML/phase2b_runs/<name>/` first, or pass `--overwrite`.
+
 The first run below is the reason this rule exists.
 
 ### PHASE 2b run 1 (density-selected sample): uninformative

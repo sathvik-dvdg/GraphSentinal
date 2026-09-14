@@ -116,6 +116,7 @@ Run from the repo root:
 """
 from __future__ import annotations
 
+import hashlib
 import json
 import sys
 from pathlib import Path
@@ -149,6 +150,102 @@ if not SAMPLE.exists():
         "anything for it. Spec: TrafficLabelling_ variant (85 cols, Flow ID\n"
         "first), contiguous rows in timestamp order, headers verbatim."
     )
+
+# ------------------------------------------------- the sensitivity gate ----
+# INTEGRATION.md makes this a rule: the sensitivity control gates the
+# measurement, and a 2b result obtained without it says nothing. A rule written
+# only in prose rots -- this is the same argument as the provenance gate at
+# _score_v2, so it is enforced the same way, in code, failing closed.
+#
+# Run 1 is why. On a density-selected sample every delta was +0.0000 AND
+# zeroing all twenty edge features changed 0 of 15,833 predictions: the sample
+# could not have shown damage of any size. Without this gate that zero reads as
+# "the live path is free".
+FORCE = "--force-uninformative" in sys.argv
+SENS = REPO / "ML" / "phase2b_sensitivity.json"
+_sample_sha = hashlib.sha256(SAMPLE.read_bytes()).hexdigest()
+_gate = "passed"
+
+def _gate_fail(msg: str) -> None:
+    global _gate
+    if not FORCE:
+        raise SystemExit(
+            f"SENSITIVITY GATE: {msg}\n\n"
+            f"  Run  python ML/phase2b_sensitivity_check.py  first.\n"
+            f"  If its all_zero_edge_features.argmax_changed is 0, this sample\n"
+            f"  cannot measure edge-feature damage and 2b's output is\n"
+            f"  uninformative whatever it says -- build a sample with attack and\n"
+            f"  benign traffic in the same windows instead.\n\n"
+            f"  To record an uninformative run deliberately, as run 1 was, pass\n"
+            f"  --force-uninformative. The results file is then stamped as such.")
+    _gate = f"OVERRIDDEN ({msg})"
+    print(f"\n  !! SENSITIVITY GATE OVERRIDDEN: {msg}")
+    print( "  !! Every number below is UNINFORMATIVE about the live path.\n")
+
+# A results file for a DIFFERENT sample is a separate run's record. Refuse
+# rather than warn: a warning printed immediately before `out.write_text`, at
+# the end of a run, cannot be acted on -- and it would fire on exactly the file
+# it is meant to protect, since run 1's record predates the sample_sha256 stamp
+# and would be replaced anyway. Same rule as the gate itself: fail closed.
+OVERWRITE = "--overwrite" in sys.argv
+_out = REPO / "ML" / "phase2b_results.json"
+if _out.exists() and not OVERWRITE:
+    try:
+        _prev = json.loads(_out.read_text(encoding="utf-8")).get("sample_sha256")
+    except Exception:
+        _prev = None
+    if _prev != _sample_sha:
+        _why = _prev or ("sha not recorded -- predates the stamp, so this is "
+                         "most likely run 1")
+        raise SystemExit(
+            f"{_out.name} already holds a run on a DIFFERENT sample "
+            f"({_why}).\n\n"
+            f"  Running now would replace that record. Keep it first:\n"
+            f"    git mv ML/phase2b_results.json ML/phase2b_sensitivity.json "
+            f"ML/phase2b_runs/<name>/\n"
+            f"  and update the paths INTEGRATION.md cites.\n\n"
+            f"  To replace it deliberately, pass --overwrite.")
+
+if not SENS.exists():
+    _gate_fail(f"{SENS.name} does not exist")
+else:
+    _s = json.loads(SENS.read_text(encoding="utf-8"))
+    _si = _s.get("inputs", {}).get("sample", {})
+    _changed = _s.get("all_zero_edge_features", {}).get("argmax_changed")
+    if _si.get("sha256") != _sample_sha:
+        _gate_fail(f"{SENS.name} was run on a different sample "
+                   f"({str(_si.get('sha256'))[:12]}... vs {_sample_sha[:12]}...)")
+    elif _s.get("inputs", {}).get("weights_sha256") != hashlib.sha256(
+            (MODEL_DIR / "weights.pt").read_bytes()).hexdigest():
+        _gate_fail(f"{SENS.name} was run against different weights")
+    elif _s.get("inputs", {}).get("model_card_sha256") != hashlib.sha256(
+            (MODEL_DIR / "model_card.json").read_bytes()).hexdigest():
+        # The card's config shapes the graphs the control ran on -- window
+        # length, the 8-flow floor, the taxonomy. Same weights with an edited
+        # card would let a stale control through.
+        _gate_fail(f"{SENS.name} was run against a different model card")
+    elif not _changed:
+        _gate_fail(f"the control reports argmax_changed = {_changed}: zeroing "
+                   f"ALL edge features changes no prediction on this sample")
+    else:
+        # `argmax_changed` is counted over REAL EDGES -- the flows in windows
+        # that were actually scored -- not over rows surviving preprocessing.
+        # They are equal only when every window clears min_edges_per_graph, as
+        # on run 1's sample. On a mixed-window sample some windows fall below
+        # the floor, rows exceed edges, and dividing by rows would understate
+        # the sample's sensitivity.
+        _n_edges = _s.get("real_edges") or 0
+        _share = (_changed / _n_edges) if _n_edges else float("nan")
+        print(f"  sensitivity gate: passed -- {_changed:,} of {_n_edges:,} "
+              f"predictions ({_share:.2%}) move when all edge features are "
+              f"zeroed.")
+        print(f"  That share is this sample's RESOLUTION: 2b cannot show damage "
+              f"finer than it.")
+        print(f"  The gate sets no minimum. Any bar would be a judgement, not a "
+              f"fitted number --")
+        print(f"  the same reason no 'degraded after N failures' threshold was "
+              f"hard-coded. Read it.")
+        _gate = f"passed ({_changed} of {_n_edges} predictions move)"
 
 from graphsentinel.config import CLASS_NAMES, CLASS_TO_IDX, Config  # noqa: E402
 from graphsentinel.data import preprocess as pre  # noqa: E402
@@ -554,13 +651,15 @@ if not IDLE_TIMEOUT:
     print(f"  classes -- PortScan above all -- are not re-counted AT ALL in this")
     print(f"  run. Do not read their small delta as resilience (correction 7).")
 
-out = REPO / "ML" / "phase2b_results.json"
+out = _out          # checked for a foreign record before scoring started
 out.write_text(json.dumps({
     "note": ("small contiguous slice; deltas are the result, not the absolutes. "
              "per_flow_common is the honest view -- it holds the scored "
              "population fixed across variants. per_flow lets coverage move "
              "the delta; per_submission over-weights long flows."),
     "headline_view": HEADLINE,
+    "sensitivity_gate": _gate,
+    "sample_sha256": _sample_sha,
     "poll_seconds": POLL_SECONDS, "idle_timeout": IDLE_TIMEOUT,
     "idle_timeout_is_optimistic": not IDLE_TIMEOUT,
     "n_flows_in_sample": N_TOTAL,
