@@ -6,10 +6,12 @@ directory predates the fix.
 
 ## The defect
 
-At least the two Friday-Afternoon `TrafficLabelling_` files stamp flows on a
-12-hour clock with **no AM/PM marker**. The Friday-Afternoon DDoS is written
-`7/7/2017 3:57`. Whether the other files do the same is outstanding (see the
-audit).
+The claim that CICIDS2017's afternoon rows are stamped on a 12-hour clock with
+**no AM/PM marker** currently rests on **two timestamp values**: `7/7/2017 2:55`
+(Friday-Afternoon PortScan) and `7/7/2017 3:57` (Friday-Afternoon DDoS). That is
+one observation per file, not two independent sources. Whether those files are
+stamped that way throughout, and whether any other file is, is outstanding (see
+the audit).
 
 `_parse_timestamps` parsed that string successfully as 03:57 using
 `%d/%m/%Y %H:%M`, so afternoon traffic sorted before the same day's morning
@@ -62,7 +64,7 @@ The audit is **load-bearing, not confirmatory.** The sample evidence is thin.
 |---|---|---|
 | Mechanism | Established from the format list: a marker-less 12-hour afternoon time parses successfully as early morning. | `preprocess.py` |
 | Sample, what it is | 20,000 rows, but only **19 distinct timestamp values**, in five contiguous blocks: Tuesday 10:10 to 10:15, Wednesday 10:43, Friday morning 10:42 to 10:51, Friday-Afternoon PortScan `2:55`, Friday-Afternoon DDoS `3:57`. Rows inside a block share timestamps and are not independent evidence about how a file is stamped. | `testdata/cicids2017_sample.csv` |
-| Sample, what bears on the clock | **Two observations, from two files:** `2:55` and `3:57`. The three morning blocks sit at hour 10 and say nothing either way, so Tuesday and Wednesday contribute nothing to the claim. | same |
+| Sample, what bears on the clock | **Two timestamp values:** `2:55` and `3:57`, one per Friday-Afternoon file. One observation each; the 8,000 rows carrying them are not 8,000 observations. The three morning blocks sit at hour 10 and say nothing either way, so Tuesday and Wednesday contribute nothing to the claim. | same |
 | Sample, effect of the fix | 0 rows at hour 12 or later before, 0 AM/PM tokens. The fix moves 8,000 rows (those two blocks). Friday order before: PortScan 02:55, DDoS 03:57, Bot 10:42. After: Bot 10:42, PortScan 14:55, DDoS 15:57. No MIXED day. | `timestamp_audit_sample.json` |
 | Five training CSVs, Monday, Thursday | **OUTSTANDING.** | the Colab audit |
 
@@ -247,14 +249,28 @@ fails, naming `C:\content`.
 
 **Two defects in the test suite itself**, both found by that smoke test:
 
-- One test patched `os.fsync` to raise and "restored" it from `os.fsync`, that
-  is, from its own stub. `fsync` then raised for every later test, and every
-  checkpoint write after it failed silently. Nothing noticed, because no later
-  test wrote a checkpoint through `train()`.
+- `test_fsync_never_leaks_a_descriptor_when_it_raises` patched `os.fsync` to
+  raise and "restored" it from `os.fsync`, that is, from its own stub. `fsync`
+  then raised for every later test in the process. See the review note for
+  what that did and did not hide. It now uses `monkeypatch`, and
+  `test_no_test_patches_a_module_by_hand` forbids the shape.
 - Three tests exported full-size models into `tempfile` directories that are
   never cleaned up: about 145 MB per test per run, 3.6 GB after two days of
-  runs, which filled a disk. They now use `tmp_path` and a small memory table,
-  and a test forbids the call.
+  runs, which filled a disk. The three were
+  `test_model_card_labels_which_split_its_metrics_came_from`,
+  `test_engine_refuses_a_card_whose_class_list_does_not_match` and
+  `test_fsync_never_leaks_a_descriptor_when_it_raises`, all introduced in
+  commit `6b9160c`. They now use `tmp_path` and a small memory table, and
+  `test_no_test_leaks_a_temp_directory` forbids the call. Both new scans were
+  run against the file as it stood before the fix: they flag lines 1376, 1401
+  and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
+
+**The suite baseline is now 120 passed, 0 skipped.** Earlier records say
+"98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
+split and graph construction tests. On the machine those records come from,
+the split code had therefore never run at all. With `pyarrow` installed they
+run, and they run under the fixed parse. Do not read "98 passed, 7 skipped" as
+the baseline.
 
 ## Review note: check the guard against the failure that prompted it
 
@@ -268,10 +284,51 @@ was written for. In this project it has not been obvious in the moment:
 - a suite-wide `/content` fixture guarded tests that never ran the code path
   the bug lived in.
 
-Each was written from the symptom, not from the path. The guards added in this
-change were each run against the original failure: the `/content` scan asserts
-it flags the old line, the manifest guard has a test that swaps the weights,
-and the smoke test was run with the old line restored.
+Each was written from the symptom, not from the path.
+
+**A fourth, and worse: a guard that created a bug.**
+`test_fsync_never_leaks_a_descriptor_when_it_raises` was written to prove that
+`export._fsync_path` cannot leak a file descriptor on Windows. It did prove
+that. It also left `os.fsync` raising for the rest of the process, by restoring
+it from its own stub, and nothing noticed for weeks.
+
+What a raising `fsync` does depends on the caller:
+
+| Caller | With `fsync` raising |
+|---|---|
+| `export._fsync_path` | Swallows `OSError` by design: a silent no-op. |
+| `train._atomic_torch_save` | Does not swallow it: the write fails, and `save_checkpoint` reports no write. |
+
+What it hid, measured rather than assumed:
+
+- In the suite as committed, the test was 67th of 68 in `test_pipeline.py`. One
+  test ran after it in that file, a source scan that writes nothing. Then
+  `test_recon.py`, which never calls the export or checkpoint paths.
+  `test_export_inference.py` and every export and checkpoint test in
+  `test_pipeline.py` ran **before** it, under the real `fsync`.
+- So the Windows write fix and the atomic checkpoint save were validated under
+  the real `fsync` all along. The poisoning had an empty blast radius, by luck
+  of test ordering and nothing else. The first test added after it that wrote a
+  checkpoint, the `train()` smoke test, failed.
+- Confirmed directly on 2026-10-02, Windows, each in a fresh process:
+
+| Run | Result |
+|---|---|
+| Full suite with the fsync test deselected | 119 passed |
+| Export and checkpoint tests only, fsync test deselected | 20 passed |
+| Full suite | 120 passed |
+
+The write path stands on its own merits.
+
+The guards added in this change were each run against the original failure:
+the `/content` scan asserts it flags the old line, the manifest guard has a
+test that swaps the weights, the smoke test was run with the old line restored,
+and the two test-hygiene scans were run against the pre-fix test file.
+
+The backend suite was searched for the same shape. It has none: its manual
+save-and-restore sites capture the original before changing it, mocks go onto
+fresh instances, and an autouse fixture resets the shared singletons after
+every test.
 
 ## The sample
 

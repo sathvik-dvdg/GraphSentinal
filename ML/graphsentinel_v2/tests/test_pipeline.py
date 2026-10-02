@@ -1416,7 +1416,7 @@ def test_engine_refuses_a_card_whose_class_list_does_not_match(tmp_path):
         InferenceEngine.from_artifacts(d)
 
 
-def test_fsync_never_leaks_a_descriptor_when_it_raises(tmp_path):
+def test_fsync_never_leaks_a_descriptor_when_it_raises(tmp_path, monkeypatch):
     """THE WINDOWS BUG, caught by a backend integration audit on 2026-09-13.
 
     _verified_write used to do:
@@ -1434,15 +1434,17 @@ def test_fsync_never_leaks_a_descriptor_when_it_raises(tmp_path):
 
     This test forces the Windows behaviour on any platform.
     """
-    import os, json, tempfile
+    import os, json
     from pathlib import Path
     from graphsentinel import export as ex
 
     d = tmp_path
-    # ex.os IS the global os module, so the real fsync must be captured
-    # BEFORE patching. Restoring from `os.fsync` afterwards restored the
-    # stub, and left fsync raising for every test that ran after this one
-    # -- found when a train() smoke test could not write its checkpoint.
+    # monkeypatch, not save-and-restore. This test used to assign to
+    # ex.os.fsync by hand and "restore" it from `os.fsync` -- but ex.os IS the
+    # global os module, so that restored the stub. fsync then raised for every
+    # test that ran after this one, for weeks: export._fsync_path swallowed it
+    # (a silent no-op) and train._atomic_torch_save did not (a failed write).
+    # It was found only when a train() smoke test could not write best.pt.
     real_open, real_close, real_fsync = os.open, os.close, os.fsync
     live = []
 
@@ -1459,15 +1461,15 @@ def test_fsync_never_leaks_a_descriptor_when_it_raises(tmp_path):
     def windows_fsync(fd):
         raise OSError(9, "Bad file descriptor")
 
-    ex.os.open, ex.os.close, ex.os.fsync = spy_open, spy_close, windows_fsync
-    try:
+    with monkeypatch.context() as m:
+        m.setattr(os, "open", spy_open)
+        m.setattr(os, "close", spy_close)
+        m.setattr(os, "fsync", windows_fsync)
         got = ex._verified_write(
             d / "card.json",
             lambda p: p.write_text(json.dumps({"a": 1}), encoding="utf-8"),
             lambda p: json.loads(p.read_text(encoding="utf-8"))["a"],
         )
-    finally:
-        ex.os.open, ex.os.close, ex.os.fsync = real_open, real_close, real_fsync
 
     assert live == [], f"fsync raised and leaked descriptors {live}"
     assert got is not None, "a raising fsync must not fail the write"
@@ -1721,7 +1723,43 @@ def test_no_test_leaks_a_temp_directory():
     filled a disk. Use the tmp_path fixture."""
     here = Path(__file__).resolve().parent
     needle = "mkd" + "temp("
-    offenders = [f"{f.name}:{n}" for f in here.glob("*.py")
-                 for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
-                 if needle in line.split("#", 1)[0]]
-    assert not offenders, offenders
+
+    def offenders_in(text, name="x.py"):
+        return [f"{name}:{n}" for n, line in enumerate(text.splitlines(), 1)
+                if needle in line.split("#", 1)[0]]
+
+    # the scan must flag the line that WAS the leak, or it proves nothing
+    assert offenders_in("    d = Path(tempfile." + needle + "))")
+    assert not offenders_in("    d = tmp_path")
+
+    found = [o for f in here.glob("*.py")
+             for o in offenders_in(f.read_text(encoding="utf-8"), f.name)]
+    assert not found, found
+
+
+def test_no_test_patches_a_module_by_hand():
+    """A test that assigns to an attribute of a shared module and restores it
+    by hand can restore the wrong thing. One did: it "restored" os.fsync from
+    os.fsync, i.e. from its own stub, and fsync raised for every later test.
+    monkeypatch restores at teardown whatever the test does."""
+    import re
+    here = Path(__file__).resolve().parent
+    shared = r"(?:os|sys|shutil|pathlib|torch|time|json|socket|subprocess|builtins)"
+    pattern = re.compile(
+        r"^\s*(?:[A-Za-z_][\w.]*\.)?" + shared + r"\.[A-Za-z_]\w*\s*(?:,[^=]*)?=[^=]")
+
+    def offenders_in(text, name="x.py"):
+        return [f"{name}:{n}" for n, line in enumerate(text.splitlines(), 1)
+                if pattern.match(line.split("#", 1)[0])]
+
+    # the two lines of the original bug
+    assert offenders_in("    ex.os.open, ex.os.close, ex.os.fsync = spy_open, spy_close, windows_fsync")
+    assert offenders_in("        ex.os.open, ex.os.close, ex.os.fsync = real_open, real_close, os.fsync")
+    assert offenders_in("    os.fsync = boom")
+    assert not offenders_in("    real_open, real_close, real_fsync = os.open, os.close, os.fsync")
+    assert not offenders_in('        m.setattr(os, "fsync", windows_fsync)')
+    assert not offenders_in("    assert os.fsync is real_fsync")
+
+    found = [o for f in here.glob("*.py")
+             for o in offenders_in(f.read_text(encoding="utf-8"), f.name)]
+    assert not found, found
