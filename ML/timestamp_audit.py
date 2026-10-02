@@ -197,8 +197,11 @@ def verdict(results, package_state, pm_hours=PM_HOURS,
       * the installed package, if it has the fix, agrees with this script on
         every row;
       * the fix actually moves rows in the training files. If it moves none,
-        the defect is not present at full scale and a retrain would reproduce
-        the model that already exists.
+        a retrain would reproduce the model that already exists -- but that is
+        NOT evidence the defect is absent. The committed sample carries rows
+        copied verbatim from the two Friday-Afternoon files, stamped 2:55 and
+        3:57. An audit that finds no such rows in those files contradicts
+        evidence already in hand: wrong folder, replaced files, or a misread.
 
     The retrain cell reads this and refuses to start unless ``clean`` is True.
     A person is not the thing that checks whether the audit passed.
@@ -224,8 +227,13 @@ def verdict(results, package_state, pm_hours=PM_HOURS,
     if drift:
         reasons.append(f"the installed package and this script parse {drift} differently")
     if not (missing or errors) and moved == 0:
-        reasons.append("the fix moves 0 rows in the training files: the defect is "
-                       "not present at full scale, so a retrain would change nothing")
+        reasons.append(
+            "the fix moves 0 rows in the training files. This CONTRADICTS the committed "
+            "sample, which carries rows copied verbatim from the Friday-Afternoon files "
+            "and stamped 2:55 and 3:57. Do not conclude the defect is absent: check that "
+            "this is the folder the sample came from, that the files have not been "
+            "replaced, and that the audit is reading the Timestamp column. A retrain "
+            "now would reproduce the existing model")
     return {
         "clean": not reasons,
         "reason": "; ".join(reasons) or (

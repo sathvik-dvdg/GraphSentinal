@@ -565,6 +565,9 @@ def train(
         }
         history.append(row)
 
+        # Local disk every epoch; the primary (Drive) path too every Nth.
+        to_drive = (cfg.train.drive_checkpoint_every > 0
+                    and epoch % cfg.train.drive_checkpoint_every == 0)
         is_best = current > best_metric
         if is_best:
             best_metric, no_improve = current, 0
@@ -579,9 +582,13 @@ def train(
             best_state = best_blob["model"]
             save_checkpoint(best_blob, ckpt_best,
                             verbose=verbose and epoch == start_epoch,
-                            label="best.pt", mirror_only=True)
+                            label="best.pt", mirror_only=not to_drive)
         else:
             no_improve += 1
+            # A resume from the Drive last.pt needs the best.pt it refers to.
+            # If the best epoch was not a Drive epoch, send it along now.
+            if to_drive and best_blob is not None:
+                save_checkpoint(best_blob, ckpt_best, label="best.pt")
 
         save_checkpoint(
             {
@@ -601,7 +608,7 @@ def train(
             ckpt_last,
             verbose=verbose and epoch == start_epoch,
             label="last.pt",
-            mirror_only=True,
+            mirror_only=not to_drive,
         )
 
         if verbose:

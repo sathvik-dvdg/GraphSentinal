@@ -59,9 +59,12 @@ def test_verdict_is_clean_only_when_every_condition_holds(ta):
     v = ta.verdict(good[:-1] + [_file(ta.TRAINING_FILES[-1], agrees=False)], "has_fix")
     assert not v["clean"] and v["package_disagreements"]
 
-    # the fix moves nothing: the defect is not there, a retrain changes nothing
+    # the fix moves nothing: refused, and reported as a CONTRADICTION with the
+    # sample's verbatim 2:55 / 3:57 rows, never as "the defect is absent"
     v = ta.verdict([_file(f, moved=0) for f in ta.TRAINING_FILES], "has_fix")
     assert not v["clean"] and "moves 0 rows" in v["reason"]
+    assert "CONTRADICTS" in v["reason"] and "2:55" in v["reason"]
+    assert "not present" not in v["reason"]
 
     # a file that could not be read
     v = ta.verdict(good + [{"file": "Monday.csv", "error": "no Timestamp column"}], "has_fix")
@@ -174,8 +177,8 @@ def test_lifted_cells_are_the_notebook_cells(idx, name, edits):
 
 def test_threshold_study_writes_the_keys_the_backend_reads():
     """backend/app/services/operating_points.py reads exactly these three. The
-    notebook cell wrote three differently named keys; loaded as is, the backend
-    would silently report the operating points as unverified."""
+    notebook cell wrote three differently named keys, and the loader raises
+    OperatingPointError on a present file that lacks any of the three."""
     src = (COLAB / "cells" / "threshold_study.py").read_text(encoding="utf-8")
     for key in ('"binary_gate"', '"alert_min_flows"', '"alert_window_seconds"'):
         assert key in src
@@ -184,3 +187,83 @@ def test_threshold_study_writes_the_keys_the_backend_reads():
         text = loader.read_text(encoding="utf-8")
         for key in ("binary_gate", "alert_min_flows", "alert_window_seconds"):
             assert f'"{key}"' in text
+
+
+_CELL_SHAPED_GENERATOR = """
+assert "cfg" in dir(), "Run section 3 (config) first."
+from pathlib import Path
+src = Path(cfg.dataset_path)
+out = Path(cfg.base_dir) / "testdata"
+out.mkdir(parents=True, exist_ok=True)
+(out / "sample_new.csv").write_text("a,b\\n" + src.name + ",1\\n", encoding="utf-8")
+print("MIXED windows: {mixed}")
+"""
+
+
+def _sample_env(cr, tmp_path, monkeypatch, generator: str):
+    bundle_ml = tmp_path / "bundle_ml"
+    bundle_ml.mkdir()
+    (bundle_ml / "make_testdata_sample.py").write_text(generator, encoding="utf-8")
+    import shutil
+    shutil.copyfile(ML_DIR / "model_card.json", bundle_ml / "model_card.json")
+    monkeypatch.setattr(cr, "ML", bundle_ml)
+    env = cr.Env(tmp_path / "base", tmp_path / "local", is_colab=False)
+    env.dataset.mkdir(parents=True)
+    old = env.base / "testdata" / "cicids2017_sample.csv"
+    old.parent.mkdir(parents=True)
+    old.write_text("PRE-FIX\n", encoding="utf-8")
+    return env, cr.make_cfg(env), old
+
+
+def test_stage_sample_runs_the_generator_as_a_cell_and_protects_the_old_sample(
+        cr, tmp_path, monkeypatch):
+    """The generator is a Colab cell: it needs `cfg` in scope, reads
+    cfg.dataset_path and writes Path(cfg.base_dir)/"testdata". Run with the real
+    base_dir it would overwrite the pre-fix sample."""
+    env, cfg, old = _sample_env(cr, tmp_path, monkeypatch,
+                                _CELL_SHAPED_GENERATOR.format(mixed=7))
+    cr.stage_sample(env, cfg)
+
+    assert old.read_text(encoding="utf-8") == "PRE-FIX\n", "the pre-fix sample was touched"
+    new = env.run_dir / "testdata" / "cicids2017_sample.csv"
+    assert new.exists() and "cicids2017" in new.read_text(encoding="utf-8")   # it read cfg.dataset_path
+    m = cr.read_marker(env, "sample")
+    assert m["mixed_windows"] == 7 and m["mixed_windows_sufficient"] is True
+    assert m["generator_wrote"] == "sample_new.csv"
+    assert cfg.base_dir == str(env.base), "the caller's cfg must not be changed"
+
+
+def test_stage_sample_records_a_thin_sample_and_refuses_a_write_to_the_old_folder(
+        cr, tmp_path, monkeypatch):
+    env, cfg, _ = _sample_env(cr, tmp_path, monkeypatch,
+                              _CELL_SHAPED_GENERATOR.format(mixed=3))
+    cr.stage_sample(env, cfg)
+    m = cr.read_marker(env, "sample")
+    assert m["mixed_windows"] == 3 and m["mixed_windows_sufficient"] is False
+
+    # a generator that ignores cfg.base_dir and writes into the pre-fix folder
+    rogue = _CELL_SHAPED_GENERATOR.format(mixed=9).replace(
+        'Path(cfg.base_dir) / "testdata"', f'Path(r"{env.base}") / "testdata"')
+    (cr.ML / "make_testdata_sample.py").write_text(rogue, encoding="utf-8")
+    with pytest.raises(RuntimeError, match="PRE-FIX sample folder"):
+        cr.stage_sample(env, cfg)
+
+
+def test_preflight_reports_each_dependency_of_cell_b(cr, ta, tmp_path, capsys):
+    env = cr.Env(tmp_path / "base", tmp_path / "local", is_colab=False)
+    env.dataset.mkdir(parents=True)
+    for f in ta.TRAINING_FILES[:-1]:                       # one training file missing
+        (env.dataset / f).write_text("x", encoding="utf-8")
+    cfg = cr.make_cfg(env)
+    checks = cr.preflight(env, cfg, {"clean": False, "reason": "a day mixes the clocks"})
+    by = {c["check"].split(";")[0].split(",")[0][:22]: c for c in checks}
+    status = {c["check"]: c["status"] for c in checks}
+
+    assert [c for c in checks if "dataset folder holds 4 CSVs" in c["check"]][0]["status"] == "FAIL"
+    assert status["audit verdict"] == "FAIL"
+    assert status["dependencies import"] == "PASS"
+    assert status["run folder is writable and reads back"] == "PASS"
+    assert status["GPU present"] in ("PASS", "WARN")       # a missing GPU warns in Cell A
+    out = capsys.readouterr().out
+    assert "PREFLIGHT" in out and "[FAIL]" in out
+    assert json.loads((env.logs / "preflight.json").read_text(encoding="utf-8"))["checks"]

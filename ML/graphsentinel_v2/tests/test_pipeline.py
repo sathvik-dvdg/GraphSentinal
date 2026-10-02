@@ -1276,8 +1276,12 @@ def test_per_epoch_saves_do_not_touch_drive(tmp_path, monkeypatch):
     src = inspect.getsource(train_mod.train)
     per_epoch = src[src.index("is_best = current > best_metric"):
                     src.index("# ---------------- final evaluation")]
-    assert per_epoch.count("mirror_only=True") == 2, \
-        "both per-epoch saves (best.pt and last.pt) must be local-only"
+    assert per_epoch.count("mirror_only=not to_drive") == 2, \
+        "both per-epoch saves (best.pt and last.pt) must be local-only, except " \
+        "on every Nth epoch (cfg.train.drive_checkpoint_every)"
+    assert "mirror_only=True" not in per_epoch and "mirror_only=False" not in per_epoch
+    assert "epoch % cfg.train.drive_checkpoint_every == 0" in src
+    assert Config().train.drive_checkpoint_every == 10
 
 
 def test_mirror_only_still_writes_when_there_is_no_mirror(tmp_path, monkeypatch):

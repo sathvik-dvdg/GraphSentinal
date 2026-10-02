@@ -458,6 +458,12 @@ class TrainConfig:
     # updated in the order the traffic actually happened.
     preserve_temporal_order: bool = True
     memory_detach_every: int = 1  # TBPTT horizon in windows
+    # Per-epoch checkpoints stay on local disk (see train.save_checkpoint): the
+    # Drive mount lost files under 40 overwrites of the same path. The cost was
+    # that a recycled Colab runtime restarted training from epoch 1. Every Nth
+    # epoch the saves ALSO go to the primary (Drive) path, so a recycle loses at
+    # most N epochs and Drive sees 4 overwrites instead of 40. 0 disables it.
+    drive_checkpoint_every: int = 10
 
 
 @dataclass

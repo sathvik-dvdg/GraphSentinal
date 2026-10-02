@@ -88,3 +88,24 @@ def test_train_runs_end_to_end_and_writes_only_where_told(tmp_path, monkeypatch)
     for k in ("weights", "model_card", "torchscript"):
         assert status[k] and not str(status[k]).startswith("FAILED"), (k, status[k])
     assert not absent.exists()
+
+    # --- with a local mirror (Colab), Drive gets last.pt only every Nth epoch -
+    # Per-epoch saves are local-only so the Drive mount is not overwritten 40
+    # times; every Nth epoch they also go to the primary path, so a recycled
+    # runtime loses at most N epochs instead of all of them.
+    import torch
+    absent.mkdir()                               # the mirror root now exists
+    primary_last = c.checkpoint_path / "last.pt"
+
+    def epoch_on_drive():
+        return torch.load(primary_last, map_location="cpu", weights_only=False)["epoch"]
+
+    assert epoch_on_drive() == 1
+    c.train.epochs, c.train.drive_checkpoint_every = 2, 0
+    train_mod.train(c, resume=True, verbose=False)
+    assert torch.load(absent / "gs_ckpt" / "last.pt", weights_only=False)["epoch"] == 2
+    assert epoch_on_drive() == 1, "epoch 2 must have stayed on local disk"
+
+    c.train.epochs, c.train.drive_checkpoint_every = 3, 3
+    train_mod.train(c, resume=True, verbose=False)
+    assert epoch_on_drive() == 3, "epoch 3 is an Nth epoch and must reach the primary path"

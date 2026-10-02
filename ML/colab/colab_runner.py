@@ -284,8 +284,96 @@ def print_plan(env: Env, always: tuple = ("audit_gate", "package")) -> None:
 # --------------------------------------------------------------------------
 # CELL A
 # --------------------------------------------------------------------------
+def preflight(env: Env, cfg, verdict: dict) -> list:
+    """Exercise every Colab-only path NOW, in the two-minute cell.
+
+    Each of these would otherwise fail for the first time inside Cell B, some of
+    them at stage 3 of a long run. Only the browser download cannot be tried
+    here; it is the last thing Cell B does and the cheapest to retry.
+    """
+    import timestamp_audit as ta
+    checks: list = []
+
+    def add(status, what, detail=""):
+        checks.append({"status": status, "check": what, "detail": str(detail)})
+
+    add("PASS", "Drive mounted, project folder resolved" if env.is_colab
+        else "project folder (not on Colab)", env.base)
+
+    try:
+        build = json.loads((BUNDLE / "BUILD.json").read_text(encoding="utf-8"))
+        add("WARN" if build.get("dirty") else "PASS", "bundle installed",
+            f"built from commit {str(build.get('commit'))[:10]}"
+            + (" -- from a DIRTY tree" if build.get("dirty") else "")
+            + ("" if build.get("has_sample_generator") else
+               "; no sample generator, so stages 6 and 7 will be skipped"))
+    except Exception as exc:
+        add("FAIL", "bundle installed", f"BUILD.json unreadable: {exc}")
+
+    try:
+        if env.is_colab:
+            ensure_deps()                       # the pip path, tried here
+        import pyarrow
+        import torch
+        import torch_geometric
+        from graphsentinel.data.preprocess import clock_tag
+        from graphsentinel.train import train  # noqa: F401  (imports the whole stack)
+        add("PASS", "dependencies import",
+            f"torch {torch.__version__}, torch-geometric {torch_geometric.__version__}, "
+            f"pyarrow {pyarrow.__version__}; cache tag {clock_tag(cfg)}")
+    except Exception as exc:
+        add("FAIL", "dependencies import", f"{type(exc).__name__}: {exc}")
+
+    csvs = sorted(f.name for f in env.dataset.glob("*.csv"))
+    missing = [f for f in ta.TRAINING_FILES if f not in csvs]
+    add("FAIL" if missing else "PASS",
+        f"cfg built from the model card; dataset folder holds {len(csvs)} CSVs",
+        (f"MISSING {missing}; " if missing else "") + ", ".join(csvs))
+
+    try:
+        probe = env.state / "preflight_write_probe.json"
+        write_json(probe, {"session": SESSION, "at": _now()})
+        add("PASS", "run folder is writable and reads back", env.run_dir)
+    except Exception as exc:
+        add("FAIL", "run folder is writable and reads back", f"{type(exc).__name__}: {exc}")
+
+    try:
+        free_gb = shutil.disk_usage(env.local if env.local.exists() else env.local.parent).free / 1e9
+        add("PASS" if free_gb >= 5 else "WARN", "free local disk",
+            f"{free_gb:.1f} GB" + ("" if free_gb >= 5 else " -- graphs and checkpoints need a few GB"))
+    except Exception as exc:
+        add("WARN", "free local disk", f"could not measure: {exc}")
+
+    try:
+        import torch
+        if torch.cuda.is_available():
+            add("PASS", "GPU present", torch.cuda.get_device_name(0))
+        else:
+            add("WARN", "GPU present",
+                "NO GPU on this runtime. That is fine for Cell A. Before Cell B: "
+                "Runtime > Change runtime type > T4 GPU. Cell B refuses without one.")
+    except Exception as exc:
+        add("WARN", "GPU present", f"could not check: {exc}")
+
+    add("PASS" if verdict.get("clean") else "FAIL", "audit verdict",
+        ("CLEAN -- " if verdict.get("clean") else "NOT CLEAN -- ") + str(verdict.get("reason")))
+
+    print(f"\n{BAR}\n  PREFLIGHT   (what Cell B depends on, checked now)\n{BAR}")
+    for c in checks:
+        print(f"  [{c['status']:<4s}] {c['check']}")
+        if c["detail"]:
+            print(f"         {c['detail'][:300]}")
+    print(BAR)
+    try:
+        write_json(env.logs / "preflight.json", {"session": SESSION, "at_utc": _now(), "checks": checks})
+    except Exception:
+        pass
+    return checks
+
+
 def cell_a(env: Env | None = None) -> dict:
-    """Audit every CSV in the dataset folder; write the verdict Cell B reads."""
+    """Audit every CSV in the dataset folder, write the verdict Cell B reads,
+    and end with a preflight of everything Cell B depends on."""
     env = env or colab_env()
     import timestamp_audit as ta
 
@@ -295,8 +383,15 @@ def cell_a(env: Env | None = None) -> dict:
     v = json.loads((env.local_logs / ta.VERDICT_NAME).read_text(encoding="utf-8"))
     ensure_file(env.logs / ta.VERDICT_NAME, env.local_logs / ta.VERDICT_NAME)
     ensure_file(env.logs / "timestamp_audit.json", env.local_logs / "timestamp_audit.json")
-    print("\nNEXT: " + ("run Cell B." if v["clean"] else
-                        "do NOT run Cell B -- it will refuse. Send timestamp_audit.json back."))
+
+    checks = preflight(env, cfg, v)
+    failed = [c["check"] for c in checks if c["status"] == "FAIL"]
+    warned = [c["check"] for c in checks if c["status"] == "WARN"]
+    if failed:
+        print(f"\nNEXT: do NOT run Cell B. Failed: {failed}. Send this output back.")
+    else:
+        print("\nNEXT: run Cell B" + (f" (after dealing with: {warned})." if warned else "."))
+    v["preflight"] = checks
     return v
 
 
@@ -419,8 +514,8 @@ def stage_threshold_study(env: Env, cfg) -> None:
     study = json.loads(out["threshold_study.json"].read_text(encoding="utf-8"))
     for key in ("binary_gate", "alert_min_flows", "alert_window_seconds"):
         if key not in study:
-            raise RuntimeError(f"threshold_study.json has no {key!r}: the backend would "
-                               "load it as unverified")
+            raise RuntimeError(f"threshold_study.json has no {key!r}: the backend's "
+                               "load_operating_points() raises on a file without it")
     out["threshold_study_output.txt"] = env.logs / "threshold_study_output.txt"
     mark(env, "threshold_study", out, binary_gate=study["binary_gate"],
          alert_min_flows=study["alert_min_flows"])
@@ -507,7 +602,24 @@ def build_stage_tree(env: Env) -> Path:
     return root
 
 
+def _dir_digest(d: Path) -> dict:
+    return {f.name: sha256(f) for f in sorted(d.glob("*")) if f.is_file()} if d.is_dir() else {}
+
+
 def stage_sample(env: Env, cfg) -> None:
+    """Regenerate the test sample by EXECUTING the generator as the Colab cell
+    it is, with ``cfg`` in scope.
+
+    make_testdata_sample.py is not a script. It asserts ``cfg`` exists, reads
+    the CSVs from ``cfg.dataset_path`` and writes to
+    ``Path(cfg.base_dir) / "testdata"``. So it gets a COPY of the config whose
+    base_dir is the retrain folder: run with the real base_dir it would write
+    over the pre-fix sample in <project>/testdata, the one thing this run must
+    not touch. The dataset stays reachable because dataset_dir is made absolute.
+    """
+    import copy
+    import re
+
     gen = ML / "make_testdata_sample.py"
     if not gen.exists():
         reason = ("make_testdata_sample.py is not in the bundle. It has never been "
@@ -515,23 +627,52 @@ def stage_sample(env: Env, cfg) -> None:
         print(f"sample: SKIPPED -- {reason}")
         mark(env, "sample", skipped=reason)
         return
-    root = build_stage_tree(env)
-    sample = root / "ML" / "testdata" / "cicids2017_sample.csv"
-    before = sha256(sample) if sample.exists() else None
-    e = dict(os.environ, GS_DATASET_DIR=str(env.dataset), PYTHONIOENCODING="utf-8")
-    r = subprocess.run([sys.executable, "ML/make_testdata_sample.py"], cwd=root, env=e,
-                       capture_output=True, text=True)
-    (env.local_logs / "sample_output.txt").write_text(r.stdout + "\n" + r.stderr, encoding="utf-8")
-    print(r.stdout[-3000:])
-    if r.returncode or not sample.exists() or sha256(sample) == before:
+
+    c = copy.deepcopy(cfg)
+    c.data.dataset_dir = str(env.dataset)          # absolute: survives the base_dir change
+    c.base_dir = str(env.run_dir)
+    assert Path(c.dataset_path) == env.dataset, (c.dataset_path, env.dataset)
+    out_dir = env.run_dir / "testdata"
+    protected = env.base / "testdata"
+    protected_before = _dir_digest(protected)
+    out_before = _dir_digest(out_dir)
+
+    log = env.local_logs / "sample_output.txt"
+    with tee_stdout(log):
+        try:
+            exec(compile(gen.read_text(encoding="utf-8"), "make_testdata_sample.py", "exec"),
+                 {"cfg": c, "__name__": "__main__"})
+        except SystemExit as exc:
+            raise RuntimeError(f"make_testdata_sample.py stopped: {exc}") from exc
+    ensure_file(env.logs / "sample_output.txt", log)
+
+    if _dir_digest(protected) != protected_before:
         raise RuntimeError(
-            "make_testdata_sample.py did not produce a new ML/testdata/cicids2017_sample.csv "
-            f"(exit {r.returncode}). The runner calls it with no arguments, from the repo "
-            "root, with GS_DATASET_DIR set; adjust the call in stage_sample to its interface.\n"
-            + r.stderr[-2000:])
-    dst = ensure_file(env.run_dir / "testdata" / "cicids2017_sample.csv", sample)
-    copy_verified(sample, dst)
-    mark(env, "sample", {"cicids2017_sample.csv": dst}, sample_sha256=sha256(dst))
+            f"make_testdata_sample.py changed {protected}, the PRE-FIX sample folder. "
+            "It was given base_dir = the retrain folder and must not write there.")
+    new = [f for f in sorted(out_dir.glob("*.csv")) if out_before.get(f.name) != sha256(f)]
+    if len(new) != 1:
+        raise RuntimeError(
+            f"expected exactly one new sample CSV in {out_dir}, found "
+            f"{[f.name for f in new]}. The generator is documented as writing to "
+            "Path(cfg.base_dir) / 'testdata'; adjust stage_sample if it writes elsewhere.")
+    sample = out_dir / "cicids2017_sample.csv"
+    if new[0] != sample:
+        copy_verified(new[0], sample)
+
+    text = log.read_text(encoding="utf-8")
+    m = (re.search(r"MIXED windows\D{0,20}(\d+)", text, flags=re.I)
+         or re.search(r"(\d+)\s+MIXED windows", text, flags=re.I))
+    mixed = int(m.group(1)) if m else None
+    if mixed is None:
+        print("sample: WARNING -- no 'MIXED windows' count found in the generator's output")
+    elif mixed < 5:
+        print(f"sample: WARNING -- only {mixed} MIXED windows; Phase 2b may not be able "
+              "to register edge-feature damage on this sample")
+    mark(env, "sample", {"cicids2017_sample.csv": sample},
+         sample_sha256=sha256(sample), generator_wrote=new[0].name,
+         mixed_windows=mixed,
+         mixed_windows_sufficient=(mixed is not None and mixed >= 5))
 
 
 def stage_phase2b(env: Env, cfg) -> None:
@@ -570,6 +711,13 @@ def stage_phase2b(env: Env, cfg) -> None:
             record["gate"] = (r.stdout + r.stderr).strip().splitlines()[-12:]
             print("phase2b: the gate refused the live-path run (recorded; not an error).")
     mark(env, "phase2b", out, **record)
+
+
+def _read_json(path: Path):
+    try:
+        return json.loads(path.read_text(encoding="utf-8"))
+    except Exception:
+        return None
 
 
 def _stage_records(env: Env) -> dict:
@@ -658,6 +806,11 @@ def stage_package(env: Env, cfg) -> Path:
         "environment": {"python": platform.python_version(), "torch": torch_version,
                         "gpu": gpu, "colab": env.is_colab},
         "stages": _stage_records(env),
+        # The only measure of whether the new sample can support Phase 2b at all.
+        "sample_mixed_windows": (read_marker(env, "sample") or {}).get("mixed_windows"),
+        "sample_mixed_windows_sufficient": (read_marker(env, "sample") or {}).get(
+            "mixed_windows_sufficient"),
+        "preflight": _read_json(env.logs / "preflight.json"),
         "artefact_sha256": digests,
         "not_in_this_zip": [k for k in (
             "ML/phase2b_sensitivity.json", "ML/phase2b_results.json",
