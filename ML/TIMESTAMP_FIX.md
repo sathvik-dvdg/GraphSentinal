@@ -140,6 +140,14 @@ file `MANIFEST.json` names, when the manifest's headline numbers differ from
 9. **Rewrite** `INTEGRATION.md` §3, §4 and §10, the backend strings listed
    below, the project report and the shared page.
 
+**Steps 1 and 3 to 8 are two Colab cells.** `ML/colab/` holds them: Cell A is
+the audit and writes a machine-readable verdict; Cell B refuses to start unless
+that verdict is clean, then retrains, runs the threshold study and the section
+12 probes, regenerates the sample, runs the Phase 2b control, and writes one
+zip with every artefact at its repository path. It is resumable by stage. See
+`ML/colab/README.md`. The zip carries a regenerated `MANIFEST.json`; the
+container load check in step 4, and steps 2 and 9, are done in the repository.
+
 Step 7 comes before step 8 on purpose. A control run on the old sample is
 refused by the gate as soon as the sample is regenerated, because its sha256
 changes.

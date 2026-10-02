@@ -55,6 +55,17 @@ import pandas as pd
 
 PM_HOURS = (1, 7)          # must equal cfg.data.pm_hours
 
+#: The files the model is trained on. The verdict is about THESE; Monday and
+#: Thursday are audited and reported too, but they are evaluation data.
+TRAINING_FILES = (
+    "Tuesday-WorkingHours.pcap_ISCX.csv",
+    "Wednesday-workingHours.pcap_ISCX.csv",
+    "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+    "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+    "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv",
+)
+VERDICT_NAME = "timestamp_audit_verdict.json"
+
 # ---- a deliberate copy of graphsentinel.data.preprocess -------------------
 # tests/test_pipeline.py::test_audit_script_parses_exactly_like_the_package
 # fails if this drifts from the package.
@@ -175,7 +186,67 @@ def audit(path: Path, pm_hours=PM_HOURS, pkg=None) -> dict:
     }
 
 
-def run(paths, out_dirs=(), pm_hours=PM_HOURS) -> list:
+def verdict(results, package_state, pm_hours=PM_HOURS,
+            required_files=TRAINING_FILES) -> dict:
+    """The audit as one machine-readable answer: may the retrain start?
+
+    ``clean`` is True only when ALL of these hold:
+      * every training file was audited without error;
+      * no calendar day mixes the two clocks (the per-day rule would silently
+        leave such a day misparsed);
+      * the installed package, if it has the fix, agrees with this script on
+        every row;
+      * the fix actually moves rows in the training files. If it moves none,
+        the defect is not present at full scale and a retrain would reproduce
+        the model that already exists.
+
+    The retrain cell reads this and refuses to start unless ``clean`` is True.
+    A person is not the thing that checks whether the audit passed.
+    """
+    import time
+    ok = [r for r in results if "error" not in r]
+    by_name = {r["file"]: r for r in ok}
+    errors = [f"{r['file']}: {r['error']}" for r in results if "error" in r]
+    missing = [f for f in required_files if f not in by_name]
+    mixed = [f"{r['file']} {d['day']}" for r in ok for d in r["days"] if d["MIXED"]]
+    drift = [r["file"] for r in ok
+             if r.get("package_check") and not r["package_check"]["agrees"]]
+    moved = sum(by_name[f]["rows_moved_by_fix"] for f in required_files if f in by_name)
+
+    reasons = []
+    if missing:
+        reasons.append(f"training files not audited: {missing}")
+    if errors:
+        reasons.append(f"files that could not be read: {errors}")
+    if mixed:
+        reasons.append(f"{len(mixed)} calendar day(s) mix the 12-hour and 24-hour "
+                       f"clocks; the per-day rule must become per-row first")
+    if drift:
+        reasons.append(f"the installed package and this script parse {drift} differently")
+    if not (missing or errors) and moved == 0:
+        reasons.append("the fix moves 0 rows in the training files: the defect is "
+                       "not present at full scale, so a retrain would change nothing")
+    return {
+        "clean": not reasons,
+        "reason": "; ".join(reasons) or (
+            f"no mixed-clock day, no package disagreement, and the fix moves "
+            f"{moved:,} rows in the training files"),
+        "mixed_days": mixed,
+        "package_state": package_state,
+        "package_disagreements": drift,
+        "missing_training_files": missing,
+        "rows_moved_training_files": moved,
+        "pm_hours": [int(pm_hours[0]), int(pm_hours[1])],
+        "files": [{"file": r["file"], "rows": r["rows"], "hour_ge_13": r["hour_ge_13"],
+                   "pm_window_rows": r["pm_window_rows"],
+                   "am_pm_tokens": r["rows_with_am_pm_token"],
+                   "rows_moved_by_fix": r["rows_moved_by_fix"],
+                   "is_training_file": r["file"] in required_files} for r in ok],
+        "audited_at_utc": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
+    }
+
+
+def run(paths, out_dirs=(), pm_hours=PM_HOURS, required_files=TRAINING_FILES) -> list:
     files = []
     for p in map(Path, paths):
         files += sorted(p.glob("*.csv")) if p.is_dir() else [p]
@@ -247,13 +318,19 @@ def run(paths, out_dirs=(), pm_hours=PM_HOURS) -> list:
         print(f"  PACKAGE CHECK: not performed (package {state}).")
     print("=" * 74)
 
+    v = verdict(results, state, pm_hours, required_files)
+    print(f"  VERDICT: {'CLEAN -- the retrain may start' if v['clean'] else 'NOT CLEAN -- the retrain will refuse to start'}")
+    print(f"  {v['reason']}")
+    print("=" * 74)
+
     for d in list(out_dirs) or [Path.cwd()]:
         try:
             dest = Path(d) / "timestamp_audit.json"
             dest.parent.mkdir(parents=True, exist_ok=True)
-            dest.write_text(json.dumps({"package_state": state, "files": results},
-                                       indent=2), encoding="utf-8")
-            print(f"wrote {dest}")
+            dest.write_text(json.dumps({"package_state": state, "verdict": v,
+                                        "files": results}, indent=2), encoding="utf-8")
+            (Path(d) / VERDICT_NAME).write_text(json.dumps(v, indent=2), encoding="utf-8")
+            print(f"wrote {dest} and {VERDICT_NAME}")
         except OSError as exc:
             print(f"could not write to {d}: {exc}")
     return results
