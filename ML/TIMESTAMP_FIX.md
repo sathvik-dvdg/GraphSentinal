@@ -320,6 +320,15 @@ What it hid, measured rather than assumed:
 
 The write path stands on its own merits.
 
+**The finding is the luck, not the clean result.** The suite carried an order
+dependency that nobody had declared. It passed only because no test that wrote
+a checkpoint ran after position 67. Adding one such test, or running the suite
+in random order, would have broken it, and the failure would have pointed at
+the new test, not at the one that leaked. `monkeypatch` removes the dependency
+instead of documenting it. The general lesson is separate from the one above:
+a suite that passes in one order has shown nothing about the other orders, and
+a test that changes shared state must be unable to leave it changed.
+
 The guards added in this change were each run against the original failure:
 the `/content` scan asserts it flags the old line, the manifest guard has a
 test that swaps the weights, the smoke test was run with the old line restored,
