@@ -52,11 +52,56 @@ _TS_FORMATS = (
 )
 
 
-def _parse_timestamps(series: pd.Series) -> pd.Series:
+_MERIDIEM = r"(?i)\b[ap]\.?m\b"
+
+
+def _fix_12h_working_hours(parsed: pd.Series, raw: pd.Series,
+                           pm_hours=(1, 7)) -> pd.Series:
+    """Move 12-hour afternoon times that carry no AM/PM marker back to the afternoon.
+
+    THE BUG THIS FIXES. Most TrafficLabelling_ files stamp flows on a 12-hour
+    clock with NO meridiem: the Friday-Afternoon DDoS is written "7/7/2017 3:57".
+    The two %p formats in _TS_FORMATS need an AM/PM token, so that string is
+    parsed -- successfully -- by "%d/%m/%Y %H:%M" as 03:57, which sorts the
+    afternoon attack BEFORE the Friday-morning Botnet at 10:42. Every split,
+    window, dt feature and memory update is built on that order.
+
+    THE RULE, per calendar day so a 24-hour file is never touched: a day is on
+    the 12-hour clock when no row on it shows an hour >= 13 and no row carries an
+    AM/PM token. On such a day, hours inside ``pm_hours`` (default 1..7) are
+    moved 12 hours later. That window is an ASSUMPTION ABOUT THE CAPTURE
+    SCHEDULE (cfg.data.pm_hours): a business-hours capture records nothing at
+    01:00-07:00, so those hours can only be afternoon. It would be wrong for
+    a 24-hour capture.
+
+    KNOWN BLIND SPOT, which ML/timestamp_audit.py exists to check: a day that
+    MIXES the two clocks. One genuine 24-hour row at 13:00 or later unflags
+    the whole day and its 12-hour rows stay misparsed, silently. The tell is a
+    day holding both hour >= 13 rows and pm_hours rows; the audit flags it.
+    If that flag ever fires, this rule has to become per-row.
+
+    The number of rows moved is left in ``.attrs["shifted_12h"]`` so the caller
+    can report it; a silent correction of this size would be its own defect.
+    """
+    hour = parsed.dt.hour
+    marked = raw.str.contains(_MERIDIEM, regex=True, na=False)
+    day = parsed.dt.normalize()
+    is_24h_day = ((hour >= 13) | marked).groupby(day, dropna=False).transform("any")
+    lo, hi = int(pm_hours[0]), int(pm_hours[1])
+    shift = parsed.notna() & ~is_24h_day & (hour >= lo) & (hour <= hi)
+    out = parsed + pd.to_timedelta(shift.astype("int64") * 12, unit="h")
+    out.attrs["shifted_12h"] = int(shift.sum())
+    return out
+
+
+def _parse_timestamps(series: pd.Series, fix_12h: bool = True,
+                      pm_hours=(1, 7)) -> pd.Series:
     """Robust vectorised timestamp parsing.
 
     Tries each known format across the whole column at once and keeps the one
     that resolves the most rows, then fills stragglers with a general parse.
+    ``fix_12h=False`` reproduces the pre-fix behaviour that every artefact
+    dated before the fix was built with -- see ML/TIMESTAMP_FIX.md.
     """
     s = series.astype(str).str.strip()
     best: Optional[pd.Series] = None
@@ -74,7 +119,62 @@ def _parse_timestamps(series: pd.Series) -> pd.Series:
             warnings.simplefilter("ignore")
             fallback = pd.to_datetime(s, errors="coerce", dayfirst=True)
         best = best.fillna(fallback)
-    return best
+    return _fix_12h_working_hours(best, s, pm_hours) if fix_12h else best
+
+
+def clock_tag(cfg: Config) -> str:
+    """Cache-name suffix for the clock fix: '' (old parse) or e.g. '_pm1-7'."""
+    if not cfg.data.fix_12h_clock:
+        return ""
+    return f"_pm{int(cfg.data.pm_hours[0])}-{int(cfg.data.pm_hours[1])}"
+
+
+#: The cfg fields that change the GRAPHS built from a given set of rows. One
+#: digest over them, so a control and the run it certifies can be compared in
+#: one line. Add a field here the day the builder starts reading it.
+_GRAPH_SHAPING_FIELDS = {
+    "data": ("taxonomy", "fix_12h_clock", "pm_hours", "drop_duplicates",
+             "clip_quantile", "edge_feature_cols", "volumetric_cols",
+             "drop_edge_features"),
+    "graph": ("window_seconds", "window_stride_seconds", "min_edges_per_graph",
+              "max_edges_per_graph", "node_key", "subnet_fallback_prefix",
+              "add_reverse_edges"),
+}
+
+
+def preprocessing_settings(cfg: Config) -> dict:
+    return {sec: {k: getattr(getattr(cfg, sec), k) for k in keys}
+            for sec, keys in _GRAPH_SHAPING_FIELDS.items()}
+
+
+def _canonical(v):
+    """A value in ONE spelling, whatever produced it.
+
+    The digest must move only when a setting moves. Left to ``json.dumps`` or
+    ``repr`` it would also move when a tuple became a list, when 60 came back
+    from JSON as 60.0, or when a float printed differently -- and a digest that
+    moves for no reason forces a pointless control re-run and teaches people
+    to pass --overwrite.
+    """
+    if isinstance(v, bool) or v is None or isinstance(v, str):
+        return v
+    if isinstance(v, (int, float)):
+        f = float(v)
+        return int(f) if f.is_integer() else format(f, ".12g")
+    if isinstance(v, dict):
+        return {str(k): _canonical(x) for k, x in sorted(v.items(), key=lambda kv: str(kv[0]))}
+    if isinstance(v, (list, tuple)):
+        return [_canonical(x) for x in v]
+    raise TypeError(f"no canonical form for {type(v).__name__}: {v!r}")
+
+
+def preprocessing_digest(cfg: Config) -> str:
+    """sha256 over the settings that shape the graphs, canonically serialised."""
+    import hashlib
+    import json
+    payload = json.dumps(_canonical(preprocessing_settings(cfg)), sort_keys=True,
+                         separators=(",", ":"), ensure_ascii=True)
+    return hashlib.sha256(payload.encode("ascii")).hexdigest()
 
 
 def load_raw(
@@ -153,7 +253,12 @@ def load_raw(
     del frames
 
     # --- timestamps ------------------------------------------------------
-    data[TIMESTAMP_COLUMN] = _parse_timestamps(data[TIMESTAMP_COLUMN])
+    _ts = _parse_timestamps(data[TIMESTAMP_COLUMN], fix_12h=cfg.data.fix_12h_clock,
+                            pm_hours=cfg.data.pm_hours)
+    if verbose and cfg.data.fix_12h_clock:
+        print(f"  12-hour clock fix: moved {_ts.attrs.get('shifted_12h', 0):,} "
+              f"afternoon rows that carried no AM/PM marker")
+    data[TIMESTAMP_COLUMN] = _ts
     n_bad_ts = int(data[TIMESTAMP_COLUMN].isna().sum())
     if n_bad_ts:
         if verbose:
@@ -566,7 +671,12 @@ def build_splits(
         # bursts that were the entire point. Measured 2026-08-29 (run 10):
         # BruteForce came out at exactly 2,301 edges (SSH-Patator alone,
         # missing FTP-Patator) and DoS at exactly 105,629 (Hulk alone).
-        name: cfg.processed_path / f"{name}_{cfg.data.taxonomy}_{cfg.data.split_strategy}.parquet"
+        # The clock fix is part of the key for the same reason: a parquet
+        # written under the old parse has its afternoon rows in the morning,
+        # and reusing it would report the pre-fix split as the post-fix one.
+        name: cfg.processed_path / (
+            f"{name}_{cfg.data.taxonomy}_{cfg.data.split_strategy}"
+            f"{clock_tag(cfg)}.parquet")
         for name in ("train", "val", "test")
     }
 

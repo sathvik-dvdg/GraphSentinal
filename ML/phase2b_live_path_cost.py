@@ -269,6 +269,44 @@ model.eval()
 
 PIN_IDX = [EDGE_FEATURE_NAMES.index(n) for n in PINNED_ONE]
 ZERO_IDX = [EDGE_FEATURE_NAMES.index(n) for n in ZEROED]
+
+# ---------------------------------- the sensitivity gate, fourth check ------
+# The three digests checked above pin FILES. None of them moves when the way
+# those files become graphs changes -- and the 12-hour clock fix does exactly
+# that: same sample bytes, different window order, different dt features. A
+# control recorded under the old parse would have certified this run on graphs
+# it never saw. The check sits here rather than with the other three only
+# because the digest needs `cfg`, which needs the package import.
+_pp_sha = pre.preprocessing_digest(cfg)
+if SENS.exists():
+    # Checked even when an earlier check was overridden, so a forced run still
+    # records EVERY reason its control does not cover it.
+    _rec = _s.get("inputs", {}).get("preprocessing_sha256")
+    if _rec != _pp_sha:
+        _earlier = _gate if _gate.startswith("OVERRIDDEN") else ""
+        _gate_fail(f"{SENS.name} was run under different preprocessing settings "
+                   f"({str(_rec)[:12]}... vs {_pp_sha[:12]}...)")
+        if _earlier:
+            _gate = f"{_earlier} AND {_gate}"
+
+# Same protection for the RESULTS record. The sample-digest check at the top
+# cannot tell a pre-fix run from a post-fix one -- the sample is byte-identical
+# -- so without this a post-fix run would silently replace the pre-fix record
+# that TIMESTAMP_FIX.md and INTEGRATION.md cite.
+if _out.exists() and not OVERWRITE:
+    try:
+        _prev_pp = json.loads(_out.read_text(encoding="utf-8")).get("preprocessing_sha256")
+    except Exception:
+        _prev_pp = None
+    if _prev_pp != _pp_sha:
+        raise SystemExit(
+            f"{_out.name} already holds a run made under DIFFERENT preprocessing "
+            f"settings ({_prev_pp or 'not recorded -- predates the 12-hour clock fix'}).\n\n"
+            f"  Running now would replace that record. Keep it first:\n"
+            f"    git mv ML/phase2b_results.json ML/phase2b_sensitivity.json "
+            f"ML/phase2b_runs/<name>/\n"
+            f"  and update the paths INTEGRATION.md and TIMESTAMP_FIX.md cite.\n\n"
+            f"  To replace it deliberately, pass --overwrite.")
 print(f"model loaded | classes {CLASS_NAMES}")
 print(f"poll {POLL_SECONDS}s | idle_timeout {IDLE_TIMEOUT}s "
       f"({'OPTIMISTIC -- real re-counting is heavier' if not IDLE_TIMEOUT else 'from measurement'})")
@@ -279,7 +317,8 @@ raw = pd.read_csv(SAMPLE, low_memory=False, encoding="latin-1", on_bad_lines="sk
 raw.columns = [str(c).strip() for c in raw.columns]
 raw["Label"] = raw["Label"].astype(str).str.strip().map(pre.RAW_LABEL_MAP)
 raw = raw[raw["Label"].notna()].copy()
-raw["Timestamp"] = pre._parse_timestamps(raw["Timestamp"])
+raw["Timestamp"] = pre._parse_timestamps(
+    raw["Timestamp"], fix_12h=cfg.data.fix_12h_clock, pm_hours=cfg.data.pm_hours)
 raw = raw[raw["Timestamp"].notna()].sort_values("Timestamp", kind="mergesort")
 raw["t"] = raw["Timestamp"].to_numpy(dtype="datetime64[s]").astype("int64")
 raw = pre.clean(raw, cfg, verbose=False)
@@ -660,6 +699,8 @@ out.write_text(json.dumps({
     "headline_view": HEADLINE,
     "sensitivity_gate": _gate,
     "sample_sha256": _sample_sha,
+    "preprocessing_sha256": _pp_sha,
+    "preprocessing_settings": pre.preprocessing_settings(cfg),
     "poll_seconds": POLL_SECONDS, "idle_timeout": IDLE_TIMEOUT,
     "idle_timeout_is_optimistic": not IDLE_TIMEOUT,
     "n_flows_in_sample": N_TOTAL,

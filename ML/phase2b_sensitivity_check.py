@@ -78,7 +78,8 @@ raw.columns = [str(c).strip() for c in raw.columns]
 n_rows_in_file = len(raw)
 raw["Label"] = raw["Label"].astype(str).str.strip().map(pre.RAW_LABEL_MAP)
 raw = raw[raw["Label"].notna()].copy()
-raw["Timestamp"] = pre._parse_timestamps(raw["Timestamp"])
+raw["Timestamp"] = pre._parse_timestamps(
+    raw["Timestamp"], fix_12h=cfg.data.fix_12h_clock, pm_hours=cfg.data.pm_hours)
 raw = raw[raw["Timestamp"].notna()].sort_values("Timestamp", kind="mergesort")
 raw["t"] = raw["Timestamp"].to_numpy(dtype="datetime64[s]").astype("int64")
 raw = pre.clean(raw, cfg, verbose=False)
@@ -158,6 +159,12 @@ result = {
                    "rows_in_file": n_rows_in_file, "rows_after_preprocessing": int(len(raw))},
         "model_card_sha256": sha256(MODEL_DIR / "model_card.json"),
         "weights_sha256": sha256(MODEL_DIR / "weights.pt"),
+        # The three digests above pin FILES. They cannot see a change in how
+        # those files are turned into graphs: the 12-hour clock fix reorders
+        # the windows without touching one byte of the sample. This digest
+        # pins the settings that shape the graphs, and the 2b gate compares it.
+        "preprocessing_sha256": pre.preprocessing_digest(cfg),
+        "preprocessing_settings": pre.preprocessing_settings(cfg),
     },
     "windows": len(graphs),
     "real_edges": int(len(y)),

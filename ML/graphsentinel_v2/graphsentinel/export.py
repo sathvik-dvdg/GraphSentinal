@@ -49,6 +49,7 @@ from .data.graph_builder import (
 from .data.ports import vocab_summary
 from .inference.ema_scaler import EMAScaler
 from .models.net import GraphSentinelNet
+from .utils.scratch import local_scratch
 
 
 def _git_sha() -> Optional[str]:
@@ -217,13 +218,7 @@ _LOCAL_MODEL_DIR = Path("/content/gs_models")
 
 
 def _mirror_dir() -> Optional[Path]:
-    if not Path("/content").is_dir():
-        return None
-    try:
-        _LOCAL_MODEL_DIR.mkdir(parents=True, exist_ok=True)
-        return _LOCAL_MODEL_DIR
-    except OSError:
-        return None
+    return local_scratch(_LOCAL_MODEL_DIR.name)
 
 
 def _fsync_path(p: Path) -> None:

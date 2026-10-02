@@ -258,6 +258,20 @@ class DataConfig:
         default_factory=lambda: ["Flow Bytes/s", "Flow Packets/s"]
     )
 
+    # Treat marker-less 12-hour afternoon timestamps as afternoon (see
+    # preprocess._fix_12h_working_hours). False reproduces the parse that the
+    # epoch-31 checkpoint and every artefact listed in ML/TIMESTAMP_FIX.md
+    # were built with. It is part of the split and graph cache keys.
+    fix_12h_clock: bool = True
+    # Inclusive hour range that is read as AFTERNOON on a 12-hour day, so
+    # [1, 7] maps 1..7 to 13..19. THIS IS AN ASSUMPTION ABOUT THE CAPTURE
+    # SCHEDULE, not a property of timestamps: it is right for CICIDS2017
+    # because the captures ran business hours, so nothing was recorded at
+    # 01:00-07:00. Hour 8 is "8 am" only because nothing ran at 20:00. On a
+    # 24-hour capture this would silently move genuine night traffic -- set
+    # fix_12h_clock = False there.
+    pm_hours: List[int] = field(default_factory=lambda: [1, 7])
+
     clip_quantile: float = 0.999  # computed per split, never from train->test
     drop_duplicates: bool = True
 

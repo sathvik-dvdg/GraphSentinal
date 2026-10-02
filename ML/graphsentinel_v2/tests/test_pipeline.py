@@ -1011,8 +1011,8 @@ def test_training_log_write_is_atomic_mirrored_and_non_fatal():
     src = inspect.getsource(train_mod.train)
     assert "os.replace" in src, \
         "the log must be written atomically, not truncated in place"
-    assert "/content/gs_logs" in src, \
-        "the log must be mirrored to local disk, off the Drive mount"
+    assert src.count("_log_dirs(cfg)") == 2, \
+        "the log AND the test report must both go through _log_dirs"
     # the write sits inside a try/except that only prints
     block = src[src.index("_rows = pd.DataFrame(history)"):]
     block = block[:block.index("\n\n", 200)] if "\n\n" in block[200:] else block
@@ -1362,7 +1362,7 @@ def test_small_window_reports_unscored_not_clean():
     assert res.n_flows == 5, "the flows must still be counted, just not scored"
 
 
-def test_model_card_labels_which_split_its_metrics_came_from():
+def test_model_card_labels_which_split_its_metrics_came_from(tmp_path):
     """train() stores VALIDATION metrics in the checkpoint and export_all
     copies them into the card under the same key names test_report.json uses
     for TEST metrics. Unlabelled, that invites quoting validation (edge macro
@@ -1373,8 +1373,9 @@ def test_model_card_labels_which_split_its_metrics_came_from():
     from graphsentinel.models.net import build_model
     from graphsentinel.export import export_all
 
-    d = Path(tempfile.mkdtemp())
+    d = tmp_path
     cfg = Config()
+    cfg.model.memory_capacity = 4096      # the card, not the buffer, is under test
     cfg.export.export_onnx = False
     export_all(cfg, build_model(cfg), out_dir=d, metrics={"edge_macro_f1": 0.5},
                verbose=False)
@@ -1385,7 +1386,7 @@ def test_model_card_labels_which_split_its_metrics_came_from():
         "no scalers were passed, so the card must not claim they shipped"
 
 
-def test_engine_refuses_a_card_whose_class_list_does_not_match():
+def test_engine_refuses_a_card_whose_class_list_does_not_match(tmp_path):
     """CLASS_NAMES is a mutable global rewritten in place by Config.from_dict.
     Read before that happens, the stale six-class list shifts every index:
     1 DDoS->Volumetric_Flood, 3 Botnet->BruteForce, 4 SSHBrute->Botnet. A
@@ -1398,8 +1399,9 @@ def test_engine_refuses_a_card_whose_class_list_does_not_match():
     from graphsentinel.export import export_all
     from graphsentinel.inference.engine import InferenceEngine
 
-    d = Path(tempfile.mkdtemp())
+    d = tmp_path
     cfg = Config()
+    cfg.model.memory_capacity = 4096
     cfg.data.taxonomy = "flood4"
     cfg.sync_taxonomy()
     cfg.export.export_onnx = False
@@ -1414,7 +1416,7 @@ def test_engine_refuses_a_card_whose_class_list_does_not_match():
         InferenceEngine.from_artifacts(d)
 
 
-def test_fsync_never_leaks_a_descriptor_when_it_raises():
+def test_fsync_never_leaks_a_descriptor_when_it_raises(tmp_path):
     """THE WINDOWS BUG, caught by a backend integration audit on 2026-09-13.
 
     _verified_write used to do:
@@ -1436,8 +1438,12 @@ def test_fsync_never_leaks_a_descriptor_when_it_raises():
     from pathlib import Path
     from graphsentinel import export as ex
 
-    d = Path(tempfile.mkdtemp())
-    real_open, real_close = os.open, os.close
+    d = tmp_path
+    # ex.os IS the global os module, so the real fsync must be captured
+    # BEFORE patching. Restoring from `os.fsync` afterwards restored the
+    # stub, and left fsync raising for every test that ran after this one
+    # -- found when a train() smoke test could not write its checkpoint.
+    real_open, real_close, real_fsync = os.open, os.close, os.fsync
     live = []
 
     def spy_open(*a, **k):
@@ -1461,11 +1467,12 @@ def test_fsync_never_leaks_a_descriptor_when_it_raises():
             lambda p: json.loads(p.read_text(encoding="utf-8"))["a"],
         )
     finally:
-        ex.os.open, ex.os.close, ex.os.fsync = real_open, real_close, os.fsync
+        ex.os.open, ex.os.close, ex.os.fsync = real_open, real_close, real_fsync
 
     assert live == [], f"fsync raised and leaked descriptors {live}"
     assert got is not None, "a raising fsync must not fail the write"
     assert (d / "card.json").exists()
+    assert os.fsync is real_fsync, "this test must not leave fsync patched"
     assert not (d / "card.json.tmp").exists(), "orphan .tmp left behind"
 
 
@@ -1492,3 +1499,229 @@ def test_package_never_reads_json_without_an_explicit_encoding():
         "these read/write text without an explicit encoding:\n    "
         + "\n    ".join(offenders)
     )
+
+
+# --------------------------------------------------------------------------
+# 12-hour clock: marker-less afternoon timestamps (F3, ML/TIMESTAMP_FIX.md)
+# --------------------------------------------------------------------------
+def test_marker_less_afternoon_timestamp_is_parsed_as_afternoon():
+    """The real strings: Friday-Afternoon DDoS is stamped "7/7/2017 3:57" and
+    the Friday-morning Botnet "7/7/2017 10:42". Under the old parse the
+    afternoon attack sorted BEFORE the morning one."""
+    from graphsentinel.data.preprocess import _parse_timestamps
+
+    raw = pd.Series(["7/7/2017 3:57", "7/7/2017 10:42", "7/7/2017 12:05", "7/7/2017 2:55"])
+    old = _parse_timestamps(raw, fix_12h=False)
+    assert old[0] < old[1], "pre-fix behaviour changed -- the provenance note is now wrong"
+
+    new = _parse_timestamps(raw)
+    assert new.dt.hour.tolist() == [15, 10, 12, 14]
+    assert new[1] < new[2] < new[3] < new[0]
+    assert new.attrs["shifted_12h"] == 2
+
+
+def test_clock_fix_leaves_24_hour_and_marked_days_alone():
+    from graphsentinel.data.preprocess import _parse_timestamps
+
+    # a day that shows an hour >= 13 is on a 24-hour clock: 03:57 is 03:57
+    day24 = _parse_timestamps(pd.Series(["03/07/2017 03:57:10", "03/07/2017 16:01:00"]))
+    assert day24.dt.hour.tolist() == [3, 16] and day24.attrs["shifted_12h"] == 0
+
+    # an explicit AM is believed
+    marked = _parse_timestamps(pd.Series(["7/7/2017 3:57 AM", "7/7/2017 10:42 AM"]))
+    assert marked.dt.hour.tolist() == [3, 10]
+
+    # the rule is per day: a 24-hour Monday does not protect a 12-hour Friday
+    mixed = _parse_timestamps(pd.Series(["3/7/2017 15:00", "7/7/2017 3:57", "7/7/2017 9:00"]))
+    assert mixed.dt.hour.tolist() == [15, 15, 9]
+
+
+def test_clock_fix_is_part_of_the_cache_keys():
+    """A parquet or graph cache written under the old parse must never be
+    reused as if it were post-fix -- same failure class as the taxonomy key."""
+    import inspect
+    from graphsentinel import train as train_mod
+    from graphsentinel.data import preprocess
+
+    assert "clock_tag(cfg)" in inspect.getsource(preprocess.build_splits)
+    assert "clock_tag(cfg)" in inspect.getsource(train_mod.prepare_graphs)
+    on, off, narrow = Config(), Config(), Config()
+    off.data.fix_12h_clock = False
+    narrow.data.pm_hours = [1, 6]
+    tags = {preprocess.clock_tag(c) for c in (on, off, narrow)}
+    assert tags == {"_pm1-7", "", "_pm1-6"}
+
+
+def test_pm_window_is_config_not_a_literal():
+    from graphsentinel.data.preprocess import _parse_timestamps
+
+    raw = pd.Series(["7/7/2017 3:57", "7/7/2017 7:30", "7/7/2017 10:42"])
+    assert _parse_timestamps(raw).dt.hour.tolist() == [15, 19, 10]
+    assert _parse_timestamps(raw, pm_hours=(1, 5)).dt.hour.tolist() == [15, 7, 10]
+
+
+def test_preprocessing_digest_moves_with_every_graph_shaping_setting():
+    """The phase-2b gate compares this digest. Its failure mode was certifying
+    a post-fix run with a pre-fix control, because only FILE digests were
+    pinned and the sample's bytes had not changed."""
+    from graphsentinel.data.preprocess import preprocessing_digest
+
+    base = preprocessing_digest(Config())
+    for mutate in (
+        lambda c: setattr(c.data, "fix_12h_clock", False),
+        lambda c: setattr(c.data, "pm_hours", [1, 5]),
+        lambda c: setattr(c.data, "clip_quantile", 0.99),
+        lambda c: setattr(c.data, "drop_edge_features", ["log_total_bytes"]),
+        lambda c: setattr(c.graph, "window_seconds", 30),
+        lambda c: setattr(c.graph, "min_edges_per_graph", 4),
+    ):
+        c = Config()
+        mutate(c)
+        assert preprocessing_digest(c) != base
+    assert preprocessing_digest(Config()) == base
+
+
+def test_audit_script_parses_exactly_like_the_package():
+    """ML/timestamp_audit.py carries its OWN copy of the parse so it can be
+    pasted into a Colab whose package copy predates the fix. Two copies drift;
+    this pins them together."""
+    import importlib.util
+    from graphsentinel.data.preprocess import _parse_timestamps
+
+    path = Path(__file__).resolve().parents[2] / "timestamp_audit.py"
+    spec = importlib.util.spec_from_file_location("timestamp_audit", path)
+    mod = importlib.util.module_from_spec(spec)
+    spec.loader.exec_module(mod)
+
+    raw = pd.Series(["7/7/2017 3:57", "7/7/2017 10:42", "7/7/2017 12:05",
+                     "03/07/2017 03:57:10", "03/07/2017 16:01:00",
+                     "5/7/2017 7:59", "5/7/2017 8:00", "not a date"])
+    for fix in (False, True):
+        ours = _parse_timestamps(raw, fix_12h=fix)
+        theirs = mod.parse(raw, fix_12h=fix)
+        assert ours.equals(theirs)
+
+
+# --------------------------------------------------------------------------
+# F1: the GRU host memory receives no gradient
+# --------------------------------------------------------------------------
+def test_gru_memory_receives_no_gradient():
+    """DOCUMENTS A PROPERTY OF THE DESIGN, not a goal.
+
+    memory.write() stores the GRU output detached, the next window reads it
+    back from a buffer, and no loss term consumes the GRU output. So the GRU's
+    parameters are on no path backward() can reach and stay at their initial
+    values -- which is what the shipped weights show (std 0.0723 against the
+    U(-1/8, 1/8) init value 0.0722).
+
+    WHEN THIS FAILS: someone made the memory trainable. That is a research
+    change. Invert this test, and re-run the memory ablation -- every
+    "memory off" number measured before that point describes an untrained GRU.
+    """
+    from torch_geometric.data import Data
+    from graphsentinel.export import make_dummy_inputs
+    from graphsentinel.losses import build_loss
+
+    c = Config()
+    c.model.memory_capacity = 256
+    model = build_model(c)
+    model.train()
+    n_cls = c.model.num_classes
+    criterion = build_loss(c, np.full(n_cls, 10), np.full(n_cls, 10))
+
+    x, ei, ea, dp, sp, pr, _ = make_dummy_inputs(model)
+    g = torch.Generator().manual_seed(0)
+    for window_end in (60, 120):          # two windows, so the second READS memory
+        data = Data(x=x, edge_index=ei, edge_attr=ea, y=torch.randint(0, n_cls, (x.size(0),), generator=g))
+        data.edge_dst_port, data.edge_src_port, data.edge_proto = dp, sp, pr
+        data.edge_y = torch.randint(0, n_cls, (ei.size(1),), generator=g)
+        data.real_edge_mask = torch.ones(ei.size(1), dtype=torch.bool)
+        data.node_ip_int = torch.arange(x.size(0)) + 167772161   # 10.0.0.1 ...
+        data.window_end = float(window_end)
+        data.num_nodes = x.size(0)
+        out = model.step_with_reconstruction(data, now=window_end)
+        loss = criterion(out, data)["total"] + out["recon_edge"] + out["recon_link"] + out["recon_node"]
+        model.zero_grad(set_to_none=True)
+        loss.backward()
+
+    for name, p in model.memory.gru.named_parameters():
+        assert p.grad is None or not p.grad.abs().sum(), f"memory.gru.{name} received gradient"
+    # control: the same backward() does reach the layer that READS the memory
+    assert model.node_encoder[0].weight.grad.abs().sum() > 0
+
+
+def test_digest_is_canonical_not_a_repr():
+    """Same settings, different spellings, one digest."""
+    import json
+    from graphsentinel.data.preprocess import preprocessing_digest
+
+    a = Config()
+    b = Config.from_dict(json.loads(json.dumps(a.to_dict())))   # JSON round trip
+    b.data.pm_hours = tuple(b.data.pm_hours)                     # tuple, not list
+    b.graph.window_seconds = float(b.graph.window_seconds)       # 60.0, not 60
+    b.data.clip_quantile = 0.999 + 1e-15                         # float noise
+    assert preprocessing_digest(a) == preprocessing_digest(b)
+
+
+# --------------------------------------------------------------------------
+# Nothing is written outside the repository (utils/scratch.py)
+# --------------------------------------------------------------------------
+def test_no_local_mirror_where_content_does_not_exist(monkeypatch, tmp_path):
+    from graphsentinel import export as ex
+    from graphsentinel import train as train_mod
+    from graphsentinel.utils import scratch
+
+    absent = tmp_path / "content"                 # stands in for /content
+    monkeypatch.setattr(scratch, "LOCAL_ROOT", absent)
+    monkeypatch.delenv(scratch.ENV_VAR, raising=False)
+    c = Config()
+    c.base_dir = str(tmp_path / "proj")
+
+    assert train_mod._mirror_dir() is None
+    assert ex._mirror_dir() is None
+    assert train_mod._log_dirs(c) == [c.log_path]
+    assert not absent.exists(), "resolving the mirrors must not create the root"
+
+    # it exists (Colab): all three mirror, and the log mirror is the second target
+    absent.mkdir()
+    assert train_mod._mirror_dir() == absent / "gs_ckpt"
+    assert ex._mirror_dir() == absent / "gs_models"
+    assert train_mod._log_dirs(c) == [c.log_path, absent / "gs_logs"]
+
+    # and an explicit 0 wins even there
+    monkeypatch.setenv(scratch.ENV_VAR, "0")
+    assert train_mod._mirror_dir() is None and train_mod._log_dirs(c) == [c.log_path]
+
+
+def test_package_has_one_content_guard():
+    """Every /content write goes through utils/scratch.local_scratch. A new
+    ``Path("/content/...").mkdir`` anywhere else is the bug coming back."""
+    pkg = Path(__file__).resolve().parents[1] / "graphsentinel"
+
+    def offenders_in(text: str, name: str = "x.py"):
+        # Outside scratch.py, a Path under /content may appear only as a
+        # module constant named _LOCAL_* (kept for its .name and for messages).
+        return [f"{name}:{n}" for n, line in enumerate(text.splitlines(), 1)
+                if 'Path("/content' in line.split("#", 1)[0]
+                and not line.lstrip().startswith("_LOCAL_")]
+
+    # the scan must catch the line that WAS the bug, or it proves nothing
+    assert offenders_in('for _dir in (cfg.log_path, Path("/content/gs_logs")):')
+    assert offenders_in('if not Path("/content").is_dir():')
+    assert not offenders_in('_LOCAL_CKPT_DIR = Path("/content/gs_ckpt")')
+
+    found = [o for f in pkg.rglob("*.py") if f.name != "scratch.py"
+             for o in offenders_in(f.read_text(encoding="utf-8"), f.name)]
+    assert not found, found
+
+
+def test_no_test_leaks_a_temp_directory():
+    """A directory from the tempfile module's mkd-temp call is never cleaned
+    up. Three tests here used it to export full-size models and left ~145 MB behind per test per run, which
+    filled a disk. Use the tmp_path fixture."""
+    here = Path(__file__).resolve().parent
+    needle = "mkd" + "temp("
+    offenders = [f"{f.name}:{n}" for f in here.glob("*.py")
+                 for n, line in enumerate(f.read_text(encoding="utf-8").splitlines(), 1)
+                 if needle in line.split("#", 1)[0]]
+    assert not offenders, offenders

@@ -73,13 +73,19 @@ _LOCAL_CKPT_DIR = Path("/content/gs_ckpt")
 
 
 def _mirror_dir() -> Optional[Path]:
-    if not Path("/content").is_dir():
-        return None
-    try:
-        _LOCAL_CKPT_DIR.mkdir(parents=True, exist_ok=True)
-        return _LOCAL_CKPT_DIR
-    except OSError:
-        return None
+    return local_scratch(_LOCAL_CKPT_DIR.name)
+
+
+def _log_dirs(cfg: Config) -> List[Path]:
+    """Where the training log and test report go: the configured log dir, plus
+    the local mirror (/content/gs_logs) WHEN this machine has one.
+
+    This used to be a hard-coded pair with ``mkdir(parents=True)`` on the
+    mirror, which created /content on every machine that ran training -- see
+    utils/scratch.py.
+    """
+    mirror = local_scratch("gs_logs")
+    return [cfg.log_path] + ([mirror] if mirror else [])
 
 
 def _atomic_torch_save(obj, path: Path) -> None:
@@ -153,7 +159,7 @@ from .data.graph_builder import (
     HostHistory,
     summarise_graphs,
 )
-from .data.preprocess import build_splits, class_counts
+from .data.preprocess import build_splits, class_counts, clock_tag
 from .evaluate import (
     adjusted_metrics,
     collect_embeddings,
@@ -168,6 +174,7 @@ from .ood import MahalanobisOOD, Projection, blended_score, cascade_score
 from .losses import build_loss
 from .models.net import build_model
 from .models.recon import recon_weight_schedule
+from .utils.scratch import local_scratch
 from .utils.seed import get_device, set_global_seed
 
 
@@ -195,7 +202,7 @@ def prepare_graphs(cfg: Config, force: bool = False, verbose: bool = True) -> Di
     _dtag = ("_drop-" + "-".join(d[:12] for d in _drop)) if _drop else ""
     cache = (cfg.processed_path /
              f"graphs_{cfg.data.taxonomy}_{cfg.data.split_strategy}"
-             f"_w{cfg.graph.window_seconds}{_dtag}.pt")
+             f"_w{cfg.graph.window_seconds}{_dtag}{clock_tag(cfg)}.pt")
     if cache.exists() and not force:
         if verbose:
             print(f"RESUME: loading cached graphs from {cache.name}")
@@ -345,6 +352,18 @@ def train(
                 f"taxonomy: label map changed (fingerprint {prev_fp} -> {now_fp})")
         elif prev_tax is not None and prev_tax != cfg.data.taxonomy:
             changed.append(f"taxonomy: was {prev_tax}, now {cfg.data.taxonomy}")
+
+        # Same "absent is not same" rule for the 12-hour clock fix: a checkpoint
+        # written before the fix existed carries no field and was trained on
+        # the old parse, i.e. on differently ordered windows.
+        prev_clock = bool(prev.get("data", {}).get("fix_12h_clock", False))
+        prev_pm = list(prev.get("data", {}).get("pm_hours", cfg.data.pm_hours))
+        if prev_clock != cfg.data.fix_12h_clock or (
+                prev_clock and prev_pm != list(cfg.data.pm_hours)):
+            changed.append(
+                f"fix_12h_clock/pm_hours: checkpoint was trained with "
+                f"{prev_clock}/{prev_pm}, now {cfg.data.fix_12h_clock}/"
+                f"{list(cfg.data.pm_hours)} -- the training windows differ")
 
         if changed:
             raise RuntimeError(
@@ -608,7 +627,7 @@ def train(
         # file, and the local mirror means an unreliable mount can never cost
         # you the training history.
         _rows = pd.DataFrame(history)
-        for _dir in (cfg.log_path, Path("/content/gs_logs")):
+        for _dir in _log_dirs(cfg):
             try:
                 _dir.mkdir(parents=True, exist_ok=True)
                 _tmp = _dir / "training_log.csv.tmp"
@@ -786,7 +805,7 @@ def train(
     report["history"] = history
 
     _report_json = {k: v for k, v in report.items() if k != "best_state"}
-    for _dir in (cfg.log_path, Path("/content/gs_logs")):
+    for _dir in _log_dirs(cfg):
         try:
             _dir.mkdir(parents=True, exist_ok=True)
             _tmp = _dir / "test_report.json.tmp"
