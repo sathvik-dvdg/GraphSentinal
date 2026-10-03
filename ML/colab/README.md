@@ -55,9 +55,10 @@ would reproduce the existing model.
 | 3 | Train and export | its outputs exist on Drive | `weights.pt`, `model.ts`, `model_card.json`, `test_report.json` |
 | 4 | Threshold study | its outputs exist | `threshold_study.json` and two CSVs |
 | 5 | Section 12 probes | its outputs exist | `probes.json`, the F2 and F6 table |
-| 6 | Sample | its output exists | the regenerated test sample |
-| 7 | Phase 2b | its outputs exist | the control, then 2b if the gate allows |
-| 8 | Package | never | the result zip |
+| 6 | Split composition | its output exists | `split_composition.json`: what each split holds under both parses, and the model's confidence against the SDN floors |
+| 7 | Sample | its output exists | the regenerated test sample |
+| 8 | Phase 2b | its outputs exist | the control, then 2b if the gate allows |
+| 9 | Package | never | the result zip |
 
 The retrain uses the configuration in `ML/model_card.json`, the one the
 epoch-31 model was trained with, plus `fix_12h_clock = True`. It differs from
@@ -85,17 +86,19 @@ settings, `fix_12h_clock` and `pm_hours`, the commit the bundle was built from
 and whether that tree was dirty, the environment, and for each stage which
 session ran it and when.
 
-## Stages 6 and 7 need the sample generator
+## Stages 7 and 8 need the sample generator
 
 `make_testdata_sample.py` has never been committed. Without it in `ML/`, the
-bundle is built without it, stages 6 and 7 are skipped, and the zip says so in
+bundle is built without it, stages 7 and 8 are skipped, and the zip says so in
 `PROVENANCE.json` under `not_in_this_zip`. Phase 2b is not run on the old
 sample, because regenerating the sample afterwards would invalidate that run.
 
 The generator is a **Colab cell, not a script**. It asserts `cfg` exists, reads
 the CSVs from `cfg.dataset_path`, and writes to `/content/gs_testdata` and then
-to `Path(cfg.base_dir) / "testdata"`. Stage 6 therefore executes it with `cfg`
-in scope, as the notebook would.
+to `Path(cfg.base_dir) / "testdata"`. Stage 7 therefore executes it with `cfg`
+in scope, as the notebook would. (Stage numbers here are from the
+9-stage runner; the 2026-10-03 retrain ran the 8-stage one, where these were 6
+and 7.)
 
 It is given a **copy** of the config whose `base_dir` is the retrain folder.
 With the real `base_dir` it would write over the pre-fix sample in
@@ -103,7 +106,7 @@ With the real `base_dir` it would write over the pre-fix sample in
 if anything in it changed. The dataset stays reachable because `dataset_dir` is
 made absolute in the copy.
 
-The generator prints a `MIXED windows` count. Stage 6 records it in the stage
+The generator prints a `MIXED windows` count. Stage 7 records it in the stage
 marker and in `PROVENANCE.json` (`sample_mixed_windows`, and whether it is at
 least 5). It is the only measure of whether the new sample can support Phase 2b.
 
@@ -119,7 +122,7 @@ environment variable. That was a guess, and wrong on every point.)
 | Both cells, end to end, off Colab | Run on synthetic traffic rewritten onto a marker-less 12-hour clock, one epoch, with stand-in Monday and Thursday files. All eight stages ran; the unzipped result passed the manifest guard. |
 | The gate | Refuses when there is no verdict, when it is not clean, and when `pm_hours` differ. On 24-hour data the fix moves 0 rows and the verdict is not clean. |
 | Resume | A second run skipped the finished stages and took 1 second. The every-10th-epoch Drive checkpoint is tested in the `train()` smoke test: an off-cycle epoch stays local, an on-cycle epoch reaches the primary path. |
-| Stages 6 and 7 | Run with a **stand-in** generator of the documented shape. The pre-fix sample stayed untouched; a generator that writes into the pre-fix folder is refused. The real generator has not been seen. |
+| Stages 7 and 8 | Run with a **stand-in** generator of the documented shape. The pre-fix sample stayed untouched; a generator that writes into the pre-fix folder is refused. The real generator has not been seen. |
 | The lifted cells | A test pins them to the notebook source, apart from declared edits. |
 | Colab-only paths | Cell A's preflight now tries four of the five. **Still never run on Colab:** all of them. The preflight was run off Colab only, where the Drive and `pip` branches are not taken. |
 | Real data and real duration | **Not run.** The 40-epoch run on the real files happens for the first time in Colab. |

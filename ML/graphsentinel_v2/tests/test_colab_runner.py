@@ -318,3 +318,36 @@ def test_audit_gates_on_the_config_training_set(cr, ta):
     assert "required_files=tuple(_cfg.data.csv_files)" in src
     # today the fallback matches; if the training set changes, the config wins
     assert set(ta.TRAINING_FILES) == set(cr.training_files())
+
+
+def test_split_composition_sees_windows_the_way_the_builder_does(cr):
+    """An attack row shares a window with benign only when a BENIGN row OF THE
+    SAME SPLIT falls in its window, with windows anchored at the split's first
+    row exactly as GraphBuilder anchors them."""
+    import pandas as pd
+
+    t0 = 1_499_000_000
+    rows = ([(t0 + 5, "BENIGN")] +                       # window 0: benign
+            [(t0 + 10 + i, "PortScan") for i in range(9)] +   # window 0: 9 scans
+            [(t0 + 130 + i, "PortScan") for i in range(3)] +  # window 2: alone
+            [(t0 + 200, "Botnet")])                           # window 3: alone
+    part = pd.DataFrame({"t": [r[0] for r in rows], "Label": [r[1] for r in rows],
+                         "source_file": "f.csv"})
+    c = cr.split_composition(part, window_seconds=60, min_edges=8)
+    assert c["PortScan"]["rows"] == 12
+    assert c["PortScan"]["rows_sharing_window_with_benign"] == 9
+    assert c["PortScan"]["rows_in_graphable_windows"] == 9     # window 0 has 10 rows
+    assert c["PortScan"]["windows"] == 2
+    assert c["Botnet"]["rows_sharing_window_with_benign"] == 0
+    assert c["Botnet"]["rows_in_graphable_windows"] == 0       # below the 8-flow floor
+    assert "rows_sharing_window_with_benign" not in c["BENIGN"]
+
+
+def test_split_composition_runs_before_the_sample_and_is_packaged(cr):
+    import inspect
+    assert cr.STAGES.index("split_composition") == cr.STAGES.index("probes") + 1
+    assert cr._RUN["split_composition"] is cr.stage_split_composition
+    assert '"ML/split_composition.json"' in inspect.getsource(cr.stage_package)
+    cell = (COLAB / "cells" / "split_composition.py").read_text(encoding="utf-8")
+    assert "from colab_runner import split_composition" in cell
+    assert "fix_12h_clock = fix" in cell                  # both parses, not one

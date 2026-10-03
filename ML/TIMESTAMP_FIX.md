@@ -3,6 +3,9 @@
 **Status.** The fix is committed. The full-dataset audit **ran in Colab on
 2026-10-03 and confirmed the defect in every file** (below). Nothing has been
 retrained yet. Every model artefact in this directory predates the fix.
+**The retrain has run** (Colab, 2026-10-03) and its result zip is held outside
+the repository. It is **not installed**, because the container load, the first
+step on arrival, is blocked on this machine. See "The retrain result" below.
 
 ## The defect
 
@@ -206,10 +209,70 @@ The epoch-31 card records torch `2.11.0+cu128` and Python only; its PyTorch
 Geometric, pandas and NumPy versions are unknown. From this commit the card's
 `framework` block records Python, torch, CUDA, GPU, PyTorch Geometric, pandas,
 NumPy, scikit-learn and pyarrow. Cell A's runtime reported torch
-`2.11.0+cu130`, PyTorch Geometric `2.8.0.post1` and pyarrow `23.0.1`; the
-retrain's own card is the record. Section 8 of the analysis gains a row for the
-retrain; the existing rows stay as they are, because the current numbers came
-from the cu128 run.
+`2.11.0+cu130`, PyTorch Geometric `2.8.0.post1` and pyarrow `23.0.1`.
+
+**Correction.** The retrain ran from a bundle built at `0e2129d`, before the
+fuller `framework` block existed, so its card again records torch
+(`2.11.0+cu130`) and Python (`3.13.15`) only. The other versions are known for
+this run from the preflight record in `PROVENANCE.json`, not from the card.
+Section 8 of the analysis gains a row for the retrain; the existing rows stay as
+they are, because the current numbers came from the cu128 run.
+
+## The retrain result (received 2026-10-03, not yet installed)
+
+**Provenance.** Session `20261003T032216Z-9c2ab8`, bundle commit `0e2129d`
+(clean tree). Between that commit and `eb770ca`, the only change to the
+training package is the card's `framework` block (`export.py`). Training,
+preprocessing and evaluation code are the same. Weights sha256 `3db34022…`,
+preprocessing digest `ce104121…`. Best epoch 18 of 30 (early stop; 40
+configured).
+
+**Three row counts agree.** The audit's 960,315 moved rows against the
+loader's 960,304, and the audit's 1,841,857 training rows against the loader's
+1,841,846. Both differences are the same 11 rows: Wednesday labels that
+`RAW_LABEL_MAP` does not map and the loader drops.
+
+**Container load: BLOCKED, not failed.** Docker Desktop will not start on this
+machine (its WSL engine never answers; drive C: has 1.3 GB free). The load was
+run locally instead, which is **not** the container check: torch 2.13.0 /
+PyTorch Geometric 2.8.0 / Python 3.10. `from_artifacts` loads, the weights
+sha256 matches `MANIFEST.json`, there are 654,851 parameters, the class order
+matches, `dry_run` is true, and 40 of 40 synthetic flows are scored. Nothing is
+installed into `ML/` until the container step passes.
+
+**Two readings that do not survive the artefacts.** Both are checked against
+the committed pre-fix files.
+
+1. *"Window recall nearly tripled, 0.3125 to 0.8857."* The test sets differ in
+   a way that decides this. Pre-fix, the binary gate missed exactly 266 attack
+   flows, and they are exactly the 266 Botnet test edges
+   (`edge_confusion`: every other attack class is fully detected). At
+   `min_flows = 1`, 54 of the 80 attack windows had **zero** flows over the
+   gate, so those 54 windows contain only Botnet traffic. On the windows that
+   were not Botnet-only, pre-fix window recall was **25/26 = 0.96** at ≥5 flows.
+   Post-fix the test graphs contain no Botnet edges at all, and window recall is
+   **31/35 = 0.89**. The tripling is Botnet leaving the test set. Like for like,
+   window recall fell.
+2. *"The pre-fix rank cut sliced a scrambled ordering."* The fix moves each
+   afternoon file by exactly 12 hours. A uniform shift preserves the order
+   inside a block, and it is a whole number of 60 s windows. So for a class
+   that lives in one afternoon block, the rank cut selects the same rows under
+   both parses. The counts agree: 27,191 Volumetric_Flood test edges under
+   both, and 23,807 against 23,812 PortScan test edges (the
+   difference of 5 is not explained yet). What the fix does move is the **BENIGN** cut, which runs over the
+   pooled timeline. Its tail was Friday morning under the old parse (Friday
+   afternoon sat at 01:00 to 05:02) and is Friday afternoon under the fix.
+   Graphs are built per split from that split's rows only. So the clock decides
+   whether a test attack shares its window with benign traffic, and whether a
+   Botnet window holds the 8 flows needed to become a graph at all. This is a
+   hypothesis from the counts, **not yet measured**. Stage 6
+   (`split_composition`) measures it under both parses.
+
+**Where PortScan went.** It was not missed: 17,909 of 23,812 PortScan test
+edges are predicted **BruteForce**, and BruteForce's 904 test edges are
+predicted PortScan. Binary separation is intact (binary F1 0.9961). That
+matters for the policy: BruteForce's rule is `drop_port` at 0.85. Stage 6 counts
+how many of those wrong-class predictions clear their class's floor.
 
 ## A retrain invalidates the evidence chain outside `ML/`
 
@@ -395,7 +458,7 @@ fails, naming `C:\content`.
   run against the file as it stood before the fix: they flag lines 1376, 1401
   and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
 
-**The suite baseline is now 136 passed, 0 skipped** (2026-10-03). Earlier records say
+**The suite baseline is now 138 passed, 0 skipped** (2026-10-03). Earlier records say
 "98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
 split and graph construction tests. On the machine those records come from,
 the split code had therefore never run at all. With `pyarrow` installed they

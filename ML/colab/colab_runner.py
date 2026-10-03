@@ -55,7 +55,7 @@ RUN_NAME = "retrain_fix12h"
 RESULT_ZIP = "graphsentinel_retrain_result.zip"
 SESSION = time.strftime("%Y%m%dT%H%M%SZ", time.gmtime()) + "-" + uuid.uuid4().hex[:6]
 STAGES = ("audit_gate", "graphs", "train_export", "threshold_study", "probes",
-          "sample", "phase2b", "package")
+          "split_composition", "sample", "phase2b", "package")
 BAR = "=" * 78
 
 #: The pre-fix probe figures the new ones are read against (test split,
@@ -634,6 +634,62 @@ def stage_probes(env: Env, cfg) -> None:
         F6_delta_test=t["F6_delta_no_edge_feat"], F2_delta_test=t["F2_delta_memory_off"])
 
 
+def split_composition(part, window_seconds: int, min_edges: int) -> dict:
+    """Per class, what one split looks like to the graph builder.
+
+    Windows are assigned exactly as GraphBuilder._window_bounds does it for
+    non-overlapping windows: (t - t[0]) // window_seconds over the split's own
+    rows. An attack row "shares a window with benign" when its window holds at
+    least one BENIGN row OF THE SAME SPLIT; it is "graphable" when its window
+    holds at least min_edges rows, the builder's floor for making a graph.
+    """
+    import numpy as np
+    import pandas as pd
+
+    part = part.sort_values("t", kind="mergesort").reset_index(drop=True)
+    t = part["t"].to_numpy()
+    wid = (t - t[0]) // window_seconds if len(t) else t
+    lab = part["Label"].astype(str).to_numpy()
+    per = (pd.DataFrame({"wid": wid, "benign": lab == "BENIGN"})
+           .groupby("wid").agg(n=("benign", "size"), n_benign=("benign", "sum")))
+    has_benign = per["n_benign"].reindex(wid).to_numpy() > 0
+    graphable = per["n"].reindex(wid).to_numpy() >= min_edges
+
+    def hm(x):
+        return pd.to_datetime(int(x), unit="s").strftime("%a %m-%d %H:%M")
+
+    out = {}
+    for c in sorted(set(lab)):
+        m = lab == c
+        row = {
+            "rows": int(m.sum()),
+            "first": hm(t[m].min()), "last": hm(t[m].max()),
+            "source_files": {str(k): int(v) for k, v in
+                             part.loc[m, "source_file"].value_counts().items()},
+            "windows": int(np.unique(wid[m]).size),
+            "rows_in_graphable_windows": int((m & graphable).sum()),
+        }
+        if c != "BENIGN":
+            row["rows_sharing_window_with_benign"] = int((m & has_benign).sum())
+            row["share_sharing_window_with_benign"] = round(
+                float((m & has_benign).sum()) / max(int(m.sum()), 1), 4)
+        out[c] = row
+    return out
+
+
+def stage_split_composition(env: Env, cfg) -> None:
+    """Measure the mechanism behind the post-fix numbers before they are
+    explained: which BENIGN rows each split gets under each parse, and whether
+    attacks share their windows with benign traffic. Plus the confidence of the
+    post-fix model against the SDN floors. Read-only, CPU is enough."""
+    run_cell(env, "split_composition.py", {"cfg": cfg, "GS_OUT": str(env.local_logs)},
+             "split_composition_output.txt")
+    out = {"split_composition.json": ensure_file(env.logs / "split_composition.json",
+                                                 env.local_logs / "split_composition.json"),
+           "split_composition_output.txt": env.logs / "split_composition_output.txt"}
+    mark(env, "split_composition", out)
+
+
 def build_stage_tree(env: Env) -> Path:
     """A repo-shaped tree on local disk: the bundled scripts plus the NEW
     artefacts, so phase2b can run exactly as it does in the repository."""
@@ -790,6 +846,7 @@ def stage_package(env: Env, cfg) -> Path:
         "ML/threshold_flow_level.csv": L / "threshold_flow_level.csv",
         "ML/threshold_window_level.csv": L / "threshold_window_level.csv",
         "ML/probes.json": L / "probes.json",
+        "ML/split_composition.json": L / "split_composition.json",
         "ML/timestamp_audit.json": L / "timestamp_audit.json",
         "ML/phase2b_sensitivity.json": L / "phase2b_sensitivity.json",
         "ML/phase2b_results.json": L / "phase2b_results.json",
@@ -900,6 +957,7 @@ def stage_package(env: Env, cfg) -> Path:
 # --------------------------------------------------------------------------
 _RUN = {"graphs": stage_graphs, "train_export": stage_train_export,
         "threshold_study": stage_threshold_study, "probes": stage_probes,
+        "split_composition": stage_split_composition,
         "sample": stage_sample, "phase2b": stage_phase2b}
 
 
@@ -918,7 +976,7 @@ def cell_b(env: Env | None = None, download: bool = True) -> Path:
             continue
         print(f"\n{BAR}\n  STAGE {STAGES.index(stage) + 1}: {stage}\n{BAR}")
         fn(env, cfg)
-    print(f"\n{BAR}\n  STAGE 8: package\n{BAR}")
+    print(f"\n{BAR}\n  STAGE {STAGES.index('package') + 1}: package\n{BAR}")
     z = stage_package(env, cfg)
 
     if env.is_colab and download:
