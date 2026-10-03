@@ -69,6 +69,24 @@ def _sha256(path: Path) -> str:
     return h.hexdigest()
 
 
+def _framework_versions() -> dict:
+    """Every library version the numbers depend on. The epoch-31 card recorded
+    torch and Python only, so its PyTorch Geometric, pandas and NumPy versions
+    are unknown; a card should never leave that question open again."""
+    import importlib
+
+    out = {"python": platform.python_version(), "torch": torch.__version__,
+           "cuda": torch.version.cuda,
+           "gpu": torch.cuda.get_device_name(0) if torch.cuda.is_available() else None}
+    for name, mod in (("torch_geometric", "torch_geometric"), ("pandas", "pandas"),
+                      ("numpy", "numpy"), ("scikit_learn", "sklearn"), ("pyarrow", "pyarrow")):
+        try:
+            out[name] = importlib.import_module(mod).__version__
+        except Exception:
+            out[name] = None
+    return out
+
+
 def build_model_card(cfg: Config, model: GraphSentinelNet, metrics: Optional[dict] = None) -> dict:
     """Everything a consumer needs, in one machine-readable document."""
     return {
@@ -77,10 +95,7 @@ def build_model_card(cfg: Config, model: GraphSentinelNet, metrics: Optional[dic
         "created_at": time.time(),
         "created_at_iso": time.strftime("%Y-%m-%dT%H:%M:%SZ", time.gmtime()),
         "git_sha": _git_sha(),
-        "framework": {
-            "torch": torch.__version__,
-            "python": platform.python_version(),
-        },
+        "framework": _framework_versions(),
         "graph": {
             "node_entity": "ip_address",
             "edge_entity": "network_flow",

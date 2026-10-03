@@ -1767,3 +1767,17 @@ def test_no_test_patches_a_module_by_hand():
     found = [o for f in here.glob("*.py")
              for o in offenders_in(f.read_text(encoding="utf-8"), f.name)]
     assert not found, found
+
+
+def test_model_card_records_the_whole_stack(tmp_path):
+    """The epoch-31 card recorded torch and Python only, so its PyTorch
+    Geometric, pandas and NumPy versions are unknown to this day."""
+    from graphsentinel.export import build_model_card
+
+    c = Config()
+    c.model.memory_capacity = 4096
+    fw = build_model_card(c, build_model(c))["framework"]
+    for key in ("python", "torch", "cuda", "torch_geometric", "pandas", "numpy",
+                "scikit_learn", "pyarrow", "gpu"):
+        assert key in fw, key
+    assert fw["torch_geometric"] and fw["pandas"] and fw["numpy"]

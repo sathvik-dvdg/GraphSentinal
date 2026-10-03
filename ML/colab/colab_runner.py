@@ -284,6 +284,32 @@ def print_plan(env: Env, always: tuple = ("audit_gate", "package")) -> None:
 # --------------------------------------------------------------------------
 # CELL A
 # --------------------------------------------------------------------------
+#: The verdict is a statement about THIS parse code on THESE files. A bundle
+#: that changes either one makes it a statement about something else.
+PARSE_CODE = ("ML/timestamp_audit.py", "ML/graphsentinel_v2/graphsentinel/data/preprocess.py")
+
+
+def verdict_basis(env: Env) -> dict:
+    """What an audit verdict is valid for: the parse code and the dataset files.
+
+    Deliberately NOT the bundle commit. Committing the sample generator changes
+    the commit and nothing the audit measured, and re-running the audit for it
+    would be a ritual. Changing the parse, or the CSVs, is not.
+    """
+    code = hashlib.sha256()
+    for rel in PARSE_CODE:
+        code.update(rel.encode() + b"\0" + (BUNDLE / rel).read_bytes() + b"\0")
+    try:
+        commit = json.loads((BUNDLE / "BUILD.json").read_text(encoding="utf-8")).get("commit")
+    except Exception:
+        commit = None
+    return {
+        "parse_code_sha256": code.hexdigest(),
+        "dataset_files": {f.name: f.stat().st_size for f in sorted(env.dataset.glob("*.csv"))},
+        "bundle_commit": commit,          # recorded for the record; not compared
+    }
+
+
 def preflight(env: Env, cfg, verdict: dict) -> list:
     """Exercise every Colab-only path NOW, in the two-minute cell.
 
@@ -381,6 +407,9 @@ def cell_a(env: Env | None = None) -> dict:
     out_dirs = [env.local_logs, env.logs]
     ta.run([env.dataset], out_dirs=out_dirs, pm_hours=tuple(cfg.data.pm_hours))
     v = json.loads((env.local_logs / ta.VERDICT_NAME).read_text(encoding="utf-8"))
+    v["basis"] = verdict_basis(env)
+    write_json(env.local_logs / ta.VERDICT_NAME, v)
+    write_json(env.logs / ta.VERDICT_NAME, v)
     ensure_file(env.logs / ta.VERDICT_NAME, env.local_logs / ta.VERDICT_NAME)
     ensure_file(env.logs / "timestamp_audit.json", env.local_logs / "timestamp_audit.json")
 
@@ -415,7 +444,22 @@ def stage_audit_gate(env: Env, cfg) -> dict:
     if list(v.get("pm_hours", [])) != [int(x) for x in cfg.data.pm_hours]:
         raise SystemExit(f"AUDIT GATE: the audit used pm_hours {v.get('pm_hours')}, "
                          f"the retrain would use {list(cfg.data.pm_hours)}. Re-run Cell A.")
+    then, now = v.get("basis") or {}, verdict_basis(env)
+    if not then:
+        raise SystemExit("AUDIT GATE: this verdict was written by an older Cell A that did "
+                         "not record what it was valid for. Re-run Cell A (about 2 minutes).")
+    if then.get("parse_code_sha256") != now["parse_code_sha256"]:
+        raise SystemExit(
+            "AUDIT GATE: the timestamp parse code in this bundle is not the code the audit "
+            f"ran (bundle {str(now['bundle_commit'])[:10]}, audit ran on "
+            f"{str(then.get('bundle_commit'))[:10]}). Re-run Cell A.")
+    if then.get("dataset_files") != now["dataset_files"]:
+        raise SystemExit("AUDIT GATE: the dataset CSVs are not the ones the audit read "
+                         "(names or sizes differ). Re-run Cell A.")
     print(f"audit gate: clean -- {v['reason']}")
+    print(f"audit gate: same parse code and the same {len(now['dataset_files'])} CSVs as the "
+          f"audit (audit bundle {str(then.get('bundle_commit'))[:10]}, "
+          f"this bundle {str(now['bundle_commit'])[:10]})")
     mark(env, "audit_gate", verdict=v)
     return v
 

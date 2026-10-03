@@ -92,9 +92,33 @@ def test_cell_b_refuses_without_a_clean_verdict(cr, ta, tmp_path):
     with pytest.raises(SystemExit, match="pm_hours"):
         cr.stage_audit_gate(env, Cfg)
 
+    # clean, but written by a Cell A that did not record what it is valid for
     ok = {"clean": True, "reason": "ok", "pm_hours": [1, 7]}
     (env.logs / ta.VERDICT_NAME).write_text(json.dumps(ok), encoding="utf-8")
+    with pytest.raises(SystemExit, match="older Cell A"):
+        cr.stage_audit_gate(env, Cfg)
+
+    env.dataset.mkdir(parents=True)
+    (env.dataset / "Tuesday-WorkingHours.pcap_ISCX.csv").write_text("x", encoding="utf-8")
+    ok["basis"] = cr.verdict_basis(env)
+    (env.logs / ta.VERDICT_NAME).write_text(json.dumps(ok), encoding="utf-8")
     assert cr.stage_audit_gate(env, Cfg)["clean"] is True
+
+    # a new bundle commit with the SAME parse code is fine: the generator, say
+    ok["basis"]["bundle_commit"] = "someothercommit"
+    (env.logs / ta.VERDICT_NAME).write_text(json.dumps(ok), encoding="utf-8")
+    assert cr.stage_audit_gate(env, Cfg)["clean"] is True
+
+    # different parse code, or different CSVs: the verdict is about something else
+    ok["basis"]["parse_code_sha256"] = "0" * 64
+    (env.logs / ta.VERDICT_NAME).write_text(json.dumps(ok), encoding="utf-8")
+    with pytest.raises(SystemExit, match="parse code"):
+        cr.stage_audit_gate(env, Cfg)
+    ok["basis"] = cr.verdict_basis(env)
+    (env.dataset / "Tuesday-WorkingHours.pcap_ISCX.csv").write_text("xy", encoding="utf-8")
+    (env.logs / ta.VERDICT_NAME).write_text(json.dumps(ok), encoding="utf-8")
+    with pytest.raises(SystemExit, match="dataset CSVs"):
+        cr.stage_audit_gate(env, Cfg)
 
 
 def test_a_stage_is_done_only_while_its_outputs_exist(cr, tmp_path):
