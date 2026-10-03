@@ -78,7 +78,7 @@ export default function AppShell() {
         height: '100vh',
         overflow: 'hidden',
         transition: 'grid-template-columns 200ms ease',
-        background: '#f4f6f8',
+        background: 'transparent',
       }}
     >
       {/* Sidebar spans both rows */}

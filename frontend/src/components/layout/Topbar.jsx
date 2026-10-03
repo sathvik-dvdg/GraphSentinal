@@ -61,8 +61,10 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
   return (
     <header
       style={{
-        background: '#ffffff',
-        borderBottom: '1px solid rgba(17,20,26,0.08)',
+        background: 'rgba(255, 255, 255, 0.5)',
+        backdropFilter: 'blur(24px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
+        borderBottom: '1px solid rgba(255, 255, 255, 0.8)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 16px',
