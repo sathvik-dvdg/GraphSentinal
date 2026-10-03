@@ -360,22 +360,33 @@ def test_graph_builder_beats_the_v1_row_loop(cfg, splits):
     dense.graph.window_seconds = 3600
     dense.graph.window_stride_seconds = 3600
 
-    t0 = time.perf_counter()
-    GraphBuilder(dense).build(df, verbose=False)
-    new_rate = len(df) / (time.perf_counter() - t0)
+    # Best of three for each half: a single timing on a loaded machine carries
+    # whatever else the machine was doing, and the ratio inherits it.
+    def best_rate(fn, rows, repeats=3):
+        best = 0.0
+        for _ in range(repeats):
+            t0 = time.perf_counter()
+            fn()
+            best = max(best, rows / (time.perf_counter() - t0))
+        return best
 
+    new_rate = best_rate(lambda: GraphBuilder(dense).build(df, verbose=False), len(df))
     sample = df.head(4000)
-    t0 = time.perf_counter()
-    _v1_style_loop(sample)
-    old_rate = len(sample) / (time.perf_counter() - t0)
+    old_rate = best_rate(lambda: _v1_style_loop(sample), len(sample))
 
     print(f"\n  v1 row loop: {old_rate:,.0f} flows/s")
     print(f"  vectorised : {new_rate:,.0f} flows/s  ({new_rate / old_rate:.0f}x)")
+    # The claim is a RATIO, measured against a reproduction of the v1 loop in
+    # the same process, on the same machine, under the same load: when the
+    # machine is slow, both halves slow together. An absolute floor
+    # (150,000 flows/s) used to sit here as well. It failed 2 runs in about 4
+    # on a loaded machine with the builder unchanged -- a guard failing for
+    # reasons unrelated to what it guards -- so it was removed rather than
+    # raised or lowered.
     assert new_rate > old_rate * 20, (
         f"vectorised builder only {new_rate / old_rate:.1f}x the v1 loop "
         f"({new_rate:,.0f} vs {old_rate:,.0f} flows/s)"
     )
-    assert new_rate > 150_000, f"only {new_rate:,.0f} flows/s -- too slow for line rate"
 
 
 # --------------------------------------------------------------------------

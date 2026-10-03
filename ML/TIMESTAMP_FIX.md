@@ -6,10 +6,21 @@ retrained yet. Every model artefact in this directory predates the fix.
 
 ## The defect
 
-**All eight CICIDS2017 `TrafficLabelling_` files are stamped on a 12-hour clock
-with no AM/PM marker.** In 2,830,743 rows there is no hour of 13 or later and no
-AM/PM token anywhere. This is a full-scale measurement (next section), not the
-inference from two sample values it rested on before 2026-10-03.
+Measured across all eight CICIDS2017 `TrafficLabelling_` files, 2,830,743 rows
+(next section):
+
+- **No file** shows an hour of 13 or later, or an AM/PM token.
+- **Six of the eight are 12-hour by measurement.** They contain hours 1 to 5,
+  which in a business-hours capture can only be afternoon traffic.
+- **The other two cannot be classified.** Friday-Morning and
+  Thursday-Morning-WebAttacks hold hours 8 to 12 only, and hours 8 to 12 read
+  the same on both clocks. The fix moves 0 rows in both, which is correct
+  whichever clock they use. A rule that had moved rows in a morning-only file
+  would have been wrong, so those two zeros are evidence the rule behaves.
+
+Before 2026-10-03 this rested on two timestamp values from the sample. The
+commit that recorded the full-scale result (`4e2e192`) said "all eight files
+are 12-hour" in its message; that overstated the two morning-only files.
 
 `_parse_timestamps` parsed that string successfully as 03:57 using
 `%d/%m/%Y %H:%M`, so afternoon traffic sorted before the same day's morning
@@ -64,12 +75,12 @@ the audit script agreed on every row of every file under both parses. Verdict:
 |---|---:|---|---:|---:|---:|---:|
 | Tuesday | 445,909 | 1–5, 8–12 | 18,079 | 0 | 0 | 220,766 |
 | Wednesday | 692,703 | 1–5, 8–12 | 23,993 | 0 | 0 | 227,337 |
-| Friday-Morning | 191,033 | 8–12 | 14,049 | 0 | 0 | 0 |
+| Friday-Morning (clock indeterminate) | 191,033 | 8–12 | 14,049 | 0 | 0 | 0 |
 | Friday-Afternoon-PortScan | 286,467 | 1–3 | 0 | 0 | 0 | 286,467 |
 | Friday-Afternoon-DDos | 225,745 | 3–5 | 0 | 0 | 0 | 225,745 |
 | **Training, five files** | **1,841,857** | | | **0** | **0** | **960,315 (52.1%)** |
 | Monday | 529,918 | 1–5, 8–12 | 57,941 | 0 | 0 | 222,799 |
-| Thursday-Morning-WebAttacks | 170,366 | 8–12 | 19,552 | 0 | 0 | 0 |
+| Thursday-Morning-WebAttacks (clock indeterminate) | 170,366 | 8–12 | 19,552 | 0 | 0 | 0 |
 | Thursday-Afternoon-Infilteration | 288,602 | 1–5 | 0 | 0 | 0 | 288,602 |
 | **All eight files** | **2,830,743** | | | **0** | **0** | **1,471,716 (52.0%)** |
 
@@ -240,6 +251,25 @@ zip with every artefact at its repository path. It is resumable by stage. See
 `ML/colab/README.md`. The zip carries a regenerated `MANIFEST.json`; the
 container load check in step 4, and steps 2 and 9, are done in the repository.
 
+**The container load is the first thing done when the zip arrives, before
+anything is rewritten.** It is the step most likely to stop the cascade: the
+retrain saves under torch 2.11 and PyTorch Geometric 2.8 on Colab, and the
+container loads under torch 2.4.0 and PyTorch Geometric 2.5.0.
+
+It cannot run before the threshold study, because Cell B runs that study in
+Colab and the container is not there. Reproducing the container inside Colab
+would mean a Python 3.12 environment with torch 2.4.0, and Colab runs Python
+3.13, for which torch 2.4.0 has no wheels. So the order is: threshold study in
+Colab, container load first on arrival. A container failure would not
+invalidate the study, which measures the model and not the loader; it would
+block deploying these weights until the container's pins or the export change.
+
+Two things lower the risk. The current weights already cross this version gap
+and are recorded as loading in the container. And
+`tests/test_artifacts.py::test_model_code_still_has_the_shipped_structure`
+checks that today's code builds exactly the state-dict keys and shapes of those
+weights: keys come from the module structure, not from the saving version.
+
 Step 7 comes before step 8 on purpose. A control run on the old sample is
 refused by the gate as soon as the sample is regenerated, because its sha256
 changes.
@@ -365,12 +395,21 @@ fails, naming `C:\content`.
   run against the file as it stood before the fix: they flag lines 1376, 1401
   and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
 
-**The suite baseline is now 120 passed, 0 skipped.** Earlier records say
+**The suite baseline is now 134 passed, 0 skipped** (2026-10-03). Earlier records say
 "98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
 split and graph construction tests. On the machine those records come from,
 the split code had therefore never run at all. With `pyarrow` installed they
 run, and they run under the fixed parse. Do not read "98 passed, 7 skipped" as
 the baseline.
+
+**A flaky guard, fixed by asserting the claim it names.**
+`test_graph_builder_beats_the_v1_row_loop` asserted a ratio against the v1 row
+loop and also an absolute floor of 150,000 flows/s. The floor failed about half
+the time on a loaded machine with the builder unchanged: over five runs the
+absolute rate ranged from 105,000 to 189,000 flows/s. The floor was removed,
+not raised or lowered. The test's claim is the ratio, measured against the v1
+loop in the same process under the same load, now as the best of three timings
+for each half: 29x to 44x over five runs, against a bar of 20x.
 
 ## Review note: check the guard against the failure that prompted it
 

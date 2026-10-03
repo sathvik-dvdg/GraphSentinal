@@ -89,3 +89,27 @@ def test_the_manifest_guard_catches_swapped_weights(tmp_path):
     (tmp_path / "weights.pt").write_bytes(old)                  # or only the report moved
     (tmp_path / "test_report.json").write_text(json.dumps({"metrics": {"edge_macro_f1": 0.81}}), encoding="utf-8")
     assert any("headline" in p for p in manifest_mismatches(tmp_path))
+
+
+def test_model_code_still_has_the_shipped_structure():
+    """State-dict keys and shapes come from the module structure, not from the
+    torch version that saved them. If today's code builds exactly the keys and
+    shapes of the shipped weights -- which the inference container (torch 2.4.0,
+    PyG 2.5.0) is recorded as loading -- then weights the retrain saves from this
+    code have the structure that container already loads. This does not replace
+    the container load; it makes a structural break visible before a retrain."""
+    weights = ML_DIR / "weights.pt"
+    if not weights.exists():
+        pytest.skip("weights.pt is not on this machine")
+    import torch
+    from graphsentinel.config import Config
+    from graphsentinel.models.net import build_model
+
+    card = json.loads((ML_DIR / "model_card.json").read_text(encoding="utf-8"))
+    built = build_model(Config.from_dict(card["config"])).state_dict()
+    shipped = torch.load(weights, map_location="cpu", weights_only=False)["model"]
+    assert set(built) == set(shipped), (
+        f"keys only in the code: {sorted(set(built) - set(shipped))[:5]}, "
+        f"only in weights.pt: {sorted(set(shipped) - set(built))[:5]}")
+    wrong = [k for k in built if tuple(built[k].shape) != tuple(shipped[k].shape)]
+    assert not wrong, f"shape changed for {wrong[:5]}"
