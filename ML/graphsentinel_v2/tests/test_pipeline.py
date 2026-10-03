@@ -347,6 +347,13 @@ def _v1_style_loop(df: pd.DataFrame) -> int:
 def test_graph_builder_beats_the_v1_row_loop(cfg, splits):
     """Guard against a reintroduced per-row Python loop.
 
+    ONLY THE RATIO IS ASSERTED, AND THAT IS A MEASURED DECISION. Five runs on
+    one machine with the code unchanged (2026-10-03): the ratio to the v1 loop
+    was 29x to 44x (best of three per half), while the absolute rate swung
+    from 105,000 to 189,000 flows/s -- 1.8x, with nothing changing but machine
+    load. An absolute floor measures the machine, not the builder; one at
+    150,000 flows/s failed about half the time. Do not re-add one.
+
     Timed on a DENSE window so the measurement reflects per-flow cost rather
     than per-window fixed overhead -- the synthetic capture is sparse, and a
     30 s window there holds ~150 flows where real CICIDS2017 traffic holds

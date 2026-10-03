@@ -149,7 +149,10 @@ def audit(path: Path, pm_hours=PM_HOURS, pkg=None) -> dict:
     h = before.dt.hour
     lo, hi = pm_hours
     marked = raw.str.contains(_MERIDIEM, regex=True)
-    moved = after != before
+    # NaT != NaT is True, so a bare `after != before` counts every unparseable
+    # row as moved. The per-day loop below happens to drop those rows, which
+    # masked it; say what is meant instead of relying on that.
+    moved = (after != before) & before.notna()
 
     days = []
     frame = pd.DataFrame({"day": before.dt.date, "ge13": h >= 13,
@@ -164,6 +167,14 @@ def audit(path: Path, pm_hours=PM_HOURS, pkg=None) -> dict:
             "rows_moved_by_fix": int(g["moved"].sum()),
             "MIXED": bool(g["ge13"].any() and g["pm"].any()),
         })
+    # The per-day column and the file figure come from different code (this
+    # function's comparison, and the fix's own count). They must never drift
+    # apart silently.
+    per_day = sum(d["rows_moved_by_fix"] for d in days)
+    file_total = int(after.attrs.get("shifted_12h", 0))
+    assert per_day == file_total, (
+        f"{path.name}: per-day rows moved sum to {per_day:,} but the fix reports "
+        f"{file_total:,}")
     return {
         "file": path.name,
         "package_check": (compare_with_package(pkg, raw, before, after, pm_hours)
@@ -348,6 +359,9 @@ if "cfg" in globals():                                   # pasted into the noteb
     _cfg = globals()["cfg"]
     timestamp_audit = run(
         [_cfg.dataset_path],
+        # The training set is cfg.data.csv_files. TRAINING_FILES is only the
+        # fallback for the command line, where there is no config.
+        required_files=tuple(_cfg.data.csv_files),
         # local disk first: the Drive mount has lost freshly written files before
         out_dirs=([Path("/content/gs_logs")] if Path("/content").is_dir() else [])
         + [_cfg.log_path],

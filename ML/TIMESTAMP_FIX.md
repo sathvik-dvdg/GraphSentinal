@@ -395,7 +395,7 @@ fails, naming `C:\content`.
   run against the file as it stood before the fix: they flag lines 1376, 1401
   and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
 
-**The suite baseline is now 134 passed, 0 skipped** (2026-10-03). Earlier records say
+**The suite baseline is now 136 passed, 0 skipped** (2026-10-03). Earlier records say
 "98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
 split and graph construction tests. On the machine those records come from,
 the split code had therefore never run at all. With `pyarrow` installed they

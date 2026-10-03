@@ -164,13 +164,18 @@ class Env:
         self.dataset = self.base / "datasets" / "cicids2017"
 
 
+def training_files() -> tuple:
+    """The training CSVs, from the config the retrain uses (the bundled card)."""
+    card = json.loads((ML / "model_card.json").read_text(encoding="utf-8"))
+    return tuple(card["config"]["data"]["csv_files"])
+
+
 def find_base(root: Path = Path("/content/drive/MyDrive")) -> Path:
-    """The Drive folder that holds datasets/cicids2017 with all five training files."""
-    import timestamp_audit as ta
+    """The Drive folder that holds datasets/cicids2017 with every training file."""
     hits = []
     for depth in range(0, 5):
         hits += list(root.glob("/".join(["*"] * depth + ["datasets", "cicids2017"])))
-    full = [h for h in hits if all((h / f).exists() for f in ta.TRAINING_FILES)]
+    full = [h for h in hits if all((h / f).exists() for f in training_files())]
     if not full:
         raise SystemExit(
             f"No datasets/cicids2017 folder with the five training CSVs under {root}.\n"
@@ -351,7 +356,7 @@ def preflight(env: Env, cfg, verdict: dict) -> list:
         add("FAIL", "dependencies import", f"{type(exc).__name__}: {exc}")
 
     csvs = sorted(f.name for f in env.dataset.glob("*.csv"))
-    missing = [f for f in ta.TRAINING_FILES if f not in csvs]
+    missing = [f for f in cfg.data.csv_files if f not in csvs]
     add("FAIL" if missing else "PASS",
         f"cfg built from the model card; dataset folder holds {len(csvs)} CSVs",
         (f"MISSING {missing}; " if missing else "") + ", ".join(csvs))
@@ -405,7 +410,10 @@ def cell_a(env: Env | None = None) -> dict:
 
     cfg = make_cfg(env)
     out_dirs = [env.local_logs, env.logs]
-    ta.run([env.dataset], out_dirs=out_dirs, pm_hours=tuple(cfg.data.pm_hours))
+    # The files the verdict gates on are the config's training set, not a second
+    # hard-coded list that could drift from it.
+    ta.run([env.dataset], out_dirs=out_dirs, pm_hours=tuple(cfg.data.pm_hours),
+           required_files=tuple(cfg.data.csv_files))
     v = json.loads((env.local_logs / ta.VERDICT_NAME).read_text(encoding="utf-8"))
     v["basis"] = verdict_basis(env)
     write_json(env.local_logs / ta.VERDICT_NAME, v)

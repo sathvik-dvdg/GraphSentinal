@@ -291,3 +291,30 @@ def test_preflight_reports_each_dependency_of_cell_b(cr, ta, tmp_path, capsys):
     out = capsys.readouterr().out
     assert "PREFLIGHT" in out and "[FAIL]" in out
     assert json.loads((env.logs / "preflight.json").read_text(encoding="utf-8"))["checks"]
+
+
+def test_audit_never_counts_an_unparseable_row_as_moved(ta, tmp_path):
+    """NaT != NaT is True. An unparseable timestamp must not be counted as moved,
+    and the per-day column must sum to the file figure."""
+    import pandas as pd
+
+    f = tmp_path / "Tuesday-WorkingHours.pcap_ISCX.csv"
+    pd.DataFrame({"Timestamp": ["4/7/2017 9:00", "4/7/2017 2:00", "not a date",
+                                "4/7/2017 3:30"], "Label": ["BENIGN"] * 4}).to_csv(f, index=False)
+    r = ta.audit(f)
+    assert r["unparseable"] == 1
+    assert r["rows_moved_by_fix"] == 2
+    assert sum(d["rows_moved_by_fix"] for d in r["days"]) == 2
+
+
+def test_audit_gates_on_the_config_training_set(cr, ta):
+    """TRAINING_FILES is a fallback for the command line. Where a config exists,
+    the verdict gates on cfg.data.csv_files, so the two lists cannot drift."""
+    import inspect
+    card = json.loads((ML_DIR / "model_card.json").read_text(encoding="utf-8"))
+    assert cr.training_files() == tuple(card["config"]["data"]["csv_files"])
+    assert "required_files=tuple(cfg.data.csv_files)" in inspect.getsource(cr.cell_a)
+    src = (ML_DIR / "timestamp_audit.py").read_text(encoding="utf-8")
+    assert "required_files=tuple(_cfg.data.csv_files)" in src
+    # today the fallback matches; if the training set changes, the config wins
+    assert set(ta.TRAINING_FILES) == set(cr.training_files())
