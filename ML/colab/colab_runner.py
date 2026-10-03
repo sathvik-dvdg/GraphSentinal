@@ -337,7 +337,7 @@ def preflight(env: Env, cfg, verdict: dict) -> list:
             f"built from commit {str(build.get('commit'))[:10]}"
             + (" -- from a DIRTY tree" if build.get("dirty") else "")
             + ("" if build.get("has_sample_generator") else
-               "; no sample generator, so stages 6 and 7 will be skipped"))
+               "; no sample generator, so stages 7 (sample) and 8 (phase2b) will be skipped"))
     except Exception as exc:
         add("FAIL", "bundle installed", f"BUILD.json unreadable: {exc}")
 
