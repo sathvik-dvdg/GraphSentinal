@@ -1,17 +1,15 @@
 # The 12-hour clock fix, and which artefacts predate it
 
-**Status.** The fix is committed. The full-dataset audit is **outstanding**: it
-can only run in Colab. Nothing has been retrained. Every model artefact in this
-directory predates the fix.
+**Status.** The fix is committed. The full-dataset audit **ran in Colab on
+2026-10-03 and confirmed the defect in every file** (below). Nothing has been
+retrained yet. Every model artefact in this directory predates the fix.
 
 ## The defect
 
-The claim that CICIDS2017's afternoon rows are stamped on a 12-hour clock with
-**no AM/PM marker** currently rests on **two timestamp values**: `7/7/2017 2:55`
-(Friday-Afternoon PortScan) and `7/7/2017 3:57` (Friday-Afternoon DDoS). That is
-one observation per file, not two independent sources. Whether those files are
-stamped that way throughout, and whether any other file is, is outstanding (see
-the audit).
+**All eight CICIDS2017 `TrafficLabelling_` files are stamped on a 12-hour clock
+with no AM/PM marker.** In 2,830,743 rows there is no hour of 13 or later and no
+AM/PM token anywhere. This is a full-scale measurement (next section), not the
+inference from two sample values it rested on before 2026-10-03.
 
 `_parse_timestamps` parsed that string successfully as 03:57 using
 `%d/%m/%Y %H:%M`, so afternoon traffic sorted before the same day's morning
@@ -56,9 +54,78 @@ Both fields are part of the split-parquet and graph cache names (suffix
 `_pm1-7`), and `train()` refuses to resume a checkpoint trained under different
 values. A checkpoint with no field counts as the old parse.
 
-## Evidence so far
+## The full-scale result (Cell A, Colab, 2026-10-03)
 
-The audit is **load-bearing, not confirmatory.** The sample evidence is thin.
+Bundle commit `0e2129d`. The installed package had the fix, and the package and
+the audit script agreed on every row of every file under both parses. Verdict:
+**CLEAN**. No calendar day mixes the two clocks.
+
+| File | Rows | Hours before | Hour ≥ 12 (all noon) | Hour ≥ 13 | AM/PM tokens | Moved by the fix |
+|---|---:|---|---:|---:|---:|---:|
+| Tuesday | 445,909 | 1–5, 8–12 | 18,079 | 0 | 0 | 220,766 |
+| Wednesday | 692,703 | 1–5, 8–12 | 23,993 | 0 | 0 | 227,337 |
+| Friday-Morning | 191,033 | 8–12 | 14,049 | 0 | 0 | 0 |
+| Friday-Afternoon-PortScan | 286,467 | 1–3 | 0 | 0 | 0 | 286,467 |
+| Friday-Afternoon-DDos | 225,745 | 3–5 | 0 | 0 | 0 | 225,745 |
+| **Training, five files** | **1,841,857** | | | **0** | **0** | **960,315 (52.1%)** |
+| Monday | 529,918 | 1–5, 8–12 | 57,941 | 0 | 0 | 222,799 |
+| Thursday-Morning-WebAttacks | 170,366 | 8–12 | 19,552 | 0 | 0 | 0 |
+| Thursday-Afternoon-Infilteration | 288,602 | 1–5 | 0 | 0 | 0 | 288,602 |
+| **All eight files** | **2,830,743** | | | **0** | **0** | **1,471,716 (52.0%)** |
+
+Every `hour ≥ 12` count is noon rows only: no file has a single row at 13:00 or
+later. Under the old parse, **52.1% of the training rows sat at the wrong hour.**
+The training total agrees to within 11 rows with the 1,841,846 labelled rows
+counted independently in the analysis report; the difference is label drops.
+
+### The tiling: independent of any assumption
+
+After the fix, each day's captures tile one working day, with one-minute
+handoffs and no gap or overlap:
+
+| Capture | After the fix | Under the old parse |
+|---|---|---|
+| Friday-Morning | 08:59 → 12:59 | 08:59 → 12:59 |
+| Friday-Afternoon-PortScan | 13:00 → 15:29 | 01:00 → 03:29 |
+| Friday-Afternoon-DDos | 15:30 → 17:02 | 03:30 → 05:02 |
+| Thursday-Morning-WebAttacks | 08:59 → 12:59 | 08:59 → 12:59 |
+| Thursday-Afternoon-Infilteration | 13:00 → 17:04 | 01:00 → 05:04 |
+
+The single-file days do the same: Monday 08:55 → 17:01, Tuesday 08:53 → 17:00,
+Wednesday 08:42 → 17:10.
+
+This does not depend on the business-hours assumption behind `pm_hours`. The
+fixed timestamps reconstruct one contiguous capture day per date. The old parse
+put the afternoon captures at 01:00 to 05:04, before the morning capture of the
+same day. No other reading survives that.
+
+### Notes on the result
+
+- **`pm_hours = [1, 7]` is not load-bearing here.** The hours present before the
+  fix, across all eight files, are 1, 2, 3, 4, 5, 8, 9, 10, 11 and 12. Hours 6
+  and 7 never occur, so `[1, 5]` gives an identical result and the window's two
+  widest entries never fire. The business-hours assumption carries no risk on
+  this dataset; the paper can say so rather than merely assume it.
+- **The MIXED check is per file; the pipeline parses the pooled column.** They
+  coincide here only because the global hour-≥13 count is zero. In general they
+  need not: Friday is one calendar day across three files, and an hour-≥13 row
+  in any one of them would unflag the pooled day, leaving both afternoon files
+  misparsed while a per-file check flagged only the file holding that row. Not
+  reworked, because it cannot arise on this data.
+- **Monday has second resolution; the other files do not.** Monday's timestamps
+  carry seconds (`08:55:58`, `17:01:34`); Tuesday to Friday are minute-only.
+  Anything that assumes a uniform timestamp grid, such as the Phase 2b poll
+  alignment (correction 8 in `phase2b_live_path_cost.py`), behaves differently on
+  Monday than on the training files.
+- **The audit's JSON files** (`timestamp_audit.json`,
+  `timestamp_audit_verdict.json`) are on Drive under
+  `GraphsentinalV2/retrain_fix12h/logs/`. They come into the repository with the
+  retrain's result zip, at `ML/timestamp_audit.json`; the counts above are
+  transcribed from the run's printed output.
+
+## Evidence before the full-scale audit
+
+Kept as the record of what the claim rested on before 2026-10-03.
 
 | Scope | Result | Source |
 |---|---|---|
@@ -66,7 +133,7 @@ The audit is **load-bearing, not confirmatory.** The sample evidence is thin.
 | Sample, what it is | 20,000 rows, but only **19 distinct timestamp values**, in five contiguous blocks: Tuesday 10:10 to 10:15, Wednesday 10:43, Friday morning 10:42 to 10:51, Friday-Afternoon PortScan `2:55`, Friday-Afternoon DDoS `3:57`. Rows inside a block share timestamps and are not independent evidence about how a file is stamped. | `testdata/cicids2017_sample.csv` |
 | Sample, what bears on the clock | **Two timestamp values:** `2:55` and `3:57`, one per Friday-Afternoon file. One observation each; the 8,000 rows carrying them are not 8,000 observations. The three morning blocks sit at hour 10 and say nothing either way, so Tuesday and Wednesday contribute nothing to the claim. | same |
 | Sample, effect of the fix | 0 rows at hour 12 or later before, 0 AM/PM tokens. The fix moves 8,000 rows (those two blocks). Friday order before: PortScan 02:55, DDoS 03:57, Bot 10:42. After: Bot 10:42, PortScan 14:55, DDoS 15:57. No MIXED day. | `timestamp_audit_sample.json` |
-| Five training CSVs, Monday, Thursday | **OUTSTANDING.** | the Colab audit |
+| Five training CSVs, Monday, Thursday | **Measured 2026-10-03:** all eight files 12-hour, no AM/PM token, no hour ≥ 13 in 2,830,743 rows. See the full-scale result above. | Cell A, Colab |
 
 ## The audit, and where it runs
 
@@ -107,6 +174,31 @@ min and max timestamp before and after.
 
 The counts go into a follow-up commit that touches only this file and
 `timestamp_audit.json`.
+
+## Does a re-uploaded bundle invalidate Cell A's verdict?
+
+Only if it changes what the verdict was about. From commit after `0e2129d`,
+Cell A records the verdict's **basis**: a digest of the parse code
+(`ML/timestamp_audit.py` and `preprocess.py`) and the name and size of every
+dataset CSV. Cell B recomputes both and refuses on any difference. It does
+**not** compare the bundle commit: committing the sample generator changes the
+commit and nothing the audit measured.
+
+The verdict from the 2026-10-03 run was written by an older Cell A and carries
+no basis, so Cell B with a newer bundle refuses it and asks for Cell A again,
+about two minutes. After that, a bundle that changes only the generator goes
+straight to Cell B.
+
+## Environment of the retrain
+
+The epoch-31 card records torch `2.11.0+cu128` and Python only; its PyTorch
+Geometric, pandas and NumPy versions are unknown. From this commit the card's
+`framework` block records Python, torch, CUDA, GPU, PyTorch Geometric, pandas,
+NumPy, scikit-learn and pyarrow. Cell A's runtime reported torch
+`2.11.0+cu130`, PyTorch Geometric `2.8.0.post1` and pyarrow `23.0.1`; the
+retrain's own card is the record. Section 8 of the analysis gains a row for the
+retrain; the existing rows stay as they are, because the current numbers came
+from the cu128 run.
 
 ## A retrain invalidates the evidence chain outside `ML/`
 
