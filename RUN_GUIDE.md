@@ -134,6 +134,13 @@ without the gitignored `ML/weights.pt` the inference service never becomes healt
 and the backend must still boot. So "backend healthy" does **not** mean the model
 is loaded; §6 checks that directly. The frontend waits for a healthy backend.
 
+This was `service_healthy` when the service was first wired in and was changed on
+purpose (commit `4071505`, 2026-09-14); it was reviewed again on 2026-10-04 and
+kept. It is not a race that can produce a wrong result: until the model is in
+memory the backend reports `ml_v2` unreachable, scores nothing, and tries again on
+the next poll. **Wait for `inference` to show `(healthy)` in `docker compose ps`
+before running §6** — about 45 seconds after start, longer on a busy machine.
+
 ```powershell
 docker logs graphsentinel-backend        # the provenance gate and v2 lines
 docker logs graphsentinel-inference
