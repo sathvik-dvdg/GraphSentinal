@@ -711,7 +711,7 @@ This chapter presented the literature survey of various research works related t
 \chapter{Software Requirements Specification}
 
 \section{Functional requirements}
-The functional requirements below correspond to functionality implemented in the codebase (backend package \texttt{backend/app}, machine-learning package \texttt{ML/graphsentinel\_v2}, smart contract \texttt{blockchain/contracts/IncidentLogger.sol} and frontend \texttt{frontend/src}).
+The functional requirements below correspond to functionality implemented in the codebase (backend package \texttt{backend/\allowbreak{}app}, machine-learning package \texttt{ML/\allowbreak{}graphsentinel\_\allowbreak{}v2}, smart contract \texttt{blockchain/\allowbreak{}contracts/\allowbreak{}IncidentLogger.\allowbreak{}sol} and frontend \texttt{frontend/\allowbreak{}src}).
 
 \begin{itemize}
     \item {FR-01: The system shall collect flow records from the Open vSwitch switch every 5 seconds (\texttt{poll\_interval\_seconds}) through the enforcement daemon (\texttt{ovs-ofctl dump-flows}), and shall report whether each poll succeeded, returned no flows, or failed.}
@@ -804,11 +804,11 @@ Client state is held in Zustand stores (\texttt{useAuthStore}, \texttt{useGraphS
 \par \textbf{Hardware.} The model in the repository was trained on a Google Colab runtime with an NVIDIA T4 GPU (recorded in the training notebook's metadata and output). The inference container runs on CPU. The Mininet emulation requires a Linux environment with root privileges; the code is annotated for WSL2 Ubuntu. The team specified the following minimum configuration for development and demonstration: an Intel Core i5/i7 or equivalent multi-core processor, at least 8 GB of RAM, at least 256 GB of SSD storage, and internet connectivity for dataset access and package installation. A GPU is optional and is only needed to accelerate model training.
 \par \textbf{Software.}
 \begin{itemize}
-    \item Backend: Python 3.10, FastAPI 0.115.6, Uvicorn 0.35.0, python-socketio 5.11.0, SQLAlchemy 2.0.36, Alembic 1.18.4, Pydantic 2.10.4, Web3.py 7.4.0, NetworkX 3.3, PyTorch ($\geq$2.4.1) and PyTorch Geometric 2.5.0 (\texttt{backend/requirements.txt}).
-    \item Machine learning: PyTorch, PyTorch Geometric, pandas, NumPy, scikit-learn and pyarrow (\texttt{ML/graphsentinel\_v2/requirements*.txt}). The delivered model card records PyTorch 2.11.0+cu128 and Python 3.13.15 for training. The inference container pins PyTorch 2.4.0 (CPU), PyTorch Geometric 2.5.0, pandas 2.3.3 and NumPy 2.2.6.
-    \item Blockchain: Solidity $\hat{}$0.8.19, Hardhat 2.22, Ganache 7.9, ethers 6 (\texttt{blockchain/package.json}).
-    \item Frontend: React 18.3, Vite 8, Tailwind CSS 4, three.js 0.179, react-force-graph-3d, Cytoscape, Recharts, Zustand, Axios and socket.io-client (\texttt{frontend/package.json}).
-    \item Network emulation: Mininet with Open vSwitch (\texttt{mininet/topologies}).
+    \item Backend: Python 3.10, FastAPI 0.115.6, Uvicorn 0.35.0, python-socketio 5.11.0, SQLAlchemy 2.0.36, Alembic 1.18.4, Pydantic 2.10.4, Web3.py 7.4.0, NetworkX 3.3, PyTorch ($\geq$2.4.1) and PyTorch Geometric 2.5.0 (\texttt{backend/\allowbreak{}requirements.txt}).
+    \item Machine learning: PyTorch, PyTorch Geometric, pandas, NumPy, scikit-learn and pyarrow (\texttt{ML/\allowbreak{}graphsentinel\_\allowbreak{}v2/\allowbreak{}requirements*.\allowbreak{}txt}). The delivered model card records PyTorch 2.11.0+cu128 and Python 3.13.15 for training. The inference container pins PyTorch 2.4.0 (CPU), PyTorch Geometric 2.5.0, pandas 2.3.3 and NumPy 2.2.6.
+    \item Blockchain: Solidity $\hat{}$0.8.19, Hardhat 2.22, Ganache 7.9, ethers 6 (\texttt{blockchain/\allowbreak{}package.json}).
+    \item Frontend: React 18.3, Vite 8, Tailwind CSS 4, three.js 0.179, react-force-graph-3d, Cytoscape, Recharts, Zustand, Axios and socket.io-client (\texttt{frontend/\allowbreak{}package.json}).
+    \item Network emulation: Mininet with Open vSwitch (\texttt{mininet/\allowbreak{}topologies}).
     \item Deployment: Docker and Docker Compose.
 \end{itemize}
 
@@ -817,7 +817,7 @@ Client state is held in Zustand stores (\texttt{useAuthStore}, \texttt{useGraphS
 
 
 \section{Any Other Requirements }
-\par Runtime configuration is supplied through environment variables (\texttt{backend/.env.example}, \texttt{.env.docker}). These include the API tokens, operator credentials, blockchain RPC URL and contract address, enforcement mode and switch, threat threshold, and v2 inference service URL. The v2 weights file (\texttt{ML/weights.pt}, about 73 MiB) is not committed to version control and must be provided to the inference container through a read-only bind mount. The CICIDS2017 CSV files (TrafficLabelling export) are required for training and are not included in the repository.
+\par Runtime configuration is supplied through environment variables (\texttt{backend/\allowbreak{}.env.example}, \texttt{.env.docker}). These include the API tokens, operator credentials, blockchain RPC URL and contract address, enforcement mode and switch, threat threshold, and v2 inference service URL. The v2 weights file (\texttt{ML/\allowbreak{}weights.pt}, about 73 MiB) is not committed to version control and must be provided to the inference container through a read-only bind mount. The CICIDS2017 CSV files (TrafficLabelling export) are required for training and are not included in the repository.
 
 \section{Summary}
 \par This chapter specified eight functional requirements, grouped into a detection and self-healing module and a forensics and administration module. It also described the security, reliability, maintainability, portability and observability properties reflected in the code, the safety constraints on enforcement, the configured performance parameters, the user interface, and the software stack.
@@ -848,10 +848,10 @@ Client state is held in Zustand stores (\texttt{useAuthStore}, \texttt{useGraphS
  \caption{[ARCHITECTURE DIAGRAM CAPTION]}
 \end{figure}
 % [IMAGE TO BE INSERTED]
-\par The main data path is: OVS flow table $\rightarrow$ enforcement daemon (\texttt{dump-flows}) $\rightarrow$ backend monitor $\rightarrow$ v1 analysis pipeline (graph construction, GraphSAGE or heuristic scoring, threat analysis) $\rightarrow$ incident in SQLite, drop rule on OVS, transaction on Ganache $\rightarrow$ Socket.IO events $\rightarrow$ dashboard. In parallel, when enabled, the v2 path runs: backend monitor $\rightarrow$ flow mapping $\rightarrow$ HTTP \texttt{POST /flows} on the inference service $\rightarrow$ per-flow verdicts, which are returned and reported only.
+\par The main data path is: OVS flow table $\rightarrow$ enforcement daemon (\texttt{dump-flows}) $\rightarrow$ backend monitor $\rightarrow$ v1 analysis pipeline (graph construction, GraphSAGE or heuristic scoring, threat analysis) $\rightarrow$ incident in SQLite, drop rule on OVS, transaction on Ganache $\rightarrow$ Socket.IO events $\rightarrow$ dashboard. In parallel, when enabled, the v2 path runs: backend monitor $\rightarrow$ flow mapping $\rightarrow$ HTTP \texttt{POST /\allowbreak{}flows} on the inference service $\rightarrow$ per-flow verdicts, which are returned and reported only.
 
 \subsection{Database design}
-The backend uses SQLite through SQLAlchemy 2.0. Its schema is created and upgraded with Alembic migrations (\texttt{backend/migrations/versions}). The ORM models are defined in \texttt{backend/app/models/incident.py}:
+The backend uses SQLite through SQLAlchemy 2.0. Its schema is created and upgraded with Alembic migrations (\texttt{backend/\allowbreak{}migrations/\allowbreak{}versions}). The ORM models are defined in \texttt{backend/\allowbreak{}app/\allowbreak{}models/\allowbreak{}incident.\allowbreak{}py}:
 \begin{itemize}
     \item \textbf{incidents}: one row per detected incident: source IP, attack type, threat score, severity, blocked flag, raw flow JSON, triage status (open/acknowledged/resolved with timestamps), data source (ovs, demo, manual or simulation), enforcement status, a unique idempotency key, and blockchain outbox fields (transaction hash, chain ID, contract address, block number, on-chain incident ID, status, retry count, last error, claim and pending timestamps).
     \item \textbf{blocked\_ips}: the current set of isolated hosts (unique IP address, reason, attack type, threat score, blockchain transaction, enforcement status, time blocked).
@@ -859,11 +859,11 @@ The backend uses SQLite through SQLAlchemy 2.0. Its schema is created and upgrad
     \item \textbf{flow\_snapshots}: stored flow records (addresses, ports, protocol, packet and byte counts, duration, TCP flags, score, data source, capture time), subject to retention clean-up.
     \item \textbf{audit\_logs}: an append-only log of control-plane actions (actor identity and role, action, target, details, status, request ID, timestamp).
 \end{itemize}
-The tables are related by value rather than by declared foreign keys: \texttt{enforcement\_actions.incident\_id} refers to \texttt{incidents.id}, and IP addresses link incidents, blocked hosts and enforcement actions. Indexes are declared on IP addresses, timestamps and the alert status.
+The tables are related by value rather than by declared foreign keys: \texttt{enforcement\_\allowbreak{}actions.\allowbreak{}incident\_\allowbreak{}id} refers to \texttt{incidents.id}, and IP addresses link incidents, blocked hosts and enforcement actions. Indexes are declared on IP addresses, timestamps and the alert status.
 % [ER DIAGRAM TO BE INSERTED]
 
 \subsection{API design}
-The backend routes are defined in \texttt{backend/app/api/v1} and mounted under \texttt{/api/v1} (Table~\ref{tab:api}). The inference service (\texttt{ML/graphsentinel\_v2/graphsentinel/inference/service.py}) exposes \texttt{GET /health}, \texttt{GET /contract}, \texttt{POST /flows}, \texttt{POST /flush} and \texttt{GET /stats}.
+The backend routes are defined in \texttt{backend/\allowbreak{}app/\allowbreak{}api/\allowbreak{}v1} and mounted under \texttt{/\allowbreak{}api/\allowbreak{}v1} (Table~\ref{tab:api}). The inference service (\texttt{ML/\allowbreak{}graphsentinel\_\allowbreak{}v2/\allowbreak{}graphsentinel/\allowbreak{}inference/\allowbreak{}service.\allowbreak{}py}) exposes \texttt{GET /\allowbreak{}health}, \texttt{GET /\allowbreak{}contract}, \texttt{POST /\allowbreak{}flows}, \texttt{POST /\allowbreak{}flush} and \texttt{GET /\allowbreak{}stats}.
 
 \begin{table}[htbp]
 \caption{Backend REST endpoints}
@@ -1156,7 +1156,7 @@ Figure \ref{fig:level2dfd} is reserved for the decomposition of threat scoring i
     \item \textbf{Labels.} An edge takes its flow's class. A node takes the most frequent attack class among its incident flows, or BENIGN if it has none.
 \end{itemize}
 
-\subsection*{C. Upgraded model: GraphSentinel v2 with GATv2 (\texttt{models/net.py}, \texttt{models/layers.py})}
+\subsection*{C. Upgraded model: GraphSentinel v2 with GATv2 (\texttt{models/\allowbreak{}net.\allowbreak{}py}, \texttt{models/\allowbreak{}layers.\allowbreak{}py})}
 \begin{itemize}
     \item \textbf{Purpose.} Classify each host and each flow of a window into BENIGN, Volumetric\_Flood, PortScan, BruteForce or Botnet.
     \item \textbf{Input.} Node features ($16$), edge features ($20$), port and protocol tokens, the edge index, and IP identifiers used to key the memory.
@@ -1211,13 +1211,13 @@ Figure \ref{fig:level2dfd} is reserved for the decomposition of threat scoring i
         \item DDoS if there are more than 5{,}000 packets or the score is at least 0.90;
         \item otherwise Botnet.
     \end{itemize}
-    \item \textbf{Determinism.} Preprocessing standardises features with fixed global statistics (loaded from \texttt{inference\_stats.pt}, with built-in defaults as fallback) instead of per-batch statistics. A flow's features therefore do not depend on the other flows in the same request. The backend tests \texttt{test\_single\_flow\_n1\_normalization\_non\_zero}, \texttt{test\_batch\_context\_independence} and \texttt{test\_batch\_permutation\_stability} verify this: a single flow produces a non-degenerate feature vector, and results are stable when flows are batched or reordered.
+    \item \textbf{Determinism.} Preprocessing standardises features with fixed global statistics (loaded from \texttt{inference\_\allowbreak{}stats.pt}, with built-in defaults as fallback) instead of per-batch statistics. A flow's features therefore do not depend on the other flows in the same request. The backend tests \texttt{test\_\allowbreak{}single\_\allowbreak{}flow\_\allowbreak{}n1\_\allowbreak{}normalization\_\allowbreak{}non\_\allowbreak{}zero}, \texttt{test\_\allowbreak{}batch\_\allowbreak{}context\_\allowbreak{}independence} and \texttt{test\_\allowbreak{}batch\_\allowbreak{}permutation\_\allowbreak{}stability} verify this: a single flow produces a non-degenerate feature vector, and results are stable when flows are batched or reordered.
 \end{itemize}
 
 \subsection*{G. Self-healing, enforcement and reconciliation}
 \begin{itemize}
-    \item \textbf{Block.} After validating the IP, the enforcement agent sends a JSON request with a shared token over TCP to the enforcement daemon. The daemon runs \texttt{ovs-ofctl add-flow <switch> priority=1000,ip,nw\_src=<ip>,actions=drop}, and \texttt{del-flows} to unblock.
-    \item \textbf{Daemon hardening} (\texttt{backend/scripts/enforcement\_daemon.py}).
+    \item \textbf{Block.} After validating the IP, the enforcement agent sends a JSON request with a shared token over TCP to the enforcement daemon. The daemon runs \texttt{ovs-ofctl add-flow <switch> priority=1000,ip,nw\_\allowbreak{}src=<ip>,actions=drop}, and \texttt{del-flows} to unblock.
+    \item \textbf{Daemon hardening} (\texttt{backend/\allowbreak{}scripts/\allowbreak{}enforcement\_\allowbreak{}daemon.\allowbreak{}py}).
     \begin{itemize}
         \item The daemon refuses to start without the \texttt{DAEMON\_TOKEN} shared secret and rejects requests with a wrong token.
         \item It validates the IP address again on its own side.
@@ -1447,9 +1447,9 @@ Thursday (unseen families) & 426{,}958 & 2{,}111 & 0.0669 & 0.9730 & 0.0674 \\
     \item \textbf{Validation.} At the selected epoch the validation edge macro F1 is 0.5565 and the node macro F1 is 0.2307.
     \item \textbf{Volumetric ablation.} Zeroing the two volumetric edge features changes the test edge macro F1 (four classes present) by $-0.0024$.
     \item \textbf{Composition of the splits.} Under the original parse, 266 of 52{,}062 test attack flows (0.51\%) shared a 60-second window with benign traffic; after the correction, 51{,}003 of 52{,}187 (97.73\%) do. This was predicted before it was measured. The original test task was therefore easier than the deployed one: its attack windows could be classified from their graph structure alone.
-    \item \textbf{Mitigation confidence floors.} With the confidence floors of the backend's mitigation policy (0.90 for Volumetric\_Flood, 0.85 for PortScan and BruteForce; Botnet disabled), 22{,}268 of 27{,}191 Volumetric\_Flood test flows (81.9\%) would trigger a rule, at most 2 of 174{,}421 benign test flows would trigger a wrong rule, and at most 118 of 20{,}976 attack flows predicted as the wrong attack class would. None of the 17{,}909 PortScan flows predicted as BruteForce reaches its floor. On the test split, Volumetric\_Flood is therefore the only class with an enforceable path. The policy is connected to rule generation in dry-run mode (no rule is installed): on the 18{,}264-flow Phase~2b sample, sent through the inference service, 12 rules were admitted, all on correctly classified flows (8 BruteForce, 4 Volumetric\_Flood), none on benign or wrong-class flows, and no correct PortScan prediction reached its floor (\texttt{ML/live\_rule\_check.json}).
+    \item \textbf{Mitigation confidence floors.} With the confidence floors of the backend's mitigation policy (0.90 for Volumetric\_Flood, 0.85 for PortScan and BruteForce; Botnet disabled), 22{,}268 of 27{,}191 Volumetric\_Flood test flows (81.9\%) would trigger a rule, at most 2 of 174{,}421 benign test flows would trigger a wrong rule, and at most 118 of 20{,}976 attack flows predicted as the wrong attack class would. None of the 17{,}909 PortScan flows predicted as BruteForce reaches its floor. On the test split, Volumetric\_Flood is therefore the only class with an enforceable path. The policy is connected to rule generation in dry-run mode (no rule is installed): on the 18{,}264-flow Phase~2b sample, sent through the inference service, 12 rules were admitted, all on correctly classified flows (8 BruteForce, 4 Volumetric\_Flood), none on benign or wrong-class flows, and no correct PortScan prediction reached its floor (\texttt{ML/\allowbreak{}live\_\allowbreak{}rule\_\allowbreak{}check.\allowbreak{}json}).
     \item \textbf{Calibration and latency.} Measured on the earlier (epoch-31) model only and not repeated for the retrained model. [TO BE MEASURED FOR THE RETRAINED MODEL]
-    \item \textbf{Baseline model (GraphSAGE).} The baseline model reported accuracy 0.9957, weighted F1 0.9957 and ROC-AUC 0.9975 (\texttt{ML/GraphSage-model/test\_results.json}). This was a binary task on a different graph construction and a per-file split, so it is not comparable with the v2 figures.
+    \item \textbf{Baseline model (GraphSAGE).} The baseline model reported accuracy 0.9957, weighted F1 0.9957 and ROC-AUC 0.9975 (\texttt{ML/\allowbreak{}GraphSage-model/\allowbreak{}test\_\allowbreak{}results.\allowbreak{}json}). This was a binary task on a different graph construction and a per-file split, so it is not comparable with the v2 figures.
 \end{itemize}
 
 \par\textbf{Results to be added.}
@@ -1672,15 +1672,15 @@ The test cases below are existing automated tests in the repository. For the ML 
         \hline
         Test Case & Input & Test Description & Output \\
         \hline
-        1 & Stored incident with altered data & Contract test ``should detect tampered data via hash mismatch'' (\texttt{IncidentLogger.test.js}) & \texttt{verifyIncident} returns false (not executed in this environment) \\
+        1 & Stored incident with altered data & Contract test ``should detect tampered data via hash mismatch'' (\texttt{IncidentLogger.\allowbreak{}test.\allowbreak{}js}) & \texttt{verifyIncident} returns false (not executed in this environment) \\
         \hline
         2 & Severity 0 and 11 & Contract test ``should reject severity 0 and 11'' & Transaction reverts (not executed in this environment) \\
         \hline
-        3 & Blockchain call exceeding the timeout & \texttt{test\_t7\_timeout\_returns\_pending\_with\_broadcast\_tx\_hash} & Status pending with transaction hash (passed) \\
+        3 & Blockchain call exceeding the timeout & \texttt{test\_\allowbreak{}t7\_\allowbreak{}timeout\_\allowbreak{}returns\_\allowbreak{}pending\_\allowbreak{}with\_\allowbreak{}broadcast\_\allowbreak{}tx\_\allowbreak{}hash} & Status pending with transaction hash (passed) \\
         \hline
-        4 & Daemon unreachable during reconciliation & \texttt{test\_t6\_worker\_liveness\_survives\_daemon\_outage\_and\_recovers} & Worker keeps running and recovers (passed) \\
+        4 & Daemon unreachable during reconciliation & \texttt{test\_\allowbreak{}t6\_\allowbreak{}worker\_\allowbreak{}liveness\_\allowbreak{}survives\_\allowbreak{}daemon\_\allowbreak{}outage\_\allowbreak{}and\_\allowbreak{}recovers} & Worker keeps running and recovers (passed) \\
         \hline
-        5 & Poll of demo (non-OVS) flows with v2 enabled & \texttt{test\_demo\_batch\_produces\_no\_v2\_submission\_and\_is\_counted} & Nothing submitted; refusal counted (passed) \\
+        5 & Poll of demo (non-OVS) flows with v2 enabled & \texttt{test\_\allowbreak{}demo\_\allowbreak{}batch\_\allowbreak{}produces\_\allowbreak{}no\_\allowbreak{}v2\_\allowbreak{}submission\_\allowbreak{}and\_\allowbreak{}is\_\allowbreak{}counted} & Nothing submitted; refusal counted (passed) \\
         \hline
     \end{tabularx}
 \end{table}
