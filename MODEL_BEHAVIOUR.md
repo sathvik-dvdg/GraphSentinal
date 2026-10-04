@@ -592,7 +592,9 @@ replace.
    `.gitattributes` pins `-text` on every digest-bearing artefact, including the
    moved pre-fix files, the sample and the retrain logs.
 
-Suites at time of writing: **ML 160 passed; backend 232 passed, 3 skipped.**
+Suites at time of writing: **ML 165 passed; backend 233 passed, 3 skipped.** How to
+start the system and verify it in one command: `RUN_GUIDE.md` (§6,
+`python ML/verify_stack.py`).
 
 ---
 

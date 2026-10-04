@@ -126,3 +126,14 @@ def test_a_service_claiming_live_mode_is_refused(monkeypatch, state, no_enforcem
                                                 dry_run=False))
     assert out["windows"][0]["rules"] == []
     assert "dry_run=False" in out["windows"][0]["rules_discarded_reason"]
+
+
+def test_health_publishes_the_policy_digest_floors_and_dry_run(state):
+    """/health is where an operator checks which policy is in force: the digest
+    the service must echo, each class's floor, and that rules are dry-run."""
+    policy = state.health()["policy"]
+    assert policy["sha256"] == EXPECTED_POLICY_SHA256 == state.policy.wire_sha256()
+    assert policy["floors"] == {"Volumetric_Flood": 0.90, "PortScan": 0.85,
+                                "BruteForce": 0.85, "Botnet": 1.01}
+    assert policy["dry_run"] is True
+    assert policy["alert_only"] == ["Botnet"]

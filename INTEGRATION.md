@@ -668,6 +668,8 @@ floors** (wired 2026-10-04, dry-run):
 4. The service echoes the digest of the policy it applied. The backend accepts
    the rules only when the echo matches its own digest, and when the service
    reports `dry_run=True`. It logs rules admitted and each withholding reason.
+   The digest, each class's floor and `dry_run` are published at `/health` under
+   `ml_v2.policy`, so an operator can see which policy is in force.
 5. No rule is installed. `SDNTranslator.install()` writes nothing in dry-run and
    refuses outside it, and no v2 rule reaches `EnforcementAgent` or
    `SelfHealingEngine` (`backend/tests/test_v2_rule_wiring.py`).
@@ -890,6 +892,9 @@ after 2026-09-13 carry `scaling.used_in_this_export: false`.
 
 ## 9. Running it
 
+**Start with `RUN_GUIDE.md`**: both start-up paths, and the nine-check verification
+(`python ML/verify_stack.py`).
+
 ```bash
 docker compose up --build            # start order: blockchain → inference → backend → frontend
 ```
@@ -931,7 +936,7 @@ curl -s localhost:8001/health | jq .ml_v2
 | Policy: every card class has an entry; every entry names a card class; `Botnet` is `alert_only` | ✅ verified |
 | `SDNTranslator().dry_run is True` | ✅ verified |
 | Package suite (`ML/graphsentinel_v2`, local, Windows) | ✅ **98 passed, 7 skipped, 0 failed**. All 7 skips are training-only dependencies (`pyarrow`, and two tests guarded as training-only) that the inference path doesn't need |
-| Backend suite, full (2026-10-04) | ✅ **232 passed, 3 skipped, 0 failed**: the threshold test points at the declared default (§8); 5 new tests pin the policy wiring (§6) |
+| Backend suite, full (2026-10-04) | ✅ **233 passed, 3 skipped, 0 failed**: the threshold test points at the declared default (§8); 6 new tests pin the policy wiring and what `/health` publishes about it (§6) |
 | Backend suite, full, after the gate, poll status, compose and contract changes (2026-09-14) | ✅ **226 passed, 3 skipped, 1 failure that predates this work**. The 226 are the previous 208 plus 18 new tests: 7 provenance gate, 4 poll status, 7 service contract. The failure is `test_production_default_threshold_is_conservative_075`: it expects `0.75` but `backend/.env` sets `0.40`, it passes with `THREAT_THRESHOLD=0.75`, and nothing in this integration touches it |
 | **Retrained model loads inside the container on torch 2.4.0** | ✅ **verified 2026-10-04**: image rebuilt (Docker's data disk had been lost). Output committed: `ML/retrain_logs/container_load_output.txt` (script `ML/container_load_check.py`); summary in `MODEL_BEHAVIOUR.md` §2 |
 | Retrained model, inference service over HTTP | ✅ verified 2026-10-04: healthy after ~45 s, `/health` 200, `/contract` 2.0.0 with the card's class order |

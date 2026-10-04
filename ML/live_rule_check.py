@@ -21,6 +21,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import os
 import time
 from collections import Counter, defaultdict
 from pathlib import Path
@@ -36,7 +37,9 @@ from graphsentinel.data import preprocess as pre
 
 REPO = Path(__file__).resolve().parents[1]
 SAMPLE = REPO / "ML" / "testdata" / "cicids2017_sample.csv"
-OUT = REPO / "ML" / "live_rule_check.json"
+# GS_LIVE_RULE_OUT redirects the report: ML/verify_stack.py uses it so that a
+# verification run does not rewrite the committed artefact.
+OUT = Path(os.environ.get("GS_LIVE_RULE_OUT") or REPO / "ML" / "live_rule_check.json")
 URL = "http://localhost:8081"
 
 # The label map follows the active taxonomy: set the card's before mapping.

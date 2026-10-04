@@ -152,6 +152,12 @@ class InferenceV2State:
             "policy": None if self.policy is None else {
                 "enforceable": [c for c in self.policy.table if self.policy.is_enforceable(c)],
                 "alert_only": list(self.policy.alert_only_classes),
+                # What the translator is sent with every batch, and the digest
+                # the service must echo before its rules are accepted.
+                "floors": {c: e["min_conf"] for c, e in self.policy.table.items()},
+                "sha256": self.policy.wire_sha256(),
+                # Rules are generated and logged, never installed.
+                "dry_run": True,
             },
             "operating_points": (
                 self.operating_points.describe() if self.operating_points else None

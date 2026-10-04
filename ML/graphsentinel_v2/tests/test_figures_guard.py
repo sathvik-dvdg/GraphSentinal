@@ -38,6 +38,10 @@ FIGURES = [
 ]
 OWNERS = {"MODEL_BEHAVIOUR.md", "ML/TIMESTAMP_FIX.md"}
 MIRROR = "report/main.tex"
+#: Documents that must quote a figure to do their job, held to EQUALITY like the
+#: report: path -> the figures (markdown form) each must carry. RUN_GUIDE.md
+#: gives the expected values of its verification checks.
+MIRRORS_MD = {"RUN_GUIDE.md": ["0.9961", "654,851"]}
 EXEMPT_PREFIXES = ("ML/retrain_logs/", "ML/prefix_epoch31/", "ML/phase2b_runs/")
 THIS = "ML/graphsentinel_v2/tests/test_figures_guard.py"
 SCANNED = (".md", ".py", ".tex", ".txt")
@@ -54,7 +58,10 @@ def violations(files: dict[str, str]) -> list[str]:
     for path, text in sorted(files.items()):
         if path in OWNERS or path in (MIRROR, THIS) or path.startswith(EXEMPT_PREFIXES):
             continue
+        allowed = set(MIRRORS_MD.get(path, ()))
         for md, tex, what in FIGURES:
+            if md in allowed:
+                continue
             for form in filter(None, (md, tex)):
                 if _pattern(form).search(text):
                     out.append(f"{path}: restates {form} ({what}); cite MODEL_BEHAVIOUR.md instead")
@@ -95,6 +102,16 @@ def test_the_report_carries_exactly_the_owners_figures():
         ". The report is held to equality with MODEL_BEHAVIOUR.md.")
 
 
+def test_mirror_documents_carry_exactly_the_figures_declared_for_them():
+    known = {md for md, _, _ in FIGURES}
+    for path, figures in MIRRORS_MD.items():
+        assert set(figures) <= known, f"{path}: {set(figures) - known} is not a key figure"
+        text = (REPO / path).read_text(encoding="utf-8")
+        missing = [f for f in figures if not _pattern(f).search(text)]
+        assert not missing, (f"{path} must carry {missing}, the owner's figure(s); it is held "
+                             "to equality with MODEL_BEHAVIOUR.md")
+
+
 def test_the_guard_catches_a_restated_figure_and_spares_the_sources():
     files = {
         "INTEGRATION.md": "the model scores 0.4441 on test",          # a copy: caught
@@ -103,6 +120,8 @@ def test_the_guard_catches_a_restated_figure_and_spares_the_sources():
         "ML/retrain_logs/train_output.txt": "edge_macro_f1 0.4441",   # a source: spared
         "MODEL_BEHAVIOUR.md": "0.4441",                               # the owner: spared
         "report/main.tex": "0.4441",                                  # the mirror: spared
+        "RUN_GUIDE.md": "expect 654,851 parameters; macro F1 0.4441",  # 654,851 declared; 0.4441 not
     }
     found = violations(files)
-    assert [f.split(":")[0] for f in found] == ["INTEGRATION.md", "backend/app/x.py"]
+    assert [f.split(":")[0] for f in found] == ["INTEGRATION.md", "RUN_GUIDE.md", "backend/app/x.py"]
+    assert "0.4441" in found[1]
