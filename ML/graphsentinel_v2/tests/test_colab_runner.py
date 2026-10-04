@@ -365,7 +365,7 @@ def test_split_composition_runs_before_the_sample_and_is_packaged(cr):
     assert cr._RUN["split_composition"] is cr.stage_split_composition
     assert '"ML/split_composition.json"' in inspect.getsource(cr.stage_package)
     cell = (COLAB / "cells" / "split_composition.py").read_text(encoding="utf-8")
-    assert "from colab_runner import split_composition" in cell
+    assert "from colab_runner import boundary_sharing, split_composition" in cell
     assert "fix_12h_clock = fix" in cell                  # both parses, not one
 
 
@@ -512,3 +512,48 @@ def test_manifest_records_an_empty_class_as_none_not_zero(cr):
 def test_package_includes_the_verdict_with_its_basis(cr):
     import inspect
     assert '"ML/timestamp_audit_verdict.json"' in inspect.getsource(cr.stage_package)
+
+
+def test_boundary_sharing_finds_a_cut_inside_one_timestamp(cr):
+    """The PortScan case: one timestamp in train, validation and test."""
+    import pandas as pd
+
+    def part(rows):
+        return pd.DataFrame({"t": [r[0] for r in rows], "Label": [r[1] for r in rows]})
+
+    splits = {"train": part([(100, "PortScan")] * 3 + [(160, "PortScan")] * 2 + [(10, "BENIGN")]),
+              "val": part([(160, "PortScan")] * 4 + [(700, "BENIGN")]),
+              "test": part([(160, "PortScan")] * 1 + [(220, "PortScan")] * 5 + [(1400, "BENIGN")])}
+    b = cr.boundary_sharing(splits)
+    assert b["PortScan"]["train|val"] == {"shared_timestamps": 1, "train_rows_on_shared": 2,
+                                          "val_rows_on_shared": 4, "shared": [160]}
+    assert b["PortScan"]["val|test"]["test_rows_on_shared"] == 1
+    assert b["PortScan"]["distinct_timestamps"] == {"train": 2, "val": 1, "test": 2}
+    assert b["BENIGN"]["train|val"]["shared_timestamps"] == 0
+
+
+def test_markers_are_named_by_stage_and_legacy_names_still_count(cr, tmp_path):
+    """Adding a stage must never make a finished one look unfinished: a stage
+    marked under the old positional name ('3_train_export.json') is still done."""
+    env = cr.Env(tmp_path / "base", tmp_path / "local", is_colab=False)
+    out = tmp_path / "weights.pt"
+    out.write_bytes(b"x" * 10)
+    env.state.mkdir(parents=True, exist_ok=True)
+    legacy = {"stage": "train_export", "session": "old", "finished_at_utc": "t",
+              "outputs": {"weights.pt": {"path": str(out), "bytes": 10}}}
+    (env.state / "3_train_export.json").write_text(json.dumps(legacy), encoding="utf-8")
+    assert cr.is_done(env, "train_export")
+    cr.mark(env, "probes", {"weights.pt": out})
+    assert (env.state / "probes.json").exists()
+
+
+def test_a_measurement_stage_reruns_when_its_code_changes(cr, tmp_path, monkeypatch):
+    env = cr.Env(tmp_path / "base", tmp_path / "local", is_colab=False)
+    out = tmp_path / "split_composition.json"
+    out.write_text("{}", encoding="utf-8")
+    cr.mark(env, "split_composition", {"split_composition.json": out})
+    assert cr.is_done(env, "split_composition")
+    monkeypatch.setattr(cr, "_code_digest", lambda stage: "0" * 64)    # the cell changed
+    assert not cr.is_done(env, "split_composition")
+    # a stage whose re-run would refit something is not code-keyed
+    assert "threshold_study" not in cr.CODE_KEYED and "train_export" not in cr.CODE_KEYED

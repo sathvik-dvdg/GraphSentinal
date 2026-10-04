@@ -233,19 +233,42 @@ def make_cfg(env: Env):
 # --------------------------------------------------------------------------
 # stage markers
 # --------------------------------------------------------------------------
+#: Stages that must re-run when their code changes, not only when an output is
+#: lost. Only read-only measurement stages are listed: re-running the threshold
+#: study would refit it, and the installed file would no longer be the one the
+#: package describes.
+CODE_KEYED = {"split_composition": ("cells/split_composition.py",)}
+
+
 def _marker(env: Env, stage: str) -> Path:
-    return env.state / f"{STAGES.index(stage) + 1}_{stage}.json"
+    # By NAME. Markers were once named by position ("6_sample.json"), so adding
+    # a stage renamed every later marker and a finished stage looked unfinished.
+    return env.state / f"{stage}.json"
+
+
+def _code_digest(stage: str) -> str | None:
+    files = CODE_KEYED.get(stage)
+    if not files:
+        return None
+    h = hashlib.sha256()
+    for rel in files:
+        h.update(rel.encode() + b"\0" + (HERE / rel).read_bytes() + b"\0")
+    return h.hexdigest()
 
 
 def read_marker(env: Env, stage: str) -> dict | None:
-    try:
-        return json.loads(_marker(env, stage).read_text(encoding="utf-8"))
-    except Exception:
-        return None
+    candidates = [_marker(env, stage)] + sorted(env.state.glob(f"[0-9]_{stage}.json"))
+    for path in candidates:                         # the legacy positional name too
+        try:
+            return json.loads(path.read_text(encoding="utf-8"))
+        except Exception:
+            continue
+    return None
 
 
 def is_done(env: Env, stage: str) -> bool:
-    """Done = the marker is readable AND every output it names is still there."""
+    """Done = the marker is readable, every output it names is still there, and,
+    for a CODE_KEYED stage, it was produced by the code in this bundle."""
     m = read_marker(env, stage)
     if not m:
         return False
@@ -253,6 +276,9 @@ def is_done(env: Env, stage: str) -> bool:
         p = Path(rec["path"])
         if not p.exists() or p.stat().st_size != rec["bytes"]:
             return False
+    code = _code_digest(stage)
+    if code is not None and m.get("code_sha256") != code:
+        return False
     return True
 
 
@@ -263,6 +289,8 @@ def mark(env: Env, stage: str, outputs: dict | None = None, **extra) -> None:
                     for name, p in (outputs or {}).items()},
         **extra,
     }
+    if _code_digest(stage) is not None:
+        rec["code_sha256"] = _code_digest(stage)
     write_json(_marker(env, stage), rec)
 
 
@@ -673,6 +701,33 @@ def split_composition(part, window_seconds: int, min_edges: int) -> dict:
             row["rows_sharing_window_with_benign"] = int((m & has_benign).sum())
             row["share_sharing_window_with_benign"] = round(
                 float((m & has_benign).sum()) / max(int(m.sum()), 1), 4)
+        out[c] = row
+    return out
+
+
+def boundary_sharing(splits: dict) -> dict:
+    """Per class, the timestamps adjacent splits have in common.
+
+    The episode split cuts on row position, so on minute-resolution files a cut
+    can fall inside one timestamp and put the same minute in both splits (all
+    23,812 validation PortScan rows share 14:55 with train and test). For each
+    class and boundary: the shared timestamps, how many rows on each side carry
+    them, and how many distinct timestamps each side's rows span.
+    """
+    out = {}
+    labels = sorted(set().union(*(set(p["Label"].astype(str)) for p in splits.values())))
+    for c in labels:
+        t = {k: p.loc[p["Label"].astype(str) == c, "t"].to_numpy() for k, p in splits.items()}
+        row = {}
+        for a, b in (("train", "val"), ("val", "test")):
+            shared = sorted(set(t[a].tolist()) & set(t[b].tolist()))
+            row[f"{a}|{b}"] = {
+                "shared_timestamps": len(shared),
+                f"{a}_rows_on_shared": int(sum((t[a] == s).sum() for s in shared)),
+                f"{b}_rows_on_shared": int(sum((t[b] == s).sum() for s in shared)),
+                "shared": [int(s) for s in shared[:5]],
+            }
+        row["distinct_timestamps"] = {k: int(len(set(v.tolist()))) for k, v in t.items()}
         out[c] = row
     return out
 

@@ -34,7 +34,7 @@ from graphsentinel.config import CLASS_NAMES, Config
 from graphsentinel.data import preprocess as pre
 from graphsentinel.models.net import build_model
 from graphsentinel.train import load_checkpoint, prepare_graphs
-from colab_runner import split_composition   # tested in test_colab_runner.py
+from colab_runner import boundary_sharing, split_composition   # tested in test_colab_runner.py
 
 assert "cfg" in dir(), "needs cfg"
 OUT = Path(globals().get("GS_OUT", "/content/gs_logs")); OUT.mkdir(parents=True, exist_ok=True)
@@ -83,12 +83,14 @@ for fix in (False, True):
     part_a[tag]["_purge"] = {k: {"cleaned": int(n), "in_splits": in_splits.get(k, 0),
                                  "purged": int(n) - in_splits.get(k, 0)}
                              for k, n in sorted(cleaned.items())}
+    # PART C: timestamps adjacent splits share (a cut inside one timestamp)
+    part_a[tag]["_boundary"] = boundary_sharing(splits)
     del splits
     print(f"\n  -- {tag}  ({time.time() - t0:.0f}s)")
     print(f"  {'split':<6s}{'class':<18s}{'rows':>9s}  {'first':<16s}{'last':<16s}"
           f"{'w/ benign':>10s}{'graphable':>10s}  benign from")
     for name, comp in part_a[tag].items():
-        if name == "_purge":
+        if name.startswith("_"):
             continue
         for cls, r in comp.items():
             share = r.get("share_sharing_window_with_benign")
@@ -99,6 +101,15 @@ for fix in (False, True):
                   f"{r['rows_in_graphable_windows'] / max(r['rows'], 1):>10.1%}  {src}")
     print(f"  dead-zone purge (cleaned rows reaching no split): " + ", ".join(
         f"{k} {v['purged']:,} of {v['cleaned']:,}" for k, v in part_a[tag]["_purge"].items()))
+    print(f"  PART C -- timestamps shared across a split boundary:")
+    for cls, b in part_a[tag]["_boundary"].items():
+        for edge in ("train|val", "val|test"):
+            e = b[edge]
+            if e["shared_timestamps"]:
+                a, z = edge.split("|")
+                print(f"    {cls:<18s}{edge:<10s} {e['shared_timestamps']} timestamp(s): "
+                      f"{e[a + '_rows_on_shared']:,} {a} rows, {e[z + '_rows_on_shared']:,} {z} rows")
+        print(f"    {cls:<18s}distinct timestamps per split: {b['distinct_timestamps']}")
 
 
 # ------------------------------------------------------------- PART B -------
@@ -118,7 +129,7 @@ graphs = prepare_graphs(scored_cfg, force=False, verbose=False)
 
 def score(gs):
     model.reset_memory()
-    ys, ps = [], []
+    ys, ps, ws = [], [], []
     with torch.no_grad():
         for g in gs:
             g = g.to(device)
@@ -130,12 +141,15 @@ def score(gs):
             if len(ey):
                 ps.append(torch.softmax(lg, -1).cpu().numpy())
                 ys.append(ey.cpu().numpy())
-    return np.concatenate(ys), np.vstack(ps)
+                ws.append(np.full(len(ey), float(getattr(g, "window_start", np.nan))))
+    return np.concatenate(ys), np.vstack(ps), np.concatenate(ws)
 
 
 part_b = {}
+scored = {}
 for split in ("val", "test"):
-    y, p = score(graphs[split])
+    y, p, ws = score(graphs[split])
+    scored[split] = (y, p, ws)
     pred, conf = p.argmax(1), p.max(1)
     rows = []
     for ti, tn in enumerate(CLASS_NAMES):
@@ -165,6 +179,40 @@ for split in ("val", "test"):
               f"{q['p50']:>7.3f}{q['p95']:>7.3f}{r['floor']:>7.2f}"
               f"{r['edges_at_or_above_floor']:>10,} ({r['share_at_or_above_floor']:.1%})")
 
+# ------------------------------------------------------------- PART D -------
+# Test PortScan at the minute it shares with validation (and train) versus
+# after it. If the shared minute scores like validation and the rest like the
+# test figure, the driver is contamination; if both score alike, composition.
+print(f"\n{BAR}\n  PART D -- TEST PORTSCAN: THE SHARED MINUTE VERSUS THE REST\n{BAR}")
+PS = list(CLASS_NAMES).index("PortScan")
+shared = part_a["fixed_parse"]["_boundary"].get("PortScan", {}).get("val|test", {}).get("shared", [])
+y, p, ws = scored["test"]
+pred, conf = p.argmax(1), p.max(1)
+part_d = {"shared_timestamps": shared, "floor": POLICY_FLOORS["PortScan"]}
+if shared:
+    first = min(shared)
+    in_shared = (ws <= first) & (first < ws + W)
+    for name, m in (("shared_minute", in_shared), ("after", ~in_shared & (ws > first))):
+        t_ps, p_ps = (y == PS) & m, (pred == PS) & m
+        tp = int((t_ps & p_ps).sum())
+        prec = tp / max(int(p_ps.sum()), 1)
+        rec = tp / max(int(t_ps.sum()), 1)
+        ok = t_ps & p_ps
+        part_d[name] = {
+            "true_portscan_edges": int(t_ps.sum()), "predicted_portscan": int(p_ps.sum()),
+            "correct": tp, "f1": round(2 * prec * rec / max(prec + rec, 1e-12), 4),
+            "correct_at_or_above_floor": int((conf[ok] >= POLICY_FLOORS["PortScan"]).sum()),
+            "share_of_correct_at_or_above_floor": (round(float((conf[ok] >= POLICY_FLOORS["PortScan"]).mean()), 4)
+                                                   if ok.any() else None),
+            "predicted_bruteforce": int((t_ps & (pred == list(CLASS_NAMES).index("BruteForce"))).sum()),
+        }
+        d = part_d[name]
+        print(f"  {name:<14s} true PortScan {d['true_portscan_edges']:>7,}  correct {d['correct']:>7,}"
+              f"  F1 {d['f1']:.4f}  correct >= 0.85: {d['correct_at_or_above_floor']:,}"
+              f"  as BruteForce {d['predicted_bruteforce']:,}")
+else:
+    print("  no timestamp shared between validation and test PortScan -- nothing to separate")
+
 result = {
     "what": "split composition under both parses, and post-fix confidence against the SDN floors",
     "prediction_recorded_before_measurement": PREDICTION,
@@ -172,6 +220,7 @@ result = {
     "policy_floors": POLICY_FLOORS,
     "part_a_split_composition": part_a,
     "part_b_confidence": part_b,
+    "part_d_portscan_shared_minute": part_d,
     "checkpoint_epoch": blob.get("epoch"),
 }
 (OUT / "split_composition.json").write_text(json.dumps(result, indent=2, default=str), encoding="utf-8")

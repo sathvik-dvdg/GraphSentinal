@@ -35,14 +35,16 @@ from graphsentinel.models.net import build_model  # noqa: E402
 
 from make_synthetic import write_dataset  # noqa: E402
 
-DATA_ROOT = Path("/tmp/gs_test")
-
-
 @pytest.fixture(scope="session")
-def cfg() -> Config:
-    write_dataset(DATA_ROOT / "datasets/cicids2017", seed=7)
+def cfg(tmp_path_factory) -> Config:
+    # A session temp dir, not a fixed /tmp/gs_test. The fixed path became
+    # C:	mp\gs_test on Windows, outside pytest's temp tree, and its parquet
+    # and graph caches survived between runs, so a later run could load an
+    # earlier run's splits instead of building its own.
+    root = tmp_path_factory.mktemp("gs_test")
+    write_dataset(root / "datasets/cicids2017", seed=7)
     c = Config()
-    c.base_dir = str(DATA_ROOT)
+    c.base_dir = str(root)
     c.graph.window_seconds = 30
     c.graph.window_stride_seconds = 30
     c.train.epochs = 2
