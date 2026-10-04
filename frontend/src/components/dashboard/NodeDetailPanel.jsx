@@ -34,9 +34,11 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
         transition={{ type: 'spring', damping: 26, stiffness: 220 }}
         className="fixed top-0 right-0 w-72 h-full z-40 overflow-auto"
         style={{
-          background: '#f0f2f5',
-          borderLeft: '1px solid #e2e5ea',
-          boxShadow: '-16px 0 48px rgba(17,20,26,0.12)',
+          background: 'rgba(255, 255, 255, 0.5)',
+          backdropFilter: 'blur(24px) saturate(150%)',
+          WebkitBackdropFilter: 'blur(24px) saturate(150%)',
+          borderLeft: '1px solid rgba(255, 255, 255, 0.8)',
+          boxShadow: '-16px 0 48px rgba(15, 23, 42, 0.12)',
         }}
         role="dialog"
         aria-label={`Node details: ${node.label}`}

@@ -1,9 +1,11 @@
 # [WSL2]
 from __future__ import annotations
 
+import os
 import secrets
 from collections import deque
 from time import monotonic
+
 
 from cachetools import TTLCache
 from fastapi import Depends, Header, HTTPException, Request, status
@@ -18,6 +20,7 @@ _login_attempts: TTLCache = TTLCache(maxsize=10000, ttl=300)
 
 
 def get_current_identity(
+    request: Request,
     authorization: str | None = Header(default=None),
     x_api_key: str | None = Header(default=None),
 ) -> dict:

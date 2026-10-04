@@ -43,8 +43,11 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
     <aside
       style={{
         height: '100%',
-        background: '#ffffff',
-        borderRight: '1px solid rgba(17,20,26,0.08)',
+        background: 'rgba(255, 255, 255, 0.5)',
+        backdropFilter: 'blur(24px) saturate(150%)',
+        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
+        borderRight: '1px solid rgba(255, 255, 255, 0.8)',
+        boxShadow: '4px 0 24px rgba(15, 23, 42, 0.08)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
