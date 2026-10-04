@@ -20,3 +20,10 @@ Dockerfile text
 # matching the file. Top-level ML/ only; the package's own files are unaffected.
 ML/*.json  -text
 ML/*.csv   -text
+# The same for the hash-bearing files below ML/: the pre-fix model's files, the
+# Phase 2b runs and samples (phase2b_live_path_cost.py pins the sample's sha256),
+# and the retrain's logs, whose digests PROVENANCE.json records.
+ML/prefix_epoch31/**     -text
+ML/phase2b_runs/**       -text
+ML/testdata/*.csv        -text
+ML/retrain_logs/**       -text
