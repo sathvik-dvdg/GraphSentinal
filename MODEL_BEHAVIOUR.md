@@ -73,9 +73,11 @@ machine has no Mininet. On the current setup v2 is offered no flow at all; it is
 exercised only by sending the committed sample to the service directly (§1.3).
 So v1 stays as the demonstration of the self-healing **mechanism** — detect →
 block → chain → dashboard — and **no claim is made about its detection quality**
-anywhere. §1.2 is why, and it is not only OVS: with every feature present v1
-ranks sources well above chance, yet 11 of the 21 sources it would block sent no
-attack flow and it does not score Bot traffic at all.
+anywhere. §1.2 is why, and it is not "v1 is weak": on the six attacking hosts of
+the one sample it has been scored on, with every feature present, 11 of the 21
+sources it would block sent no attack flow — one wrong block for every right one
+is not deployable unattended — and it reaches none of the Bot rows, which are
+four fifths of the positive rows, so it cannot be presented as a detector.
 
 **What would have to happen for v2 to replace it.** Future work, in this order.
 None of it is attempted here, and none of it should be before step 1:
@@ -133,20 +135,32 @@ not repair this; the three features carried information the model used. That
 leaves retraining — on OVS-shaped features, or as a four-feature model — or
 documenting the limit. There is no variance estimate: one sample, one run.
 
-**At the unit it blocks, v1 is well above chance — on one attacker.** What is
-blocked is a (window, source) row. 63 of the 1,900 rows have a source that sent an
-attack flow in that window, the 0.0332 base rate in the table, so a source-level
-average precision of 0.3394 is about ten times chance: with every feature present
-the ranking carries real signal. It is narrow signal. Only 6 of the 810 distinct
-sources in the sample sent any attack flow. One of them sent every slowloris,
-PortScan and SSH-Patator flow, nine tenths of the attack flows, and accounts for
-13 of the 63 rows. The other five are the Bot hosts, 10 rows each, and with full
-features no Bot flow scores over 0.75. So four fifths of the rows there are to
-find belong to a class v1 does not score. That is why the tracked threshold finds
-10 of the 63, and why no lower threshold finds more at that precision (the last
-row of the table: 0.7798 finds the same 10). The threshold is not wasting the
-signal; the signal stops. One sample, one run, and the ceiling caveat below
-applies to all of it.
+**What v1 does at the unit it blocks — on six attacking hosts.** Everything in
+this paragraph rests on **n = 6**: only 6 of the 810 distinct sources in the
+sample sent any attack flow, one of them (172.16.0.1) sent every slowloris,
+PortScan and SSH-Patator flow, and the other five are the Bot hosts. These are
+observations about six hosts, not estimates of a rate. What is blocked is a
+(window, source) row; 63 of the 1,900 rows have a source that sent an attack flow
+in that window, which is the 0.0332 base rate in the table, so the source-level
+average precision of 0.3394 is about ten times chance. With every feature
+present, at the tracked threshold, counted from the scores:
+
+- **v1 is blind to one entire class.** None of the 50 Bot rows is over the
+  threshold: 0 of 50, for all five hosts. Its ceiling is therefore the 13 rows of
+  the one other attacker, 13 of 63, before any tuning.
+- **Of the 13 rows it can reach it finds 10.** All 10 are that one host's.
+- **It is wrong about as often as it is right.** Beside those 10 are 11 rows
+  whose source sent no attack flow: 10 of 21, precision 0.4762, roughly one wrong
+  block for every right one.
+
+So: real ranking signal, most of what it is able to see found, precision that
+cannot be deployed unattended, and four fifths of the positive rows invisible to
+it. Lowering the threshold does not help (the last row of the table: 0.7798 finds
+the same 10); the threshold is not wasting the signal, the signal stops. On
+OVS-shaped input the picture is worse and less clean: 6 of that host's 13 rows,
+and 8 Bot rows over the threshold although under one percent of Bot flows are,
+so those rows are over it on the hosts' other traffic. One sample, one run, and
+the ceiling caveat below applies to all of it.
 
 **The offline column is a ceiling, not an estimate.** This is not v1's test set,
 which is not in the repository; it is a small, 90.8%-benign slice that may overlap
@@ -712,6 +726,14 @@ output of `ML/GraphSentinel_Training.ipynb`.*
     sample, and in the live path the provenance gate has never admitted a flow
     (§1.1). So the §8 ablation is not the last word on the memory: it measures an
     untrained memory on input that gives it nothing to remember.
+20. **Neither model detects Botnet traffic.** On the one sample both have been
+    run against (§7), v2 classifies 0 of 168 Botnet edges correctly and has no
+    Botnet edges in its test split to say otherwise (item 9); v1, with every
+    feature present, puts 0 of 50 Bot rows over its threshold, and those are
+    most of the 63 positive rows of its source-level evaluation (§1.2).
+    Two models, two architectures, one blind spot. The sample has five Bot hosts,
+    so this is an observation about them, not a rate; but it is a measured gap,
+    which makes it the best-evidenced item of future work the project has.
 
 ---
 
@@ -758,6 +780,9 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 - Flow classification as host classification. They are different heads with
   different numbers.
 - Any per-class F1 for PortScan or BruteForce as a model property (§5.4).
+- Detection of Botnet traffic, by either model, or "a five-class detector"
+  without qualification. The taxonomy includes a class that nothing in this
+  project has detected (§9 item 20).
 
 The contribution this codebase supports is **the audit and the honest
 re-measurement**: a defect found at full scale, a pre-registered test of its

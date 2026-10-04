@@ -141,7 +141,12 @@ class BlockchainClient:
             msg = msg.replace(private_key, "[REDACTED]")
         return msg
 
-    def log_incident(self, source_ip: str, attack_type: str, severity: int, is_blocked: bool, sqlite_incident_id: int) -> dict:
+    def log_incident(self, source_ip: str, attack_type: str, severity: int, is_blocked: bool, sqlite_incident_id: int,
+                     on_broadcast=None) -> dict:
+        """``on_broadcast(tx_hash)`` is called as soon as the transaction has been
+        sent and before any wait for its receipt (audit B05): a caller that stops
+        waiting then still knows what was submitted, and looks the hash up instead
+        of submitting the incident again."""
         forensics_uri = f"local://incident/{sqlite_incident_id}"
         severity = max(1, min(int(severity), 10))
 
@@ -156,6 +161,12 @@ class BlockchainClient:
                 tx_hash_hex = "0x" + tx_hash_hex
         except Exception as e:
             return {"tx_hash": None, "incident_id": None, "status": "error", "error": self._sanitize_error(e)}
+
+        if on_broadcast is not None:
+            try:
+                on_broadcast(tx_hash_hex)
+            except Exception:  # the write has happened; a failing observer must not undo that
+                pass
 
         # 2. Receipt Waiting with N05-SEC-01 Timeout Protection
         try:

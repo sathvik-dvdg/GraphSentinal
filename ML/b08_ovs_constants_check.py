@@ -201,6 +201,19 @@ def main() -> None:
             by_class[cls] = {"n": len(vals), "mean_score": round(sum(vals) / len(vals), 4),
                              "share_over_0.75": round(sum(v >= 0.75 for v in vals) / len(vals), 4)}
         result["conditions"][name]["by_class"] = by_class
+    # Which attacking sources the tracked threshold reaches. A row is over it if
+    # ANY flow of that source in the window is, benign flows included, so this is
+    # counted from the scores, not inferred from the per-class shares above.
+    for name in scored:
+        found = {a: 0 for a in attackers}
+        for start in range(0, len(labels), WINDOW):
+            best: dict[str, float] = {}
+            for s, src in zip(scored[name][start:start + WINDOW], sources[start:start + WINDOW]):
+                best[src] = max(best.get(src, 0.0), s)
+            for a in attackers:
+                if (start // WINDOW, a) in rows and best.get(a, 0.0) >= 0.75:
+                    found[a] += 1
+        result["conditions"][name]["threshold_0.75"]["attack_source_rows_over_threshold_by_source"] = found
     # Is the damage a shifted operating point or lost information? A threshold
     # cannot tell; average precision can. And: what threshold on OVS input buys
     # back the precision the offline features had at 0.75?

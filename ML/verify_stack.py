@@ -109,7 +109,9 @@ def main(argv: list[str] | None = None) -> int:
     weights = REPO / "ML" / "weights.pt"
     on_disk = hashlib.sha256(weights.read_bytes()).hexdigest() if weights.exists() else None
     check("4 weights identity", served == want == on_disk,
-          f"served card {str(served)[:16]}, MANIFEST {want[:16]}, ML/weights.pt {str(on_disk)[:16]}")
+          f"served card {str(served)[:16]}, MANIFEST {want[:16]}, ML/weights.pt {str(on_disk)[:16]}"
+          + ("" if served else " -- the file matches the manifest, but nothing is serving it"
+             if want == on_disk else ""))
     # 5 and 6 are facts about the model in memory, read from the card. The card
     # is served with no model loaded, so without check 1 they would pass on a
     # model that is not there.
@@ -135,7 +137,8 @@ def main(argv: list[str] | None = None) -> int:
         run = subprocess.run([sys.executable, str(REPO / "ML" / "live_rule_check.py")],
                              cwd=REPO, env=env, capture_output=True, text=True)
         if run.returncode != 0:
-            check("8 policy digest echo", False, f"live_rule_check.py failed: {run.stderr[-300:]}")
+            reason = (run.stderr.strip().splitlines() or ["no output"])[-1]  # the exception, not its traceback
+            check("8 policy digest echo", False, f"live_rule_check.py failed: {reason[:300]}")
             check("9 rules admitted / withheld", None, "not run: the sample could not be scored (check 8)")
         else:
             r = json.loads(out.read_text(encoding="utf-8"))
@@ -174,7 +177,8 @@ def main(argv: list[str] | None = None) -> int:
     unverifiable = [n for n, ok, _ in results if ok is None]
     print(f"\n{len(results) - len(failed) - len(unverifiable)} of {len(results)} checks passed"
           + (f"; FAILED: {failed}" if failed else "")
-          + (f"; UNVERIFIABLE: {unverifiable}" if unverifiable else ""))
+          + (f"; UNVERIFIABLE: {unverifiable}" if unverifiable else "")
+          + ("; NOT RUN: checks 8 and 9 (--skip-sample)" if args.skip_sample else ""))
     return 1 if failed or unverifiable else 0
 
 

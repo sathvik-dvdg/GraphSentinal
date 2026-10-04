@@ -52,7 +52,8 @@ NAMED = "ML/named_figures.json"
 #: open-items list every session starts from, and the archive that 70-odd code
 #: comments cite by file name (`Error.md #29`).
 REQUIRED = {"OPEN_ITEMS.md", NAMED, "docs/archive/Error.md", "docs/archive/decisions.md",
-            "docs/archive/DATAFLOW.md", "docs/archive/INTEGRATION_GUIDE.md"}
+            "docs/archive/DATAFLOW.md", "docs/archive/INTEGRATION_GUIDE.md",
+            "docs/archive/README.md"}
 
 
 def _pattern(fig: str) -> re.Pattern:
@@ -248,10 +249,22 @@ def _whole(value) -> re.Pattern:
 
 
 def _artefact_value(pointer: list, read) -> object:
+    """Follow the keys. A dict step selects the rows of a table that match it,
+    and the next key is then read from each; whatever is left is summed, so a
+    figure that lives in a table is read from the table, not copied out of it."""
     node = json.loads(read(pointer[0]))
     for key in pointer[1:]:
-        node = node[key]
-    return sum(node.values()) if isinstance(node, dict) else node
+        if isinstance(key, dict):
+            node = [row for row in node if all(row.get(k) == v for k, v in key.items())]
+            if not node:
+                raise KeyError(f"no row matches {key}")
+        elif isinstance(node, list) and isinstance(key, str):
+            node = [row[key] for row in node]
+        else:
+            node = node[key]
+    if isinstance(node, dict):
+        return sum(node.values())
+    return sum(node) if isinstance(node, list) else node
 
 
 def named_figure_problems(registry: dict, read) -> list[str]:
@@ -292,9 +305,12 @@ def test_every_named_figure_equals_its_artefact_and_is_stated_as_declared():
 
 def test_the_named_figure_guard_catches_each_kind_of_drift():
     files = {"MODEL_BEHAVIOUR.md": "there were 12 rules\nadmitted", "RUN_GUIDE.md": "13 rules admitted",
-             "ML/a.json": '{"rules": {"x": 8, "y": 5}}'}
+             "ML/a.json": '{"rules": {"x": 8, "y": 5}, "table": [{"true": "A", "n": 5}, {"true": "A", "n": 7},'
+                          ' {"true": "B", "n": 9}]}'}
     registry = {"owner": "MODEL_BEHAVIOUR.md", "figures": {
         "ok": {"value": 12, "stated_as": {"MODEL_BEHAVIOUR.md": ["12 rules admitted"]}},
+        "ok_from_table_rows": {"value": 12, "artefact": ["ML/a.json", "table", {"true": "A"}, "n"],
+                               "stated_as": {"MODEL_BEHAVIOUR.md": ["12 rules admitted"]}},
         "artefact_moved": {"value": 12, "artefact": ["ML/a.json", "rules"],
                            "stated_as": {"MODEL_BEHAVIOUR.md": ["12 rules admitted"]}},
         "copy_drifted": {"value": 12, "stated_as": {"MODEL_BEHAVIOUR.md": ["12 rules admitted"],

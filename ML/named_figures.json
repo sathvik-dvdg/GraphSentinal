@@ -1,5 +1,7 @@
 {
-  "_about": "Named figures owned by MODEL_BEHAVIOUR.md that the shape-matching guard cannot see: bare integers. Each has a value, the committed artefact it is read from (file, then the keys to follow; a dict leaf is summed), and the exact phrase each file states it in. ML/graphsentinel_v2/tests/test_figures_guard.py holds every phrase to the value and every value to its artefact. To change a figure: change the artefact, then this file, then the phrases.",
+  "_about": "Named figures owned by MODEL_BEHAVIOUR.md that the shape-matching guard cannot see: bare integers. Each has a value, the committed artefact it is read from, and the exact phrase each file states it in. ML/graphsentinel_v2/tests/test_figures_guard.py holds every phrase to the value and every value to its artefact. To change a figure: change the artefact, then this file, then the phrases.",
+  "_why_phrases": "Do not simplify this to 'the file contains the value'. A bare 12 or 8 appears in almost any file, so that check passes whatever the file says. Two checks constrain together and neither does alone: value against artefact (the number is the measured one) and phrase against file (the sentence carrying it is still there, with that number in it).",
+  "_artefact_pointer": "A file, then the keys to follow. A dict step selects the rows of a table that match it; the key after it is read from each row. A dict or list left at the end is summed.",
   "owner": "MODEL_BEHAVIOUR.md",
   "figures": {
     "rules_admitted": {
@@ -197,12 +199,22 @@
     },
     "benign_flows_given_a_rule_on_test": {
       "value": 2,
-      "what": "benign test flows that would receive a wrong-class rule under the policy floors",
+      "what": "benign test flows predicted as an attack class at or above that class's floor, summed over the four attack classes",
       "stated_as": {
         "MODEL_BEHAVIOUR.md": [
-          "**2** of 174,421 benign flows"
+          "**2** of 174,421 benign flows",
+          "**2 in 174,421 benign flows**"
         ]
-      }
+      },
+      "artefact": [
+        "ML/split_composition.json",
+        "part_b_confidence",
+        "test",
+        {
+          "true": "BENIGN"
+        },
+        "edges_at_or_above_floor"
+      ]
     },
     "sample_distinct_sources": {
       "value": 810,
@@ -243,7 +255,7 @@
       "stated_as": {
         "MODEL_BEHAVIOUR.md": [
           "63 of the 1,900 rows",
-          "10 of the 63"
+          "13 of 63"
         ]
       }
     },
@@ -260,8 +272,144 @@
       ],
       "stated_as": {
         "MODEL_BEHAVIOUR.md": [
-          "10 of the 63",
+          "it finds 10",
+          "10 of 21",
           "10 sources found against 1"
+        ]
+      }
+    },
+    "v1_rows_of_the_one_non_bot_attacker": {
+      "value": 13,
+      "what": "(window, source) rows of the one attacker that is not a Bot host",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "source_population",
+        "source_rows_with_attack_flow_by_source",
+        "172.16.0.1"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "13 of 63",
+          "Of the 13 rows it can reach"
+        ]
+      }
+    },
+    "v1_rows_found_of_the_one_non_bot_attacker": {
+      "value": 10,
+      "what": "of those, rows over the tracked threshold, full features",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "172.16.0.1"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "All 10 are that one host's"
+        ]
+      }
+    },
+    "v1_bot_rows_found_192.168.10.14": {
+      "value": 0,
+      "what": "rows of this Bot host over the tracked threshold, full features",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.14"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "0 of 50, for all five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_found_192.168.10.15": {
+      "value": 0,
+      "what": "rows of this Bot host over the tracked threshold, full features",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.15"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "0 of 50, for all five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_found_192.168.10.5": {
+      "value": 0,
+      "what": "rows of this Bot host over the tracked threshold, full features",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.5"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "0 of 50, for all five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_found_192.168.10.8": {
+      "value": 0,
+      "what": "rows of this Bot host over the tracked threshold, full features",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.8"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "0 of 50, for all five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_found_192.168.10.9": {
+      "value": 0,
+      "what": "rows of this Bot host over the tracked threshold, full features",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.9"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "0 of 50, for all five hosts"
+        ]
+      }
+    },
+    "v1_rows_found_of_the_one_non_bot_attacker_ovs": {
+      "value": 6,
+      "what": "the same on OVS-shaped input",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "172.16.0.1"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "6 of that host's 13 rows"
         ]
       }
     }

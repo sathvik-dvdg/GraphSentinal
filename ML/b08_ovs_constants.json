@@ -40,7 +40,15 @@
         "fn": 1452,
         "tn": 16578,
         "sources_over_threshold": 21,
-        "of_which_sent_no_attack_flow": 11
+        "of_which_sent_no_attack_flow": 11,
+        "attack_source_rows_over_threshold_by_source": {
+          "172.16.0.1": 10,
+          "192.168.10.14": 0,
+          "192.168.10.15": 0,
+          "192.168.10.5": 0,
+          "192.168.10.8": 0,
+          "192.168.10.9": 0
+        }
       },
       "by_class": {
         "BENIGN": {
@@ -126,7 +134,15 @@
         "fn": 1156,
         "tn": 16460,
         "sources_over_threshold": 45,
-        "of_which_sent_no_attack_flow": 31
+        "of_which_sent_no_attack_flow": 31,
+        "attack_source_rows_over_threshold_by_source": {
+          "172.16.0.1": 6,
+          "192.168.10.14": 3,
+          "192.168.10.15": 1,
+          "192.168.10.5": 2,
+          "192.168.10.8": 2,
+          "192.168.10.9": 0
+        }
       },
       "by_class": {
         "BENIGN": {

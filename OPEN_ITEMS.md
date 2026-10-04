@@ -51,20 +51,29 @@ The prerequisite for v2 ever acting on a flow, not only the last unverified link
 (`MODEL_BEHAVIOUR.md` §1.1, §1.3). Needs Linux or WSL2 with Mininet and OVS;
 `RUN_GUIDE.md` §11.
 
-### 5. B05 — record the submission hash before waiting for a receipt
+### 5. B05's remaining window — a timeout before broadcast
 
-Decision already taken: record the transaction hash at submission, before any
-receipt wait; return it with `pending`; the reconciler looks it up. Three tests
-go with it. Audit item B05 in `AUDIT_2026-10-04.md`.
+B05 is fixed for a write that times out **after** it was broadcast (see Closed).
+Not closed: if the adapter's timeout fires **before** the client has broadcast
+(slow signing or gas estimation), the adapter still returns no hash, the worker
+thread cannot be stopped and may broadcast afterwards, and the incident is
+retried. Closing it needs the client to check, immediately before sending,
+whether its caller has already given up. Not attempted; it changes the client's
+send path and wants a decision first.
 
 ### 6. B17, B19, B20 — frontend state
 
-As listed in `AUDIT_2026-10-04.md`.
+As listed in `AUDIT_2026-10-04.md`. Each changes what an operator sees and none
+has a recorded decision on the intended behaviour: whether a blocked alert with
+no triage reads as open or resolved (B17), whether the server's status overrides
+a locally resolved incident on the next poll (B19), and what the dashboard shows
+a user whose role may not block (B20). There is no frontend unit-test harness, so
+these also need a browser to verify.
 
 ### 7. The B08 result onto the shared page
 
 `MODEL_BEHAVIOUR.md` §1.2, including the source-level paragraph added on
-2026-10-04.
+2026-10-04. **Which page is not recorded in the repository.**
 
 ### 8. The Colab pass, Cell A first
 
@@ -72,7 +81,14 @@ As listed in `AUDIT_2026-10-04.md`.
 
 ### 9. `UNRELIABLE_CLASSES`
 
+`backend/app/services/inference_v2.py`. **What is to be done to it is not
+recorded in the repository**; it currently names Botnet only.
+
 ### 10. `reference.bib`
+
+`report/main.tex` loads `reference.bib` and cites `paper1` to `paper10`; no
+`.bib` file is tracked, so the report does not build its bibliography from a
+clone.
 
 ### 11. Code comments cite `Error.md` by bare file name
 
@@ -84,6 +100,20 @@ left as they are; `README.md` says where the file lives and the guard requires
 ---
 
 ## Closed on 2026-10-04
+
+- **B05, after broadcast.** The chain client reports the transaction hash as soon
+  as it has broadcast; the adapter returns that hash with `pending` when its own
+  timeout fires; the reconciler looks it up. Three tests in
+  `backend/tests/test_b05_broadcast_hash.py`, each failing before the fix; the
+  third reproduced the double write. Open item 5 is what is left.
+- **Check 10 on the manual path.** With `backend/.env` at the tracked values,
+  `python MLerify_stack.py` on the manual path passed all ten checks.
+- **Both models are blind to Botnet traffic.** Recorded as a limitation and as a
+  non-claim in `MODEL_BEHAVIOUR.md` §9 and §10.
+- **The registry's last figure has its artefact**, read from the confidence table
+  in `ML/split_composition.json`.
+- **`docs/archive/README.md`** says where the four files came from and records the
+  citation count and how it was taken.
 
 - **Source-level base rate for v1.** Measured and written into
   `MODEL_BEHAVIOUR.md` §1.2; the population counts are in
