@@ -376,7 +376,11 @@ control. The per-class purge counts are not in this run's output;
 
 An earlier version of this file said class-conditional mitigation is not
 supported by the retrained model. **That was too strong.** Part B measured what
-the SDN floors (`mitigation_policy.py`, unchanged) let through on test:
+the SDN floors (`mitigation_policy.py`, unchanged) **would** let through on
+test. Would, because that policy is not wired to any rule generator (next
+paragraph). The counts apply the edge-head floor only; the translator's node
+corroboration can only remove rules, so every count of a wrong action is **at
+most** that:
 
 | Test edges | Edges | Clearing their floor |
 |---|---:|---:|
@@ -385,9 +389,24 @@ the SDN floors (`mitigation_policy.py`, unchanged) let through on test:
 | True attack predicted a different attack class | 20,976 | **118** (BruteForce scored as PortScan) |
 
 Of the 17,909 PortScan edges predicted BruteForce, p95 is 0.623 and **none**
-reaches 0.85. The deployed behaviour is: one working mitigation path
-(Volumetric_Flood → meter), 2 false actions in 174,421 benign test edges
-(1.15 × 10⁻⁵), and 118 real attacks given the wrong action. **The class head is
+reaches 0.85. Under this policy: one working mitigation path (Volumetric_Flood →
+meter), **at most** 2 false actions in 174,421 benign test edges (a ceiling of
+1.15 × 10⁻⁵), and **at most** 118 real attacks given the wrong action.
+
+**What actually generates rules today: not this policy.** Found 2026-10-04 while
+checking what `UNRELIABLE_CLASSES` does. (1) `UNRELIABLE_CLASSES` only annotates:
+a `reliability` note on each verdict, a `/health` listing, a boot warning. It
+suppresses nothing. (2) The backend builds and validates `MitigationPolicy` and
+reports it at `/health`, and passes it to nothing; the backend has no
+translator. (3) Rules are generated inside the inference service by
+`InferenceEngine`'s default `SDNTranslator()`, which uses the package's
+**six-class** `MITIGATION_POLICY` (keys DDoS, PortScan, Botnet, SSHBrute,
+DoSHulk): under the five-class contract Volumetric_Flood and BruteForce never
+fire, PortScan is `drop` at 0.85, Botnet `drop_and_quarantine` at 0.80. Those
+rules return in the HTTP response and the backend client reads only `flows`, so
+they are discarded, and the translator is `dry_run` in any case. No class has a
+wired enforcement path. Wiring the backend policy into rule generation, and
+suppressing classes there, is a design change for the project owner. **The class head is
 unreliable, the confidence floors absorb almost all of that, and one class has a
 working end-to-end path.** "Volumetric_Flood → meter can never fire" is
 resolved for this model. No floor moves: 0.85 is the reason 17,909 wrong
@@ -423,6 +442,53 @@ measured, with the floors keeping it from becoming wrong actions. The only
 side-by-side number is 0.7042 against **0.4441** (five classes). The node
 head's binary F1 (0.14 → 0.45) carries the same caveat as every cross-run
 comparison: it is measured on a recomposed test split.
+
+### Named limitation: the split cut lands inside one timestamp
+
+Measured from `ML/split_composition.json` (the gap between one split's last row
+and the next split's first):
+
+| Class | Train → val | Val → test |
+|---|---:|---:|
+| BENIGN | 720 s | 720 s |
+| Botnet | 720 s | 780 s |
+| BruteForce | 720 s | 720 s |
+| Volumetric_Flood | (different days) | **360 s** |
+| **PortScan** | **0 s** | **0 s** |
+
+**PortScan, fixed parse: train ends 14:55, validation is entirely 14:55
+(23,812 rows), test begins 14:55.** That minute is in all three splits, so
+window 14:55 becomes a graph in each: the same scanner and target, near
+identical in structure. The old parse is identical (02:55 in all three), so this
+is **a standing splitter property, not caused by the clock fix**, and it does not
+disturb the pre/post comparison.
+
+Why, from `_apply_cuts`: cuts are row positions, and the dead zone is centred on
+each cut in time. On minute-resolution files a full 300 s band leaves 720 s
+between splits. When a band would leave any split under 2% of the class, the
+loop retries at 150 s (Volumetric_Flood's 360 s) and then at 0 s. A port scan
+puts 23,812 rows on one timestamp, so the cut falls inside that block, any band
+removes the whole block, and the fallback is no dead zone at all.
+
+**Consequences.** PortScan's validation numbers have never been independent of
+training, in either run. Its validation result (100% correct, p50 0.917, 99.6%
+above the floor) against test (16% correct, 0.0% above it) is therefore **not** a
+controlled confirmation of the composition mechanism: contamination and
+composition are both live explanations. And the epoch-18 checkpoint and every
+operating point were chosen on a validation split that is almost pure (0.52%
+mixed) and, for PortScan, overlaps training.
+
+**Not changed:** cutting on window boundaries is the right design and would
+invalidate every number in the repository; it is future work.
+
+**Queued for the next Colab pass** (`split_composition` stage):
+
+1. Per class and split, the rows that share their boundary timestamp with an
+   adjacent split, and how many distinct timestamps each boundary block spans.
+2. Test PortScan split into rows **at** the boundary minute and rows **after**
+   it: F1 and the share above 0.85 for each. If the boundary rows score like
+   validation and the later rows like the current test figure, the driver is
+   contamination; if both score alike, it is composition.
 
 **F4 stands independently of the clock.** Block swapping reorders bursts but
 cannot create or merge the gaps between them, so the episode counts, and the
@@ -549,16 +615,16 @@ probe's own split-agreement check classes the effect **"SPLIT-SPECIFIC -- do not
 act"** (validation +0.0397, test −0.0265), so the honest statement is that the
 pre-fix direction does not survive, not that the effect cleanly reversed.
 
-**Leave-one-out, by the counts.** Pre-fix, zeroing `log_total_bytes` gained
-+0.0723 and `iat_burstiness` +0.0451, both flagged "misleading" by the probe's
-+0.02 cut. Post-fix the probe prints "features whose REMOVAL improves macro F1:
-0", but nine features still have a positive delta; the largest is
-`log_dt_since_pair` at **+0.0192**, just under the cut. The two pre-fix
-features now cost accuracy when zeroed (`log_total_bytes` −0.0158,
-`iat_burstiness` −0.0024). **The largest gain shrank about fourfold; gains did
-not vanish.** With run-to-run variation unmeasured, 0.0192
-against 0.02 is not a distinction. Do not write "two misleading features became
-zero" (an earlier version of this file did).
+**Leave-one-out.** The two features F6 named now degrade macro-F1 when removed,
+where before they improved it: `log_total_bytes` +0.0723 → **−0.0158**,
+`iat_burstiness` +0.0451 → **−0.0024**. The largest removal-gain of any feature
+fell from +0.0723 to +0.0192 (`log_dt_since_pair`), below the probe's +0.02
+reporting threshold; nine features remain weakly positive. The probe has no
+variance estimate, so effects of this size cannot be distinguished from
+run-to-run noise; the claim rests on the direction and on the disappearance of
+the large effect, not on the individual values. (An earlier version of this file
+said "two misleading features became zero"; that was the reporting threshold,
+not a measurement.)
 
 **F2 is reduced, not resolved.** Memory-off is still positive on both splits,
 by much less. The GRU stays untrained; most of F2's headline was the clock.
@@ -618,7 +684,7 @@ fails, naming `C:\content`.
   run against the file as it stood before the fix: they flag lines 1376, 1401
   and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
 
-**The suite baseline is now 145 passed, 0 skipped** (2026-10-04, after the install). Earlier records say
+**The suite baseline is now 148 passed, 0 skipped** (2026-10-04). Earlier records say
 "98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
 split and graph construction tests. On the machine those records come from,
 the split code had therefore never run at all. With `pyarrow` installed they

@@ -30,7 +30,9 @@ drift from the taxonomy again:
     explicit `alert_only` entry, never an absent key — a deliberate decision and
     a forgotten one must not look identical.
 
-The result is passed to `SDNTranslator`; the module global is never mutated.
+The result is validated and reported at /health. It is NOT passed to any
+translator: the backend generates no rules (INTEGRATION.md section 6). The
+module global is never mutated.
 """
 from __future__ import annotations
 

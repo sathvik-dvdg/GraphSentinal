@@ -208,7 +208,12 @@ The epoch-31 study is `ML/prefix_epoch31/threshold_study.json`.
 
 **Fitted on validation, applied to test: in this run those are different
 populations.** Validation's attack windows are 0.52% mixed with benign traffic,
-test's 97.73%. Any operating point fitted here is fitted to pure windows.
+test's 97.73%. And for PortScan the split cut falls inside one timestamp
+(14:55), so that minute is in train, validation and test alike
+(`ML/TIMESTAMP_FIX.md`, "Named limitation"). **The checkpoint and every operating
+point in this file were chosen on a split that is almost pure and, for
+PortScan, overlaps training.** That is the largest single threat to this
+section.
 
 ### What the backend reads
 
@@ -710,7 +715,12 @@ reached 0.90 0.0% of the time, is the epoch-31 model on the v1 sample.)
 ## 6. Mitigation policy
 
 `app/services/mitigation_policy.py`, built from the card's class list at
-startup, passed to `SDNTranslator`. The module global is never mutated.
+startup, validated, and reported at `/health`. **It is not passed to any
+translator** (corrected 2026-10-04; earlier versions of this document said it
+was): the backend generates no rules. Rules are generated inside the inference
+service by the package's own six-class `MITIGATION_POLICY` (table below), returned
+in the HTTP response, and discarded by the backend client, which reads only
+`flows`. No class has a wired enforcement path.
 
 The package's own `MITIGATION_POLICY` is keyed on the **old six-class taxonomy**
 and was measured against the live contract as:
@@ -742,25 +752,27 @@ The replacement enforces two invariants at startup, both fatal:
 "Deliberately not enforced" is an explicit `alert_only` entry, never an absent
 key, so a decision and an oversight cannot look the same.
 
-### What the floors let through: one working path
+### What these floors would let through, if wired
 
 The class head is unreliable (§3). The question that matters for enforcement is
 what clears each class's floor, and it was measured on test
-(`ML/split_composition.json`, part B; floors as in `mitigation_policy.py`):
+(`ML/split_composition.json`, part B; floors as in `mitigation_policy.py`, which
+nothing currently applies, see above). Edge-head floor only, so every wrong
+action below is **at most** that count:
 
 | Test edges | Edges | Clearing their class's floor |
 |---|---:|---:|
-| True BENIGN predicted an attack class | 389 | **2** (as BruteForce) |
+| True BENIGN predicted an attack class | 389 | **at most 2** (as BruteForce) |
 | True Volumetric_Flood predicted Volumetric_Flood | 27,191 | **22,268 (81.9%)**, p50 0.938 |
-| True attack predicted a different attack class | 20,976 | **118** (BruteForce as PortScan) |
+| True attack predicted a different attack class | 20,976 | **at most 118** (BruteForce as PortScan) |
 
 None of the 17,909 PortScan edges predicted BruteForce reaches 0.85 (p95 0.623).
-So: **one working end-to-end path, Volumetric_Flood → meter**; 2 false actions
-in 174,421 benign test edges (1.15 × 10⁻⁵); 118 real attacks given the wrong
-action. **The class head is unreliable, and the floors absorb almost all of it.**
-These count the edge-head floor only. The translator also requires node
-corroboration (below), which can only remove rules, so they are upper bounds on
-rules emitted. "Volumetric_Flood → meter can never fire", the epoch-31 finding,
+So, under this policy: **Volumetric_Flood → meter is the only class with an
+enforceable path**; at most 2 false actions in 174,421 benign test edges (a
+ceiling of 1.15 × 10⁻⁵); at most 118 real attacks given the wrong action. **The
+class head is unreliable, and the floors absorb almost all of it.** Binary
+detection (edge F1 0.996) is unaffected: what the floors withhold is
+class-specific enforcement, not detection. "Volumetric_Flood → meter can never fire", the epoch-31 finding,
 does not hold for this model.
 
 **No floor moves.** 0.85 is why 17,909 wrong predictions are harmless. Botnet's
@@ -886,8 +898,12 @@ v1_heuristic_gate_only`.
 ### Pre-existing, not introduced here
 
 - `tests/test_r07_ml_evaluation_ovs_robustness.py::test_production_default_threshold_is_conservative_075`
-  **fails**: it asserts `threat_threshold == 0.75` while `backend/.env` sets
-  `0.40`. Three different values exist across `config.py` (0.75),
+  used to **fail on machines whose local `backend/.env` sets `0.40`**, and pass on
+  a fresh clone: `backend/.env` is untracked, and the test read the effective
+  setting rather than the default its name promises. Since 2026-10-04 it checks
+  the declared default and the two tracked templates (`.env.example`,
+  `.env.docker`), all `0.75`. No threshold was changed. The local `0.40` remains
+  a per-machine choice. Three different values exist across `config.py` (0.75),
   `backend/.env` (0.40) and `.env.docker` (0.75), plus `0.75`/`0.50` inline in
   `threat_analyzer.py`, `graph_state.py` and `alerts.py`.
 - `MODEL_SOURCE_PATH` is dead config in all three environments — no `model.py`
@@ -969,6 +985,7 @@ curl -s localhost:8001/health | jq .ml_v2
 | Policy: every card class has an entry; every entry names a card class; `Botnet` is `alert_only` | ✅ verified |
 | `SDNTranslator().dry_run is True` | ✅ verified |
 | Package suite (`ML/graphsentinel_v2`, local, Windows) | ✅ **98 passed, 7 skipped, 0 failed**. All 7 skips are training-only dependencies (`pyarrow`, and two tests guarded as training-only) that the inference path doesn't need |
+| Backend suite, full (2026-10-04) | ✅ **227 passed, 3 skipped, 0 failed**, after the threshold test was pointed at the declared default (§8) |
 | Backend suite, full, after the gate, poll status, compose and contract changes (2026-09-14) | ✅ **226 passed, 3 skipped, 1 failure that predates this work**. The 226 are the previous 208 plus 18 new tests: 7 provenance gate, 4 poll status, 7 service contract. The failure is `test_production_default_threshold_is_conservative_075`: it expects `0.75` but `backend/.env` sets `0.40`, it passes with `THREAT_THRESHOLD=0.75`, and nothing in this integration touches it |
 | **Retrained model loads inside the container on torch 2.4.0** | ✅ **verified 2026-10-04**: image rebuilt (Docker's data disk had been lost), python 3.12.15, torch `2.4.0+cpu`, torch_geometric 2.5.0, pandas 2.3.3, numpy 2.2.6. Weights sha256 matches `MANIFEST.json`, 654,851 parameters, class order matches, `dry_run=True`; a fixed 40-flow window scores 40 of 40, probabilities equal to torch 2.13 locally to 6 decimals |
 | Retrained model, inference service over HTTP | ✅ verified 2026-10-04: healthy after ~45 s, `/health` 200, `/contract` 2.0.0 with the card's class order |
@@ -987,7 +1004,9 @@ curl -s localhost:8001/health | jq .ml_v2
 | **`Volumetric_Flood → meter` can fire** (§6) | ✅ **measured on test**: 22,268 of 27,191 correct predictions (81.9%) clear 0.90 (`split_composition.json`); 95.9% on the run-2 sample |
 | **End-to-end on real OVS flows** | ❌ **blocked** — needs `ML/testdata/ovs_dump_flows.txt` |
 | **Retrained model installed** | ✅ 2026-10-04, after the container load. Epoch-31 files in `ML/prefix_epoch31/` |
-| **What the floors let through** (§6) | ✅ measured on test: 2 of 389 benign-as-attack and 118 of 20,976 wrong-class edges clear their floors (edge-head floor only; upper bounds on rules). The class head is unreliable; the floors absorb almost all of it. Floors unchanged |
+| **What the backend floors would let through** (§6) | ✅ measured on test: at most 2 of 389 benign-as-attack and at most 118 of 20,976 wrong-class edges clear their floors; Volumetric_Flood is the only enforceable class. Floors unchanged |
+| **Backend mitigation policy wired to rule generation** (§6) | ❌ **not wired.** Built and validated, applied by nothing. The service's rules come from the package's six-class table and are discarded by the backend. `UNRELIABLE_CLASSES` annotates and suppresses nothing |
+| **PortScan split boundary** (§4) | ⚠️ **named limitation.** Minute 14:55 is in train, validation and test; validation is not independent of training for PortScan. Measurements queued for the next Colab pass |
 
 The rows marked ❌ are still open. The plumbing is verified end to end in the
 container. What remains unmeasured is the model's accuracy on flows from this
