@@ -14,6 +14,8 @@ from threading import Lock
 
 from cachetools import TTLCache
 from fastapi import Request
+
+# pyrefly: ignore [missing-import]
 from clerk_backend_api import Clerk, authenticate_request, AuthenticateRequestOptions
 
 from app.config import settings
