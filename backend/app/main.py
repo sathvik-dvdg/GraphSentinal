@@ -13,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.database import init_db
+from app.logging_setup import configure_graphsentinel_logging
 from app.services import auth_service
 from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.inference_client import InferenceClient, InferenceUnavailable
@@ -21,6 +22,8 @@ from app.services.inference_v2 import build_state, verify_service_contract
 from app.services.model_contract import ContractError
 from app.services.reconciliation import ReconciliationWorker
 
+
+configure_graphsentinel_logging()
 
 request_id_ctx_var: ContextVar[str] = ContextVar("request_id", default="")
 _REQ_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")

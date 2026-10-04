@@ -132,5 +132,89 @@
       "dst_port": "80",
       "what_it_was": "benign_http_fetch"
     }
-  ]
+  ],
+  "windows": [
+    {
+      "window_start": 1791144000,
+      "scored_by_backend": 400,
+      "capture_dumps": 9,
+      "capture_flow_lines": 396,
+      "distinct_conversations_in_capture": 76,
+      "resubmission_factor": 5.26,
+      "flood_conversations": 0,
+      "predicted": {
+        "BENIGN": 198,
+        "Botnet": 20,
+        "Volumetric_Flood": 182
+      },
+      "predicted_attack": 202,
+      "volumetric_flood_predicted": 182,
+      "volumetric_flood_below_floor": 2,
+      "volumetric_flood_at_or_above_floor": 180
+    },
+    {
+      "window_start": 1791144060,
+      "scored_by_backend": 4076,
+      "capture_dumps": 12,
+      "capture_flow_lines": 4296,
+      "distinct_conversations_in_capture": 620,
+      "resubmission_factor": 6.57,
+      "flood_conversations": 0,
+      "predicted": {
+        "BENIGN": 1950,
+        "BruteForce": 126,
+        "PortScan": 1584,
+        "Volumetric_Flood": 416
+      },
+      "predicted_attack": 2126,
+      "volumetric_flood_predicted": 416,
+      "volumetric_flood_below_floor": 123,
+      "volumetric_flood_at_or_above_floor": 293
+    },
+    {
+      "window_start": 1791144120,
+      "scored_by_backend": 2358,
+      "capture_dumps": 12,
+      "capture_flow_lines": 2424,
+      "distinct_conversations_in_capture": 562,
+      "resubmission_factor": 4.2,
+      "flood_conversations": 1,
+      "predicted": {
+        "BENIGN": 1141,
+        "Botnet": 7,
+        "PortScan": 597,
+        "Volumetric_Flood": 613
+      },
+      "predicted_attack": 1217,
+      "volumetric_flood_predicted": 613,
+      "volumetric_flood_below_floor": 611,
+      "volumetric_flood_at_or_above_floor": 2
+    },
+    {
+      "window_start": 1791144180,
+      "scored_by_backend": 462,
+      "capture_dumps": 11,
+      "capture_flow_lines": 466,
+      "distinct_conversations_in_capture": 60,
+      "resubmission_factor": 7.7,
+      "flood_conversations": 1,
+      "predicted": {
+        "BENIGN": 218,
+        "Botnet": 22,
+        "Volumetric_Flood": 222
+      },
+      "predicted_attack": 244,
+      "volumetric_flood_predicted": 222,
+      "volumetric_flood_below_floor": 8,
+      "volumetric_flood_at_or_above_floor": 214
+    }
+  ],
+  "totals": {
+    "scored_by_backend": 7296,
+    "predicted_attack": 3789,
+    "volumetric_flood_predicted": 1433,
+    "volumetric_flood_below_floor": 744,
+    "volumetric_flood_at_or_above_floor": 689
+  },
+  "windows_note": "scored_by_backend and predicted are the backend's own log lines. The capture columns come from a second reader of the same table, up to 5 s apart from the daemon's polls, so they are close to what was submitted and not identical. volumetric_flood_at_or_above_floor is predicted minus withheld below floor: no other withholding reason was logged for that class."
 }

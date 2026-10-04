@@ -425,10 +425,22 @@ The daemon's `DAEMON_TOKEN` must be the backend's, or every poll fails with
 no change. To put traffic on the switch, run commands inside a host:
 `mnexec -a $(pgrep -f 'mininet:h2$') <command>`.
 
-**The backend's v2 lines are INFO and are not printed by default.** Nothing
-configures a handler for the `graphsentinel.*` loggers, so only WARNING and above
-appear. Start the backend with `--log-config` and a config that sets
-`graphsentinel` to INFO, or `rule(s) admitted` and `withheld` never show.
+**The backend prints its own v2 lines by default** since 2026-10-05
+(`backend/app/logging_setup.py`): the provenance gate `ADMITTING` a poll and then
+`still admitting` once a minute, each window `scored`, each `rule` with the flow
+it was made on, and each `withheld … : reason`. Before that they were INFO with no
+handler and needed `--log-config`.
+
+**To keep the bytes the parser was given**, start the daemon with
+`DAEMON_DUMP_LOG=<file>`: it appends every `dump_flows` answer exactly as it
+returns it. That file, not a second `ovs-ofctl` beside the daemon, is the
+provenance evidence for a run. It grows without bound; leave it unset otherwise.
+
+**Installed in this machine's Ubuntu WSL distribution** (26.04, kernel
+6.18 WSL2): Open vSwitch 3.7.1 with the kernel datapath, Mininet 2.3.0, hping3,
+nmap. The run needs about 2 GB of free memory: as root in WSL,
+`sync; echo 3 > /proc/sys/vm/drop_caches` first, or the inference service may not
+start. Colab was considered as an alternative and not needed.
 
 The flow source is gated: the provenance allowlist admits `data_source == "ovs"`
 only, it fails closed, and it refuses a whole batch rather than part of one. A
@@ -523,10 +535,11 @@ with that file, that file is right and this one needs fixing.
   monitor, the provenance gate and the v2 client, and the backend logged its own
   admitted and withheld lines (§7 for how; `MODEL_BEHAVIOUR.md` §1.3 for what).
   The mechanism ran: no poll failed, no batch was refused, no window was unscored.
-  The rules it admitted were on benign web fetches and none was on the flood. So
-  checks 8 and 9, which pass on the committed sample, say nothing about live
-  traffic. One run, on one machine short of memory; the live path has not been
-  measured as a rate.
+  The rules it admitted were on benign web fetches, and half the flows of a
+  benign-only window were predicted as attacks. So checks 8 and 9, which pass on
+  the committed sample, say nothing about live traffic. Three runs of one traffic
+  script, on one machine short of memory; the live path has not been measured as
+  a rate.
 
 ---
 

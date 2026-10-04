@@ -543,7 +543,7 @@
       "stated_as": {
         "MODEL_BEHAVIOUR.md": [
           "13 rules were admitted",
-          "11 of 13 rules"
+          "13 rules run 2 admitted"
         ]
       }
     },
@@ -627,6 +627,133 @@
       "stated_as": {
         "MODEL_BEHAVIOUR.md": [
           "4 windows closed and none was unscored"
+        ]
+      }
+    },
+    "live_run2_benign_window_predicted_attack": {
+      "value": 202,
+      "what": "flows predicted as an attack class in run 2's benign-only window, of 400 scored",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "windows",
+        {
+          "window_start": 1791144000
+        },
+        "predicted_attack"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "**202 of 400** scored flows",
+          "202 of 400 flows in a benign-only window"
+        ]
+      }
+    },
+    "live_run2_benign_window_scored": {
+      "value": 400,
+      "what": "flows scored in that window",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "windows",
+        {
+          "window_start": 1791144000
+        },
+        "scored_by_backend"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "**202 of 400** scored flows"
+        ]
+      }
+    },
+    "live_run2_benign_window_vf_above_floor": {
+      "value": 180,
+      "what": "Volumetric_Flood predictions at or above the floor in that window, of 182",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "windows",
+        {
+          "window_start": 1791144000
+        },
+        "volumetric_flood_at_or_above_floor"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "180 of them were at or above the 0.90 floor",
+          "180 of 182 wrong"
+        ]
+      }
+    },
+    "live_run2_vf_above_floor_all_windows": {
+      "value": 689,
+      "what": "Volumetric_Flood predictions at or above the floor, all four windows of run 2",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "totals",
+        "volumetric_flood_at_or_above_floor"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "689 of the 1,433 Volumetric_Flood predictions"
+        ]
+      }
+    },
+    "live_run3_rules_admitted": {
+      "value": 19,
+      "what": "rules admitted in run 3 (many-conversation flood)",
+      "artefact": [
+        "ML/live_loop_run3.json",
+        "rules_admitted"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "4 of that run's 19 rules",
+          "12 of the 19"
+        ]
+      }
+    },
+    "live_run3_rules_on_flood": {
+      "value": 4,
+      "what": "of those, on the flood: two sources, two windows",
+      "artefact": [
+        "ML/live_loop_run3.json",
+        "rules_by_what_the_flow_was",
+        "flood"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "4 of that run's 19 rules"
+        ]
+      }
+    },
+    "live_run3_rules_on_benign_fetches": {
+      "value": 12,
+      "what": "of those, on benign HTTP fetches",
+      "artefact": [
+        "ML/live_loop_run3.json",
+        "rules_by_what_the_flow_was",
+        "benign_http_fetch"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "12 of the 19"
+        ]
+      }
+    },
+    "live_run3_benign_window_predicted_attack": {
+      "value": 329,
+      "what": "flows predicted as an attack class in run 3's benign-only window, of 652",
+      "artefact": [
+        "ML/live_loop_run3.json",
+        "windows",
+        {
+          "window_start": 1791145860
+        },
+        "predicted_attack"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "329 of 652 flows predicted as attacks",
+          "329 of 652 in the next run's"
         ]
       }
     }

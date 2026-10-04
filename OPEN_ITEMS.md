@@ -51,30 +51,45 @@ Three services, no browser, no Vite, and all ten checks, since none touches the
 frontend. Record the terminal through `docker compose ps` and
 `python ML/verify_stack.py`. A person has to do this.
 
-### 4. On live OVS flows, v2's rules were on the wrong traffic
+### 4. On live OVS flows v2 is wrong, and the cause is not separated
 
-The Mininet run happened on 2026-10-05 (see Closed) and the mechanism works. What
-it found is now the open item: of the rules v2 admitted on live flows, most were
-on benign HTTP fetches and none was on the flood (`MODEL_BEHAVIOUR.md` §1.3, §9
-item 21; `ML/live_loop_run.json`). One run, one traffic script, no variance.
+Three live runs on 2026-10-05 (`MODEL_BEHAVIOUR.md` §1.3, §9 item 21). The
+mechanism works. The model does not: half the flows of a benign-only window are
+predicted as attacks, the wrong predictions are confident enough to clear the
+floor, and the admitted rules land on benign web fetches.
 
-To turn that observation into a measurement, in this order:
+Three candidate causes. State of each:
 
-1. **Separate the two candidate causes.** The monitor submits the whole flow
-   table on every poll with cumulative counters, so one conversation is scored
-   once per poll; and an OVS dump cannot supply every feature the model was
-   trained on. Replay the committed capture
-   (`ML/retrain_logs/live_loop/dump_flows_run2.txt`) through `flow_parser` twice:
-   as polled, and with each conversation submitted once. If the wrong rules
-   survive de-duplication, the features are the cause.
-2. **Record ground truth beside the capture**, per conversation, written by the
-   traffic script as it sends, so the result is counted and not read off a log.
-3. **Repeat the run** at least three times before quoting any rate.
+1. **The flood's shape — tested, run 3.** One conversation is one edge of the
+   graph whatever its packet count; a CICIDS2017 flood is many flows converging
+   on a victim. Sent as many conversations the flood did receive rules. That is
+   **not** a detection: benign fetches to the same port received rules at the
+   same confidence. What the test established is that a single-conversation flood
+   is invisible to this model by construction; it did not establish that a
+   many-conversation flood is recognised.
+2. **Re-submission — counted, not removed.** A conversation is submitted once per
+   poll while it stays in the table; the factor per window is in
+   `ML/live_loop_run3.json`. It inflates every conversation alike, so it cannot
+   explain a missed flood. Still to do: replay
+   `ML/retrain_logs/live_loop/daemon_responses_run3.txt` through `flow_parser`
+   with each conversation submitted once, and see whether benign fetches are
+   still labelled attacks. No live run needed.
+3. **Features — listed, not measured.** An OVS dump fills half of the model's
+   edge features; the rest are pinned or zero (`flow_mapping.py`,
+   `MODEL_BEHAVIOUR.md` §1.3). Still to do, and it needs no live run either:
+   score the committed sample with those features forced to their OVS values,
+   as `ML/b08_ovs_constants_check.py` does for v1. This is the most likely
+   place the benign-as-attack labelling comes from and it is the next step.
 
-Until then: no claim that v2's rules are right on live traffic, and `dry_run`
-stays true. The run needs about 2 GB of free memory; on this machine the WSL page
-cache had to be dropped first (`echo 3 > /proc/sys/vm/drop_caches`, as root) and
-the inference service segfaulted once at start without that.
+Also still to do: ground truth written by the traffic script per conversation, so
+results are counted rather than read from a log; and more than three runs before
+any rate is quoted.
+
+**Do not move the 0.90 floor on this evidence.** Wrong rules cleared it, on three
+runs of one hand-written script on one topology. Raising it now would be fitting
+an operating point to an anecdote. Measure 2 and 3 first.
+
+No claim that v2's rules are right on live traffic, and `dry_run` stays true.
 
 ### 5. B05's remaining window — a timeout before broadcast
 
@@ -91,15 +106,6 @@ adopts it if one exists. The contract accepts duplicates for one URI and
 unacceptable on a request path (audit B10), acceptable in the scheduled
 reconciler, and it can scan recent incidents only. This closes the window for any
 cause, not only the race between the timeout and the broadcast.
-
-### 12. The backend's v2 log lines are invisible under the default start
-
-`rule(s) admitted`, `withheld … : reason` and the new per-rule lines are INFO on
-the `graphsentinel.*` loggers, and nothing configures a handler for them, so a
-backend started as `RUN_GUIDE.md` §5 describes prints none of them. The live run
-needed `--log-config`. Either configure logging in `backend/app/main.py` or put
-the config file in the repository and name it in §5; it is a decision about what
-the default log should carry, so it is not made here.
 
 ### 13. The monitor keeps nothing of a scored window
 
@@ -154,6 +160,20 @@ left as they are; `README.md` says where the file lives and the guard requires
 ---
 
 ## Closed on 2026-10-05
+
+- **The loop shows itself from the log.** The backend prints its `graphsentinel.*`
+  INFO lines by default; the provenance gate logs admissions as it logs refusals;
+  the daemon can record its own responses (`DAEMON_DUMP_LOG`). Tests in
+  `backend/tests/test_v2_loop_visibility.py`. Run 3 used all three.
+- **§10's binary claim is scoped** to the offline CICIDS2017 test set, with the
+  non-claim that it does not transfer to live OVS input beside it.
+- **Route A (Colab) is closed without being run.** Route B worked; the backend's
+  dependencies were not checked on Colab's Python.
+- **Working files of the live runs.** Everything a run depends on is in
+  `ML/retrain_logs/live_loop/`, including the scripts that assembled the evidence.
+  `C:\dev\gs_live` on the development machine still holds the originals plus
+  three throwaway SQLite databases and service logs; it is not tracked and
+  nothing depends on it.
 
 - **The Mininet run: the backend's ingestion path, end to end, on real OVS flows.**
   Live, not replayed, in WSL2 with the OVS kernel datapath and the repository's
