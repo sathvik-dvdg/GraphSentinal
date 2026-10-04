@@ -6,7 +6,8 @@ timestamp investigation (`TIMESTAMP_FIX.md`) and how to run things (`RUNNING.md`
 where they mention a measurement they cite this file rather than restating it.
 
 **Scope:** behaviour of the model and pipeline **as they exist in this codebase**.
-No new experiments. Every figure below is traceable to a committed artefact, named
+No new experiments, with one exception made on 2026-10-04: §1.2, an offline
+re-scoring of the v1 model. Every figure below is traceable to a committed artefact, named
 at the end of its section. Nothing here is estimated, projected or rounded from
 memory.
 
@@ -60,6 +61,37 @@ runs behind this file. v1's incidents and chain writes happen in either mode.
 
 Every statement below that says "dry-run", "no rule is installed" or "nothing
 reaches a switch" is a statement about **v2 only**.
+
+What each object and field is called along the v1 path is mapped in
+`NAMING_MAP.md`; the defects found in that path are in `AUDIT_2026-10-04.md`.
+
+### 1.2 The one measurement of v1: what OVS's missing features cost
+
+v1 reads seven features per flow. An OVS flow dump has no direction split and no
+TCP flags, so on live traffic three of them are constants: `fwd_ratio` = 1.0,
+`byte_asymmetry` = +1.0, `syn_ratio` = 0. The §7 sample was scored twice with the
+installed v1 weights and the backend's own feature builder, once as the training
+notebook built the features and once with those three forced to the constants:
+
+| at the tracked 0.75 threshold | offline features | OVS constants |
+|---|---:|---:|
+| precision | 0.9487 | 0.7994 |
+| recall | 0.1326 | 0.3094 |
+| benign flows scored as attacks | 12 | 130 |
+| sources over the threshold | 21 | 45 |
+| of those, sources that sent no attack flow | 11 | 31 |
+
+794 of 18,264 flows change side. **On OVS-shaped input v1 would block nearly three
+times as many sources that sent no attack flow.** v1 must not be presented as a
+detector on OVS traffic.
+
+This is not v1's test set, which is not in the repository: it is a small,
+90.8%-benign slice that may overlap v1's training rows, so the deltas are the
+result. The offline column is still a finding in itself — with every feature
+present, v1 recalls 13% of this sample's attack flows at 0.75, and 11 of the 21
+sources it would block sent none.
+
+*Source: `ML/b08_ovs_constants.json`, written by `ML/b08_ovs_constants_check.py`.*
 
 **The v2 loop is closed in code, in dry-run** (commit `9a4b114`, 2026-10-04):
 
@@ -551,7 +583,9 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 1. **The dry-run guarantee is v2's only; the path that blocks hosts is unmeasured**
    (§1.1). v1 — a two-class GraphSAGE over 7 features — creates the incidents,
    blocks the hosts and writes the chain records, and with `ENFORCEMENT_MODE=ovs`
-   installs real drop rules. No figure in this file describes it.
+   installs real drop rules. The only figures in this file that describe it are
+   §1.2's, and they are unfavourable: on OVS-shaped input it puts 31 sources that
+   sent no attack flow over its threshold, against 11 with full features.
 2. **Both models are scored on graph sizes they were not trained on.** v1 trained
    on 500-flow windows and at inference scores whatever one poll returns, down to
    a single flow with no edges (`backend/app/services/inference_service.py`). v2
@@ -654,7 +688,11 @@ replace.
    `.gitattributes` pins `-text` on every digest-bearing artefact, including the
    moved pre-fix files, the sample and the retrain logs.
 
-Suites at time of writing: **ML 165 passed; backend 233 passed, 3 skipped.** How to
+Suites at time of writing, on branch `fix/audit-p0-p1`: **ML 165 passed; backend
+244 passed, 3 skipped; Hardhat 25 passing.** The backend figure was 233 passed
+before the audit fixes and was first produced with `web3` 7.16.0 installed against
+a pin of 7.4.0; the pin is now what is installed, and the count is the same under
+both (`AUDIT_2026-10-04.md` §1.7). How to
 start the system and verify it in one command: `RUN_GUIDE.md` (§6,
 `python ML/verify_stack.py`).
 

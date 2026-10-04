@@ -75,11 +75,18 @@ is running.
 
 ## 3. Environment files — read this before either path
 
-`backend/.env` is **untracked**. Create it from the template:
+Two files the manual path needs are **untracked**. Create both from their
+templates:
 
 ```bash
 cp backend/.env.example backend/.env
+cp frontend/.env.example frontend/.env
 ```
+
+`frontend/.env` was tracked until 2026-10-04 and carried the backend's API key in
+a `VITE_` variable, which the dev server delivers to the browser. The variable was
+unused and is gone, but the value is still in every earlier commit; it is the demo
+default, so change it for anything that is not a demo. Compose reads neither file.
 
 **One value needs your attention.** Every tracked source in the repository
 declares the detection threshold as **0.75**. The `backend/.env` currently on this
@@ -308,8 +315,15 @@ cd ML\graphsentinel_v2
 python -m pytest tests -q -p no:cacheprovider      # 165 passed
 
 cd ..\..\backend
-python -m pytest -q -p no:cacheprovider            # 233 passed, 3 skipped
+python -m pytest -q -p no:cacheprovider            # 244 passed, 3 skipped
+
+cd ..\blockchain
+npm ci
+npx hardhat test                                   # 25 passing
 ```
+
+The backend suite takes about four minutes here. `backend/requirements.txt` pins
+`web3==7.4.0`; check `pip show web3` agrees before quoting the count.
 
 ---
 
