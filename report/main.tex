@@ -284,7 +284,7 @@ Finally, we express our heartfelt gratitude to our parents and friends for their
 
 This project presents GraphSentinel, a closed-loop cyber-defence framework that \emph{detects}, \emph{responds} to and \emph{records} network threats. Flow telemetry is collected from a controlled Mininet network through an Open vSwitch (OVS) switch and processed by a FastAPI backend. The backend builds a graph of the communication between hosts and scores it with a graph neural network (GNN). When a host's threat score reaches the configured threshold, an incident is created. The host is then isolated through a token-authenticated enforcement daemon that installs an OVS drop rule, restricted to the Mininet address range 10.0.0.0/24. Incidents, enforcement actions and audit entries are persisted in SQLite. Each incident is also fingerprinted on a local Ganache blockchain through a Solidity smart contract. A React and Cytoscape.js dashboard presents the network graph, incidents, enforcement history and forensic records in real time.
 
-The detection component was developed in two stages: a GraphSAGE baseline integrated into the pipeline, followed by an upgraded GATv2 graph attention model (GraphSentinel v2). The upgraded model represents each 60-second traffic window as a graph whose nodes are IP addresses and whose edges are individual flows. It classifies both hosts and flows into five classes (BENIGN, Volumetric\_Flood, PortScan, BruteForce and Botnet). An audit of the CICIDS2017 files found that their afternoon records use a 12-hour clock without an AM/PM marker, which had placed 52.1\% of the training rows at the wrong time of day. After correcting the timestamps and retraining, from a single training run, the flow-level head reaches a binary (attack versus benign) F1-score of 0.9961 on the held-out test split, while its five-class macro F1-score is 0.4441: the model reliably separates attacks from benign traffic but does not reliably identify the attack class. These figures measure generalisation within the attack bursts seen in training, not detection of new attacks. The upgraded model currently runs as a separate inference service that reports verdicts; host isolation is still driven by the GraphSAGE baseline. The backend regression suite completed with 226 tests passed, 3 skipped and 1 configuration-dependent failure.
+The detection component was developed in two stages: a GraphSAGE baseline integrated into the pipeline, followed by an upgraded GATv2 graph attention model (GraphSentinel v2). The upgraded model represents each 60-second traffic window as a graph whose nodes are IP addresses and whose edges are individual flows. It classifies both hosts and flows into five classes (BENIGN, Volumetric\_Flood, PortScan, BruteForce and Botnet). An audit of the CICIDS2017 files found that their afternoon records use a 12-hour clock without an AM/PM marker, which had placed 52.1\% of the training rows at the wrong time of day. After correcting the timestamps and retraining, from a single training run, the flow-level head reaches a binary (attack versus benign) F1-score of 0.9961 on the held-out test split, while its five-class macro F1-score is 0.4441: the model reliably separates attacks from benign traffic but does not reliably identify the attack class. These figures measure generalisation within the attack bursts seen in training, not detection of new attacks. The upgraded model currently runs as a separate inference service that reports verdicts; host isolation is still driven by the GraphSAGE baseline. The backend regression suite completed with 227 tests passed and 3 skipped.
 
 Keywords : Graph Neural Networks, GraphSAGE, GATv2, Cybersecurity, Blockchain Forensics, SDN, Intrusion Detection.
 
@@ -394,6 +394,7 @@ Outside the implemented scope:
     \item {On a held-out capture day containing attack families not used in training (Thursday), the binary flow-level false-positive rate is 6.74\%, compared with $2.4\times10^{-3}$ on the test split. Generalisation to new traffic conditions is therefore limited.}
     \item {The OVS flow table cannot supply several features the model was trained on. 8 of the 20 edge features are zero on the live path and 2 are constant. The effect of this on detection quality has not been measured on an informative sample.}
     \item {The per-host GRU memory module present in the architecture receives no gradient during training, so its weights remain at their random initial values.}
+    \item {For PortScan the split boundary falls inside a single one-minute timestamp, so the same minute of traffic appears in the training, validation and test splits; PortScan's validation results are therefore not independent of its training data. This affects both the original and the corrected runs.}
     \item {The episode split cuts each class by row order and builds graphs separately for each split. In the delivered run this leaves the validation split's attack windows almost free of benign traffic (0.52\% of attack flows share a window with benign traffic) while the test split's are almost all mixed (97.73\%), so thresholds fitted on validation do not transfer to test.}
     \item {The GraphSAGE baseline and the upgraded GATv2 model have not yet been compared under the same task, graph construction and data split. The baseline is a binary flow-as-node model evaluated with per-file splits, while the upgraded model is a five-class host-and-flow model evaluated with the episode protocol. Their published figures are therefore not directly comparable.}
 \end{itemize}
@@ -1446,7 +1447,7 @@ Thursday (unseen families) & 426{,}958 & 2{,}111 & 0.0669 & 0.9730 & 0.0674 \\
     \item \textbf{Validation.} At the selected epoch the validation edge macro F1 is 0.5565 and the node macro F1 is 0.2307.
     \item \textbf{Volumetric ablation.} Zeroing the two volumetric edge features changes the test edge macro F1 (four classes present) by $-0.0024$.
     \item \textbf{Composition of the splits.} Under the original parse, 266 of 52{,}062 test attack flows (0.51\%) shared a 60-second window with benign traffic; after the correction, 51{,}003 of 52{,}187 (97.73\%) do. This was predicted before it was measured. The original test task was therefore easier than the deployed one: its attack windows could be classified from their graph structure alone.
-    \item \textbf{Mitigation confidence floors.} With the confidence floors of the SDN mitigation policy (0.90 for Volumetric\_Flood, 0.85 for PortScan and BruteForce; Botnet disabled), 22{,}268 of 27{,}191 Volumetric\_Flood test flows (81.9\%) would trigger a rule, 2 of 174{,}421 benign test flows would trigger a wrong rule, and 118 of 20{,}976 attack flows predicted as the wrong attack class would. None of the 17{,}909 PortScan flows predicted as BruteForce reaches its floor.
+    \item \textbf{Mitigation confidence floors.} With the confidence floors of the backend's mitigation policy (0.90 for Volumetric\_Flood, 0.85 for PortScan and BruteForce; Botnet disabled), 22{,}268 of 27{,}191 Volumetric\_Flood test flows (81.9\%) would trigger a rule, at most 2 of 174{,}421 benign test flows would trigger a wrong rule, and at most 118 of 20{,}976 attack flows predicted as the wrong attack class would. None of the 17{,}909 PortScan flows predicted as BruteForce reaches its floor. Volumetric\_Flood is therefore the only class with an enforceable path. This policy is not yet connected to rule generation in the integrated system.
     \item \textbf{Calibration and latency.} Measured on the earlier (epoch-31) model only and not repeated for the retrained model. [TO BE MEASURED FOR THE RETRAINED MODEL]
     \item \textbf{Baseline model (GraphSAGE).} The baseline model reported accuracy 0.9957, weighted F1 0.9957 and ROC-AUC 0.9975 (\texttt{ML/GraphSage-model/test\_results.json}). This was a binary task on a different graph construction and a per-file split, so it is not comparable with the v2 figures.
 \end{itemize}
@@ -1485,6 +1486,7 @@ Thursday (unseen families) & 426{,}958 & 2{,}111 & 0.0669 & 0.9730 & 0.0674 \\
     \begin{itemize}
         \item Zeroing the 16 node features drops the binary edge F1 to 0. The model depends heavily on host-level structural features.
         \item Zeroing the 20 numeric edge features lowers the test macro F1 ($-0.0265$) but raises the validation macro F1 ($+0.0397$); the effect is split-specific. Before the correction it raised both (test $+0.0956$), so that earlier finding does not survive the correction.
+        \item Before the correction, removing \texttt{log\_total\_bytes} or \texttt{iat\_burstiness} individually improved the test macro F1 ($+0.0723$, $+0.0451$); after it, removing them degrades it ($-0.0158$, $-0.0024$). The largest gain from removing any single feature fell from $+0.0723$ to $+0.0192$. These probes have no variance estimate, so effects of this size cannot be distinguished from run-to-run noise; the conclusion rests on the change of direction and the disappearance of the large effect, not on the individual values.
         \item Resetting the host memory before every window raises the macro F1 slightly (test $+0.0188$, validation $+0.0444$; before the correction, test $+0.1270$). This is consistent with the untrained GRU memory described in Chapter~5.
         \item These probes perturb an already-trained model and are not retrained ablations.
     \end{itemize}
@@ -1567,7 +1569,7 @@ The failure conditions covered by these automated tests are:
 \end{itemize}
 Network-connectivity failures, compound failures, dependency flapping and explicit database-integrity checks are not represented by tests in the repository. [RESULTS OF ANY MANUAL FAULT-INJECTION EXERCISES TO BE PROVIDED]
 
-\par\textbf{Regression results.} The full backend suite was run locally on 2026-09-28: 226 passed, 3 skipped (environment-dependent) and 1 failed. The failure was the configuration-dependent threshold test described in Section~6.4.
+\par\textbf{Regression results.} The full backend suite was run locally on 2026-10-04: 227 passed and 3 skipped (environment-dependent). An earlier run (2026-09-28) had one failure, a threshold test that read the machine's local, untracked configuration instead of the declared default; the test now checks the declared default.
 \begin{itemize}
     \item \texttt{INTEGRATION.md} records the same outcome for 2026-09-14.
     \item The project team also recorded earlier results at separate validation stages: 209 passed, 3 skipped and 0 failed at Phase M; 128 passed, 3 skipped and 0 failed at an earlier stage; and 122 passed, 3 skipped and 0 failed at the backend/API validation stage.
@@ -1594,13 +1596,13 @@ The special type of testing may be very important in some projects. Here the sys
 After the developer has completed all rounds of testing and he is satisfied with the system, then the user takes over and retest system from his point of view to judge whether it is acceptable according to some previously identified criteria. This is almost always a tricky situation in the project because of the inherent conflict between the developer and the user in this project. It is the job of the developer of the planner to check the system that whether the system fulfills the goals or not. [ACCEPTANCE TEST DETAILS TO BE PROVIDED]
 
  \section{TESTING CRITERIA}
-The test cases below are existing automated tests in the repository. For the ML package, the results column reflects a local run on 2026-09-28 (98 passed, 7 skipped because the optional \texttt{pyarrow} dependency was not installed). For the backend, it reflects a local run on the same date: 226 passed, 3 skipped and 1 failed. The failing test, \texttt{test\_production\_default\_threshold\_is\_conservative\_075}, expects a threat threshold of 0.75, while the local \texttt{backend/.env} file sets 0.40. It is a configuration mismatch, not a code defect. The contract tests were not executed in this environment.
+The test cases below are existing automated tests in the repository. For the ML package, the results column reflects a local run on 2026-10-04 (148 passed, 0 skipped). For the backend, it reflects a local run on the same date: 227 passed and 3 skipped. The test \texttt{test\_production\_default\_threshold\_is\_conservative\_075} previously failed on this machine because it read the local \texttt{backend/.env} file (threshold 0.40) rather than the declared default (0.75); it now checks the declared default and the tracked configuration templates. The contract tests were not executed in this environment.
  \subsection{Machine-learning data pipeline}
 \begin{table}[htbp]
  \caption{Testing criteria for the machine-learning data pipeline}
     \label{tab:test_cases}
     \centering
-    \begin{tabularx}{\textwidth}{|c|X|X|X|}
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
         \hline
         Test Case & Input & Test Description & Output \\
         \hline
@@ -1623,7 +1625,7 @@ The test cases below are existing automated tests in the repository. For the ML 
    \caption{Testing criteria for the model, training and inference}
     \label{tab:test_insertion}
     \centering
-    \begin{tabularx}{\textwidth}{|c|X|X|X|}
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
         \hline
         Test Case & Input & Test Description & Output \\
         \hline
@@ -1642,7 +1644,7 @@ The test cases below are existing automated tests in the repository. For the ML 
 \caption{Testing criteria for backend security and validation}
     \label{tab:test_deletion}
     \centering
-    \begin{tabularx}{\textwidth}{|c|X|X|X|}
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
         \hline
         Test Case & Input & Test Description & Output \\
         \hline
@@ -1666,7 +1668,7 @@ The test cases below are existing automated tests in the repository. For the ML 
  \caption{Testing criteria for blockchain, enforcement and the v2 integration}
     \label{tab:test_duration}
     \centering
-    \begin{tabularx}{\textwidth}{|c|X|X|X|}
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
         \hline
         Test Case & Input & Test Description & Output \\
         \hline
@@ -1689,7 +1691,7 @@ The test cases below are existing automated tests in the repository. For the ML 
  \caption{Testing criteria for other test cases}
     \label{tab:other_test_cases}
     \centering
-    \begin{tabularx}{\textwidth}{|c|X|X|X|}
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
         \hline
         Test Case & Input & Test Description & Output \\
         \hline
@@ -1749,7 +1751,7 @@ Relative to the surveyed works (Table~\ref{tab:comparison}), GraphSentinel is di
 \begin{itemize}
     \item a 12-hour timestamp defect in the CICIDS2017 files, its correction, and its measured effect on the evaluation splits;
     \item test edge binary F1 0.9961 and five-class macro F1 0.4441, with PortScan and BruteForce confused with each other and Botnet not detected;
-    \item that the confidence floors of the mitigation policy suppress almost all wrong-class predictions;
+    \item that the confidence floors of the mitigation policy would suppress almost all wrong-class predictions, leaving Volumetric\_Flood as the only enforceable class;
     \item a 6.74\% false-positive rate on an unseen day.
 \end{itemize}
 It also described the automated unit and integration tests and recorded which experiments and system-level tests remain to be carried out.
@@ -1778,11 +1780,11 @@ The detection component evolved from the Phase-1 GraphSAGE baseline, which remai
 \end{itemize}
 The upgraded model is the GraphSentinel v2 package. It builds IP-as-node / flow-as-edge window graphs from CICIDS2017 and trains a two-layer GATv2 model with node and per-flow heads. The model is exported with a versioned contract and served over HTTP.
 
-An audit of the dataset found that its afternoon timestamps use a 12-hour clock without an AM/PM marker; 52.1\% of the training rows had been placed at the wrong time of day. After correcting the timestamps and retraining, the per-flow head achieved a binary F1-score of 0.9961 and a five-class macro F1-score of 0.4441 on the test split in a single run. The earlier figure of 0.7042 came from a test split whose attack windows contained almost no benign traffic, which the correction removed. PortScan and BruteForce are not separated from each other, the Botnet class is not detected, and the false-positive rate on an unseen day with new attack families was 6.74\%. The confidence floors of the mitigation policy keep almost all wrong-class predictions from producing a rule; only the Volumetric\_Flood rule fires reliably on correct predictions.
+An audit of the dataset found that its afternoon timestamps use a 12-hour clock without an AM/PM marker; 52.1\% of the training rows had been placed at the wrong time of day. After correcting the timestamps and retraining, the per-flow head achieved a binary F1-score of 0.9961 and a five-class macro F1-score of 0.4441 on the test split in a single run. The earlier figure of 0.7042 came from a test split whose attack windows contained almost no benign traffic, which the correction removed. PortScan and BruteForce are not separated from each other, the Botnet class is not detected, and the false-positive rate on an unseen day with new attack families was 6.74\%. The confidence floors of the mitigation policy would keep almost all wrong-class predictions from producing a rule, leaving Volumetric\_Flood as the only class with an enforceable path; binary detection is unaffected by this.
 
 These results show that the per-flow formulation detects attack traffic reliably in this dataset but does not reliably identify the attack class. They do not establish detection of new attacks, generalisation to other networks, or an advantage over non-graph methods.
 
-The automated test suites of the ML package (145 tests passing) and of the backend (226 passed, 3 skipped, 1 configuration-dependent failure) verify the implemented behaviour on synthetic and unit-level inputs. Testing with real OVS traffic has not yet been carried out.
+The automated test suites of the ML package (148 tests passing) and of the backend (227 passed, 3 skipped) verify the implemented behaviour on synthetic and unit-level inputs. Testing with real OVS traffic has not yet been carried out.
 
 In the current integration, v2 verdicts are reported but not acted on: automated isolation is still driven by the v1 model or its heuristic fallback. Neither the system as a whole nor the v2 model should be regarded as production-ready.
 \end{justify}
@@ -1792,13 +1794,13 @@ In the current integration, v2 verdicts are reported but not acted on: automated
 \begin{justify}
 Future work arising directly from the identified limitations:
 \begin{enumerate}
-    \item Change the split so that every split's attack windows keep their co-temporal benign traffic, so that validation and test describe the same task; then retrain and refit the operating points.
+    \item Change the split so that it cuts on window boundaries and every split's attack windows keep their co-temporal benign traffic, so that validation and test describe the same task and share no window; then retrain and refit the operating points.
     \item Make the host memory trainable, for example by adding a loss term that depends on the memory state, or remove it. Then repeat the ablation with retrained models.
     \item Compare the GraphSAGE baseline and the GATv2 model like-for-like: train the v2 package with GraphSAGE layers (\texttt{sage\_median} or \texttt{sage\_max}) on the same features and split.
     \item Run the implemented Random Forest baseline and several random seeds to establish whether message passing adds value, and with what variance.
     \item Report results under the implemented attack hold-out, host hold-out and day hold-out protocols.
     \item Measure the model on real OVS traffic in the Mininet environment (Tier 3), including end-to-end latency. Reduce the gap between the features available on the live path and those used in training.
-    \item Base enforcement on the binary decision with one conservative action until a class head can support class-specific actions; validate generated rules against a controller, and only then connect v2 verdicts to alerting and enforcement.
+    \item Connect the backend's mitigation policy to rule generation (the integrated service currently uses the package's older six-class table, whose rules are discarded); consider a single conservative action gated on the binary decision once a binary operating point has been fitted; validate generated rules against a controller, and only then connect v2 verdicts to alerting and enforcement.
     \item Evaluate on additional datasets.
 \end{enumerate}
 \end{justify}

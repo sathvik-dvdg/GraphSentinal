@@ -211,8 +211,22 @@ class TestM06F02_ThresholdSensitivity:
             assert (len(alerts) > 0) == should_alert
 
     def test_production_default_threshold_is_conservative_075(self):
-        """Verify default production configuration sets threat_threshold to 0.75."""
-        assert settings.threat_threshold == 0.75
+        """Verify default production configuration sets threat_threshold to 0.75.
+
+        Checks the DECLARED default and the tracked env templates, not the
+        effective `settings` value: that one reads the untracked, per-machine
+        backend/.env, so the test used to fail on any machine whose local .env
+        tuned the threshold (one sets 0.40) while passing on a fresh clone.
+        """
+        from pathlib import Path
+
+        from app.config import Settings
+
+        assert Settings.model_fields["threat_threshold"].default == 0.75
+        root = Path(__file__).resolve().parents[2]
+        for template in (root / "backend" / ".env.example", root / ".env.docker"):
+            lines = template.read_text(encoding="utf-8").splitlines()
+            assert "THREAT_THRESHOLD=0.75" in lines, template
 
     def test_mixed_flow_batch_graph_construction(self):
         """Graph construction with both unidirectional and bidirectional flows
