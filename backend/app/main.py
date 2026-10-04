@@ -1,3 +1,4 @@
+import asyncio
 import re
 import secrets
 import uuid
@@ -76,7 +77,7 @@ async def lifespan(app: FastAPI):
     try:
         from app.mininet_monitor.monitor import MininetMonitor
 
-        app.state.monitor = MininetMonitor(sio=sio, gs2_state=app.state.gs2)
+        app.state.monitor = MininetMonitor(sio=sio, gs2_state=app.state.gs2, loop=asyncio.get_running_loop())
         app.state.monitor.start()
     except Exception as exc:
         print(f"[Monitor] Disabled: {exc}")

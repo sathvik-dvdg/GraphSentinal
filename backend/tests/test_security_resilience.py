@@ -61,7 +61,11 @@ def test_analyze_rejects_max_flows():
 
 
 def test_analyze_rejects_outside_cidr_without_persisting_incident(monkeypatch):
-    """O-F01: /api/v1/analyze rejects IP outside 10.0.0.0/24 with 422 without creating orphan Incident in DB."""
+    """O-F01: a source outside 10.0.0.0/24 never becomes an Incident or a block.
+
+    Until the 2026-10-04 audit (B04) this asserted a 422 for the whole request.
+    The out-of-range host is now skipped and the rest of the batch completes, so
+    hosts scored earlier in the same batch are not left half-processed."""
     from app.database import SessionLocal
     from app.models.incident import Incident
 
@@ -82,8 +86,9 @@ def test_analyze_rejects_outside_cidr_without_persisting_incident(monkeypatch):
     ]
     headers = {"X-API-Key": settings.backend_api_token}
     response = client.post("/api/v1/analyze", json={"flows": flows}, headers=headers)
-    assert response.status_code == 422
-    assert "is outside" in response.text
+    assert response.status_code == 200
+    assert response.json()["incidents_created"] == []
+    assert response.json()["healing_triggered"] == []
 
     db = SessionLocal()
     orphan = db.query(Incident).filter(Incident.source_ip == "192.168.1.100").first()
@@ -125,7 +130,8 @@ def test_analyze_rejects_invalid_ip_format_without_persisting_incident(monkeypat
 
 
 def test_threat_analyzer_direct_outside_cidr_no_db_persistence():
-    """O-F01 Unit Test: ThreatAnalyzer.evaluate() raises ValueError on outside-CIDR IP before creating Incident."""
+    """O-F01 Unit Test: ThreatAnalyzer.evaluate() skips an outside-CIDR IP before creating an Incident.
+    (It raised ValueError until audit B04; see test_audit_p0_p1.py.)"""
     from app.database import SessionLocal
     from app.models.incident import Incident
     from app.services.threat_analyzer import ThreatAnalyzer
@@ -143,8 +149,8 @@ def test_threat_analyzer_direct_outside_cidr_no_db_persistence():
     }
     flows = [{"src_ip": "192.168.1.50", "dst_ip": "10.0.0.1", "packet_count": 1000, "byte_count": 50000}]
 
-    with pytest.raises(ValueError, match="is outside"):
-        analyzer.evaluate(prediction, flows)
+    alerts, healing_events = analyzer.evaluate(prediction, flows)
+    assert alerts == [] and healing_events == []
 
     db = SessionLocal()
     count_after = db.query(Incident).count()

@@ -59,8 +59,9 @@ def _source_of(flow: Any) -> Any:
 
 
 class MininetMonitor:
-    def __init__(self, sio, gs2_state=None):
+    def __init__(self, sio, gs2_state=None, loop=None):
         self.sio = sio
+        self.loop = loop
         self.interval = settings.poll_interval_seconds
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
@@ -257,6 +258,25 @@ class MininetMonitor:
         self.last_v2_error = None
         self.last_v2_windows += result.get("closed_windows", 0)
 
+    def _emit(self, result: dict) -> None:
+        """Push this poll's events from the monitor thread.
+
+        The server's sockets belong to the server's event loop, so the emit is
+        scheduled onto that loop. `asyncio.run` here would drive `sio.emit` on
+        a second loop in this thread. Without a loop (unit tests that mock
+        `sio`) it falls back to a private one.
+        """
+        loop = self.loop
+        if loop is None or not loop.is_running():
+            asyncio.run(emit_analysis_events(self.sio, result))
+            return
+        future = asyncio.run_coroutine_threadsafe(emit_analysis_events(self.sio, result), loop)
+        try:
+            future.result(timeout=max(self.interval, 1))
+        except Exception as exc:  # noqa: BLE001 - a push must not fail the poll
+            future.cancel()
+            print(f"[Monitor] Socket emit failed: {exc!r}")
+
     def _run(self) -> None:
         print(f"[Monitor] Polling OVS every {self.interval}s")
         while not self._stop_event.is_set():
@@ -267,7 +287,7 @@ class MininetMonitor:
                 # reflects "no current traffic" instead of leaving stale
                 # threats/nodes on screen after traffic actually stops.
                 result = analyze_flows(flows)
-                asyncio.run(emit_analysis_events(self.sio, result))
+                self._emit(result)
                 # v2 sees this poll's flows ONLY if they came from OVS: with
                 # DEMO_FALLBACK_FLOWS on, `flows` can be randomised output of
                 # demo_flows(), which _score_v2 refuses before anything is sent.

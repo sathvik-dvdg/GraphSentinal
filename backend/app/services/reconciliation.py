@@ -183,7 +183,12 @@ def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
             .filter(
                 Incident.blockchain_tx.isnot(None),
                 Incident.blockchain_incident_id.is_(None),
-                Incident.attack_type != "Manual-Unblock",
+                # Rows already in a terminal state are not pending. Unblock
+                # rows (attack_type "Manual") carry a tx and never get an
+                # on-chain incident id, so filtering on attack_type let them
+                # match every cycle and fill the batch.
+                Incident.blockchain_status.is_(None)
+                | Incident.blockchain_status.notin_(("confirmed", "failed", "permanent_failure")),
             )
             .limit(max_batch)
             .all()
