@@ -36,5 +36,7 @@ ML/model.ts
 ML/prefix_epoch31/weights.pt
 ML/prefix_epoch31/model.ts
 ML\testdata\cicids2017_sample.csv
-# Local Compose override (RUN_GUIDE.md section 4: turns the v2 path on). Never committed.
+# Local Compose override, for per-machine settings. Never committed, and no longer
+# needed to run: the v2 path is on in docker-compose.yml, and the v1-only variant
+# is the tracked docker-compose.v1.yml.
 docker-compose.override.yml

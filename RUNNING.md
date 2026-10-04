@@ -170,8 +170,15 @@ survive a plain `down` and are wiped by `-v`.
 
 ### 2.1 The override file
 
-**Do not edit `docker-compose.yml`.** The committed `GS2_ENABLED: "false"` is
-deliberate and must stay. Use a scratch override file:
+> **Changed 2026-10-04:** `docker-compose.yml` now sets `GS2_ENABLED: "true"`, so
+> a plain `docker compose up -d` is already this tier and the override below is
+> not needed for it. Tier 1 (v2 off) is now
+> `docker compose -f docker-compose.yml -f docker-compose.v1.yml up -d`. The
+> override file is still the place for the other settings in this document
+> (§2.5's `DEMO_FALLBACK_FLOWS`). What follows is the procedure as it was tested.
+
+**Do not edit `docker-compose.yml`.** When this was tested the committed value was
+`GS2_ENABLED: "false"`. Use a scratch override file:
 
 ```bash
 cat > docker-compose.override.yml <<'EOF'

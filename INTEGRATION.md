@@ -447,9 +447,11 @@ service request. A monitor comment claimed v2 ran "on the SAME real flows".
    subsection). Substitution now happens only when a poll **failed**. A
    successful poll that parsed nothing stays empty.
 
-**Still contained.** `GS2_ENABLED` remains `"false"` in `docker-compose.yml`.
-The gate would make enabling it safe, but v2 stays off while the operating
-points are provisional (§4). v1 still ingests substituted flows and records
+**On by default since 2026-10-04.** `GS2_ENABLED` is `"true"` in
+`docker-compose.yml`: the gate makes it safe, every rule is dry-run, and a stack
+that starts on the v1 path cannot run the verification in `RUN_GUIDE.md` §6. The
+operating points are still provisional (§4); what contains them is `dry_run`, not
+the switch. `docker-compose.v1.yml` turns the v2 path off. v1 still ingests substituted flows and records
 incidents from them tagged `data_source="demo"`; that behaviour predates this
 integration.
 
@@ -914,7 +916,7 @@ Backend env (set in `docker-compose.yml`):
 
 | var | value | meaning |
 |---|---|---|
-| `GS2_ENABLED` | **`false`** | v2 path off in the default stack. The provenance gate (§5) now makes enabling it safe; it stays off while the operating points are provisional (§4) |
+| `GS2_ENABLED` | **`true`** | v2 path on in the default stack since 2026-10-04. The provenance gate (§5) makes that safe and every rule is dry-run; the operating points remain provisional (§4). Layer `docker-compose.v1.yml` to turn it off |
 | `GS2_SERVICE_URL` | `http://inference:8080` | compose-internal DNS |
 | `GS2_MODEL_DIR` | `/app/ML` | where `model_card.json` is read from |
 | `GS2_REQUIRE_CONTRACT` | `true` | refuse to boot on a bad contract |

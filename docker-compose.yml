@@ -131,14 +131,16 @@ services:
       # and feature order; it never loads weights itself. GS2_SERVICE_URL uses
       # the compose service name (internal DNS), not localhost.
       #
-      # DISABLED until the v2 path gates on flow provenance. This stack loads
-      # DEMO_FALLBACK_FLOWS=true from .env.docker, so every poll that parses
-      # nothing (no Mininet in Docker, or a quiet network) is replaced with
-      # randomised flows from flow_parser.demo_flows(). With v2 on, those would
-      # be scored as if real: map_flow drops data_source, so the service cannot
-      # tell. See INTEGRATION.md §5 "Open defect". Set back to "true" only once
-      # the monitor refuses non-OVS input before it reaches the v2 client.
-      GS2_ENABLED: "false"
+      # ON by default: the path that is demonstrated is the path that starts,
+      # and RUN_GUIDE.md §6 checks 3 and 7-9 need it. It was "false" until the
+      # monitor gated on flow provenance. It now does (commit 2adaec5,
+      # mininet_monitor/monitor.py): only data_source == "ovs" reaches the v2
+      # client, so the demo_flows() this stack substitutes when a poll fails
+      # (DEMO_FALLBACK_FLOWS=true in .env.docker) are refused, logged and
+      # counted, never scored. Rules stay dry-run either way.
+      # To run the v1 path alone, layer the tracked docker-compose.v1.yml:
+      #   docker compose -f docker-compose.yml -f docker-compose.v1.yml up -d
+      GS2_ENABLED: "true"
       GS2_SERVICE_URL: http://inference:8080
       GS2_MODEL_DIR: /app/ML
       GS2_REQUIRE_CONTRACT: "true"
