@@ -33,8 +33,14 @@ them. For what it leaves out:
 | frontend | React dashboard | `frontend` | 5174 (Compose), 5173 (manual) |
 | traffic source | Mininet + OVS (`mininet/topologies/`), or the committed sample | — | — |
 
-`dry_run = True` everywhere. Rules are generated, gated, logged and counted;
-**nothing is installed on a switch.** See §9.
+**Two detection paths run in the backend** (`MODEL_BEHAVIOUR.md` §1.1). The
+inference service above is **v2**: `dry_run = True`, its rules are generated,
+gated, logged and counted, and none is installed. **v1** is an older two-class
+model inside the backend process; it runs on every poll whether or not v2 is on,
+and it is the one that creates incidents, blocks hosts and writes to the chain.
+v1 is **not** dry-run: Compose sets `ENFORCEMENT_MODE=simulated`, so here it logs
+its blocks and applies nothing, but with `ENFORCEMENT_MODE=ovs` and the
+enforcement daemon it installs real drop rules. See §9.
 
 **The v2 path is on by default under Compose** (`GS2_ENABLED: "true"` in
 `docker-compose.yml`, since 2026-10-04), so a fresh clone starts the path §6
@@ -342,13 +348,17 @@ project's results rest on.
 **Shows:**
 
 - flow-level attack/benign discrimination at **binary F1 0.9961**;
-- a closed rule-generation loop: the backend's policy gates every rule, digests are
-  echoed, withheld flows are counted with reasons;
+- a closed v2 rule-generation loop, in dry-run: the backend's policy gates every
+  rule, digests are echoed, withheld flows are counted with reasons;
 - on the committed sample, 12 rules admitted and none wrong.
 
 **Does not show, and must not be claimed:**
 
-- **live mitigation.** `dry_run = True`; no rule has ever reached a switch.
+- **live mitigation by the audited model.** v2 is `dry_run = True`; no v2 rule
+  has reached a switch. That guarantee is v2's alone. The incidents, blocks and
+  chain records on the dashboard come from **v1**, which is not dry-run, was never
+  measured, and blocks for real when `ENFORCEMENT_MODE=ovs` (§1). §6 verifies v2;
+  nothing in this guide verifies v1's detections.
 - **real-time performance.** Latency has not been measured for the installed model.
 - **zero-day detection.** Nothing here tests unseen attack families.
 - **reliable class-conditional action.** The model cannot separate PortScan from

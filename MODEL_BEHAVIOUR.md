@@ -28,7 +28,40 @@ Mininet / OVS  →  flow export  →  60 s windows  →  IP-as-node graph
 Everything up to and including **per-flow class and confidence** is wired, tested
 and verified inside the inference container.
 
-**The loop is closed in code, in dry-run** (commit `9a4b114`, 2026-10-04):
+### 1.1 Two detection paths, and this file measures only one
+
+The backend runs **two** models. Everything in this file from §2 onward describes
+the second. The first is the one that acts.
+
+| | **v1 — in-process** | **v2 — inference service** |
+|---|---|---|
+| model | GraphSAGE, 7 features, two classes | GATv2, five classes, 654,851 parameters (§2) |
+| when it runs | every monitor poll and every `POST /analyze`, always | in addition to v1, when `GS2_ENABLED` is true, and only on flows tagged `ovs` |
+| starts by default under Compose | yes | yes since 2026-10-04 (`docker-compose.yml`); before that it needed a local override |
+| creates incidents | yes | no |
+| blocks hosts | yes — `SelfHealingEngine.block_ip` → `EnforcementAgent` | no |
+| writes to the chain | yes | no |
+| gating | one threshold (`THREAT_THRESHOLD`); severity bands hard-coded | the backend's policy, digest-echoed, per-class floors |
+| dry-run | **no** | **yes**, and it refuses outside it |
+| measured in this file | **no** | yes |
+
+**The path that enforces is the path this file does not measure, and the path this
+file measures enforces nothing.** Turning v2 on does not turn v1 off: the monitor
+calls v1's `analyze_flows` on every poll and then, separately, offers the same
+flows to v2 (`mininet_monitor/monitor.py`).
+
+**v1 is not dry-run.** With `ENFORCEMENT_MODE=ovs` the agent sends each block to
+`backend/scripts/enforcement_daemon.py`, which runs `ovs-ofctl add-flow` with
+`priority=1000,ip,nw_src=<ip>,actions=drop` on the switch. Under Compose the
+tracked `.env.docker` sets `ENFORCEMENT_MODE=simulated`, so the agent logs the
+block and applies nothing; that setting, and the absence of Mininet on the
+development machine, are the only reasons no drop rule was installed during the
+runs behind this file. v1's incidents and chain writes happen in either mode.
+
+Every statement below that says "dry-run", "no rule is installed" or "nothing
+reaches a switch" is a statement about **v2 only**.
+
+**The v2 loop is closed in code, in dry-run** (commit `9a4b114`, 2026-10-04):
 
 - the backend's validated `MitigationPolicy` is the **only** source of actions and
   floors. It is sent with every request to the inference service;
@@ -41,9 +74,9 @@ and verified inside the inference container.
   `node_corroboration_absent`, `rule_cap`, `no_policy`);
 - the service echoes the digest of the policy it applied, and the backend accepts
   rules only when that digest is its own and the service reports `dry_run`;
-- no rule is installed: `SDNTranslator.install()` writes nothing in dry-run and
-  refuses outside it, and no v2 rule reaches the enforcement agent or the
-  self-healing engine.
+- no **v2** rule is installed: `SDNTranslator.install()` writes nothing in dry-run
+  and refuses outside it, and no v2 rule reaches the enforcement agent or the
+  self-healing engine. This says nothing about v1 (§1.1).
 
 **On real flows, through the live container** (the §7 sample, 18,264 flows): 58 of
 58 windows echoed the backend's policy digest; **12 rules admitted, all on
@@ -65,9 +98,10 @@ the chain as a whole is not. It needs one Mininet run on Linux or WSL2
 (`RUN_GUIDE.md` §11).
 
 What may be said about mitigation: rule generation under a validated policy works
-end to end **in dry-run**, verified at the service boundary. Nothing has been installed on a switch, the allowlist
+end to end **in dry-run**, verified at the service boundary. No v2 rule has been installed on a switch, the allowlist
 does not yet cover gateways, DNS and the controller, and no rule has been validated
-against a controller. "Self-healing" of live traffic is **not** demonstrated.
+against a controller. "Self-healing" of live traffic by the measured model is
+**not** demonstrated; the blocking the dashboard shows is v1's (§1.1).
 
 *Source: `INTEGRATION.md` §6, `ML/live_rule_check.json`,
 `ML/graphsentinel_v2/tests/test_sdn_policy.py`, `backend/tests/test_v2_rule_wiring.py`.*
@@ -514,34 +548,43 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 
 ## 9. Limitations, enumerated
 
-1. **Mitigation is dry-run only** (§1). Rules are generated under the validated
+1. **The dry-run guarantee is v2's only; the path that blocks hosts is unmeasured**
+   (§1.1). v1 — a two-class GraphSAGE over 7 features — creates the incidents,
+   blocks the hosts and writes the chain records, and with `ENFORCEMENT_MODE=ovs`
+   installs real drop rules. No figure in this file describes it.
+2. **Both models are scored on graph sizes they were not trained on.** v1 trained
+   on 500-flow windows and at inference scores whatever one poll returns, down to
+   a single flow with no edges (`backend/app/services/inference_service.py`). v2
+   needs `min_edges_per_graph = 8`, and that floor is what removed Botnet's test
+   set (§5.1). One defect class, two models; its effect on v1 is not measured.
+3. **v2 mitigation is dry-run only** (§1). Rules are generated under the validated
    policy and none is installed; the allowlist does not cover gateways, DNS or the
    controller, and no rule has been validated against a controller.
-2. **PortScan's floor is unreachable** on the live sample (0 of 68 correct
+4. **PortScan's floor is unreachable** on the live sample (0 of 68 correct
    predictions reach 0.85) and on the test split (0 of 3,735): its `drop` action
    never fires.
-3. **The host memory is untrained** (§2). Not learned state.
-4. **PortScan's validation is contaminated** — one graph window appears in train,
+5. **The host memory is untrained** (§2). Not learned state.
+6. **PortScan's validation is contaminated** — one graph window appears in train,
    validation and test (§5.3). Validation chose the checkpoint and fitted every
    operating point.
-5. **Validation and test have opposite window composition** — 98.45%/0.52% against
+7. **Validation and test have opposite window composition** — 98.45%/0.52% against
    0.51%/97.73% (§5.1). Fitted operating points do not transfer, and this is why.
-6. **PortScan and BruteForce are not separable** by this model (§5.4). Their
+8. **PortScan and BruteForce are not separable** by this model (§5.4). Their
    per-class F1s are properties of the split, not the model.
-7. **Botnet is unevaluable on the test split** and scores 0 of 168 on the sample.
-8. **Episode splitting never engages** under the fixed parse (§5.5); all four
+9. **Botnet is unevaluable on the test split** and scores 0 of 168 on the sample.
+10. **Episode splitting never engages** under the fixed parse (§5.5); all four
    classes use rank cuts. The counts behind this are not yet a committed artefact.
-9. **Cross-run comparisons are not controlled.** The fix changed which rows each
+11. **Cross-run comparisons are not controlled.** The fix changed which rows each
    split holds (§5.2), so every pre/post figure describes two different test tasks.
    Only §5.1's pre-registered measurement is a clean comparison.
-10. **Window-level alerting supports no claim in either direction** (§4.3).
-11. **The model memorises** — best epoch 18, training loss 0.0004 (§4.4).
-12. **Live-path figures are optimistic** on three counts (§7).
-13. **Calibration and latency have not been re-measured** for the installed model.
-14. **The two morning-only CSVs are format-indeterminate** (§3.1); the fix's
+12. **Window-level alerting supports no claim in either direction** (§4.3).
+13. **The model memorises** — best epoch 18, training loss 0.0004 (§4.4).
+14. **Live-path figures are optimistic** on three counts (§7).
+15. **Calibration and latency have not been re-measured** for the installed model.
+16. **The two morning-only CSVs are format-indeterminate** (§3.1); the fix's
     correctness on them is inferred from its behaviour, which is to leave them alone.
-15. **`pm_hours = [1, 7]` is unexercised at its edges** (§3.2).
-16. **The MIXED check is per file, the pipeline is pooled** (§3.2); they coincide
+17. **`pm_hours = [1, 7]` is unexercised at its edges** (§3.2).
+18. **The MIXED check is per file, the pipeline is pooled** (§3.2); they coincide
     only because no hour ≥ 13 exists anywhere.
 
 ---
@@ -576,8 +619,12 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 - Zero-day detection. Nothing in this project measures unseen attack families.
 - Real-time performance. Latency has not been measured for the installed model.
 - Production readiness.
-- Self-healing or mitigation of live traffic. Rules are dry-run; none has been
-  installed or validated against a controller (§1).
+- Self-healing or mitigation of live traffic by the model measured here. v2's
+  rules are dry-run; none has been installed or validated against a controller
+  (§1). The blocking the system performs is v1's, which this file does not
+  measure (§1.1).
+- "Dry-run throughout", or "no rule has ever been installed", as a statement about
+  the system. It is true of v2 only.
 - Any improvement over the pre-fix model. The honest summary is that the numbers
   **fell** — macro F1 0.7042 → 0.4441 — and that the fall is the correction of a
   measurement, not a regression in the system.
