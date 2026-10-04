@@ -55,8 +55,8 @@ class FlowVerdict:
     """One scored flow from the EDGE head. Mirrors the engine's FlowVerdict.
 
     The node head is deliberately not represented here. Its test binary F1 is
-    0.4475 (edge head: 0.9961); it is not fit for any decision and must not be
-    exposed.
+    less than half the edge head's (MODEL_BEHAVIOUR.md sections 4.1, 4.2); it is
+    not fit for any decision and must not be exposed.
     """
 
     src_ip: str

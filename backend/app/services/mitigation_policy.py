@@ -67,12 +67,12 @@ ACTION_ALERT_ONLY = "alert_only"
 #                                       BruteForce edges PortScan
 #   Botnet            no test edges; 0 of 168 correct on the Phase 2b sample
 #
-# What these floors let through on test (ML/split_composition.json, part B):
-# 22,268 of 27,191 true Volumetric_Flood edges clear 0.90; 2 of 389 benign
-# edges predicted as an attack clear their floor; 118 of 20,976 attack edges
-# predicted as the WRONG attack class clear theirs. None of the 17,909 PortScan
-# edges predicted BruteForce reaches 0.85 (p95 0.623). The class head is
-# unreliable and these floors absorb almost all of it: do not lower them.
+# What these floors let through is measured in MODEL_BEHAVIOUR.md section 6
+# (test split) and section 1 (live, on the sample). In short: most correct
+# Volumetric_Flood predictions clear their floor, almost no wrong-class or
+# benign prediction clears any, and no PortScan edge mislabelled BruteForce
+# reaches 0.85. The class head is unreliable and these floors absorb almost all
+# of it: do not lower them.
 #
 # `min_conf` values below are INHERITED from the training package's own table
 # for the classes that had one, and are NOT fitted operating points. They are

@@ -3,7 +3,11 @@
 What is wired in, where each number came from, and what this system must not
 claim. Written for engineers working on this repo.
 
-Every performance figure below is traceable to a file in this repo. Anything
+**Measured numbers about the model live in `MODEL_BEHAVIOUR.md`**, which is their
+single source; the timestamp investigation and its counts live in
+`ML/TIMESTAMP_FIX.md`. This document owns the mechanics: contracts, wiring, what
+calls what. Where it needs a measurement it points there. A test
+(`tests/test_figures_guard.py`) fails if a key figure is restated here. Anything
 not traceable is marked `TODO: unverified` rather than given a plausible value.
 
 ---
@@ -99,94 +103,29 @@ together.
 
 ## 3. Measured performance
 
-The model in `ML/` was **retrained on 2026-10-03 under the fixed timestamp
-parse** (`ML/TIMESTAMP_FIX.md`): best epoch 18, weights sha256 `3db34022…`. It
-loads in the inference container (§10). The epoch-31 model it replaces, and every
-file that described it, are kept in `ML/prefix_epoch31/`.
+**Owned by `MODEL_BEHAVIOUR.md`.** Flow and host classification, the comparison
+with the epoch-31 model, and why the numbers moved: §4 and §5 there. Per-class
+confusion and the PortScan/BruteForce finding: §5.4. What may and may not be
+claimed: §10.
 
-### Read this before quoting any number
+What this document adds is where the numbers come from, mechanically:
 
-- **Headline numbers come from `test_report.json` (TEST).** `model_card.json`'s
-  `metrics` block is VALIDATION and says so in `metrics_split`.
-- **The comparison figure is `edge_macro_f1_all_classes`, 0.4441.** The test
-  split of this run holds no Botnet edges, so `edge_macro_f1` (0.5551) averages
-  four classes. Pre-fix, the same key averaged five. Against the epoch-31
-  model's 0.7042, only 0.4441 is like for like: a drop of 0.26, not 0.15.
-- **Window-level alerting is not compared across the two models**, in any
-  direction (`ML/TIMESTAMP_FIX.md`: the pre-fix figure is dominated by 54
-  Botnet-only windows no model could alert on).
-
-### Why the numbers fell: measured
-
-The clock fix changed what the splits contain, and that was measured before it
-was explained (`ML/split_composition.json`, the prediction stored with it):
-
-| Test attack rows sharing a 60 s window with benign traffic | Old parse | Fixed parse |
-|---|---:|---:|
-| | **266 of 52,062 (0.51%)** | **51,003 of 52,187 (97.73%)** |
-
-Under the misparse the pooled BENIGN cut put Friday-morning traffic in test,
-beside none of the test attacks, so test attack windows were nearly pure attack
-and classifiable from their shape. Post-fix they are mixed with the benign
-traffic captured alongside them. Validation is the mirror image (98.45% →
-0.52%): this model was selected and fitted on almost-pure windows and tested on
-mixed ones. Separately, the fix reorders the two halves of Monday to Wednesday,
-which put the old BruteForce split out of time order (train held afternoon
-flows, test morning ones).
-
-| Class | What the fix did | Test F1, epoch 31 → retrained |
-|---|---|---|
-| PortScan, Volumetric_Flood | same rows; test windows went pure → mixed | 0.98 → 0.26, 0.99 → 0.96 |
-| BruteForce | split was out of time order; now ordered | 0.55 → 0.00 |
-| Botnet | test rows fell below the 8-flow window floor | measured 0.00 → no test edges |
-| BENIGN | robust to both | 0.9992 → 0.9988 |
-
-The post-fix numbers measure the harder, correct task. They do not show that a
-duplication leak was removed; there is no evidence of one.
-
-### Edge head (the deliverable), TEST split
-
-Source: `ML/test_report.json` → `edge_classification_report`.
-
-| class | precision | recall | F1 | support |
-|---|---:|---:|---:|---:|
-| BENIGN | 0.99989 | 0.99777 | 0.99883 | 174,421 |
-| Volumetric_Flood | 0.92625 | 1.00000 | 0.96171 | 27,191 |
-| PortScan | 0.75638 | 0.15685 | 0.25983 | 23,812 |
-| BruteForce | 0.0 | 0.0 | 0.0 | 918 |
-| Botnet | — | — | **no test edges** | 0 |
-
-`edge_macro_f1_all_classes` **0.4441** · `edge_binary_f1` **0.9961** ·
-`edge_binary_pr_auc` 0.99971 · `edge_recall_at_fpr_0.001` 0.9847.
-
-**Binary detection is the reliable claim.** The class head is not.
-
-**PortScan and BruteForce are one finding.** 17,909 of 23,812 PortScan test
-edges are predicted BruteForce; 904 of 918 BruteForce edges are predicted
-PortScan; on validation 581 of 582 BruteForce edges are predicted PortScan. The
-model does not separate the two, and which one appears to collapse depends on
-the split's window population. Neither 0.2598 nor 0.0000 is to be quoted as
-that class's performance.
-
-**Botnet: measured zero, on a different population.** The test split cannot
-score it. On the regenerated Phase 2b sample (§5), 0 of 168 Botnet edges are
-correct, F1 0.0000 in every variant. Small n; quoted with its denominator.
-
-### Node head — NOT USED
-
-`node_binary_f1` 0.4475, `node_macro_f1_all_classes` 0.3045 (epoch 31: 0.1407 and
-0.2684, on a differently composed test split, so not a measured improvement).
-The backend discards `WindowResult.detections` unread. Host-level attribution is
-not a claim this system makes.
-
-### Split protocol
-
-`config.data.split_strategy` is `episode`. *"episode — train and test can share
-a burst; these are NOT novel-attack numbers."* All four attack classes fell back
-to a rank cut (three "sizes too uneven", Botnet "only 2 episodes"). That is a
-property of the splitter under either parse, not of the clock. The config's
-`holdout_attacks: ['Botnet']` is read only by `_split_attack_holdout`, which this
-strategy never calls.
+- **Headline numbers come from `ML/test_report.json` (TEST).**
+  `ML/model_card.json`'s `metrics` block uses identical key names for
+  VALIDATION numbers and says so in `metrics_split`.
+- **`edge_macro_f1_all_classes` is the key that compares across runs.**
+  `edge_macro_f1` averages only the classes present in the test split, and the
+  installed model's test split holds no Botnet edges.
+- **The model in `ML/` is the one retrained on 2026-10-03** under the fixed
+  timestamp parse (best epoch 18, weights sha256 `3db34022…`). The epoch-31 model
+  and every file that described it are in `ML/prefix_epoch31/`.
+- **The node head is not used.** The backend discards `WindowResult.detections`
+  unread; host-level attribution is not a claim this system makes.
+- **Split protocol:** `config.data.split_strategy` is `episode`; *"train and test
+  can share a burst; these are NOT novel-attack numbers."* The config's
+  `holdout_attacks: ['Botnet']` is read only by `_split_attack_holdout`, which
+  this strategy never calls. How the split behaves on this dataset:
+  `MODEL_BEHAVIOUR.md` §5.
 
 ---
 
@@ -207,10 +146,10 @@ epoch-18 checkpoint: `fitted_on: "validation split"`, `checkpoint_epoch: 18`.
 The epoch-31 study is `ML/prefix_epoch31/threshold_study.json`.
 
 **Fitted on validation, applied to test: in this run those are different
-populations.** Validation's attack windows are 0.52% mixed with benign traffic,
-test's 97.73%. And for PortScan the split cut falls inside one timestamp
-(14:55), so that minute is in train, validation and test alike
-(`ML/TIMESTAMP_FIX.md`, "Named limitation"). **The checkpoint and every operating
+populations.** Validation's attack windows are almost free of benign traffic and
+test's are almost all mixed (`MODEL_BEHAVIOUR.md` §5.1). And for PortScan the
+split cut falls inside one timestamp (14:55), so that minute is in train,
+validation and test alike (`MODEL_BEHAVIOUR.md` §5.3). **The checkpoint and every operating
 point in this file were chosen on a split that is almost pure and, for
 PortScan, overlaps training.** That is the largest single threat to this
 section.
@@ -769,45 +708,21 @@ key, so a decision and an oversight cannot look the same.
 
 ### What these floors let through
 
-The class head is unreliable (§3). The question that matters for enforcement is
-what clears each class's floor. **On the test split**, offline
-(`ML/split_composition.json`, part B; the edge-head floor only, so every wrong
-action is **at most** that count):
+**Owned by `MODEL_BEHAVIOUR.md`:** §6 for the test split (offline; what clears
+each floor, the false-action ceiling, and why PortScan mislabelled as BruteForce
+never becomes a rule), and §1 for the live run on the Phase 2b sample
+(`ML/live_rule_check.py` → `ML/live_rule_check.json`).
 
-| Test edges | Edges | Clearing their class's floor |
-|---|---:|---:|
-| True BENIGN predicted an attack class | 389 | **at most 2** (as BruteForce) |
-| True Volumetric_Flood predicted Volumetric_Flood | 27,191 | **22,268 (81.9%)**, p50 0.938 |
-| True attack predicted a different attack class | 20,976 | **at most 118** (BruteForce as PortScan) |
+The mechanical points that belong here:
 
-None of the 17,909 PortScan edges predicted BruteForce reaches 0.85 (p95 0.623).
-So, under this policy: **Volumetric_Flood → meter is the only class with an
-enforceable path**; at most 2 false actions in 174,421 benign test edges (a
-ceiling of 1.15 × 10⁻⁵); at most 118 real attacks given the wrong action. **The
-class head is unreliable, and the floors absorb almost all of it.** Binary
-detection (edge F1 0.996) is unaffected: what the floors withhold is
-class-specific enforcement, not detection. "Volumetric_Flood → meter can never fire", the epoch-31 finding,
-does not hold for this model.
-
-**No floor moves.** 0.85 is why 17,909 wrong predictions are harmless. Botnet's
-1.01 is a **disabled rule**, not a threshold anyone should tune.
-
-**Live, on real flows** (`ML/live_rule_check.py` → `ML/live_rule_check.json`;
-the 18,264-flow Phase 2b sample through the rebuilt inference container):
-
-| | Result |
-|---|---|
-| Windows echoing the backend's policy digest | 58 of 58; dry run on every window |
-| Rules admitted (dry run) | 12, all on correctly classified flows: 8 BruteForce `drop_port`, 4 Volumetric_Flood `meter` |
-| Rules on benign or wrong-class flows | 0 |
-| Withheld | BruteForce 131 below floor, Volumetric_Flood 102 below floor, PortScan 68 below floor, Botnet 1 class suppressed |
-| Correct predictions reaching the floor | Volumetric_Flood 862 of 892 (0.90); BruteForce 327 of 400 (0.85); **PortScan 0 of 68 (0.85; p50 0.631)**; Botnet 0 of 168 |
-
-**PortScan's floor is never reached** on this sample, so its `drop` can never
-fire here. Reported, not adjusted. One rule covers a (source, destination,
-protocol) pair per window, which is why 862 flows above the Volumetric_Flood
-floor give 4 rules. Small, 91%-benign slice: BruteForce does well here and not
-on the test split (§3), the composition effect again.
+- The offline counts apply the edge-head floor only. The translator also requires
+  node corroboration (below), which can only remove rules, so every count of a
+  wrong action there is an upper bound.
+- One rule covers a (source, destination, protocol) pair per window, so admitted
+  rules are far fewer than flows above a floor.
+- **No floor moves.** Botnet's 1.01 is a **disabled rule**, not a threshold anyone
+  should tune. PortScan's floor is not reached on either population; that is
+  reported, not adjusted.
 
 ### The confidence floors are unfitted
 
@@ -1018,9 +933,9 @@ curl -s localhost:8001/health | jq .ml_v2
 | Package suite (`ML/graphsentinel_v2`, local, Windows) | ✅ **98 passed, 7 skipped, 0 failed**. All 7 skips are training-only dependencies (`pyarrow`, and two tests guarded as training-only) that the inference path doesn't need |
 | Backend suite, full (2026-10-04) | ✅ **232 passed, 3 skipped, 0 failed**: the threshold test points at the declared default (§8); 5 new tests pin the policy wiring (§6) |
 | Backend suite, full, after the gate, poll status, compose and contract changes (2026-09-14) | ✅ **226 passed, 3 skipped, 1 failure that predates this work**. The 226 are the previous 208 plus 18 new tests: 7 provenance gate, 4 poll status, 7 service contract. The failure is `test_production_default_threshold_is_conservative_075`: it expects `0.75` but `backend/.env` sets `0.40`, it passes with `THREAT_THRESHOLD=0.75`, and nothing in this integration touches it |
-| **Retrained model loads inside the container on torch 2.4.0** | ✅ **verified 2026-10-04**: image rebuilt (Docker's data disk had been lost), python 3.12.15, torch `2.4.0+cpu`, torch_geometric 2.5.0, pandas 2.3.3, numpy 2.2.6. Weights sha256 matches `MANIFEST.json`, 654,851 parameters, class order matches, `dry_run=True`; a fixed 40-flow window scores 40 of 40, probabilities equal to torch 2.13 locally to 6 decimals |
+| **Retrained model loads inside the container on torch 2.4.0** | ✅ **verified 2026-10-04**: image rebuilt (Docker's data disk had been lost). Output committed: `ML/retrain_logs/container_load_output.txt` (script `ML/container_load_check.py`); summary in `MODEL_BEHAVIOUR.md` §2 |
 | Retrained model, inference service over HTTP | ✅ verified 2026-10-04: healthy after ~45 s, `/health` 200, `/contract` 2.0.0 with the card's class order |
-| **Epoch-31 model loaded inside the container on torch 2.4.0** | ✅ **verified 2026-09-14**: python 3.12.14, torch `2.4.0+cpu`, torch_geometric 2.5.0, pandas 2.3.3, numpy 2.2.6. `from_artifacts` succeeds with `weights_only=False`, weights sha256 matches `MANIFEST.json`, 654,851 parameters as the card states, class list matches in order, `dry_run=True` |
+| **Epoch-31 model loaded inside the container on torch 2.4.0** | ✅ **verified 2026-09-14**: python 3.12.14, torch `2.4.0+cpu`, torch_geometric 2.5.0, pandas 2.3.3, numpy 2.2.6. `from_artifacts` succeeds with `weights_only=False`, weights sha256 matches `MANIFEST.json`, the parameter count the card states, class list matches in order, `dry_run=True` |
 | Inference service over HTTP, in the container | ✅ verified: `/health` returns 200 once the model has loaded (~45 s), Docker healthcheck `healthy`, `/contract` serves version 2.0.0 and the card's class order |
 | Backend client against the live service | ✅ verified: `probe()` reports true when the service is up and false on a dead port. The contract check accepts the live `/contract`, and refuses it once the classes are reordered or the version is changed to 2.1.0. With the service down, `score_flows` returns `available: false` and no windows, with no fallback |
 | Malformed flow (bad IP, missing `dst_port`) dropped per-flow with a logged reason; rest of batch kept | ✅ verified |
@@ -1032,7 +947,7 @@ curl -s localhost:8001/health | jq .ml_v2
 | **Poll failures looking like quiet traffic** (§5) | ✅ **fixed** (`37a4060`): `PollResult`, and demo substitution only on `failed`. The `failed` path is tested against a real closed port. ❌ `ok`/`ok_empty` tests blocked on `ovs_dump_flows.txt` |
 | **Backend starts without a healthy inference service** (§9) | ✅ `4071505`. Unreachable at boot is non-fatal; a mismatched or malformed served contract is fatal (`ContractError`), with 7 tests |
 | **Operating points** (§4) | ⚠️ **provisional.** `binary_gate` 0.5 sits on a fixed value appended to the search grid; run-to-run variation is unmeasured. Awaiting `grid_and_determinism_check.py` (run outside this repo). v2 reports `alerting_enabled: false` |
-| **`Volumetric_Flood → meter` can fire** (§6) | ✅ **measured on test**: 22,268 of 27,191 correct predictions (81.9%) clear 0.90 (`split_composition.json`); 95.9% on the run-2 sample |
+| **`Volumetric_Flood → meter` can fire** (§6) | ✅ **measured**, on the test split and live on the sample: `MODEL_BEHAVIOUR.md` §6 and §1 |
 | **End-to-end on real OVS flows** | ❌ **blocked** — needs `ML/testdata/ovs_dump_flows.txt` |
 | **Retrained model installed** | ✅ 2026-10-04, after the container load. Epoch-31 files in `ML/prefix_epoch31/` |
 | **What the backend floors would let through** (§6) | ✅ measured on test: at most 2 of 389 benign-as-attack and at most 118 of 20,976 wrong-class edges clear their floors; Volumetric_Flood is the only enforceable class. Floors unchanged |
