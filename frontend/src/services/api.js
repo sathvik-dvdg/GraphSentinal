@@ -42,10 +42,20 @@ export const clearSessionToken = () => { sessionToken = null }
 let unauthorizedHandler = null
 export const setUnauthorizedHandler = (fn) => { unauthorizedHandler = fn }
 
-api.interceptors.request.use((config) => {
+api.interceptors.request.use(async (config) => {
   console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
-  if (sessionToken && !config.headers?.Authorization) {
-    config.headers = { ...config.headers, Authorization: `Bearer ${sessionToken}` }
+  
+  let token = sessionToken
+  if (window.Clerk?.session) {
+    try {
+      token = await window.Clerk.session.getToken()
+    } catch (e) {
+      console.warn("Failed to get Clerk token", e)
+    }
+  }
+
+  if (token && !config.headers?.Authorization) {
+    config.headers = { ...config.headers, Authorization: `Bearer ${token}` }
   }
   return config
 })

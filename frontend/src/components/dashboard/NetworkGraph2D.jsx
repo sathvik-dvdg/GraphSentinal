@@ -258,7 +258,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
     <div
       ref={containerRef}
       className="w-full h-full"
-      style={{ background: '#ffffff' }}
+      style={{ background: 'transparent' }}
       role="img"
       aria-label="2D network graph showing node connections and threat status"
     />
