@@ -88,8 +88,10 @@ checks 8 and 9 are to show the documented counts, and say so in `RUN_GUIDE.md`
 The shared page is the artifact "GraphSentinel ML — Technical Analysis":
 <https://claude.ai/artifact/RjvjQqf7DYjQNyxP9cRytt>. It restates figures the
 guard cannot see, so any change to §1.2, §6 or §9 has to be carried there by
-hand. Its state as of this file's date is recorded under Closed, or here if it
-is behind.
+hand. **As of 2026-10-05 it is in step**: it carries the source-level v1 result
+with the six-host caveat first, the false-flag reading of the Bot rows on
+OVS-shaped input, PortScan as alert-only, and the Botnet non-claim. Its title and
+gallery name read rev. 3.
 
 ### 8. The Colab pass, Cell A first
 
