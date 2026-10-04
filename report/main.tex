@@ -284,7 +284,7 @@ Finally, we express our heartfelt gratitude to our parents and friends for their
 
 This project presents GraphSentinel, a closed-loop cyber-defence framework that \emph{detects}, \emph{responds} to and \emph{records} network threats. Flow telemetry is collected from a controlled Mininet network through an Open vSwitch (OVS) switch and processed by a FastAPI backend. The backend builds a graph of the communication between hosts and scores it with a graph neural network (GNN). When a host's threat score reaches the configured threshold, an incident is created. The host is then isolated through a token-authenticated enforcement daemon that installs an OVS drop rule, restricted to the Mininet address range 10.0.0.0/24. Incidents, enforcement actions and audit entries are persisted in SQLite. Each incident is also fingerprinted on a local Ganache blockchain through a Solidity smart contract. A React and Cytoscape.js dashboard presents the network graph, incidents, enforcement history and forensic records in real time.
 
-The detection component was developed in two stages: a GraphSAGE baseline integrated into the pipeline, followed by an upgraded GATv2 graph attention model (GraphSentinel v2). The upgraded model represents each 60-second traffic window as a graph whose nodes are IP addresses and whose edges are individual flows. It classifies both hosts and flows into five classes (BENIGN, Volumetric\_Flood, PortScan, BruteForce and Botnet). On the held-out test split of the CICIDS2017 dataset, from a single training run, its flow-level head reaches a macro F1-score of 0.7042 and a binary F1-score of 0.9974. The Botnet class is not detected. These figures measure generalisation within the attack bursts seen in training, not detection of new attacks. The upgraded model currently runs as a separate inference service that reports verdicts; host isolation is still driven by the GraphSAGE baseline. The backend regression suite completed with 226 tests passed, 3 skipped and 1 configuration-dependent failure.
+The detection component was developed in two stages: a GraphSAGE baseline integrated into the pipeline, followed by an upgraded GATv2 graph attention model (GraphSentinel v2). The upgraded model represents each 60-second traffic window as a graph whose nodes are IP addresses and whose edges are individual flows. It classifies both hosts and flows into five classes (BENIGN, Volumetric\_Flood, PortScan, BruteForce and Botnet). An audit of the CICIDS2017 files found that their afternoon records use a 12-hour clock without an AM/PM marker, which had placed 52.1\% of the training rows at the wrong time of day. After correcting the timestamps and retraining, from a single training run, the flow-level head reaches a binary (attack versus benign) F1-score of 0.9961 on the held-out test split, while its five-class macro F1-score is 0.4441: the model reliably separates attacks from benign traffic but does not reliably identify the attack class. These figures measure generalisation within the attack bursts seen in training, not detection of new attacks. The upgraded model currently runs as a separate inference service that reports verdicts; host isolation is still driven by the GraphSAGE baseline. The backend regression suite completed with 226 tests passed, 3 skipped and 1 configuration-dependent failure.
 
 Keywords : Graph Neural Networks, GraphSAGE, GATv2, Cybersecurity, Blockchain Forensics, SDN, Intrusion Detection.
 
@@ -390,10 +390,11 @@ Outside the implemented scope:
 
 \begin{itemize}
     \item {The reported model results come from a single training run (seed 42) under the \emph{episode} split protocol. For most attack families of CICIDS2017 this protocol falls back to a chronological cut inside a single attack burst, so the test figures describe within-burst generalisation and not detection of new or unseen attacks.}
-    \item {The Botnet class is not detected by the delivered model (test F1 0.0; all 266 Botnet test flows are predicted BENIGN), and BruteForce flows are frequently confused with PortScan (test recall 0.38).}
-    \item {On a held-out capture day containing attack families not used in training (Thursday), the binary flow-level false-positive rate is 7.36\%, compared with $7.4\times10^{-5}$ on the test split. Generalisation to new traffic conditions is therefore limited.}
+    \item {The model does not separate PortScan from BruteForce: 17{,}909 of 23{,}812 PortScan test flows are predicted BruteForce, and 904 of 918 BruteForce test flows are predicted PortScan. The Botnet class is not detected (0 of 168 Botnet flows correct on the Phase~2b sample; the test split contains no Botnet flows).}
+    \item {On a held-out capture day containing attack families not used in training (Thursday), the binary flow-level false-positive rate is 6.74\%, compared with $2.4\times10^{-3}$ on the test split. Generalisation to new traffic conditions is therefore limited.}
     \item {The OVS flow table cannot supply several features the model was trained on. 8 of the 20 edge features are zero on the live path and 2 are constant. The effect of this on detection quality has not been measured on an informative sample.}
-    \item {The per-host GRU memory module present in the architecture receives no gradient during training, so its weights remain at their random initial values. In addition, the CICIDS2017 timestamps use a 12-hour clock without an AM/PM marker, and the loader does not correct for this, so afternoon records are ordered before morning records.}
+    \item {The per-host GRU memory module present in the architecture receives no gradient during training, so its weights remain at their random initial values.}
+    \item {The episode split cuts each class by row order and builds graphs separately for each split. In the delivered run this leaves the validation split's attack windows almost free of benign traffic (0.52\% of attack flows share a window with benign traffic) while the test split's are almost all mixed (97.73\%), so thresholds fitted on validation do not transfer to test.}
     \item {The GraphSAGE baseline and the upgraded GATv2 model have not yet been compared under the same task, graph construction and data split. The baseline is a binary flow-as-node model evaluated with per-file splits, while the upgraded model is a five-class host-and-flow model evaluated with the episode protocol. Their published figures are therefore not directly comparable.}
 \end{itemize}
 
@@ -1186,7 +1187,7 @@ Figure \ref{fig:level2dfd} is reserved for the decomposition of threat scoring i
     \end{itemize}
     \item \textbf{Optimisation.} AdamW with learning rate $2\times10^{-3}$ and weight decay $10^{-4}$, and a learning-rate schedule with 3 warm-up epochs followed by cosine decay. Windows are presented one at a time in chronological order, with gradient accumulation over 8 windows and gradient-norm clipping at 1.0.
     \item \textbf{Run settings.} 40 epochs in 32-bit precision with seed 42. The memory is reset at the start of every epoch.
-    \item \textbf{Checkpoint selection.} The checkpoint with the highest validation edge macro F1 is kept (patience 12). In the delivered run this was epoch 31.
+    \item \textbf{Checkpoint selection.} The checkpoint with the highest validation edge macro F1 is kept (patience 12). In the delivered run (retrained after the timestamp correction) this was epoch 18 of 30; early stopping ended training at epoch 30 of the 40 configured. The training loss kept falling after epoch 18 while the validation score did not improve.
 \end{itemize}
 
 \subsection*{E. Evaluation and export (\texttt{evaluate.py}, \texttt{export.py})}
@@ -1364,25 +1365,27 @@ This chapter described the software stack, the languages and frameworks, and the
 \chapter{Results and Discussion}
 \section{Results}
 % Present results using suitable figures, graphs and charts with proper explanations.
-\par All numerical results in this section are taken from artifacts in the repository: \texttt{ML/test\_report.json}, \texttt{ML/model\_card.json}, \texttt{ML/threshold\_study.json} and the saved outputs of \texttt{ML/GraphSentinel\_Training.ipynb}. They come from a single training run (seed 42). The model was evaluated under the \emph{episode} split protocol, in which the test data of most attack families comes from the same attack burst as the training data. The results therefore describe within-burst generalisation and must not be read as detection of new or unseen attacks.
+\par All numerical results in this section are taken from artifacts in the repository: \texttt{ML/test\_report.json}, \texttt{ML/model\_card.json}, \texttt{ML/threshold\_study.json}, \texttt{ML/probes.json}, \texttt{ML/split\_composition.json} and \texttt{ML/PROVENANCE.json}. They come from a single training run (seed 42) of the model retrained after the timestamp correction described below. The earlier model's artifacts are kept in \texttt{ML/prefix\_epoch31/}. The model was evaluated under the \emph{episode} split protocol, in which the test data of most attack families comes from the same attack burst as the training data. The results therefore describe within-burst generalisation and must not be read as detection of new or unseen attacks.
 
-\par\textbf{Dataset used.} Before cleaning, the five training files contain 1{,}841{,}846 labelled rows under the five-class taxonomy: BENIGN 1{,}286{,}427; Volumetric\_Flood 380{,}688; PortScan 158{,}930; BruteForce 13{,}835; Botnet 1{,}966. After graph construction, the training split contains 1{,}077 window graphs with 1{,}118{,}122 flow edges, the validation split 192 graphs (210{,}854 flows), and the test split 265 graphs (227{,}325 flows).
+\par\textbf{Dataset used.} Before cleaning, the five training files contain 1{,}841{,}846 labelled rows under the five-class taxonomy: BENIGN 1{,}286{,}427; Volumetric\_Flood 380{,}688; PortScan 158{,}930; BruteForce 13{,}835; Botnet 1{,}966. After graph construction, the training split contains 1{,}074 window graphs with 1{,}116{,}576 flow edges, the validation split 249 graphs (207{,}856 flows), and the test split 207 graphs (226{,}342 flows). The test split contains no Botnet flows: its 266 Botnet rows fall in windows with fewer than the 8 flows needed to build a graph.
+
+\par\textbf{Timestamp correction.} The CICIDS2017 TrafficLabelling files record afternoon times on a 12-hour clock without an AM/PM marker. An audit of all eight files (2{,}830{,}743 rows) found no hour of 13 or later and no AM/PM token. After the correction, each capture day forms one contiguous working day (for example, Friday's three files run 08:59--12:59, 13:00--15:29 and 15:30--17:02), whereas under the original parse the afternoon captures fell between 01:00 and 05:04, before the morning capture of the same day. The correction moves 960{,}315 of 1{,}841{,}857 training rows (52.1\%).
 
 \begin{table}[htbp]
-\caption{Test-split performance of the GraphSentinel v2 model (epoch 31)}
+\caption{Test-split performance of the GraphSentinel v2 model (retrained, epoch 18)}
 \label{tab:ml_overall}
 \centering
 \begin{tabular}{|l|c|c|}
 \hline
 \textbf{Metric} & \textbf{Edge (flow) head} & \textbf{Node (host) head} \\
 \hline
-Macro F1-score & 0.7042 & 0.2684 \\
-Weighted F1-score & 0.9935 & 0.9829 \\
-Accuracy & 0.9945 & 0.9852 \\
-Binary F1 (attack vs. benign) & 0.9974 & 0.1407 \\
-Binary PR-AUC & 0.9997 & 0.1294 \\
-Binary ROC-AUC & 0.9999 & 0.8325 \\
-Recall at 0.1\% FPR & 0.9955 & 0.1012 \\
+Macro F1-score (all five classes) & 0.4441 & 0.3045 \\
+Weighted F1-score & 0.9126 & 0.9951 \\
+Accuracy & 0.9055 & 0.9941 \\
+Binary F1 (attack vs. benign) & 0.9961 & 0.4475 \\
+Binary PR-AUC & 0.9997 & 0.6596 \\
+Binary ROC-AUC & 0.9999 & 0.9899 \\
+Recall at 0.1\% FPR & 0.9847 & 0.6571 \\
 \hline
 \end{tabular}
 \end{table}
@@ -1395,11 +1398,11 @@ Recall at 0.1\% FPR & 0.9955 & 0.1012 \\
 \hline
 \textbf{Class} & \textbf{Test flows} & \textbf{Edge F1} & \textbf{Test hosts} & \textbf{Node F1} \\
 \hline
-BENIGN & 175{,}269 & 0.9992 & 31{,}595 & 0.9929 \\
-Volumetric\_Flood & 27{,}191 & 0.9910 & 14 & 0.0513 \\
-PortScan & 23{,}807 & 0.9800 & 14 & 0.2373 \\
-BruteForce & 792 & 0.5508 & 22 & 0.0606 \\
-Botnet & 266 & 0.0000 & 276 & 0.0000 \\
+BENIGN & 174{,}421 & 0.9988 & 24{,}669 & 0.9975 \\
+Volumetric\_Flood & 27{,}191 & 0.9617 & 14 & 0.2979 \\
+PortScan & 23{,}812 & 0.2598 & 22 & 0.2273 \\
+BruteForce & 918 & 0.0000 & 34 & 0.0000 \\
+Botnet & 0 & -- & 0 & -- \\
 \hline
 \end{tabular}
 \end{table}
@@ -1412,11 +1415,11 @@ Botnet & 266 & 0.0000 & 276 & 0.0000 \\
 \hline
  & \textbf{BENIGN} & \textbf{Vol.\_Flood} & \textbf{PortScan} & \textbf{BruteForce} & \textbf{Botnet} \\
 \hline
-BENIGN & 175{,}260 & 4 & 0 & 0 & 5 \\
-Volumetric\_Flood & 0 & 26{,}711 & 480 & 0 & 0 \\
-PortScan & 0 & 0 & 23{,}807 & 0 & 0 \\
-BruteForce & 0 & 1 & 490 & 301 & 0 \\
-Botnet & 266 & 0 & 0 & 0 & 0 \\
+BENIGN & 174{,}032 & 2 & 299 & 20 & 68 \\
+Volumetric\_Flood & 0 & 27{,}191 & 0 & 0 & 0 \\
+PortScan & 5 & 2{,}163 & 3{,}735 & 17{,}909 & 0 \\
+BruteForce & 14 & 0 & 904 & 0 & 0 \\
+Botnet & 0 & 0 & 0 & 0 & 0 \\
 \hline
 \end{tabular}
 \end{table}
@@ -1431,19 +1434,20 @@ Botnet & 266 & 0 & 0 & 0 & 0 \\
 \hline
 \textbf{Data} & \textbf{Flows} & \textbf{Attacks} & \textbf{Precision} & \textbf{Recall} & \textbf{FPR} \\
 \hline
-Test split & 227{,}325 & 52{,}056 & 0.9997 & 0.9949 & $7.4\times10^{-5}$ \\
-Monday (benign only) & 500{,}530 & 0 & -- & -- & $2.0\times10^{-6}$ \\
-Thursday (unseen families) & 426{,}958 & 2{,}111 & 0.0567 & 0.8901 & 0.0736 \\
+Test split & 226{,}342 & 51{,}921 & 0.9921 & 0.9997 & $2.4\times10^{-3}$ \\
+Monday (benign only) & 500{,}531 & 0 & -- & -- & $1.2\times10^{-4}$ \\
+Thursday (unseen families) & 426{,}958 & 2{,}111 & 0.0669 & 0.9730 & 0.0674 \\
 \hline
 \end{tabular}
 \end{table}
 
 \par\textbf{Other measured results.}
 \begin{itemize}
-    \item \textbf{Validation.} At the selected epoch the validation edge macro F1 is 0.7568 and the node macro F1 is 0.3114.
-    \item \textbf{Volumetric ablation.} Zeroing the two volumetric edge features changes the test edge macro F1 by $+0.0000$.
-    \item \textbf{Calibration.} The expected calibration error is 0.0552 for the edge head and 0.0539 for the node head.
-    \item \textbf{Latency.} Per-window inference on cached graphs takes a median of 6.4 ms and a 95th percentile of 9.5 ms on a T4 GPU, excluding parsing and feature extraction.
+    \item \textbf{Validation.} At the selected epoch the validation edge macro F1 is 0.5565 and the node macro F1 is 0.2307.
+    \item \textbf{Volumetric ablation.} Zeroing the two volumetric edge features changes the test edge macro F1 (four classes present) by $-0.0024$.
+    \item \textbf{Composition of the splits.} Under the original parse, 266 of 52{,}062 test attack flows (0.51\%) shared a 60-second window with benign traffic; after the correction, 51{,}003 of 52{,}187 (97.73\%) do. This was predicted before it was measured. The original test task was therefore easier than the deployed one: its attack windows could be classified from their graph structure alone.
+    \item \textbf{Mitigation confidence floors.} With the confidence floors of the SDN mitigation policy (0.90 for Volumetric\_Flood, 0.85 for PortScan and BruteForce; Botnet disabled), 22{,}268 of 27{,}191 Volumetric\_Flood test flows (81.9\%) would trigger a rule, 2 of 174{,}421 benign test flows would trigger a wrong rule, and 118 of 20{,}976 attack flows predicted as the wrong attack class would. None of the 17{,}909 PortScan flows predicted as BruteForce reaches its floor.
+    \item \textbf{Calibration and latency.} Measured on the earlier (epoch-31) model only and not repeated for the retrained model. [TO BE MEASURED FOR THE RETRAINED MODEL]
     \item \textbf{Baseline model (GraphSAGE).} The baseline model reported accuracy 0.9957, weighted F1 0.9957 and ROC-AUC 0.9975 (\texttt{ML/GraphSage-model/test\_results.json}). This was a binary task on a different graph construction and a per-file split, so it is not comparable with the v2 figures.
 \end{itemize}
 
@@ -1474,16 +1478,17 @@ Thursday (unseen families) & 426{,}958 & 2{,}111 & 0.0567 & 0.8901 & 0.0736 \\
 
 \par\textbf{Discussion.} The following observations are drawn from the measured results; interpretations are marked as such.
 \begin{enumerate}
-    \item \textbf{Edge head versus node head.} The edge head is much stronger than the node head (macro F1 0.7042 versus 0.2684). The training split contains over one million labelled flows but only 30 to 174 attack-labelled hosts per class, which is a plausible explanation for the difference (interpretation).
-    \item \textbf{Class confusions.} Volumetric flood and port scan flows are classified almost perfectly. BruteForce flows are split between BruteForce and PortScan, and every Botnet flow is predicted BENIGN (Table~\ref{tab:ml_confusion}).
-    \item \textbf{Inference-time ablation (training notebook).}
+    \item \textbf{Binary detection versus class identification.} The edge head separates attacks from benign traffic reliably (binary F1 0.9961) but identifies the attack class poorly (five-class macro F1 0.4441). It is stronger than the node head (binary F1 0.4475).
+    \item \textbf{Effect of the timestamp correction.} Before the correction the same model design reached a five-class macro F1 of 0.7042. The decrease to 0.4441 is accounted for by what the correction changed in the splits; the two figures measure different tasks and do not show whether the model itself became better or worse: the test attack windows changed from almost pure attack traffic to traffic mixed with benign flows (see the composition result above), and inside the Monday-to-Wednesday files the correction restored the time order, which the original BruteForce split had violated (its training data contained afternoon flows while its test data contained morning flows). The post-correction figures measure the harder and correct task.
+    \item \textbf{Class confusions.} Volumetric flood flows are all recognised. PortScan and BruteForce are confused with each other in both directions (Table~\ref{tab:ml_confusion}); which of the two appears to fail depends on the composition of the split, so their individual F1-scores should not be read as properties of the model.
+    \item \textbf{Inference-time ablation.}
     \begin{itemize}
         \item Zeroing the 16 node features drops the binary edge F1 to 0. The model depends heavily on host-level structural features.
-        \item Zeroing the 20 numeric edge features \emph{raises} the macro F1 on both validation (+0.041) and test (+0.096).
-        \item Resetting the host memory before every window also raises it (validation +0.019, test +0.127). This is consistent with the untrained GRU memory described in Chapter~5.
+        \item Zeroing the 20 numeric edge features lowers the test macro F1 ($-0.0265$) but raises the validation macro F1 ($+0.0397$); the effect is split-specific. Before the correction it raised both (test $+0.0956$), so that earlier finding does not survive the correction.
+        \item Resetting the host memory before every window raises the macro F1 slightly (test $+0.0188$, validation $+0.0444$; before the correction, test $+0.1270$). This is consistent with the untrained GRU memory described in Chapter~5.
         \item These probes perturb an already-trained model and are not retrained ablations.
     \end{itemize}
-    \item \textbf{Generalisation.} On an entirely benign unseen day (Monday) the false-positive rate is very low, but on Thursday it rises to 7.36\%. Detection quality outside the training capture conditions is therefore not established.
+    \item \textbf{Generalisation.} On an entirely benign unseen day (Monday) the flow-level false-positive rate is $1.2\times10^{-4}$, but on Thursday it rises to 6.74\%. Detection quality outside the training capture conditions is therefore not established.
 \end{enumerate}
 
 % ---- Department boilerplate carried over from the reference template (Sections 6.2-6.4).
@@ -1730,7 +1735,7 @@ Loss & Cross-entropy with inverse-frequency class weights (benign 0.7281, malici
 \hline
 Parameters & 137{,}218 (counted from \texttt{graphsage\_weights.pt}) & 654{,}851 (349{,}386 used at inference) \\
 \hline
-Reported test results & Accuracy 0.9957, weighted F1 0.9957, ROC-AUC 0.9975 & Edge macro F1 0.7042, binary F1 0.9974, accuracy 0.9945; node macro F1 0.2684 \\
+Reported test results & Accuracy 0.9957, weighted F1 0.9957, ROC-AUC 0.9975 & Edge binary F1 0.9961, five-class macro F1 0.4441, accuracy 0.9055; node binary F1 0.4475 \\
 \hline
 Integration status & Drives incident creation and enforcement in the backend & Separate inference service; verdicts reported only \\
 \hline
@@ -1742,9 +1747,10 @@ Relative to the surveyed works (Table~\ref{tab:comparison}), GraphSentinel is di
 \section{Summary}
 \par This chapter reported the verified results of the GraphSentinel v2 model:
 \begin{itemize}
-    \item test edge macro F1 0.7042 and binary F1 0.9974, and node macro F1 0.2684;
-    \item a Botnet F1 of 0.0;
-    \item a 7.36\% false-positive rate on an unseen day.
+    \item a 12-hour timestamp defect in the CICIDS2017 files, its correction, and its measured effect on the evaluation splits;
+    \item test edge binary F1 0.9961 and five-class macro F1 0.4441, with PortScan and BruteForce confused with each other and Botnet not detected;
+    \item that the confidence floors of the mitigation policy suppress almost all wrong-class predictions;
+    \item a 6.74\% false-positive rate on an unseen day.
 \end{itemize}
 It also described the automated unit and integration tests and recorded which experiments and system-level tests remain to be carried out.
 
@@ -1772,11 +1778,11 @@ The detection component evolved from the Phase-1 GraphSAGE baseline, which remai
 \end{itemize}
 The upgraded model is the GraphSentinel v2 package. It builds IP-as-node / flow-as-edge window graphs from CICIDS2017 and trains a two-layer GATv2 model with node and per-flow heads. The model is exported with a versioned contract and served over HTTP.
 
-On the test split under the episode protocol, the per-flow head achieved a macro F1-score of 0.7042 and a binary F1-score of 0.9974 in a single run. The Botnet class was not detected, and BruteForce was partially confused with PortScan. The false-positive rate on an unseen day with new attack families was 7.36\%.
+An audit of the dataset found that its afternoon timestamps use a 12-hour clock without an AM/PM marker; 52.1\% of the training rows had been placed at the wrong time of day. After correcting the timestamps and retraining, the per-flow head achieved a binary F1-score of 0.9961 and a five-class macro F1-score of 0.4441 on the test split in a single run. The earlier figure of 0.7042 came from a test split whose attack windows contained almost no benign traffic, which the correction removed. PortScan and BruteForce are not separated from each other, the Botnet class is not detected, and the false-positive rate on an unseen day with new attack families was 6.74\%. The confidence floors of the mitigation policy keep almost all wrong-class predictions from producing a rule; only the Volumetric\_Flood rule fires reliably on correct predictions.
 
-These results show that the per-flow formulation works well for the volumetric and scanning families in this dataset. They do not establish detection of new attacks, generalisation to other networks, or an advantage over non-graph methods.
+These results show that the per-flow formulation detects attack traffic reliably in this dataset but does not reliably identify the attack class. They do not establish detection of new attacks, generalisation to other networks, or an advantage over non-graph methods.
 
-The automated test suites of the ML package (98 of 105 tests passing, 7 skipped for a missing optional dependency) and of the backend (226 passed, 3 skipped, 1 configuration-dependent failure) verify the implemented behaviour on synthetic and unit-level inputs. Testing with real OVS traffic has not yet been carried out.
+The automated test suites of the ML package (145 tests passing) and of the backend (226 passed, 3 skipped, 1 configuration-dependent failure) verify the implemented behaviour on synthetic and unit-level inputs. Testing with real OVS traffic has not yet been carried out.
 
 In the current integration, v2 verdicts are reported but not acted on: automated isolation is still driven by the v1 model or its heuristic fallback. Neither the system as a whole nor the v2 model should be regarded as production-ready.
 \end{justify}
@@ -1786,13 +1792,13 @@ In the current integration, v2 verdicts are reported but not acted on: automated
 \begin{justify}
 Future work arising directly from the identified limitations:
 \begin{enumerate}
-    \item Correct the 12-hour timestamp parsing of the CICIDS2017 files, then retrain.
+    \item Change the split so that every split's attack windows keep their co-temporal benign traffic, so that validation and test describe the same task; then retrain and refit the operating points.
     \item Make the host memory trainable, for example by adding a loss term that depends on the memory state, or remove it. Then repeat the ablation with retrained models.
     \item Compare the GraphSAGE baseline and the GATv2 model like-for-like: train the v2 package with GraphSAGE layers (\texttt{sage\_median} or \texttt{sage\_max}) on the same features and split.
     \item Run the implemented Random Forest baseline and several random seeds to establish whether message passing adds value, and with what variance.
     \item Report results under the implemented attack hold-out, host hold-out and day hold-out protocols.
     \item Measure the model on real OVS traffic in the Mininet environment (Tier 3), including end-to-end latency. Reduce the gap between the features available on the live path and those used in training.
-    \item Align the SDN mitigation policy with the five-class taxonomy, validate generated rules against a controller, and only then connect v2 verdicts to alerting and enforcement.
+    \item Base enforcement on the binary decision with one conservative action until a class head can support class-specific actions; validate generated rules against a controller, and only then connect v2 verdicts to alerting and enforcement.
     \item Evaluate on additional datasets.
 \end{enumerate}
 \end{justify}
