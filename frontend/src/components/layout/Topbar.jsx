@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
 import { LogOut, Zap, Activity, Database } from 'lucide-react'
 import { motion } from 'framer-motion'
+import { UserButton } from '@clerk/react'
 import useGraphStore from '../../store/useGraphStore'
-import useAuthStore from '../../store/useAuthStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
 import EnforcementModeBadge from '../ui/EnforcementModeBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
@@ -28,7 +28,6 @@ const ROUTE_TITLES = {
 export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
-  const { logout } = useAuthStore()
 
   const {
     stats,
@@ -50,13 +49,6 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
     healthClamped >= 50 ? '#b7791f' : '#E03C3C'
 
   const isSimulating = connectionMode === 'simulating'
-
-  const handleLogout = async () => {
-    // logout() calls POST /api/v1/auth/logout to invalidate the session
-    // server-side too, not just forget the token client-side.
-    await logout()
-    navigate('/')
-  }
 
   return (
     <header
@@ -243,26 +235,10 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           </button>
         )}
 
-        {/* Logout */}
-        <button
-          id="topbar-logout"
-          onClick={handleLogout}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            padding: '5px',
-            borderRadius: 6,
-            border: '1px solid rgba(17,20,26,0.10)',
-            background: 'transparent',
-            color: '#727a86',
-            cursor: 'pointer',
-            transition: 'all 200ms',
-          }}
-          aria-label="Log out"
-          title="Log out"
-        >
-          <LogOut size={13} />
-        </button>
+        {/* Clerk User Button */}
+        <div style={{ marginLeft: 8 }}>
+          <UserButton />
+        </div>
       </div>
     </header>
   )

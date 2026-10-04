@@ -9,12 +9,18 @@ from __future__ import annotations
 import hashlib
 import secrets
 import time
+import os
 from threading import Lock
+
+from cachetools import TTLCache
+from fastapi import Request
+from clerk_backend_api import Clerk, authenticate_request, AuthenticateRequestOptions
 
 from app.config import settings
 
 _sessions: dict[str, dict[str, any]] = {}
 _lock = Lock()
+_clerk_role_cache = TTLCache(maxsize=1000, ttl=300)
 
 
 def hash_password(password: str, salt: bytes | None = None) -> str:
@@ -60,6 +66,39 @@ def create_session(username: str | None = None, role: str = "operator") -> str:
 def validate_session(token: str | None) -> dict[str, any] | None:
     if not token:
         return None
+
+    # 1. Check Clerk session first
+    clerk_secret = os.environ.get("CLERK_SECRET_KEY")
+    if clerk_secret:
+        # Create a mock FastAPI Request to use Clerk's middleware
+        req = Request({"type": "http", "headers": [(b"authorization", f"Bearer {token}".encode("utf-8"))]})
+        try:
+            state = authenticate_request(req, AuthenticateRequestOptions(secret_key=clerk_secret))
+            if state.is_signed_in:
+                user_id = state.payload["sub"]
+                
+                # Check if role is baked into the JWT directly (if user configured a custom JWT template)
+                metadata = state.payload.get("public_metadata")
+                if metadata is not None:
+                    role = metadata.get("role", "operator")
+                else:
+                    # Otherwise, use cached API fetch to avoid requiring Clerk Dashboard JWT template changes
+                    if user_id in _clerk_role_cache:
+                        role = _clerk_role_cache[user_id]
+                    else:
+                        try:
+                            clerk = Clerk(bearer_auth=clerk_secret)
+                            user = clerk.users.get(user_id)
+                            role = user.public_metadata.get("role", "operator") if user.public_metadata else "operator"
+                            _clerk_role_cache[user_id] = role
+                        except Exception:
+                            role = "operator"
+                            
+                return {"username": user_id, "role": role}
+        except Exception as e:
+            pass # fallback to local session
+
+    # 2. Local fallback
     with _lock:
         session = _sessions.get(token)
         if session is None:

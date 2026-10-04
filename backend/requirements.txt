@@ -17,3 +17,4 @@ torch-geometric==2.5.0
 pytest==8.0.0
 httpx==0.26.0
 cachetools==5.3.3
+clerk-backend-api

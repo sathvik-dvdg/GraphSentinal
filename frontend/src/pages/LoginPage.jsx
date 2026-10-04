@@ -1,8 +1,7 @@
 // [Windows] GraphSentinel — Susheep
-import { useNavigate, Link, Navigate } from 'react-router-dom'
+import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
-import LoginForm from '../components/auth/LoginForm'
-import useAuthStore from '../store/useAuthStore'
+import { SignIn } from '@clerk/react'
 
 // System status lines shown in the terminal panel
 const TERMINAL_LINES = [
@@ -19,12 +18,7 @@ const TERMINAL_LINES = [
 ]
 
 export default function LoginPage() {
-  const navigate = useNavigate()
-  const { isAuthenticated, sessionExpired } = useAuthStore()
 
-  if (isAuthenticated) {
-    return <Navigate to="/dashboard" replace />
-  }
 
   return (
     <div className="login-page">
@@ -85,19 +79,9 @@ export default function LoginPage() {
 
         {/* Right Panel — Login form */}
         <div className="login-form-panel">
-          {sessionExpired && (
-            <div
-              role="alert"
-              style={{
-                marginBottom: 14, padding: '10px 14px', borderRadius: 8,
-                border: '1px solid rgba(232,146,42,0.35)', background: 'rgba(232,146,42,0.1)',
-                color: '#b7791f', fontSize: 12, fontFamily: "'DM Mono', monospace",
-              }}
-            >
-              Your session ended (expired or the backend restarted). Sign in again to continue.
-            </div>
-          )}
-          <LoginForm onSuccess={() => navigate('/dashboard')} />
+          <div style={{ display: 'flex', justifyContent: 'center', width: '100%' }}>
+            <SignIn forceRedirectUrl="/dashboard" />
+          </div>
 
           <motion.div
             initial={{ opacity: 0 }}

@@ -2,7 +2,7 @@
 // App.jsx — routing root with ProtectedRoute wrapping AppShell + all sub-routes
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import useAuthStore from './store/useAuthStore'
+import { Show } from '@clerk/react'
 import SimulationProvider from './providers/SimulationProvider'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
@@ -20,22 +20,18 @@ import AuditLog from './pages/AuditLog'
 import Settings from './pages/Settings'
 
 function ProtectedRoute({ children }) {
-  const { isAuthenticated, authStatus } = useAuthStore()
-  // A token can survive a page refresh in sessionStorage — 'checking' covers
-  // the round-trip to verify it's still valid server-side, so a stale token
-  // doesn't briefly flash the dashboard before an inevitable 401 bounces it
-  // back to /login, and a valid one doesn't bounce to /login first either.
-  if (authStatus === 'checking') return <LoadingScreen />
-  if (!isAuthenticated) return <Navigate to="/login" replace />
-  return children
+  return (
+    <>
+      <Show when="signed-in">{children}</Show>
+      <Show when="signed-out">
+        <Navigate to="/login" replace />
+      </Show>
+    </>
+  )
 }
 
 export default function App() {
-  const checkSession = useAuthStore((s) => s.checkSession)
 
-  useEffect(() => {
-    checkSession()
-  }, [checkSession])
 
   return (
     <BrowserRouter
