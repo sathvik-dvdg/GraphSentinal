@@ -5,6 +5,7 @@
 import { create } from 'zustand'
 import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealingEvents } from '../services/api'
 import { loadResolvedIncidentIds, saveResolvedIncidentIds } from '../utils/alertStatus'
+import { overlayAfterFetch } from '../utils/triage'
 
 // connectionMode values:
 //   'connecting'  — app just started, trying to reach backend
@@ -52,6 +53,8 @@ const useGraphStore = create((set, get) => ({
   // Error.md H7 — persisted so incidents marked resolved in Forensics stay
   // resolved across a refresh (still per-device until there's a backend).
   resolvedIncidentIds: loadResolvedIncidentIds(),
+  // Audit B19 — ids whose PATCH has not come back yet. Not persisted.
+  resolveInFlight: [],
 
   // Per-resource freshness (Error.md #22/#26): Promise.allSettled in
   // useGraphData.js updates each panel's data independently, so a panel can
@@ -292,6 +295,23 @@ const useGraphStore = create((set, get) => ({
       const next = state.resolvedIncidentIds.includes(incidentId)
         ? state.resolvedIncidentIds
         : [...state.resolvedIncidentIds, incidentId]
+      saveResolvedIncidentIds(next)
+      const inFlight = state.resolveInFlight.includes(incidentId)
+        ? state.resolveInFlight
+        : [...state.resolveInFlight, incidentId]
+      return { resolvedIncidentIds: next, resolveInFlight: inFlight }
+    }),
+  // The PATCH for this incident came back, either way.
+  settleResolve: (incidentId) =>
+    set((state) => ({ resolveInFlight: state.resolveInFlight.filter((id) => id !== incidentId) })),
+  // Audit B19 — the server wins. Called after every successful fetch of
+  // incidents or alerts: the server's status is now known, so the local
+  // overlay keeps only what is still in flight. It used to be permanent, and
+  // hid an incident the server had reopened.
+  reconcileResolvedWithServer: () =>
+    set((state) => {
+      const next = overlayAfterFetch(state.resolvedIncidentIds, state.resolveInFlight)
+      if (next.length === state.resolvedIncidentIds.length) return {}
       saveResolvedIncidentIds(next)
       return { resolvedIncidentIds: next }
     }),

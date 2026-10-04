@@ -32,7 +32,7 @@ const useAuthStore = create((set, get) => ({
       const res = await apiLogin(username.trim(), password)
       sessionStorage.setItem(STORAGE_KEY, res.token)
       setSessionToken(res.token)
-      set({ isAuthenticated: true, user: { username: res.username }, authStatus: 'authenticated', sessionExpired: false })
+      set({ isAuthenticated: true, user: { username: res.username, role: res.role ?? null }, authStatus: 'authenticated', sessionExpired: false })
       return true
     } catch (err) {
       const detail = err.response?.data?.detail
@@ -63,7 +63,7 @@ const useAuthStore = create((set, get) => ({
     setSessionToken(token)
     try {
       const res = await getMe()
-      set({ isAuthenticated: true, user: { username: res.username }, authStatus: 'authenticated' })
+      set({ isAuthenticated: true, user: { username: res.username, role: res.role ?? null }, authStatus: 'authenticated' })
     } catch {
       sessionStorage.removeItem(STORAGE_KEY)
       clearSessionToken()

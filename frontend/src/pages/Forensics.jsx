@@ -22,16 +22,19 @@ export default function Forensics() {
 
   const resolvedIncidentIds = useGraphStore((s) => s.resolvedIncidentIds)
   const resolveIncident = useGraphStore((s) => s.resolveIncident)
+  const settleResolve = useGraphStore((s) => s.settleResolve)
 
   // Error.md H5 — resolution is server-authoritative (`inc.alert_status`), with
-  // the local `resolvedIncidentIds` set kept only as an optimistic/offline
-  // fallback until the next poll reflects the PATCH.
+  // the local `resolvedIncidentIds` set kept only as an optimistic overlay
+  // while the PATCH is in flight. Audit B19: every successful fetch clears it.
   const isResolved = (inc) => inc.alert_status === 'resolved' || resolvedIncidentIds.includes(inc.id)
   const activeIncidents = data.incidents.filter((inc) => !isResolved(inc))
 
   const markResolved = (incidentId) => {
-    resolveIncident(incidentId) // optimistic + offline fallback
-    updateIncidentStatus(incidentId, 'resolved').catch(() => { /* keep local */ })
+    resolveIncident(incidentId) // optimistic, until the PATCH settles
+    updateIncidentStatus(incidentId, 'resolved')
+      .catch(() => { /* the next fetch shows the server's state */ })
+      .finally(() => { settleResolve(incidentId); refresh() })
   }
 
   return (

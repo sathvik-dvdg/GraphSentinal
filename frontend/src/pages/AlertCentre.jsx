@@ -189,6 +189,20 @@ export default function AlertCentre() {
 
                     {/* Right: status + action */}
                     <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 8, flexShrink: 0 }}>
+                      {/* Audit B17 — enforcement state, shown beside triage, never instead of it */}
+                      {alert.isBlocked && (
+                        <span
+                          title="The source host is blocked. That is an enforcement state; this alert stays open until someone acknowledges or resolves it."
+                          style={{
+                            fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700,
+                            padding: '3px 8px', borderRadius: 4, letterSpacing: '0.06em',
+                            textTransform: 'uppercase', border: '1px solid rgba(59,86,217,0.3)',
+                            background: 'rgba(59,86,217,0.08)', color: '#3b56d9',
+                          }}
+                        >
+                          Host blocked
+                        </span>
+                      )}
                       {/* Cycle status button */}
                       <button
                         onClick={() => cycleStatus(alert.id)}

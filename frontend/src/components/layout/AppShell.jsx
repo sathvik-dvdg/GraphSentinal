@@ -12,11 +12,16 @@ import ForensicsModal from '../dashboard/ForensicsModal'
 import LoadingScreen from '../shared/LoadingScreen'
 import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../../services/api'
 import useGraphStore from '../../store/useGraphStore'
+import useAuthStore from '../../store/useAuthStore'
+import { canEnforce, enforceFailureMessage } from '../../utils/triage'
 
 export default function AppShell() {
   const [sidebarPinned, setSidebarPinned] = useState(false)
   const [sidebarHovered, setSidebarHovered] = useState(false)
   const [showLoading, setShowLoading] = useState(true)
+  // Audit B20 — why the last block/unblock did not take effect, shown in the panel.
+  const [blockError, setBlockError] = useState(null)
+  const role = useAuthStore((s) => s.user?.role)
   const sidebarOpen = sidebarPinned || sidebarHovered
 
   // ── Zustand store ──────────────────────────────────────────────────
@@ -44,6 +49,7 @@ export default function AppShell() {
   // for the next poll, and surface real failures instead of silently
   // pretending the action succeeded (the panel used to close either way).
   const handleBlock = async (ip, action) => {
+    setBlockError(null)
     try {
       const blockRes = await blockIP(ip, action)
       if (blockRes?.healing_event) {
@@ -62,6 +68,7 @@ export default function AppShell() {
       setSelectedNode(null)
     } catch (err) {
       console.error(`[AppShell] Failed to ${action} ${ip} — backend rejected or is unreachable:`, err)
+      setBlockError(enforceFailureMessage(err))
       // Keep the panel open: the action did not take effect, so closing it
       // as if it succeeded would misrepresent the node's real state.
     }
@@ -131,8 +138,10 @@ export default function AppShell() {
         {selectedNode && (
           <NodeDetailPanel
             node={selectedNode}
-            onClose={() => setSelectedNode(null)}
+            onClose={() => { setBlockError(null); setSelectedNode(null) }}
             onBlock={handleBlock}
+            canEnforce={canEnforce(role)}
+            actionError={blockError}
           />
         )}
       </AnimatePresence>

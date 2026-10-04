@@ -6,6 +6,8 @@ import { X, Shield, AlertTriangle, Zap, ExternalLink } from 'lucide-react'
 import { LEVEL_LABELS, STATUS_COLORS } from './pyramidConfig'
 import useGraphStore from '../../store/useGraphStore'
 import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../../services/api'
+import useAuthStore from '../../store/useAuthStore'
+import { canEnforce, enforceFailureMessage, ENFORCE_DENIED_REASON } from '../../utils/triage'
 
 export default function NodeInspector({ node, onClose }) {
   const navigate = useNavigate()
@@ -17,6 +19,8 @@ export default function NodeInspector({ node, onClose }) {
   const setHealingEvents = useGraphStore((s) => s.setHealingEvents)
   const addHealingEvent = useGraphStore((s) => s.addHealingEvent)
   const [isToggling, setIsToggling] = useState(false)
+  const [actionError, setActionError] = useState(null)
+  const mayEnforce = canEnforce(useAuthStore((s) => s.user?.role))
 
   if (!node) return null
 
@@ -50,8 +54,9 @@ export default function NodeInspector({ node, onClose }) {
   // (see AppShell.jsx handleBlock, Error.md #23).
   const handleToggleIsolate = async () => {
     const ip = node.ip || node.id
-    if (!ip || isToggling) return
+    if (!ip || isToggling || !mayEnforce) return
     setIsToggling(true)
+    setActionError(null)
     try {
       const blockRes = await blockIP(ip, isIsolated ? 'unblock' : 'block')
       if (blockRes?.healing_event) {
@@ -65,6 +70,7 @@ export default function NodeInspector({ node, onClose }) {
       if (statsRes.status === 'fulfilled') updateStats(statsRes.value)
     } catch (err) {
       console.error(`[NodeInspector] Failed to ${isIsolated ? 'unblock' : 'block'} ${ip} — backend rejected or is unreachable:`, err)
+      setActionError(enforceFailureMessage(err))
     } finally {
       setIsToggling(false)
     }
@@ -276,12 +282,20 @@ export default function NodeInspector({ node, onClose }) {
       >
         <button
           onClick={handleToggleIsolate}
-          disabled={isToggling}
-          style={{ ...actionBtnStyle(isIsolated ? '#12a672' : '#E03C3C'), opacity: isToggling ? 0.6 : 1, cursor: isToggling ? 'default' : 'pointer' }}
+          disabled={isToggling || !mayEnforce}
+          title={mayEnforce ? undefined : ENFORCE_DENIED_REASON}
+          style={{ ...actionBtnStyle(isIsolated ? '#12a672' : '#E03C3C'), opacity: isToggling || !mayEnforce ? 0.6 : 1, cursor: isToggling || !mayEnforce ? 'default' : 'pointer' }}
         >
           <Shield size={12} />
           {isToggling ? 'Working…' : isIsolated ? 'Deisolate Node' : 'Isolate Node'}
         </button>
+        {/* Audit B20 — the reason in text, and a refusal shown, not only logged */}
+        {!mayEnforce && (
+          <div role="note" style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#6b7280' }}>{ENFORCE_DENIED_REASON}</div>
+        )}
+        {actionError && (
+          <div role="alert" style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#E03C3C' }}>{actionError}</div>
+        )}
         <button
           onClick={() => navigate('/forensics')}
           style={actionBtnStyle('#3b56d9')}

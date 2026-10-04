@@ -14,7 +14,7 @@ const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 // specific panel stale instead of silently presenting old data as current.
 const RESOURCE_FETCHERS = {
   graph: { fetch: getGraph, apply: (v, s) => s.setGraphData(v) },
-  alerts: { fetch: getAlerts, apply: (v, s) => s.setAlerts(v.alerts) },
+  alerts: { fetch: getAlerts, apply: (v, s) => { s.setAlerts(v.alerts); s.reconcileResolvedWithServer() } },
   blocked: { fetch: getBlocked, apply: (v, s) => s.setBlockedIPs(v.blocked_ips) },
   forensics: {
     fetch: getForensics,

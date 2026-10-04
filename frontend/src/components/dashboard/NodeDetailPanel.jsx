@@ -5,8 +5,9 @@ import { motion } from 'framer-motion'
 import { X, Shield, ShieldOff } from 'lucide-react'
 import StatusBadge from '../ui/StatusBadge'
 import ThreatBar from '../ui/ThreatBar'
+import { ENFORCE_DENIED_REASON } from '../../utils/triage'
 
-export default function NodeDetailPanel({ node, onClose, onBlock }) {
+export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = true, actionError = null }) {
   if (!node) return null
 
   // ── Original helper — untouched ──
@@ -129,7 +130,9 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
               <button
                 id="node-detail-block"
                 onClick={() => onBlock && onBlock(node.id, 'block')}
-                className="tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-threat-soft text-gs-threat border border-gs-threat/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-threat/15 hover:border-gs-threat/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-threat"
+                disabled={!canEnforce}
+                title={canEnforce ? undefined : ENFORCE_DENIED_REASON}
+                className="disabled:opacity-50 disabled:cursor-not-allowed tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-threat-soft text-gs-threat border border-gs-threat/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-threat/15 hover:border-gs-threat/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-threat"
               >
                 <ShieldOff size={12} aria-hidden="true" />
                 Block Node
@@ -138,11 +141,20 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
               <button
                 id="node-detail-unblock"
                 onClick={() => onBlock && onBlock(node.id, 'unblock')}
-                className="tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-heal-soft text-gs-heal border border-gs-heal/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-heal/15 hover:border-gs-heal/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-heal"
+                disabled={!canEnforce}
+                title={canEnforce ? undefined : ENFORCE_DENIED_REASON}
+                className="disabled:opacity-50 disabled:cursor-not-allowed tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-heal-soft text-gs-heal border border-gs-heal/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-heal/15 hover:border-gs-heal/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-heal"
               >
                 <Shield size={12} aria-hidden="true" />
                 Unblock Node
               </button>
+            )}
+            {/* Audit B20 — the reason in text, not only a tooltip, and a refusal shown, not logged */}
+            {!canEnforce && (
+              <p role="note" className="font-mono text-[10px] text-gs-muted">{ENFORCE_DENIED_REASON}</p>
+            )}
+            {actionError && (
+              <p role="alert" className="font-mono text-[10px] text-gs-threat">{actionError}</p>
             )}
           </div>
         </div>
