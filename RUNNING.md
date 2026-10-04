@@ -557,6 +557,12 @@ a demo script:
 
 ---
 
+## Changes made to the development machine
+
+- **Storage Sense** (2026-10-04): limited to emptying the Recycle Bin, after
+  unexplained multi-gigabyte deletions on 2026-10-03. What changed, why, and how
+  to revert: [`docs/machine/storage_sense_2026-10-04.md`](docs/machine/storage_sense_2026-10-04.md).
+
 ## Troubleshooting
 
 | Symptom | Cause | Fix |
