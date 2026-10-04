@@ -1,4 +1,12 @@
-# GraphSentinel Framework: Production-Grade System Architecture & Dataflow Specification
+# GraphSentinel v1 — System Architecture & Dataflow (historical)
+
+> **Historical document, v1 architecture (June 2026).** It describes the original
+> GraphSAGE pipeline design and includes proposed, unbuilt extensions. It has not
+> been re-verified against the code, and nothing in it is a measured result.
+> Unmeasured performance figures were removed on 2026-10-04. The system is not
+> production-ready and makes no real-time claim: what may and may not be claimed
+> is in `MODEL_BEHAVIOUR.md` §10; how the system is wired today is in
+> `INTEGRATION.md`.
 
 This document serves as the authoritative, engineering-grade technical reference for the GraphSentinel autonomous cyber-defense platform. It defines how data is generated, collected, processed, modeled, logged, and visualized across the entire software-defined network (SDN), machine learning (ML), blockchain, and frontend stacks.
 
@@ -631,13 +639,13 @@ The framework implements failure handling mechanisms to maintain network connect
 * **Layer Complexity**: The computational cost for a 3-layer GraphSAGE architecture is:
   $$\mathcal{O}\left(L \cdot \|\mathbf{E}\| \cdot d_{in} \cdot d_{out}\right)$$
   Where $L$ is the layer count ($3$), $\|\mathbf{E}\|$ is the number of edges, and $d$ represents feature channel dimensions ($7 \rightarrow 256 \rightarrow 256 \rightarrow 2$).
-* **Inference Overhead**: Since the monitored host pool is bounded ($10$ hosts), inference execution takes less than $15\text{ms}$ on CPU.
+* **Inference Overhead**: The monitored host pool is bounded ($10$ hosts). Inference time has not been measured.
 
 #### Blockchain Log Updates
 * **Gas Consumption**: Writing to the Ethereum ledger consumes gas relative to storage requirements:
   * Deploying `IncidentLogger.sol`: $\approx 832,154$ gas.
   * Executing `logIncident`: $\approx 85,000 - 120,000$ gas depending on string lengths.
-* **Latency Profile**: Transaction confirmations on local Ganache chains take $< 50\text{ms}$. On public testnets, processing time corresponds to block generation constraints ($\approx 12\text{s}$).
+* **Latency Profile**: Not measured. On public testnets, confirmation time would follow block generation.
 
 #### Frontend Rendering Pipeline
 * **Cytoscape 2D**: The layout engine runs force calculations with a time complexity of $\mathcal{O}(V^3)$ where $V$ represents the active node count.

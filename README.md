@@ -184,7 +184,7 @@ OS:          Windows 11 (host) + WSL2 Ubuntu 22.04 (backend/ML)
 |------|---------|
 | `docs/API_CONTRACTS.md` | Frozen API shapes — read before building |
 | `docs/DATA_SCHEMAS.md` | All JSON schemas shared between members |
-| `docs/INTEGRATION_GUIDE.md` | How to connect all 4 systems |
+| `INTEGRATION_GUIDE.md` (repo root) | The frozen v1 integration contract. For the current v2 wiring see `INTEGRATION.md` |
 | `docs/SAIRAJ_BACKEND_PLAN.md` | Backend week-by-week implementation |
 | `docs/SUSHEEP_FRONTEND_PLAN.md` | Frontend week-by-week implementation |
 | `docs/SKANDA_BLOCKCHAIN_PLAN.md` | Blockchain week-by-week implementation |
@@ -250,7 +250,7 @@ GANACHE_URL=http://127.0.0.1:8545
 If any component fails during the 60-minute demo:
 - Frontend can run on mock data (`VITE_USE_MOCK=true`) — UI looks identical
 - Pre-recorded demo video: `docs/fallback_demo.mp4`
-- Detailed fallback protocol: see `docs/INTEGRATION_GUIDE.md` Section 9
+- Detailed fallback protocol: see `INTEGRATION_GUIDE.md` Section 9
 
 ---
 
