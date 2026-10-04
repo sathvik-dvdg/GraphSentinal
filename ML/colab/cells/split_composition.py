@@ -1,7 +1,7 @@
 # ============================================================================
 #  SPLIT COMPOSITION AND GATE CONFIDENCE
 #
-#  Run by colab_runner as stage 6. Expects `cfg` (the retrain config, fix on)
+#  Run by colab_runner's split_composition stage. Expects `cfg` (the retrain config, fix on)
 #  in globals; writes
 #  split_composition.json to GS_OUT.
 #
@@ -46,6 +46,19 @@ MIN_EDGES = int(cfg.graph.min_edges_per_graph)
 POLICY_FLOORS = {"Volumetric_Flood": 0.90, "PortScan": 0.85, "BruteForce": 0.85, "Botnet": 1.01}
 QS = (0.05, 0.25, 0.50, 0.75, 0.95)
 
+
+# ------------------------------------------------------- the prediction -----
+# Written into the code on 2026-10-04, before the first run, so that Part A is
+# a test and not a narrative. Printed first; recorded in the JSON as given.
+PREDICTION = (
+    "If the mechanism holds (the clock fix moved the pooled BENIGN cut, so "
+    "pre-fix test attack windows were nearly pure attack and post-fix ones are "
+    "mixed), the pre-fix share of test attack flows sharing a window with "
+    "benign traffic is LOW and the post-fix share is SUBSTANTIALLY HIGHER. If "
+    "both shares are similar, the mechanism is wrong and the drop needs another "
+    "explanation.")
+print(f"\n{BAR}\n  PREDICTION, RECORDED BEFORE THE MEASUREMENT\n{BAR}")
+print("  " + PREDICTION)
 
 # ------------------------------------------------------------- PART A -------
 print(f"\n{BAR}\n  PART A -- WHAT EACH SPLIT CONTAINS, UNDER BOTH PARSES\n{BAR}")
@@ -125,6 +138,8 @@ for split in ("val", "test"):
                 "quantiles": {f"p{int(q * 100)}": round(float(np.quantile(cm, q)), 4) for q in QS},
                 "floor": floor,
                 "edges_at_or_above_floor": int((cm >= floor).sum()) if floor is not None else None,
+                "share_at_or_above_floor": (round(float((cm >= floor).mean()), 4)
+                                            if floor is not None else None),
             })
     part_b[split] = rows
     print(f"\n  -- {split}")
@@ -134,10 +149,11 @@ for split in ("val", "test"):
         q = r["quantiles"]
         print(f"  {r['true']:<18s}{r['predicted']:<18s}{r['edges']:>8,}{q['p5']:>7.3f}"
               f"{q['p50']:>7.3f}{q['p95']:>7.3f}{r['floor']:>7.2f}"
-              f"{r['edges_at_or_above_floor']:>10,}")
+              f"{r['edges_at_or_above_floor']:>10,} ({r['share_at_or_above_floor']:.1%})")
 
 result = {
     "what": "split composition under both parses, and post-fix confidence against the SDN floors",
+    "prediction_recorded_before_measurement": PREDICTION,
     "window_seconds": W, "min_edges_per_graph": MIN_EDGES,
     "policy_floors": POLICY_FLOORS,
     "part_a_split_composition": part_a,

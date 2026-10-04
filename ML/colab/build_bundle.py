@@ -74,7 +74,7 @@ def main() -> None:
             print("     ", line)
     if not build["has_sample_generator"]:
         print("  note: ML/make_testdata_sample.py is not in the repo, so the run will")
-        print("  skip stages 7 (sample) and 8 (phase 2b) and say so in PROVENANCE.json.")
+        print("  skip the sample and phase2b stages and say so in PROVENANCE.json.")
 
 
 if __name__ == "__main__":

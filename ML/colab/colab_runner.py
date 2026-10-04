@@ -282,7 +282,7 @@ def print_plan(env: Env, always: tuple = ("audit_gate", "package")) -> None:
                 state = f"SKIPPED earlier ({m['skipped']}) -- will be re-checked"
         else:
             state = "to do"
-        print(f"  {STAGES.index(s) + 1} {s:<16s} {state}")
+        print(f"  {s:<18s} {state}")
     print(BAR)
 
 
@@ -319,7 +319,7 @@ def preflight(env: Env, cfg, verdict: dict) -> list:
     """Exercise every Colab-only path NOW, in the two-minute cell.
 
     Each of these would otherwise fail for the first time inside Cell B, some of
-    them at stage 3 of a long run. Only the browser download cannot be tried
+    them in the training stage of a long run. Only the browser download cannot be tried
     here; it is the last thing Cell B does and the cheapest to retry.
     """
     import timestamp_audit as ta
@@ -337,7 +337,7 @@ def preflight(env: Env, cfg, verdict: dict) -> list:
             f"built from commit {str(build.get('commit'))[:10]}"
             + (" -- from a DIRTY tree" if build.get("dirty") else "")
             + ("" if build.get("has_sample_generator") else
-               "; no sample generator, so stages 7 (sample) and 8 (phase2b) will be skipped"))
+               "; no sample generator, so the sample and phase2b stages will be skipped"))
     except Exception as exc:
         add("FAIL", "bundle installed", f"BUILD.json unreadable: {exc}")
 
@@ -974,9 +974,9 @@ def cell_b(env: Env | None = None, download: bool = True) -> Path:
         if is_done(env, stage) and not m.get("skipped"):
             print(f"\n[{stage}] already done in session {m['session']} -- skipped")
             continue
-        print(f"\n{BAR}\n  STAGE {STAGES.index(stage) + 1}: {stage}\n{BAR}")
+        print(f"\n{BAR}\n  STAGE: {stage}\n{BAR}")
         fn(env, cfg)
-    print(f"\n{BAR}\n  STAGE {STAGES.index('package') + 1}: package\n{BAR}")
+    print(f"\n{BAR}\n  STAGE: package\n{BAR}")
     z = stage_package(env, cfg)
 
     if env.is_colab and download:

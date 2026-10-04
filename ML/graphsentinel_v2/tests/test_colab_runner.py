@@ -351,3 +351,75 @@ def test_split_composition_runs_before_the_sample_and_is_packaged(cr):
     cell = (COLAB / "cells" / "split_composition.py").read_text(encoding="utf-8")
     assert "from colab_runner import split_composition" in cell
     assert "fix_12h_clock = fix" in cell                  # both parses, not one
+
+
+# --------------------------------------------------------------------------
+# make_testdata_sample.py: a Colab cell, exec'd with cfg in scope
+# --------------------------------------------------------------------------
+GEN = ML_DIR / "make_testdata_sample.py"
+
+
+def _gen_cfg(tmp_path, files):
+    from graphsentinel.config import Config
+    card = json.loads((ML_DIR / "model_card.json").read_text(encoding="utf-8"))
+    cfg = Config.from_dict(card["config"])
+    cfg.data.fix_12h_clock = True
+    cfg.data.pm_hours = [1, 7]
+    cfg.data.csv_files = list(files)
+    cfg.base_dir = str(tmp_path / "run")
+    cfg.data.dataset_dir = str(tmp_path / "dataset")
+    return cfg
+
+
+def test_sample_generator_without_cfg_raises_rather_than_producing_nothing(tmp_path):
+    with pytest.raises(AssertionError, match="cfg"):
+        exec(compile(GEN.read_text(encoding="utf-8"), str(GEN), "exec"), {"__name__": "__main__"})
+
+
+def test_best_run_maximises_usable_windows_then_fewest_rows(tmp_path):
+    import numpy as np
+    ns = {"cfg": _gen_cfg(tmp_path, []), "__name__": "not_main"}
+    exec(compile(GEN.read_text(encoding="utf-8"), str(GEN), "exec"), ns)
+    best_run, floor = ns["best_run"], ns["FLOOR"]
+    # window 0: dense PortScan only (unusable); 1 and 2: mixed (usable);
+    # 3: mixed but below the floor; 4: mixed and usable, alone
+    wid, lab = [], []
+    for w, n_ps, n_b in ((0, 30, 0), (1, floor, 1), (2, floor, 1), (3, 2, 1), (4, floor, 1)):
+        wid += [w] * (n_ps + n_b); lab += ["PortScan"] * n_ps + ["BENIGN"] * n_b
+    run = best_run(np.array(wid), np.array(lab), "PortScan", budget=10_000)
+    assert run["usable_windows"] == 3                  # 1, 2 and 4 -- not the dense window
+    assert (run["first_wid"], run["last_wid"]) == (1, 4)   # fewest rows: window 0 left out
+    assert best_run(np.array([0] * 30), np.array(["PortScan"] * 30), "PortScan", 10_000) is None
+
+
+def test_sample_generator_writes_mixed_windows_from_source_rows(tmp_path, capsys):
+    """End to end on synthetic Friday-afternoon traffic stamped on the
+    marker-less 12-hour clock: the written rows are source rows, and the
+    MIXED count it prints is the one the consumer's steps give."""
+    import pandas as pd
+    import numpy as np
+
+    src = pd.read_csv(ML_DIR / "testdata" / "cicids2017_sample.csv", dtype=str,
+                      keep_default_na=False, encoding="latin-1", low_memory=False)
+    lab = src.columns[-1]
+    rows = pd.concat([src[src[lab].str.strip() == "PortScan"].head(400),
+                      src[src[lab].str.strip() == "BENIGN"].head(400)]).reset_index(drop=True)
+    ts = rows.columns[[c.strip() for c in rows.columns].index("Timestamp")]
+    rows[ts] = [f"7/7/2017 2:{(i % 20):02d}" for i in range(len(rows))]   # 12-hour, no AM/PM
+    name = "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv"
+    (tmp_path / "dataset").mkdir()
+    rows.to_csv(tmp_path / "dataset" / name, index=False, encoding="latin-1")
+
+    cfg = _gen_cfg(tmp_path, [name])
+    exec(compile(GEN.read_text(encoding="utf-8"), str(GEN), "exec"),
+         {"cfg": cfg, "__name__": "__main__"})
+    out = capsys.readouterr().out
+    written = pd.read_csv(tmp_path / "run" / "testdata" / "cicids2017_sample.csv", dtype=str,
+                          keep_default_na=False, encoding="latin-1", low_memory=False)
+    assert len(written) > 0
+    key = lambda d: set(map(tuple, d.astype(str).to_numpy().tolist()))
+    assert key(written) <= key(rows), "every written row is a source row, verbatim"
+    mixed = int(out.split("MIXED windows:")[1].split()[0])
+    assert mixed >= 5, out
+    assert "NO USABLE WINDOW" in out          # this source has PortScan only
+    assert not Path("C:/content").exists() or Path("/content").is_dir()

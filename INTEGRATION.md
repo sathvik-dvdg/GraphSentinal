@@ -713,6 +713,28 @@ The replacement enforces two invariants at startup, both fatal:
 "Deliberately not enforced" is an explicit `alert_only` entry, never an absent
 key, so a decision and an oversight cannot look the same.
 
+### The retrained model does not support class-conditional actions
+
+This concerns the model retrained under the fixed timestamp parse
+(`ML/TIMESTAMP_FIX.md`). It is **received but not installed**, so the figures in
+the table above still describe the deployed epoch-31 model.
+
+On its test split, binary detection holds (edge binary F1 0.996) and the class
+head does not (edge macro-F1 0.4441 over five classes). 17,909 of 23,812
+PortScan test edges are predicted **BruteForce**, whose action is `drop_port`.
+The system is reliably right that something is an attack and unreliably wrong
+about which, and **the action is chosen by the part that is wrong**. A class
+head at PortScan F1 0.26 choosing between `drop_port`, `meter` and isolation
+picks the wrong intervention most of the time it fires.
+
+The architecture the evidence supports is one conservative action gated on the
+binary decision, with class-conditional actions as future work, pending a class
+head that can carry them. How many wrong-class predictions clear their floor is
+being measured (`split_composition` stage, `ML/colab/`). **Nothing in
+`mitigation_policy.py` changes in this pass**: the floors do not move, and
+whether the per-class table is kept (with `dry_run=True` and this section beside
+it) is the project owner's decision.
+
 ### The confidence floors are unfitted
 
 A rule fires only when `argmax == class` **and** `P(class) >= min_conf`. The
@@ -930,6 +952,8 @@ curl -s localhost:8001/health | jq .ml_v2
 | **Operating points** (§4) | ⚠️ **provisional.** `binary_gate` 0.5 sits on a fixed value appended to the search grid; run-to-run variation is unmeasured. Awaiting `grid_and_determinism_check.py` (run outside this repo). v2 reports `alerting_enabled: false` |
 | **`Volumetric_Flood → meter` can fire** (§6) | ❌ **in doubt.** Test gated recall is 0.0 in `threshold_study.json`; on the 2b sample, 0.0% of correct predictions reach the 0.90 floor. §6 note awaits `vf_confidence_check.py` on the test split |
 | **End-to-end on real OVS flows** | ❌ **blocked** — needs `ML/testdata/ovs_dump_flows.txt` |
+| **Retrained model (fixed timestamp parse)** | ⚠️ **received, not installed.** The container load is blocked: Docker Desktop will not start (drive C: full). A local load on torch 2.13 passes, which is not the container check. See `ML/TIMESTAMP_FIX.md` |
+| **Class-conditional mitigation on the retrained model** (§6) | ❌ **not supported.** Binary F1 0.996, macro-F1 0.4441; PortScan is mostly predicted BruteForce. One binary-gated action is what the evidence supports; the policy is unchanged pending the owner's decision |
 
 The rows marked ❌ are still open. The plumbing is verified end to end in the
 container. What remains unmeasured is the model's accuracy on flows from this
