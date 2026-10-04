@@ -32,4 +32,7 @@ blockchain/.vscode_hardhat_config_*.ts
 # See INTEGRATION.md for how to fetch them.
 ML/weights.pt
 ML/model.ts
+# the pre-fix epoch-31 binaries, kept locally beside their manifest
+ML/prefix_epoch31/weights.pt
+ML/prefix_epoch31/model.ts
 ML\testdata\cicids2017_sample.csv

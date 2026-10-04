@@ -522,9 +522,11 @@ a demo script:
 2. **Real-time performance.** Nothing has been measured against a latency
    budget; the monitor polls on a 5 s timer.
 3. **Production readiness.**
-4. **Host/node-level attack attribution.** Node head test binary F1 **0.1407**.
-5. **Botnet detection.** Test F1 **0.0000**, PR-AUC 0.0024, all 266 test edges
-   predicted BENIGN, unstable across identical reruns.
+4. **Host/node-level attack attribution.** Node head test binary F1 **0.4475**.
+5. **Botnet detection.** 0 of 168 Botnet edges correct on the Phase 2b sample;
+   the test split holds none.
+6. **Per-class identification of PortScan or BruteForce.** The model does not
+   separate them (`INTEGRATION.md` §3).
 
 **Even in Tier 3, the following remain provisional:**
 

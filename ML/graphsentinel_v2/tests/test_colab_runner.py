@@ -138,10 +138,26 @@ def test_a_stage_is_done_only_while_its_outputs_exist(cr, tmp_path):
 def test_retrain_config_is_the_shipped_config_plus_the_clock_fix(cr, tmp_path):
     env = cr.Env(tmp_path / "base", tmp_path / "local", is_colab=False)
     cfg = cr.make_cfg(env)
-    card = json.loads((ML_DIR / "model_card.json").read_text(encoding="utf-8"))["config"]
+    # The reference is the EPOCH-31 card: the retrain is defined as that run
+    # plus the clock fix. Since the retrain was installed, ML/model_card.json is
+    # the retrained card; it must differ from epoch 31 only in the fix and in
+    # where the run writes.
+    card = json.loads((ML_DIR / "prefix_epoch31" / "model_card.json").read_text(encoding="utf-8"))["config"]
+    shipped = json.loads((ML_DIR / "model_card.json").read_text(encoding="utf-8"))["config"]
+
+    def flat(d, p=""):
+        out = {}
+        for k, v in d.items():
+            out.update(flat(v, p + k + ".") if isinstance(v, dict) else {p + k: v})
+        return out
+    a, b = flat(card), flat(shipped)
+    differ = {k for k in set(a) | set(b) if a.get(k, "<absent>") != b.get(k, "<absent>")}
+    assert differ <= {"data.fix_12h_clock", "data.pm_hours", "data.processed_dir", "checkpoint_dir",
+                      "log_dir", "export.model_dir", "export.export_onnx",
+                      "train.drive_checkpoint_every"}, sorted(differ)
 
     assert cfg.data.fix_12h_clock is True and list(cfg.data.pm_hours) == [1, 7]
-    assert "fix_12h_clock" not in card["data"], "the shipped card predates the fix"
+    assert "fix_12h_clock" not in card["data"], "the epoch-31 card predates the fix"
     for section in ("model", "loss", "train", "graph"):
         got = getattr(cfg, section).__dict__
         for key, value in card[section].items():

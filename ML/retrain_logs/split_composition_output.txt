@@ -1,0 +1,72 @@
+
+==============================================================================
+  PREDICTION, RECORDED BEFORE THE MEASUREMENT
+==============================================================================
+  If the mechanism holds (the clock fix moved the pooled BENIGN cut, so pre-fix test attack windows were nearly pure attack and post-fix ones are mixed), the pre-fix share of test attack flows sharing a window with benign traffic is LOW and the post-fix share is SUBSTANTIALLY HIGHER. If both shares are similar, the mechanism is wrong and the drop needs another explanation.
+
+==============================================================================
+  PART A -- WHAT EACH SPLIT CONTAINS, UNDER BOTH PARSES
+==============================================================================
+
+  -- old_parse  (24s)
+  split class                  rows  first           last             w/ benign graphable  benign from
+  train BENIGN              823,173  Tue 07-04 01:00 Fri 07-07 01:39               100.0%  Wednesday-workingHours:404,149, Tuesday-WorkingHours:394,043, Friday-WorkingHours-Afternoon-PortScan:24,981
+  train Botnet                1,039  Fri 07-07 09:34 Fri 07-07 10:45       0.0%     95.6%  
+  train BruteForce            5,283  Tue 07-04 02:09 Tue 07-04 09:41     100.0%    100.0%  
+  train PortScan            111,122  Fri 07-07 01:05 Fri 07-07 02:55       0.0%    100.0%  
+  train Volumetric_Flood    177,559  Wed 07-05 02:24 Wed 07-05 11:19     100.0%    100.0%  
+  val   BENIGN              168,966  Fri 07-07 01:51 Fri 07-07 04:52               100.0%  Friday-WorkingHours-Afternoon-PortScan:84,612, Friday-WorkingHours-Afternoon-DDos:84,354
+  val   Botnet                  221  Fri 07-07 10:57 Fri 07-07 11:44       0.0%     19.9%  
+  val   BruteForce              432  Tue 07-04 09:53 Tue 07-04 09:58       0.0%    100.0%  
+  val   PortScan             23,812  Fri 07-07 02:55 Fri 07-07 02:55     100.0%    100.0%  
+  val   Volumetric_Flood     17,600  Fri 07-07 04:01 Fri 07-07 04:04     100.0%    100.0%  
+  test  BENIGN              175,271  Fri 07-07 08:59 Fri 07-07 12:59               100.0%  Friday-WorkingHours-Morning:175,271
+  test  Botnet                  266  Fri 07-07 11:57 Fri 07-07 12:59     100.0%    100.0%  
+  test  BruteForce              793  Tue 07-04 10:10 Tue 07-04 10:30       0.0%     99.9%  
+  test  PortScan             23,812  Fri 07-07 02:55 Fri 07-07 03:23       0.0%    100.0%  
+  test  Volumetric_Flood     27,191  Fri 07-07 04:10 Fri 07-07 04:16       0.0%    100.0%  
+
+  -- fixed_parse  (25s)
+  split class                  rows  first           last             w/ benign graphable  benign from
+  train BENIGN              821,546  Tue 07-04 08:53 Fri 07-07 09:36               100.0%  Wednesday-workingHours:404,149, Tuesday-WorkingHours:394,043, Friday-WorkingHours-Morning:23,354
+  train Botnet                1,039  Fri 07-07 09:34 Fri 07-07 10:45       0.2%     95.8%  
+  train BruteForce            5,368  Tue 07-04 09:17 Tue 07-04 14:22     100.0%    100.0%  
+  train PortScan            111,122  Fri 07-07 13:05 Fri 07-07 14:55       0.0%    100.0%  
+  train Volumetric_Flood    177,559  Wed 07-05 09:01 Wed 07-05 14:25     100.0%    100.0%  
+  val   BENIGN              165,641  Fri 07-07 09:48 Fri 07-07 13:41               100.0%  Friday-WorkingHours-Morning:139,409, Friday-WorkingHours-Afternoon-PortScan:26,232
+  val   Botnet                  221  Fri 07-07 10:57 Fri 07-07 11:44     100.0%    100.0%  
+  val   BruteForce              582  Tue 07-04 14:34 Tue 07-04 14:43       0.0%    100.0%  
+  val   PortScan             23,812  Fri 07-07 14:55 Fri 07-07 14:55       0.0%    100.0%  
+  val   Volumetric_Flood     17,600  Fri 07-07 16:01 Fri 07-07 16:04       0.0%    100.0%  
+  test  BENIGN              174,421  Fri 07-07 13:53 Fri 07-07 17:02               100.0%  Friday-WorkingHours-Afternoon-DDos:90,300, Friday-WorkingHours-Afternoon-PortScan:84,121
+  test  Botnet                  266  Fri 07-07 11:57 Fri 07-07 12:59       0.0%      0.0%  
+  test  BruteForce              918  Tue 07-04 14:55 Tue 07-04 15:11       0.0%    100.0%  
+  test  PortScan             23,812  Fri 07-07 14:55 Fri 07-07 15:23     100.0%    100.0%  
+  test  Volumetric_Flood     27,191  Fri 07-07 16:10 Fri 07-07 16:16     100.0%    100.0%  
+
+==============================================================================
+  PART B -- CONFIDENCE AGAINST THE SDN FLOORS (post-fix model)
+==============================================================================
+  model: epoch 18 from /content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/checkpoints/best.pt
+
+  -- val
+  true              predicted            edges     p5    p50    p95  floor  >= floor
+  BENIGN            Botnet                   8  0.644  0.904  0.904   1.01         0 (0.0%)
+  Volumetric_Flood  Volumetric_Flood    13,798  0.471  0.610  0.771   0.90         0 (0.0%)
+  Volumetric_Flood  PortScan             3,802  0.464  0.480  0.507   0.85         0 (0.0%)
+  PortScan          PortScan            23,812  0.883  0.917  0.924   0.85    23,717 (99.6%)
+  BruteForce        PortScan               581  0.630  0.758  0.870   0.85       113 (19.4%)
+
+  -- test
+  true              predicted            edges     p5    p50    p95  floor  >= floor
+  BENIGN            Volumetric_Flood         2  0.511  0.560  0.608   0.90         0 (0.0%)
+  BENIGN            PortScan               299  0.372  0.493  0.618   0.85         0 (0.0%)
+  BENIGN            BruteForce              20  0.465  0.670  0.855   0.85         2 (10.0%)
+  BENIGN            Botnet                  68  0.427  0.585  0.789   1.01         0 (0.0%)
+  Volumetric_Flood  Volumetric_Flood    27,191  0.835  0.938  0.943   0.90    22,268 (81.9%)
+  PortScan          Volumetric_Flood     2,163  0.341  0.413  0.532   0.90         0 (0.0%)
+  PortScan          PortScan             3,735  0.339  0.514  0.751   0.85         0 (0.0%)
+  PortScan          BruteForce          17,909  0.390  0.502  0.623   0.85         0 (0.0%)
+  BruteForce        PortScan               904  0.621  0.749  0.866   0.85       118 (13.1%)
+
+  saved: split_composition.json -> /content/gs_logs_fix12h

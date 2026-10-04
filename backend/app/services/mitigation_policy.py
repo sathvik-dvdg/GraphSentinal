@@ -46,14 +46,23 @@ ACTION_ALERT_ONLY = "alert_only"
 # ---------------------------------------------------------------------------
 # Per-class mitigation, keyed by the CARD's class names.
 #
-# Every entry is a deliberate decision recorded against a measured number from
-# ML/test_report.json (the TEST split — model_card.json's identically-named
-# metrics are VALIDATION and read ~0.05 macro F1 higher).
+# Every entry is a deliberate decision recorded against measured numbers from
+# ML/test_report.json (TEST split; model retrained 2026-10-03 under the fixed
+# timestamp parse; model_card.json's identically-named metrics are VALIDATION).
 #
-#   Volumetric_Flood  test F1 0.9910, precision 0.9998, recall 0.9823
-#   PortScan          test F1 0.9800, precision 0.9609, recall 1.0000
-#   BruteForce        test F1 0.5508, precision 1.0000, recall 0.3801
-#   Botnet            test F1 0.0000, precision 0.0,    recall 0.0
+#   Volumetric_Flood  test F1 0.9617, precision 0.9263, recall 1.0000
+#   PortScan          test F1 0.2598  } the model does not separate these two:
+#   BruteForce        test F1 0.0000  } 17,909 of 23,812 PortScan edges are
+#                                       predicted BruteForce, 904 of 918
+#                                       BruteForce edges PortScan
+#   Botnet            no test edges; 0 of 168 correct on the Phase 2b sample
+#
+# What these floors let through on test (ML/split_composition.json, part B):
+# 22,268 of 27,191 true Volumetric_Flood edges clear 0.90; 2 of 389 benign
+# edges predicted as an attack clear their floor; 118 of 20,976 attack edges
+# predicted as the WRONG attack class clear theirs. None of the 17,909 PortScan
+# edges predicted BruteForce reaches 0.85 (p95 0.623). The class head is
+# unreliable and these floors absorb almost all of it: do not lower them.
 #
 # `min_conf` values below are INHERITED from the training package's own table
 # for the classes that had one, and are NOT fitted operating points. They are
@@ -72,24 +81,26 @@ _POLICY_BY_CLASS: dict[str, dict[str, Any]] = {
     "PortScan": dict(
         action="drop", idle=30, hard=300, priority=45_000, min_conf=0.85,
         rationale="Short TTL — scans are cheap to re-run from a new source. "
-                  "This is the model's strongest class (test F1 0.9800).",
+                  "The model does not separate PortScan from BruteForce (test "
+                  "F1 0.2598); its predictions rarely reach this floor.",
     ),
     "BruteForce": dict(
         action="drop_port", idle=120, hard=1800, priority=48_000, min_conf=0.85,
         rationale="Drop only the targeted service port so the host stays "
-                  "reachable otherwise. Test recall is 0.3801 — this class "
-                  "MISSES about two thirds of real brute force; absence of a "
-                  "rule is not evidence of absence of an attack.",
+                  "reachable otherwise. Test F1 0.0000: the model labels real "
+                  "brute force as PortScan; absence of a rule is not evidence "
+                  "of absence of an attack.",
     ),
-    # DELIBERATE NON-ENFORCEMENT. Botnet is trained but not learned: test F1
-    # 0.0000, PR-AUC 0.0024, and all 266 Botnet edges in the test split were
-    # predicted BENIGN. The number is also unstable across identical reruns.
+    # DELIBERATE NON-ENFORCEMENT. Botnet is trained but not learned: the
+    # retrained model's test split holds no Botnet edges, and on the Phase 2b
+    # sample 0 of 168 are correct; the epoch-31 model predicted all 266 of its
+    # test Botnet edges BENIGN, unstably across identical reruns.
     # It must never carry an enforcement action. Recorded as an explicit entry
     # rather than an omission so nobody "fixes" a missing key by adding one.
     "Botnet": dict(
         action=ACTION_ALERT_ONLY, idle=0, hard=0, priority=0, min_conf=1.01,
-        rationale="NOT ENFORCEABLE. Test F1 0.0000, PR-AUC 0.0024, all 266 test "
-                  "edges predicted BENIGN, unstable across identical reruns. Any "
+        rationale="NOT ENFORCEABLE. 0 of 168 Botnet edges correct on the "
+                  "Phase 2b sample (no Botnet edges in the test split). Any "
                   "Botnet label returned by the API is unreliable and must be "
                   "documented as such. min_conf > 1.0 makes it unreachable even "
                   "if the action were changed by accident.",

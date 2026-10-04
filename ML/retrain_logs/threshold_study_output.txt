@@ -1,0 +1,153 @@
+model: epoch 18 from /content/gs_ckpt/best.pt
+classes: ['BENIGN', 'Volumetric_Flood', 'PortScan', 'BruteForce', 'Botnet']
+
+==============================================================================
+  BUILDING EVALUATION SETS
+==============================================================================
+  val          207,856 flows over   249 windows   (2s)
+  test         226,342 flows over   207 windows   (3s)
+  monday: 500,531 flows, 0 unseen-family, 486 windows
+  monday       500,531 flows over   486 windows   (5s)
+  thursday: 426,964 flows, 2,111 unseen-family, 485 windows
+  thursday     426,958 flows over   485 windows   (4s)
+  shuffled     226,342 flows over   207 windows   (2s)
+
+==============================================================================
+  1. BINARY GATE  --  attack score = 1 - P(BENIGN)
+==============================================================================
+  FITTED ON VALIDATION. Every later table applies this number to data
+  the threshold has never seen.
+
+ threshold  precision  recall    fpr     f1
+    0.0062     0.2031  1.0000 1.0000 0.3376
+    0.0072     0.2202  1.0000 0.9025 0.3609
+    0.0082     0.2405  1.0000 0.8050 0.3877
+    0.0098     0.2648  1.0000 0.7075 0.4187
+    0.0119     0.2947  1.0000 0.6100 0.4552
+    0.0142     0.3321  0.9999 0.5126 0.4986
+    0.0171     0.3804  0.9998 0.4151 0.5511
+    0.0185     0.4476  0.9997 0.3145 0.6183
+    0.0240     0.5400  0.9995 0.2170 0.7011
+    0.0323     0.6802  0.9989 0.1197 0.8093
+    0.0519     0.9180  0.9968 0.0227 0.9558
+    0.9563     1.0000  0.7651 0.0000 0.8669
+    0.9874     1.0000  0.3826 0.0000 0.5534
+    0.9900        NaN  0.0000 0.0000 0.0000
+
+  >> BINARY THRESHOLD (max F1 on validation): 0.500000
+     validation precision 0.9998  recall 0.9947  FPR 0.000054  F1 0.9973
+
+  alternatives at fixed operating points (validation):
+  criterion                    threshold  precision   recall        FPR
+  max F1                        0.500000     0.9998   0.9947   0.000054
+  FPR <= 1%                     0.066291     0.9714   0.9950   0.007468
+  FPR <= 0.1%                   0.500000     0.9998   0.9947   0.000054
+  precision >= 99%              0.091023     0.9952   0.9948   0.001220
+  precision >= 99.9%            0.500000     0.9998   0.9947   0.000054
+
+==============================================================================
+  2. THAT THRESHOLD APPLIED TO HELD-OUT DATA  (flow level)
+==============================================================================
+  threshold = 0.500000, fitted on validation, applied unchanged
+
+  dataset          flows  attacks  precision   recall        FPR      F1
+  test           226,342   51,921     0.9921   0.9997   0.002368  0.9959
+  monday         500,531        0     0.0000   n/a    0.000120  0.0000
+  thursday       426,958    2,111     0.0669   0.9730   0.067387  0.1253
+  shuffled       226,342   51,921     0.9891   0.9996   0.003279  0.9943
+
+  how to read this:
+    monday   has ZERO attacks, so precision and recall are undefined and
+             FPR is the whole story -- it is your false-alarm rate on a
+             real working day the model has never seen.
+    thursday carries BENIGN traffic plus unseen families (Web Attack,
+             Infiltration) with no class in this taxonomy. Recall is the
+             fraction of a NOVEL attack the binary gate flags at all, and
+             its false positives are real ones on real benign traffic.
+             This is an open-set number, not a classifier one.
+    shuffled should collapse. If its recall stays high, the model is not
+             reading the edge features and every other number is suspect.
+
+==============================================================================
+  3. WINDOW-LEVEL PRECISION AND RECALL
+==============================================================================
+  A window (60s) is TRULY an attack window if it contains >= 1
+  attack flow. It is ALERTED if at least MIN_FLOWS flows in it exceed the
+  binary threshold. This is what an operator actually sees -- one noisy
+  flow in a minute of traffic should not page anyone, and the table below
+  is how you choose how many it takes.
+
+  -- test  (207 windows, 35 contain an attack)
+ min_flows  alerted  tp  fp  fn  precision  recall    fpr     f1
+         1       45  31  14   4     0.6889  0.8857 0.0814 0.7750
+         2       38  31   7   4     0.8158  0.8857 0.0407 0.8493
+         3       34  31   3   4     0.9118  0.8857 0.0174 0.8986
+         5       32  31   1   4     0.9688  0.8857 0.0058 0.9254
+        10       32  31   1   4     0.9688  0.8857 0.0058 0.9254
+        25       31  30   1   5     0.9677  0.8571 0.0058 0.9091
+        50       29  28   1   7     0.9655  0.8000 0.0058 0.8750
+       100       15  14   1  21     0.9333  0.4000 0.0058 0.5600
+
+  -- monday  (486 windows, 0 contain an attack)
+ min_flows  alerted  tp  fp  fn  precision  recall    fpr     f1
+         1        5   0   5   0     0.0000     NaN 0.0103 0.0000
+         2        3   0   3   0     0.0000     NaN 0.0062 0.0000
+         3        2   0   2   0     0.0000     NaN 0.0041 0.0000
+         5        2   0   2   0     0.0000     NaN 0.0041 0.0000
+        10        1   0   1   0     0.0000     NaN 0.0021 0.0000
+        25        1   0   1   0     0.0000     NaN 0.0021 0.0000
+        50        0   0   0   0        NaN     NaN 0.0000 0.0000
+       100        0   0   0   0        NaN     NaN 0.0000 0.0000
+
+  -- thursday  (485 windows, 96 contain an attack)
+ min_flows  alerted  tp  fp  fn  precision  recall    fpr     f1
+         1       94  75  19  21     0.7979  0.7812 0.0488 0.7895
+         2       91  73  18  23     0.8022  0.7604 0.0463 0.7807
+         3       89  72  17  24     0.8090  0.7500 0.0437 0.7784
+         5       84  71  13  25     0.8452  0.7396 0.0334 0.7889
+        10       78  68  10  28     0.8718  0.7083 0.0257 0.7816
+        25       73  64   9  32     0.8767  0.6667 0.0231 0.7574
+        50       17   8   9  88     0.4706  0.0833 0.0231 0.1416
+       100       17   8   9  88     0.4706  0.0833 0.0231 0.1416
+
+  -- shuffled  (207 windows, 35 contain an attack)
+ min_flows  alerted  tp  fp  fn  precision  recall    fpr     f1
+         1       47  31  16   4     0.6596  0.8857 0.0930 0.7561
+         2       46  31  15   4     0.6739  0.8857 0.0872 0.7654
+         3       46  31  15   4     0.6739  0.8857 0.0872 0.7654
+         5       43  31  12   4     0.7209  0.8857 0.0698 0.7949
+        10       39  31   8   4     0.7949  0.8857 0.0465 0.8378
+        25       35  30   5   5     0.8571  0.8571 0.0291 0.8571
+        50       30  28   2   7     0.9333  0.8000 0.0116 0.8615
+       100       14  14   0  21     1.0000  0.4000 0.0000 0.5714
+
+  >> RECOMMENDED WINDOW RULE: alert when >= 5 flows in a 60s window exceed 0.500000
+     on test: precision 0.9688  recall 0.8857  F1 0.9254
+     on monday (no attacks at all): 2 false alerts in 486 windows = 0.4115% of windows
+
+==============================================================================
+  4. PER-CLASS SDN GATES  (min_conf for MITIGATION_POLICY)
+==============================================================================
+  The operational rule is: fire when argmax == class AND P(class) >=
+  min_conf. So that is exactly what is swept -- not P(class) in
+  isolation, which would measure a rule the SDN layer never applies.
+  FITTED ON VALIDATION, then reported on TEST.
+
+  BruteForce         cannot fit: 0 predicted, 582 true in validation
+  class                 fitted  current |  val prec  val rec |  TEST prec TEST rec  TEST F1
+  Volumetric_Flood      0.4571     0.90 |   1.0000   0.7980 |    0.9804   1.0000   0.9901
+  PortScan              0.8706     0.85 |   0.9995   0.9937 |    0.0000   0.0000   0.0000
+  BruteForce                --     0.85 |  no validation support -- keep the conservative default
+  Botnet                0.5000     0.80 |   0.0000   0.0000 |    0.0000      nan   0.0000
+
+  A large val->test precision drop on any row means that gate is fitted
+  to validation noise -- keep the conservative default for that class
+  rather than shipping the fitted number.
+
+  These are PROPOSALS. Nothing is written to MITIGATION_POLICY, and
+  dry_run stays True until the rules are validated in a lab topology.
+
+==============================================================================
+  saved: threshold_study.json, threshold_flow_level.csv,
+         threshold_window_level.csv  -> /content/gs_logs_fix12h and /content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs
+==============================================================================

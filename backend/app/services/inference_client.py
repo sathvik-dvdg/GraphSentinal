@@ -55,8 +55,8 @@ class FlowVerdict:
     """One scored flow from the EDGE head. Mirrors the engine's FlowVerdict.
 
     The node head is deliberately not represented here. Its test binary F1 is
-    0.1407 with PR-AUC below the base rate for three of four attack classes; it
-    is not fit for any decision and must not be exposed.
+    0.4475 (edge head: 0.9961); it is not fit for any decision and must not be
+    exposed.
     """
 
     src_ip: str

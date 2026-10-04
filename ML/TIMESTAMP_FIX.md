@@ -1,11 +1,10 @@
 # The 12-hour clock fix, and which artefacts predate it
 
-**Status.** The fix is committed. The full-dataset audit **ran in Colab on
-2026-10-03 and confirmed the defect in every file** (below). Nothing has been
-retrained yet. Every model artefact in this directory predates the fix.
-**The retrain has run** (Colab, 2026-10-03) and its result zip is held outside
-the repository. It is **not installed**, because the container load, the first
-step on arrival, is blocked on this machine. See "The retrain result" below.
+**Status.** The fix is committed. The full-dataset audit ran in Colab on
+2026-10-03 and again on 2026-10-04 with a recorded basis. **The model retrained
+under the fix is installed in `ML/`** (2026-10-04), after loading in the
+inference container. The epoch-31 model and every file that described it are in
+`ML/prefix_epoch31/`; its Phase 2b run is in `ML/phase2b_runs/`.
 
 ## The defect
 
@@ -253,7 +252,19 @@ loader's 960,304, and the audit's 1,841,857 training rows against the loader's
 1,841,846. Both differences are the same 11 rows: Wednesday labels that
 `RAW_LABEL_MAP` does not map and the loader drops.
 
-**Container load: see the status line at the end of this section.**
+**Container load: passed 2026-10-04.** Docker's data disk had been lost, so the
+inference image was rebuilt from `docker/inference.Dockerfile`. In it (Python
+3.12.15, torch 2.4.0+cpu, PyTorch Geometric 2.5.0, pandas 2.3.3, numpy 2.2.6) the
+weights' sha256 matches the manifest, 654,851 parameters load, the class order
+matches, `dry_run` is true, and a fixed 40-flow window scores 40 of 40 with
+probabilities equal to torch 2.13 locally to six decimals. The service came up
+healthy in about 45 s and served contract 2.0.0. Only then was the zip installed.
+
+**The retrain differs from epoch 31 in the parse and nothing else that
+trains.** The two cards' configs differ only in `fix_12h_clock`, `pm_hours`, the
+run's directories, `export_onnx` (off) and `drive_checkpoint_every` (a save
+cadence). `test_retrain_config_is_the_shipped_config_plus_the_clock_fix` pins
+that.
 
 ### Window-level alerting is not comparable across the runs
 
@@ -405,8 +416,9 @@ figures carry their denominators.
 No performance headline favours the fixed model, and the write-up should say
 so. What stands: binary detection is reliable (edge binary F1 0.996); the
 integrity evidence is the contribution (the pre-registered 0.51% → 97.73%
-measurement, F6's change of sign, and leave-one-out going from two misleading
-features to zero); class-conditional performance is poor and now honestly
+measurement, F6's change of sign on test, and the leave-one-out gains
+shrinking about fourfold; see "F2 and F6 after the fix"); class-conditional
+performance is poor and now honestly
 measured, with the floors keeping it from becoming wrong actions. The only
 side-by-side number is 0.7042 against **0.4441** (five classes). The node
 head's binary F1 (0.14 → 0.45) carries the same caveat as every cross-run
@@ -519,33 +531,37 @@ Ticking off the regenerate rows is not enough. The backend strings reach API
 responses, and two of them encode decisions (Botnet is unreliable; Botnet is
 never enforced) that were made from the old model's numbers.
 
-## Outstanding experiment: does the fix change F2 and F6?
+## F2 and F6 after the fix: measured
 
-**Hypothesis, untested.** The misordered time is a shared root cause of two
-negative findings: that zeroing the numeric edge features *raises* macro-F1
-(F6), and that turning the host memory off raises it (F2). Wrong time order
-corrupts the two time-gap edge features and the order in which host history
-and memory are warmed. F1, the untrained GRU, does not depend on it.
+The hypothesis was that the misordered clock was a shared root cause of F6
+(zeroing the edge features *raises* macro-F1) and F2 (turning host memory off
+raises it). Edge macro-F1 over the classes present, from `ML/probes.json`;
+deltas are against each split's full model:
 
-**What cannot test it: the Phase 2b sample.** A scratch re-run of the
-sensitivity control under the fixed parse still showed `argmax_changed: 0`.
-That is not evidence against the hypothesis, or for it. Zeroing all twenty edge
-features changed 0 of 15,833 predictions before the fix as well. The 0 is a
-property of the sample, not of the parser.
+| | Pre-fix test | Post-fix test | Post-fix validation |
+|---|---:|---:|---:|
+| Full model | 0.7042 | 0.5550 | 0.5577 |
+| F6: 20 edge features zeroed | **+0.0956** | **−0.0265** | +0.0397 |
+| F2: memory reset every window | **+0.1270** | **+0.0188** | +0.0444 |
 
-**What does test it:** step 6. Today, pre-fix, over 227,325 test edges:
+**F6 does not survive the fix in its old form.** On test its sign flips. The
+probe's own split-agreement check classes the effect **"SPLIT-SPECIFIC -- do not
+act"** (validation +0.0397, test −0.0265), so the honest statement is that the
+pre-fix direction does not survive, not that the effect cleanly reversed.
 
-| Probe | Edge macro-F1 | Change |
-|---|---:|---:|
-| Full model | 0.7042 | |
-| 20 numeric edge features zeroed | 0.7998 | +0.0956 |
-| Memory reset every window | 0.8312 | +0.1270 |
+**Leave-one-out, by the counts.** Pre-fix, zeroing `log_total_bytes` gained
++0.0723 and `iat_burstiness` +0.0451, both flagged "misleading" by the probe's
++0.02 cut. Post-fix the probe prints "features whose REMOVAL improves macro F1:
+0", but nine features still have a positive delta; the largest is
+`log_dt_since_pair` at **+0.0192**, just under the cut. The two pre-fix
+features now cost accuracy when zeroed (`log_total_bytes` −0.0158,
+`iat_burstiness` −0.0024). **The largest gain shrank about fourfold; gains did
+not vanish.** With run-to-run variation unmeasured, 0.0192
+against 0.02 is not a distinction. Do not write "two misleading features became
+zero" (an earlier version of this file did).
 
-| Outcome after the fix | Reading |
-|---|---|
-| The +0.0956 shrinks or reverses | The hypothesis holds for F6, and F6 must be rewritten. |
-| The +0.0956 survives | F6 is a much stronger finding than it is today. |
-| The +0.1270 changes size | Expected to some degree; F2's direction is what matters, since the GRU stays untrained. |
+**F2 is reduced, not resolved.** Memory-off is still positive on both splits,
+by much less. The GRU stays untrained; most of F2's headline was the clock.
 
 ## The Phase 2b gate
 
@@ -602,7 +618,7 @@ fails, naming `C:\content`.
   run against the file as it stood before the fix: they flag lines 1376, 1401
   and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
 
-**The suite baseline is now 145 passed, 0 skipped** (2026-10-04). Earlier records say
+**The suite baseline is now 145 passed, 0 skipped** (2026-10-04, after the install). Earlier records say
 "98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
 split and graph construction tests. On the machine those records come from,
 the split code had therefore never run at all. With `pyarrow` installed they

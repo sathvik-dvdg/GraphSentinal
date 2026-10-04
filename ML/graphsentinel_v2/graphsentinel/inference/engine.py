@@ -57,11 +57,10 @@ class FlowVerdict:
     corroboration gate. So the edge head, which is the deliverable of this
     model, had no way out of the API at all.
 
-    That is backwards. On the held-out test split the edge head scores
-    macro F1 0.7042 and binary F1 0.9974; the node head scores binary F1 0.1407
-    with PR-AUC below the base rate for three of four attack classes. A backend
-    consuming this engine was being handed the weak head and denied the strong
-    one.
+    That is backwards. On the held-out test split the edge head scores binary
+    F1 0.9961 and the node head 0.4475 (model retrained 2026-10-03; the epoch-31
+    model it replaced: 0.9974 and 0.1407). A backend consuming this engine was
+    being handed the weak head and denied the strong one.
 
     Reverse (mirror) edges are excluded -- they carry no independent flow, only
     the same flow pointing the other way so messages can travel both directions.

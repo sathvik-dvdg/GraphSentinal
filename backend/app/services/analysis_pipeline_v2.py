@@ -22,8 +22,7 @@ WHAT THIS PATH DOES AND DOES NOT DO
             reported for inspection only.
 
   does NOT  read the node head. `WindowResult.detections` is node-level
-            (test binary F1 0.1407, PR-AUC below base rate for three of four
-            attack classes) and is discarded unread. Host-level attribution is
+            (test binary F1 0.4475) and is discarded unread. Host-level attribution is
             not a claim this backend makes.
 
   does NOT  install SDN rules. `SDNTranslator` stays dry_run=True.

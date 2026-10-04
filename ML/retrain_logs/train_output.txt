@@ -1,0 +1,93 @@
+device: cuda
+RESUME: loading cached graphs from graphs_flood4_episode_w60_pm1-7.pt
+
+train node class counts: {'BENIGN': 141554, 'Volumetric_Flood': 150, 'PortScan': 26, 'BruteForce': 156, 'Botnet': 129}
+train edge class counts: {'BENIGN': 821541, 'Volumetric_Flood': 177559, 'PortScan': 111113, 'BruteForce': 5368, 'Botnet': 995}
+
+model: 654,851 trainable parameters
+memory: {"heavy_used": 0, "heavy_capacity": 196608, "tail_capacity": 65536, "subnet_capacity": 16384, "bytes": 71303168, "tracked_ips": 0}
+checkpoint selection: edge_macro_f1
+epoch   1 | loss  1.0705 | macroF1 0.2007 | edgeF1 0.1774 | PR-AUC 0.0458 | BENI=0.99 Volu=0.02 Port=0.00 Brut=0.00 Botn=0.00  *best
+epoch   2 | loss  0.6985 | macroF1 0.1968 | edgeF1 0.1774 | PR-AUC 0.0714 | BENI=0.98 Volu=0.00 Port=0.00 Brut=0.00 Botn=0.00
+epoch   3 | loss  0.5957 | macroF1 0.1778 | edgeF1 0.4499 | PR-AUC 0.0768 | BENI=0.87 Volu=0.00 Port=0.00 Brut=0.00 Botn=0.02  *best
+epoch   4 | loss  0.3193 | macroF1 0.1652 | edgeF1 0.5008 | PR-AUC 0.1021 | BENI=0.41 Volu=0.37 Port=0.03 Brut=0.00 Botn=0.02  *best
+epoch   5 | loss  0.2260 | macroF1 0.1688 | edgeF1 0.5092 | PR-AUC 0.0732 | BENI=0.70 Volu=0.11 Port=0.01 Brut=0.00 Botn=0.02  *best
+epoch   6 | loss  0.0822 | macroF1 0.2171 | edgeF1 0.4573 | PR-AUC 0.0495 | BENI=0.78 Volu=0.20 Port=0.08 Brut=0.00 Botn=0.03
+epoch   7 | loss  0.0348 | macroF1 0.1474 | edgeF1 0.4629 | PR-AUC 0.0272 | BENI=0.70 Volu=0.00 Port=0.01 Brut=0.00 Botn=0.03
+epoch   8 | loss  0.0102 | macroF1 0.2112 | edgeF1 0.3657 | PR-AUC 0.0605 | BENI=0.99 Volu=0.00 Port=0.04 Brut=0.00 Botn=0.03
+epoch   9 | loss  0.0051 | macroF1 0.2104 | edgeF1 0.3718 | PR-AUC 0.0961 | BENI=0.99 Volu=0.00 Port=0.04 Brut=0.00 Botn=0.02
+epoch  10 | loss  0.0024 | macroF1 0.2193 | edgeF1 0.3713 | PR-AUC 0.1083 | BENI=0.99 Volu=0.00 Port=0.10 Brut=0.00 Botn=0.00
+epoch  11 | loss  0.0024 | macroF1 0.2249 | edgeF1 0.3740 | PR-AUC 0.0979 | BENI=0.99 Volu=0.00 Port=0.11 Brut=0.00 Botn=0.02
+epoch  12 | loss  0.0020 | macroF1 0.2360 | edgeF1 0.4338 | PR-AUC 0.1035 | BENI=0.99 Volu=0.04 Port=0.14 Brut=0.00 Botn=0.01
+epoch  13 | loss  0.0014 | macroF1 0.2379 | edgeF1 0.4824 | PR-AUC 0.1058 | BENI=0.99 Volu=0.04 Port=0.14 Brut=0.00 Botn=0.01
+epoch  14 | loss  0.0013 | macroF1 0.2296 | edgeF1 0.4843 | PR-AUC 0.1031 | BENI=0.99 Volu=0.02 Port=0.13 Brut=0.00 Botn=0.00
+epoch  15 | loss  0.0015 | macroF1 0.2228 | edgeF1 0.4872 | PR-AUC 0.1121 | BENI=0.99 Volu=0.02 Port=0.09 Brut=0.00 Botn=0.01
+epoch  16 | loss  0.0014 | macroF1 0.2337 | edgeF1 0.5469 | PR-AUC 0.0976 | BENI=0.99 Volu=0.07 Port=0.11 Brut=0.00 Botn=0.00  *best
+epoch  17 | loss  0.0011 | macroF1 0.2273 | edgeF1 0.5305 | PR-AUC 0.1126 | BENI=0.99 Volu=0.02 Port=0.12 Brut=0.00 Botn=0.00
+epoch  18 | loss  0.0010 | macroF1 0.2307 | edgeF1 0.5565 | PR-AUC 0.1095 | BENI=0.99 Volu=0.04 Port=0.12 Brut=0.00 Botn=0.00  *best
+epoch  19 | loss  0.0009 | macroF1 0.2312 | edgeF1 0.5073 | PR-AUC 0.1281 | BENI=1.00 Volu=0.04 Port=0.12 Brut=0.00 Botn=0.00
+epoch  20 | loss  0.0009 | macroF1 0.2295 | edgeF1 0.5311 | PR-AUC 0.1134 | BENI=0.99 Volu=0.02 Port=0.13 Brut=0.00 Botn=0.00
+epoch  21 | loss  0.0008 | macroF1 0.2333 | edgeF1 0.5211 | PR-AUC 0.1222 | BENI=1.00 Volu=0.03 Port=0.14 Brut=0.00 Botn=0.00
+epoch  22 | loss  0.0009 | macroF1 0.2342 | edgeF1 0.5310 | PR-AUC 0.1124 | BENI=0.99 Volu=0.02 Port=0.13 Brut=0.00 Botn=0.02
+epoch  23 | loss  0.0008 | macroF1 0.2338 | edgeF1 0.5312 | PR-AUC 0.1236 | BENI=1.00 Volu=0.04 Port=0.14 Brut=0.00 Botn=0.00
+epoch  24 | loss  0.0007 | macroF1 0.2276 | edgeF1 0.5087 | PR-AUC 0.1176 | BENI=1.00 Volu=0.00 Port=0.14 Brut=0.00 Botn=0.00
+epoch  25 | loss  0.0006 | macroF1 0.2257 | edgeF1 0.5235 | PR-AUC 0.1271 | BENI=1.00 Volu=0.00 Port=0.13 Brut=0.00 Botn=0.00
+epoch  26 | loss  0.0006 | macroF1 0.2257 | edgeF1 0.5468 | PR-AUC 0.1257 | BENI=1.00 Volu=0.00 Port=0.13 Brut=0.00 Botn=0.00
+epoch  27 | loss  0.0005 | macroF1 0.2267 | edgeF1 0.5292 | PR-AUC 0.1270 | BENI=1.00 Volu=0.00 Port=0.14 Brut=0.00 Botn=0.00
+epoch  28 | loss  0.0005 | macroF1 0.2267 | edgeF1 0.5360 | PR-AUC 0.1217 | BENI=1.00 Volu=0.00 Port=0.14 Brut=0.00 Botn=0.00
+epoch  29 | loss  0.0005 | macroF1 0.2277 | edgeF1 0.5288 | PR-AUC 0.1248 | BENI=1.00 Volu=0.00 Port=0.14 Brut=0.00 Botn=0.00
+epoch  30 | loss  0.0004 | macroF1 0.2287 | edgeF1 0.5295 | PR-AUC 0.1259 | BENI=1.00 Volu=0.00 Port=0.15 Brut=0.00 Botn=0.00
+early stop at epoch 30
+
+using the in-memory best checkpoint (epoch 18)
+
+==================================================================
+  TEST RESULTS  (split protocol: episode)
+==================================================================
+  edge_accuracy                      0.9055
+  edge_binary_f1                     0.9961
+  edge_binary_pr_auc                 0.9997
+  edge_binary_roc_auc                0.9999
+  edge_classes_present               4.0000
+  edge_f1_BENIGN                     0.9988
+  edge_f1_Botnet                     0.0000
+  edge_f1_BruteForce                 0.0000
+  edge_f1_PortScan                   0.2598
+  edge_f1_Volumetric_Flood           0.9617
+  edge_macro_f1                      0.5551
+  edge_macro_f1_all_classes          0.4441
+  edge_pr_auc_BruteForce             0.0137
+  edge_pr_auc_PortScan               0.8260
+  edge_pr_auc_Volumetric_Flood       1.0000
+  edge_recall_at_fpr_0.001           0.9847
+  edge_recall_at_fpr_0.01            0.9999
+  edge_weighted_f1                   0.9126
+  node_accuracy                      0.9941
+  node_binary_f1                     0.4475
+  node_binary_pr_auc                 0.6596
+  node_binary_roc_auc                0.9899
+  node_classes_present               4.0000
+  node_f1_BENIGN                     0.9975
+  node_f1_Botnet                     0.0000
+  node_f1_BruteForce                 0.0000
+  node_f1_PortScan                   0.2273
+  node_f1_Volumetric_Flood           0.2979
+  node_macro_f1                      0.3807
+  node_macro_f1_all_classes          0.3045
+  node_pr_auc_BruteForce             0.0026
+  node_pr_auc_PortScan               0.0824
+  node_pr_auc_Volumetric_Flood       1.0000
+  node_recall_at_fpr_0.001           0.6571
+  node_recall_at_fpr_0.01            0.7429
+  node_weighted_f1                   0.9951
+
+  volumetric-feature ablation (delta, closer to 0 is more robust):
+    node_macro_f1                    +0.0098
+    edge_macro_f1                    -0.0024
+    node_binary_pr_auc               -0.0086
+    edge_binary_pr_auc               +0.0000
+EXPORT
+  ok weights      /content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models/weights.pt
+  ok model_card   /content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models/model_card.json
+  ok torchscript  /content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models/model.ts
+  ok onnx         None

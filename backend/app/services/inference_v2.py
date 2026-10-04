@@ -24,11 +24,13 @@ responses:
     budget, and the monitor polls on a 5 s timer.
   * production readiness.
   * host/node-level attack attribution. The node head's test binary F1 is
-    0.1407, PR-AUC below base rate for three of four attack classes. The node
-    head is never read; `WindowResult.detections` is deliberately discarded.
-  * Botnet detection. Test F1 0.0000, PR-AUC 0.0024, all 266 test edges
-    predicted BENIGN, unstable across identical reruns. A Botnet label that
-    reaches the API is documented as unreliable and never enforced on.
+    0.4475. The node head is never read; `WindowResult.detections` is
+    deliberately discarded.
+  * Botnet detection. 0 of 168 Botnet edges correct on the Phase 2b sample;
+    the test split holds none. A Botnet label that reaches the API is
+    documented as unreliable and never enforced on.
+  * per-class identification of PortScan or BruteForce. The model does not
+    separate the two (INTEGRATION.md section 3).
 """
 from __future__ import annotations
 
@@ -63,8 +65,8 @@ ALERTING_DISABLED_REASON = (
 #: Derived from measured numbers in ML/test_report.json, not from taste.
 UNRELIABLE_CLASSES: dict[str, str] = {
     "Botnet": (
-        "UNRELIABLE: test F1 0.0000, PR-AUC 0.0024, all 266 test edges predicted "
-        "BENIGN, unstable across identical reruns. Do not act on this label."
+        "UNRELIABLE: 0 of 168 Botnet edges correct on the Phase 2b sample; the "
+        "test split holds none. Do not act on this label."
     ),
 }
 

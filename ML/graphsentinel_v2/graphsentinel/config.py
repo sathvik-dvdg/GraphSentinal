@@ -250,6 +250,12 @@ class DataConfig:
     # i.e. the model is actively MISLED by them: they are what drives 490 of
     # 792 BruteForce edges into PortScan. Set this and retrain to test whether
     # a model that never saw them does better from the start.
+    #
+    # SUPERSEDED 2026-10-03: that checkpoint was trained under the misparsed
+    # clock. Retrained under the fix (epoch 18), the largest leave-one-out gain
+    # is +0.0192 (log_dt_since_pair), and zeroing these two now COSTS macro F1
+    # (log_total_bytes -0.0158, iat_burstiness -0.0024; ML/probes.json). The evidence for setting this knob is gone; it stays
+    # empty. See ML/TIMESTAMP_FIX.md, "F2 and F6 after the fix".
     drop_edge_features: List[str] = field(default_factory=list)
 
     # Volumetric rate features, kept but flagged so they can be ablated / dropped

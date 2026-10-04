@@ -1,0 +1,104 @@
+  sensitivity gate: passed -- 41 of 18,264 predictions (0.22%) move when all edge features are zeroed.
+  That share is this sample's RESOLUTION: 2b cannot show damage finer than it.
+  The gate sets no minimum. Any bar would be a judgement, not a fitted number --
+  the same reason no 'degraded after N failures' threshold was hard-coded. Read it.
+model loaded | classes ['BENIGN', 'Volumetric_Flood', 'PortScan', 'BruteForce', 'Botnet']
+poll 5s | idle_timeout 0s (OPTIMISTIC -- real re-counting is heavier)
+live path pins ['fwd_packet_ratio', 'byte_asymmetry'] -> 1.0, zeroes 8 others
+
+sample: 18,264 rows over 4259.0 min
+  BENIGN              16,590
+  Volumetric_Flood       897
+  PortScan               196
+  BruteForce             413
+  Botnet                 168
+  flow duration: median 0.0s  p95 105.6s  max 119.9s
+  79.1% of flows are shorter than one 5s poll -- see correction 7
+  timestamp resolution: 100.0% of starts fall on a whole minute, 100.0% on the 5s poll grid
+    -> this slice is stamped to the MINUTE. Sub-minute ordering inside it is file order,
+       not real time, and every start would have collided with a poll under the old rule.
+
+==============================================================================
+  SCORING
+==============================================================================
+  re-counting: 18,264 flows -> 55,106 submissions (3.0x); polls/flow median 1, max 23 (a 60s window holds 12)
+  84.4% of flows are submitted exactly once -- they are NOT re-counted at this idle timeout
+  baseline     58 windows |   18,264 submissions ->   18,264 original flows (1.0x, coverage 100.0%)
+  degraded     58 windows |   18,264 submissions ->   18,264 original flows (1.0x, coverage 100.0%)
+  recounted    62 windows |   55,106 submissions ->   18,264 original flows (3.0x, coverage 100.0%)
+  live         62 windows |   55,106 submissions ->   18,264 original flows (3.0x, coverage 100.0%)
+
+==============================================================================
+  COVERAGE -- which flows each variant actually scored
+==============================================================================
+  sample holds 18,264 flows. A window below min_edges_per_graph=8 is not scored at all,
+  and re-counting both densifies windows and shifts their boundaries.
+  variant           scored   coverage   in common
+  baseline          18,264    100.0%      18,264
+  degraded          18,264    100.0%      18,264
+  recounted         18,264    100.0%      18,264
+  live              18,264    100.0%      18,264
+
+  18,264 flows scored by all four variants (100.0% of the sample). The headline table
+  below uses only those, so coverage cannot move the delta.
+
+==============================================================================
+  EDGE F1 -- COMMON FLOWS ONLY (the headline)
+==============================================================================
+  Only flows every variant scored. This is the number to quote.
+  variant           BENIGN  Volumetric    PortScan  BruteForce      Botnet    MACRO  vs base
+  baseline          0.9940      0.9670      0.5208      0.9234      0.0000   0.6811  +0.0000
+  degraded          0.9946      0.9537      0.4065      0.9342      0.0000   0.6578  -0.0232
+  recounted         0.9934      0.9707      0.4887      0.9333      0.0000   0.6772  -0.0038
+  live              0.9941      0.9568      0.3984      0.9344      0.0000   0.6567  -0.0243
+
+==============================================================================
+  EDGE F1 -- ALL FLOWS EACH VARIANT SCORED
+==============================================================================
+  Secondary: differing coverage contributes to these deltas.
+  variant           BENIGN  Volumetric    PortScan  BruteForce      Botnet    MACRO  vs base
+  baseline          0.9940      0.9670      0.5208      0.9234      0.0000   0.6811  +0.0000
+  degraded          0.9946      0.9537      0.4065      0.9342      0.0000   0.6578  -0.0232
+  recounted         0.9934      0.9707      0.4887      0.9333      0.0000   0.6772  -0.0038
+  live              0.9941      0.9568      0.3984      0.9344      0.0000   0.6567  -0.0243
+
+==============================================================================
+  EDGE F1 -- PER SUBMISSION (what the model sees)
+==============================================================================
+  Diagnostic only: over-weights long flows, and flow length varies by class.
+  variant           BENIGN  Volumetric    PortScan  BruteForce      Botnet    MACRO  vs base
+  baseline          0.9940      0.9670      0.5208      0.9234      0.0000   0.6811  +0.0000
+  degraded          0.9946      0.9537      0.4065      0.9342      0.0000   0.6578  -0.0232
+  recounted         0.9966      0.9960      0.3757      0.9482      0.0000   0.6633  -0.0178
+  live              0.9969      0.9937      0.3096      0.9490      0.0000   0.6499  -0.0312
+
+==============================================================================
+  WHAT THIS MEANS
+==============================================================================
+  NOT comparable to test_report.json: that covers the full episode-split
+  test set (227,325 edges); this is a small contiguous slice, a different
+  population. The DELTAS are the output.
+
+  Read the COMMON FLOWS table. The all-flows table lets coverage move the
+  delta; the per-submission table over-weights long flows.
+
+  degraded    -0.0232   features the live path cannot supply
+  recounted   -0.0038   the 5s poll resubmitting each flow
+  live        -0.0243   both together -- what you would actually ship
+
+  The bands below are MY judgment calls, not measured cut-offs:
+  Small cost. Record it in INTEGRATION.md and continue -- with the
+  caveat that this is one contiguous slice, not the full test set.
+
+  Re-counting -0.0038 vs missing features -0.0232 -> fix the ingestion fields first.
+
+  IDLE_TIMEOUT is 0, so every re-counting number above is the
+  OPTIMISTIC case. Real entries linger past the flow with frozen
+  counters and a growing duration. Set IDLE_TIMEOUT from
+  ovs_dump_flows.txt and re-run.
+  In particular a sub-poll flow is submitted once here, so short-lived
+  classes -- PortScan above all -- are not re-counted AT ALL in this
+  run. Do not read their small delta as resilience (correction 7).
+
+  saved -> /content/gs_stage/ML/phase2b_results.json
+
