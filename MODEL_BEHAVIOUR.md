@@ -53,8 +53,19 @@ Volumetric_Flood 102 and PortScan 68 below floor, Botnet 1 suppressed. **No corr
 PortScan prediction reached its 0.85 floor** (0 of 68; p50 0.631) — reported, not
 adjusted.
 
+**Unverified link: the backend's own ingestion path.** The result above was
+obtained by sending the sample to the inference service directly, with the
+backend's policy. It verifies the loop **from the inference service outward**. The
+path a real flow takes — OVS → the backend's monitor → the provenance gate → the
+v2 client → rules accepted by the backend — has **not been exercised end to end**
+with the installed model: the monitor admits OVS flows only, and the machine these
+measurements were made on has no Mininet. Each stage is covered by tests
+(`backend/tests/test_v2_provenance_gate.py`, `backend/tests/test_v2_rule_wiring.py`);
+the chain as a whole is not. It needs one Mininet run on Linux or WSL2
+(`RUN_GUIDE.md` §11).
+
 What may be said about mitigation: rule generation under a validated policy works
-end to end **in dry-run**. Nothing has been installed on a switch, the allowlist
+end to end **in dry-run**, verified at the service boundary. Nothing has been installed on a switch, the allowlist
 does not yet cover gateways, DNS and the controller, and no rule has been validated
 against a controller. "Self-healing" of live traffic is **not** demonstrated.
 
@@ -551,13 +562,17 @@ output of `ML/GraphSentinel_Training.ipynb`.*
   traffic, **0.51% → 97.73%**.
 - That the installed model depends on its flow features where the pre-fix model did
   not — with §8's split-specificity and variance caveats attached.
-- Rule generation under a validated policy, end to end in **dry-run** (§1): on the
+- Rule generation under a validated policy, in **dry-run**, verified at the
+  inference-service boundary and not through the backend's monitor (§1): on the
   live sample, 12 rules, all on correctly classified flows (8 BruteForce, 4
   Volumetric_Flood). On the test split, offline, Volumetric_Flood is the one class
   with a correct path, at a false-action ceiling of **2 in 174,421 benign flows**.
 
 **Must not be claimed:**
 
+- That the loop has been demonstrated end to end. It is verified from the inference
+  service outward; the backend's ingestion path from a real OVS flow to an accepted
+  rule is a **named unverified link** (§1) until a Mininet run exercises it.
 - Zero-day detection. Nothing in this project measures unseen attack families.
 - Real-time performance. Latency has not been measured for the installed model.
 - Production readiness.

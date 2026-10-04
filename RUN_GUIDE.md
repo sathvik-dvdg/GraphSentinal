@@ -3,7 +3,7 @@
 **Start here.** Two ways to start the system: **Docker Compose** (§4, use this for
 the demo) and **manually, service by service** (§5, use this when you need to see
 a traceback). §6 is the same verification either way — one command, nine checks.
-Run it every time, and run it in front of the examiners.
+Run it every time, and run it in front of the examiners. Before a demo, read §12.
 
 Every command in §4–§6 was executed on 2026-10-04 on the development machine
 (Windows 10, PowerShell, Docker Desktop 29.6.1) and its output is pasted where it
@@ -36,9 +36,15 @@ them. For what it leaves out:
 `dry_run = True` everywhere. Rules are generated, gated, logged and counted;
 **nothing is installed on a switch.** See §9.
 
-**The v2 path is off by default.** `docker-compose.yml` sets
-`GS2_ENABLED: "false"` deliberately. §4 and §5 turn it on for the run; nothing in
-§6 beyond checks 1, 2, 4, 5 and 6 can pass with it off.
+**The v2 path is on by default under Compose** (`GS2_ENABLED: "true"` in
+`docker-compose.yml`, since 2026-10-04), so a fresh clone starts the path §6
+verifies. The manual path (§5) sets it per terminal. With it off, nothing in §6
+beyond checks 1, 2, 4, 5 and 6 can pass. To run the v1 path alone:
+`docker compose -f docker-compose.yml -f docker-compose.v1.yml up -d`.
+
+**One file a fresh clone still lacks: `ML/weights.pt`.** It is gitignored (72.7
+MiB) and cannot be committed; `INTEGRATION.md` §1 says how to fetch it. Without it
+the inference service never becomes healthy and checks 1, 2, 4–6, 8 and 9 fail.
 
 ---
 
@@ -103,15 +109,11 @@ docker compose build blockchain
 docker compose build backend
 docker compose build frontend
 
-# 2. turn the v2 path on for this run. This file is gitignored; never edit
-#    GS2_ENABLED in docker-compose.yml itself.
-Set-Content -Path docker-compose.override.yml -Encoding ascii -Value "services:`n  backend:`n    environment:`n      GS2_ENABLED: `"true`"`n"
-
-# 3. start everything from a clean state
+# 2. start everything from a clean state (the v2 path is on by default)
 docker compose down -v
 docker compose up -d
 
-# 4. watch it come up
+# 3. watch it come up
 docker compose ps
 ```
 
@@ -140,9 +142,11 @@ docker logs graphsentinel-inference
 docker compose down
 # stop and wipe volumes — a clean slate
 docker compose down -v
-# when finished
-Remove-Item docker-compose.override.yml
 ```
+
+The run recorded in §6 used a local `docker-compose.override.yml` to set
+`GS2_ENABLED: "true"`. That value is now the tracked default, so the resolved
+configuration is the same and no override file is needed.
 
 With the v2 path on and no Mininet, the backend log shows the provenance gate
 refusing the demo flows, once and then at most once a minute. That is a pass, not
@@ -274,11 +278,15 @@ sample flows:
 If your run differs from those numbers on the same sample, something is wrong with
 your setup — start with checks 4 and 8.
 
-**What check 9 is not.** The counts come from the inference service's response to
-the sample, sent directly. The backend logs the same counts (`rules admitted`,
-`withheld ... : reason`) only for flows that arrive through its monitor, and the
-monitor accepts OVS flows only. Seeing them in the backend log needs Mininet
-(`RUNNING.md` Tier 3), which this machine does not have.
+**What check 9 is not — the unverified link.** The counts come from the inference
+service's response to the sample, sent to it directly with the backend's policy.
+"The loop is closed" is therefore verified **from the inference service outward**.
+The backend's own ingestion path — OVS flow → monitor → provenance gate → v2
+client → rules accepted and logged by the backend — **has never been exercised end
+to end** with the installed model. The backend logs the same counts (`rules
+admitted`, `withheld ... : reason`) only for flows that arrive through its monitor,
+and the monitor accepts OVS flows only. Closing this needs one Mininet run
+(`RUNNING.md` Tier 3) on Linux or WSL2, which this machine does not have. See §11.
 
 ### The test suites
 
@@ -353,7 +361,7 @@ with that file, that file is right and this one needs fixing.
 | a build dies with `npm error Exit handler never called!` | memory. Build one image at a time (§4) |
 | `blockchain` exits with "Ganache did not start within 30s" | the machine was too busy at start-up. Wait, then `docker compose up -d` again |
 | `cannot stop container ... is zombie and can not be killed` | a Docker Desktop fault seen three times on this machine. `docker compose up -d --force-recreate <service>` |
-| check 3 or 7 fails, `ml_v2 = {'enabled': False, ...}` | the v2 path is off: the override file is missing (§4), or `GS2_ENABLED` is not set (§5) |
+| check 3 or 7 fails, `ml_v2 = {'enabled': False, ...}` | the v2 path is off: the stack was started with `docker-compose.v1.yml` or a local override sets `GS2_ENABLED` to false (§1), or `GS2_ENABLED` is not set (§5). `docker compose config` shows the resolved value |
 | check 1 passes but nothing else does, on the manual path | something else is answering on that port (8080 on this machine). Use 8081 |
 | inference never becomes healthy | `ML/weights.pt` is missing (it is gitignored); see `INTEGRATION.md` §1 |
 | service healthy but no verdicts through the backend | the provenance gate is refusing the batch — check `data_source` in `docker logs graphsentinel-backend` |
@@ -376,5 +384,38 @@ with that file, that file is right and this one needs fixing.
 - **`docker compose build` with no service name** (all four at once): it failed
   here, first on the lock file and then on memory. The four per-service builds in
   §4 are what succeeded.
-- **The backend's own admitted/withheld log lines** on real traffic (§6, "What
-  check 9 is not").
+- **UNVERIFIED LINK — the backend's ingestion path, end to end.** Checks 8 and 9
+  exercise the inference service with the backend's policy; they do not pass a
+  single flow through the backend's monitor. OVS flow → monitor → provenance gate
+  → v2 client → rules accepted by the backend has not been run with the installed
+  model, so the backend's own admitted/withheld log lines have never been observed
+  on real traffic (§6, "What check 9 is not"). It is the one link between this
+  project and a loop demonstrated end to end. It needs a Mininet run (`RUNNING.md`
+  Tier 3) on Linux or WSL2; it is scheduled for when WSL2 with Mininet and Open
+  vSwitch is available, and until then must be stated wherever the loop is claimed.
+
+---
+
+## 12. Before a demo
+
+This machine has 3.8 GB of RAM. Preparing this guide on it produced **two flaky
+failures** — npm crashing mid-build (`Exit handler never called!`) and Ganache
+missing its 30-second start limit — and **two session restarts mid-build**. Docker,
+Node, Python, Ganache and a browser do not fit comfortably in 3.8 GB. So, in order
+of value:
+
+1. **Record a successful run.** Screen-capture `docker compose up -d` through all
+   nine checks of `python ML\verify_stack.py`, with the output legible. If the
+   live run dies on memory, show the recording and carry on. No recording is
+   committed yet.
+2. **Build ahead, never during.** Run the four `docker compose build <service>`
+   commands of §4 the night before. On the day, `docker compose up -d` only:
+   nothing on the critical path should compile or download.
+3. **Close everything else.** The browser above all; the frontend needs one tab.
+
+**Build clean at least once before the day, on purpose.** `blockchain/package-lock.json`
+was out of sync from 2026-09-06 (commit `d135fce`) until it was fixed in `e7d6517`
+on 2026-10-04, and for that month `docker compose build` kept passing because
+Docker reused a cached `npm ci` layer. The break only showed when the cache was
+lost. A cached build proves the cache, not the repository:
+`docker compose build --no-cache <service>` is the check that a fresh clone builds.
