@@ -302,3 +302,88 @@ def test_b07_monitor_thread_emit_reaches_a_live_socket_client():
             client.disconnect()
         server.should_exit = True
         server_thread.join(timeout=10)
+
+
+def test_b06_row_that_can_never_resolve_leaves_the_queue():
+    """A row whose receipt lookup fails on every cycle must reach a terminal
+    state instead of matching the pending query for ever."""
+    from app.services.reconciliation import reconcile_blockchain_outbox
+
+    db = SessionLocal()
+    try:
+        stuck = Incident(
+            source_ip="10.0.0.210", attack_type="DDoS", threat_score=0.9, severity=9, is_blocked=True,
+            blockchain_tx="0x" + "cd" * 32, blockchain_incident_id=None, blockchain_status="pending",
+            data_source="manual",
+        )
+        db.add(stuck)
+        db.commit()
+        stuck_id = stuck.id
+    finally:
+        db.close()
+
+    adapter = MagicMock()
+    adapter._connected = True
+    adapter.client.w3.eth.get_transaction_receipt.side_effect = RuntimeError("node returned garbage")
+    max_retries = getattr(settings, "blockchain_max_retries", 5)
+
+    with patch("app.services.reconciliation.BlockchainAdapter.get_instance", return_value=adapter):
+        for _ in range(max_retries):
+            reconcile_blockchain_outbox(max_batch=500)
+        calls = adapter.client.w3.eth.get_transaction_receipt.call_count
+        reconcile_blockchain_outbox(max_batch=500)
+
+    db = SessionLocal()
+    try:
+        assert db.get(Incident, stuck_id).blockchain_status == "permanent_failure"
+    finally:
+        db.close()
+    looked_up = [c.args[0] for c in adapter.client.w3.eth.get_transaction_receipt.call_args_list[calls:]]
+    assert "0x" + "cd" * 32 not in looked_up, "the row was still in the pending queue after its last retry"
+
+
+# ─── The no-logic items: B28, B30, B31 ────────────────────────────────────────
+
+def test_b28_malformed_content_length_is_a_400_not_a_500(client, auth_headers):
+    resp = client.post(
+        "/api/v1/analyze", content=b'{"flows": []}',
+        headers={**auth_headers, "Content-Type": "application/json", "Content-Length": "not-a-number"},
+    )
+    assert resp.status_code == 400
+
+
+def test_b30_tx_hash_is_0x_prefixed_whatever_hexbytes_returns():
+    import sys
+    from pathlib import Path
+
+    sys.path.insert(0, str(Path(__file__).resolve().parents[2] / "blockchain" / "web3_bridge"))
+    from web3_client import hex0x
+
+    class Unprefixed:  # hexbytes >= 1.0
+        def hex(self):
+            return "ab" * 32
+
+    class Prefixed:  # hexbytes < 1.0
+        def hex(self):
+            return "0x" + "ab" * 32
+
+    assert hex0x(Unprefixed()) == hex0x(Prefixed()) == "0x" + "ab" * 32
+
+
+def test_b31_alert_triage_timestamps_carry_a_timezone(client, auth_headers):
+    db = SessionLocal()
+    try:
+        row = Incident(
+            source_ip="10.0.0.211", attack_type="DDoS", threat_score=0.9, severity=9, is_blocked=False,
+            data_source="manual", alert_status="resolved",
+            acknowledged_at=datetime(2026, 10, 4, 12, 0, 0), resolved_at=datetime(2026, 10, 4, 12, 5, 0),
+        )
+        db.add(row)
+        db.commit()
+        alert_id = f"alert-{row.id}"
+    finally:
+        db.close()
+
+    alerts = client.get("/api/v1/alerts?limit=500", headers=auth_headers).json()["alerts"]
+    mine = next(a for a in alerts if a["id"] == alert_id)
+    assert mine["acknowledged_at"].endswith("+00:00") and mine["resolved_at"].endswith("+00:00")

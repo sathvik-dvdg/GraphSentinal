@@ -190,6 +190,9 @@ def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
                 Incident.blockchain_status.is_(None)
                 | Incident.blockchain_status.notin_(("confirmed", "failed", "permanent_failure")),
             )
+            # Oldest first, so the batch is the same rows until they resolve
+            # rather than whichever ten the database returns.
+            .order_by(Incident.id.asc())
             .limit(max_batch)
             .all()
         )
@@ -238,6 +241,10 @@ def reconcile_blockchain_outbox(max_batch: int = 10) -> dict[str, Any]:
             except Exception as exc:
                 row.blockchain_retry_count = (row.blockchain_retry_count or 0) + 1
                 row.blockchain_last_error = str(exc)
+                # A row that fails every cycle must be able to leave the queue,
+                # or enough of them fill the batch for good.
+                if row.blockchain_retry_count >= max_retries:
+                    row.blockchain_status = "permanent_failure"
                 db.commit()
 
         # ── 2. Retry Unwritten Eligible Incidents (Atomic Claim Outbox) ──────
