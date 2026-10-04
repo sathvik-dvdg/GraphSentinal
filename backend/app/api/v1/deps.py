@@ -9,6 +9,7 @@ from time import monotonic
 
 from cachetools import TTLCache
 from fastapi import Depends, Header, HTTPException, Request, status
+from clerk_backend_api import authenticate_request, AuthenticateRequestOptions
 
 from app.config import settings
 from app.services import auth_service
@@ -32,19 +33,42 @@ def get_current_identity(
             return {"type": "api_key", "role": "operator", "identity": "backend_api"}
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
-    # 2. Session Bearer Token Authentication
-    token = auth_service.extract_bearer_token(authorization)
-    if token:
-        session = auth_service.validate_session(token)
-        if session:
-            return {
-                "type": "session",
-                "role": session.get("role", "operator"),
-                "identity": session.get("username", "operator"),
-            }
-        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Session expired or invalid")
+    # 2. Session Bearer Token Authentication (Clerk natively)
+    clerk_secret = os.environ.get("CLERK_SECRET_KEY")
+    if not clerk_secret:
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Clerk secret key not configured")
 
-    raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Authentication required")
+    try:
+        # Proper dependency injection: pass real FastAPI Request to Clerk SDK
+        state = authenticate_request(
+            request,
+            AuthenticateRequestOptions(secret_key=clerk_secret)
+        )
+    except Exception:
+        # Stop swallowing exceptions: fail closed
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid session token")
+
+    if not state.is_signed_in:
+        raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Not authenticated")
+
+    user_id = state.payload["sub"]
+    
+    # Check JWT public metadata first, fallback to cached API fetch
+    metadata = state.payload.get("public_metadata")
+    if metadata is not None:
+        role = metadata.get("role")
+    else:
+        role = auth_service.get_role_from_clerk(user_id, clerk_secret)
+
+    if role is None:
+        # Fail closed on role validation
+        raise HTTPException(status_code=status.HTTP_403_FORBIDDEN, detail="Role could not be determined")
+
+    return {
+        "type": "session",
+        "role": role,
+        "identity": user_id,
+    }
 
 
 def require_api_key(x_api_key: str | None = Header(default=None)) -> None:

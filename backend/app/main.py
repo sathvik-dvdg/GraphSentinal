@@ -106,9 +106,8 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(RequestCorrelationMiddleware)
 
-from app.api.v1 import alerts, analyze, audit, auth, blocked, blockchain, enforcement_actions, forensics, graph, healing, incidents, settings_route, stats, timeline  # noqa: E402
+from app.api.v1 import alerts, analyze, audit, blocked, blockchain, enforcement_actions, forensics, graph, healing, incidents, settings_route, stats, timeline  # noqa: E402
 
-app.include_router(auth.router, prefix="/api/v1", tags=["auth"])
 app.include_router(analyze.router, prefix="/api/v1", tags=["analyze"])
 app.include_router(graph.router, prefix="/api/v1", tags=["graph"])
 app.include_router(stats.router, prefix="/api/v1", tags=["stats"])
@@ -155,7 +154,7 @@ async def connect(sid, environ, auth=None):
         (bool(settings.backend_api_token) and secrets.compare_digest(api_key, settings.backend_api_token))
         or (bool(settings.admin_api_token) and secrets.compare_digest(api_key, settings.admin_api_token))
     )
-    if not (key_ok or auth_service.validate_session(token)):
+    if not (key_ok or auth_service.validate_session_for_socketio(token)):
         raise ConnectionRefusedError("Authentication required")
     await sio.emit("connected", {"sid": sid, "service": "GraphSentinel"}, to=sid)
 
