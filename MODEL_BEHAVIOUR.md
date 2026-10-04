@@ -62,6 +62,34 @@ runs behind this file. v1's incidents and chain writes happen in either mode.
 Every statement below that says "dry-run", "no rule is installed" or "nothing
 reaches a switch" is a statement about **v2 only**.
 
+**Why v1 is kept, and what it is kept as.** v1 is the only thing in the system
+that creates an incident, blocks a host or writes to the chain; v2 creates no
+incidents and is dry-run by design. Remove v1 and the system demonstrates neither
+self-healing nor a single write to the audit trail: the dashboard would show
+scores and nothing else. v2 cannot take over yet, for a reason that has nothing
+to do with its accuracy: it receives only flows tagged `data_source == "ovs"`, the
+provenance gate refuses everything else and refuses whole batches, and this
+machine has no Mininet. On the current setup v2 is offered no flow at all; it is
+exercised only by sending the committed sample to the service directly (§1.3).
+So v1 stays as the demonstration of the self-healing **mechanism** — detect →
+block → chain → dashboard — and **no claim is made about its detection quality**
+anywhere. §1.2 is why: v1 is weak with every feature present, not only on OVS
+input.
+
+**What would have to happen for v2 to replace it.** Future work, in this order.
+None of it is attempted here, and none of it should be before step 1:
+
+1. Mininet and OVS available, so the provenance gate admits real flows. The
+   Mininet run is therefore not only the unverified link of §1.3; it is the
+   prerequisite for v2 acting on anything.
+2. v2's **binary** decision drives incident creation and the chain write. The
+   binary edge figure (§4.1) supports that where the class head does not.
+3. The class chooses only the *action*, and only above its floor. That part
+   already holds: none of the 17,909 PortScan edges mislabelled BruteForce
+   reaches 0.85 (§6).
+4. `dry_run` stays true for the switch until the allowlist covers gateways, DNS
+   and the controller and a rule has been validated against a controller.
+
 What each object and field is called along the v1 path is mapped in
 `NAMING_MAP.md`; the defects found in that path are in `AUDIT_2026-10-04.md`.
 
@@ -182,8 +210,22 @@ against a controller. "Self-healing" of live traffic by the measured model is
 The class order is a contract, not a convenience: `apply_taxonomy()` mutates
 `CLASS_NAMES[:]` and `RAW_LABEL_MAP` in place, and `default_config()` resets them.
 
-**The host memory is untrained.** It is instantiated, bounded and exercised, but no
-training signal reaches it. It must not be described as learned state.
+**The host memory is untrained.** It is v2's only; v1 has no memory at all. It
+exists to carry per-host state **across** 60-second windows, so that a host that
+scanned in one window is still known in the next: it is the temporal half of the
+architecture. It is instantiated, bounded and exercised, but no training signal
+reaches it, so its `GRUCell` weights are at initialisation and what it injects is
+initialisation-valued state. It must not be described as learned state.
+
+What its ablation supports (§8), and no more:
+
+> The host memory is untrained. Disabling it changes macro F1 by +0.0188, with no
+> variance estimate, so the measurement does not establish that the memory harms
+> the model — only that it does not help it. Most of the larger pre-fix figure
+> (+0.1270) was the timestamp defect.
+
+The memory stays on. Every figure in this file was measured with it on; turning
+it off would invalidate them for a change the probe cannot justify.
 
 **Graph construction.** IP-as-node, flow-as-edge, 60-second non-overlapping
 windows. A window needs `min_edges_per_graph = 8` to become a graph; windows above
@@ -578,8 +620,10 @@ verdict with it: `no_edge_feat` is val **+0.0397** / test **−0.0265**, i.e.
 **split-specific**. The honest statement is that the pre-fix direction does not
 survive the fix, not that the effect cleanly reversed.
 
-**The host memory still costs a little.** +0.1270 → +0.0188: most of that headline
-was the clock, and the residual is consistent with memory being untrained.
+**The host memory does not help; the probe does not show that it harms.**
++0.1270 → +0.0188: most of that headline was the clock, and the residual is
+consistent with memory being untrained. Like leave-one-out below, this probe has
+no variance estimate (§2 has the sentence to quote).
 
 **On leave-one-out, be careful.** "Two misleading features became zero" is a
 **reporting-threshold artefact** — the probe only flags gains above +0.02, and
@@ -645,6 +689,13 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 17. **`pm_hours = [1, 7]` is unexercised at its edges** (§3.2).
 18. **The MIXED check is per file, the pipeline is pooled** (§3.2); they coincide
     only because no hour ≥ 13 exists anywhere.
+19. **The host memory has never run in the condition it was designed for.** Its
+    purpose is continuity across windows for the same hosts, which needs a
+    sustained stream of flows from a stable host population. Every measurement
+    here was made on offline CICIDS2017 windows or on the 58-window committed
+    sample, and in the live path the provenance gate has never admitted a flow
+    (§1.1). So the §8 ablation is not the last word on the memory: it measures an
+    untrained memory on input that gives it nothing to remember.
 
 ---
 

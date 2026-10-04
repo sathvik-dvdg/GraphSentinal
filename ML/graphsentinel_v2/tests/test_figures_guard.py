@@ -82,6 +82,16 @@ def _tracked() -> dict[str, str]:
     return files
 
 
+def test_every_owner_and_mirror_file_is_present_and_tracked():
+    """A deleted owner must fail by name, here, not as a FileNotFoundError in
+    whichever test happens to read it -- and ML/TIMESTAMP_FIX.md is read by none."""
+    files = _tracked()
+    missing = sorted(p for p in OWNERS | {MIRROR} | set(MIRRORS_MD) if p not in files)
+    assert not missing, (f"{missing} missing from the working tree or from the index. These own "
+                         "or mirror the measured figures: restore them (git log --full-history "
+                         "-- <path>), do not edit this list to match")
+
+
 def test_every_key_figure_is_in_its_owner():
     owner = (REPO / "MODEL_BEHAVIOUR.md").read_text(encoding="utf-8")
     missing = [md for md, _, _ in FIGURES if not _pattern(md).search(owner)]
