@@ -8,6 +8,7 @@ import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
 import EnforcementModeBadge from '../ui/EnforcementModeBadge'
+import DetectionPathBadge from '../ui/DetectionPathBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
 import DemoModeBadge from '../ui/DemoModeBadge'
@@ -96,6 +97,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
 
         <ConnectionModeBadge mode={connectionMode} />
         <EnforcementModeBadge mode={stats.enforcement_mode} />
+        <DetectionPathBadge />
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
         <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />
