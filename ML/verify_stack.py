@@ -26,6 +26,7 @@ import os
 import subprocess
 import sys
 import tempfile
+import urllib.error
 import urllib.request
 from pathlib import Path
 
@@ -37,8 +38,20 @@ results: list[tuple[str, bool, str]] = []
 
 
 def get(url: str):
-    with urllib.request.urlopen(url, timeout=120) as r:
-        return r.status, json.loads(r.read().decode("utf-8"))
+    """(status, body). A service that answers with an error, or does not answer,
+    is a failed check with its reason, never a traceback: without ML/weights.pt
+    the inference service answers 503 by design."""
+    try:
+        with urllib.request.urlopen(url, timeout=120) as r:
+            return r.status, json.loads(r.read().decode("utf-8"))
+    except urllib.error.HTTPError as exc:
+        try:
+            body = json.loads(exc.read().decode("utf-8"))
+        except Exception:  # noqa: BLE001
+            body = {}
+        return exc.code, body if isinstance(body, dict) else {}
+    except (urllib.error.URLError, OSError) as exc:
+        return None, {"detail": f"no answer: {exc}"}
 
 
 def check(name: str, ok: bool, detail: str) -> None:
@@ -55,7 +68,8 @@ def main() -> int:
     # 1. the inference service is OURS, not just something answering 200
     status, h = get(f"{INFER}/health")
     check("1 inference /health", status == 200 and "model_dir" in h and "memory" in h,
-          f"HTTP {status}, model_dir {h.get('model_dir')!r}")
+          f"HTTP {status}, model_dir {h.get('model_dir')!r}"
+          + (f" -- {h['detail']}" if h.get("detail") else ""))
     _, card = get(f"{INFER}/contract")
     check("2 inference /contract", card.get("contract_version") == "2.0.0",
           f"contract_version {card.get('contract_version')}")
@@ -75,12 +89,39 @@ def main() -> int:
     on_disk = hashlib.sha256(weights.read_bytes()).hexdigest() if weights.exists() else None
     check("4 weights identity", served == want == on_disk,
           f"served card {str(served)[:16]}, MANIFEST {want[:16]}, ML/weights.pt {str(on_disk)[:16]}")
-    check("5 parameter count", card.get("parameters") == 654851, f"{card.get('parameters'):,}")
+    params = card.get("parameters")
+    check("5 parameter count", params == 654851, f"{params:,}" if isinstance(params, int) else "not served")
     classes = (card.get("outputs") or {}).get("classes")
     check("6 class order", classes == CLASSES == (v2.get("contract") or {}).get("classes"),
           ", ".join(classes or []))
     check("7 dry_run", policy.get("dry_run") is True,
           f"backend policy.dry_run = {policy.get('dry_run')}")
+
+    if args.skip_sample:
+        print("  checks 8 and 9 skipped (--skip-sample)")
+    else:
+        out = Path(tempfile.gettempdir()) / "gs_live_rule_check.json"
+        env = dict(os.environ, PYTHONIOENCODING="utf-8", GS_LIVE_RULE_OUT=str(out),
+                   PYTHONPATH=os.pathsep.join([str(REPO / "backend"),
+                                               str(REPO / "ML" / "graphsentinel_v2")]))
+        run = subprocess.run([sys.executable, str(REPO / "ML" / "live_rule_check.py")],
+                             cwd=REPO, env=env, capture_output=True, text=True)
+        if run.returncode != 0:
+            check("8 policy digest echo", False, f"live_rule_check.py failed: {run.stderr[-300:]}")
+            check("9 rules admitted / withheld", False, "not run: the sample could not be scored (check 8)")
+        else:
+            r = json.loads(out.read_text(encoding="utf-8"))
+            echoed = r["windows_echoing_the_policy_digest"]
+            check("8 policy digest echo",
+                  echoed == r["windows"] and r["policy_sha256"] == policy.get("sha256")
+                  and r["dry_run_on_every_window"],
+                  f"{echoed} of {r['windows']} windows echoed {r['policy_sha256'][:16]}, "
+                  f"backend publishes {str(policy.get('sha256'))[:16]}")
+            wrong = [x for x in r["rules"] if x["true_label"] != [x["attack_class"]]]
+            check("9 rules admitted / withheld",
+                  sum(r["rules_admitted"].values()) > 0 and not wrong,
+                  f"admitted {r['rules_admitted']}, on a wrong or benign flow: {len(wrong)}; "
+                  f"withheld {r['withheld']}")
 
     # 10. v1 is the path that creates incidents and blocks hosts. Two stacks
     # can pass checks 1-9 identically while running v1 at different thresholds,
@@ -98,31 +139,6 @@ def main() -> int:
           f"running threshold {v1.get('threat_threshold')}, mode {v1.get('enforcement_mode')!r}; "
           f"tracked default {tracked['THREAT_THRESHOLD']}, {tracked['ENFORCEMENT_MODE']!r}"
           + ("" if same else " -- v1 is not running the tracked configuration (RUN_GUIDE.md section 3)"))
-
-    if args.skip_sample:
-        print("  checks 8 and 9 skipped (--skip-sample)")
-    else:
-        out = Path(tempfile.gettempdir()) / "gs_live_rule_check.json"
-        env = dict(os.environ, PYTHONIOENCODING="utf-8", GS_LIVE_RULE_OUT=str(out),
-                   PYTHONPATH=os.pathsep.join([str(REPO / "backend"),
-                                               str(REPO / "ML" / "graphsentinel_v2")]))
-        run = subprocess.run([sys.executable, str(REPO / "ML" / "live_rule_check.py")],
-                             cwd=REPO, env=env, capture_output=True, text=True)
-        if run.returncode != 0:
-            check("8 policy digest echo", False, f"live_rule_check.py failed: {run.stderr[-300:]}")
-        else:
-            r = json.loads(out.read_text(encoding="utf-8"))
-            echoed = r["windows_echoing_the_policy_digest"]
-            check("8 policy digest echo",
-                  echoed == r["windows"] and r["policy_sha256"] == policy.get("sha256")
-                  and r["dry_run_on_every_window"],
-                  f"{echoed} of {r['windows']} windows echoed {r['policy_sha256'][:16]}, "
-                  f"backend publishes {str(policy.get('sha256'))[:16]}")
-            wrong = [x for x in r["rules"] if x["true_label"] != [x["attack_class"]]]
-            check("9 rules admitted / withheld",
-                  sum(r["rules_admitted"].values()) > 0 and not wrong,
-                  f"admitted {r['rules_admitted']}, on a wrong or benign flow: {len(wrong)}; "
-                  f"withheld {r['withheld']}")
 
     failed = [n for n, ok, _ in results if not ok]
     print(f"\n{len(results) - len(failed)} of {len(results)} checks passed"
