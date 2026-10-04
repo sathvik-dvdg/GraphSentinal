@@ -25,7 +25,13 @@ WHAT THIS PATH DOES AND DOES NOT DO
             (test binary F1 0.4475) and is discarded unread. Host-level attribution is
             not a claim this backend makes.
 
-  does NOT  install SDN rules. `SDNTranslator` stays dry_run=True.
+  sends    the validated mitigation policy with every batch, and accepts the
+            rules it admits only when the service echoes the policy's digest.
+            Logs rules admitted and rules withheld, with each withholding's
+            reason.
+
+  does NOT  install SDN rules. Every rule is dry-run; none is passed to the
+            enforcement agent or the self-healing path.
 """
 from __future__ import annotations
 
@@ -63,9 +69,32 @@ def _verdict_payload(verdict, state: InferenceV2State) -> dict[str, Any]:
     return payload
 
 
+def _rules_for(outcome: WindowOutcome, state: InferenceV2State) -> tuple[list[dict], str | None]:
+    """The window's rules if they were made under THIS backend's policy, and a
+    reason when they are discarded. Logs admitted and withheld counts."""
+    span = f"[{outcome.window_start:.0f},{outcome.window_end:.0f}]"
+    expected = state.policy.wire_sha256() if state.policy else None
+    if outcome.policy_sha256 != expected:
+        reason = (f"service applied policy {str(outcome.policy_sha256)[:12]}, not this "
+                  f"backend's {str(expected)[:12]}; its {len(outcome.rules)} rule(s) discarded")
+        _log.error("v2 window %s: %s", span, reason)
+        return [], reason
+    if not outcome.dry_run:
+        # The service is never meant to run live. Refuse rather than relay.
+        _log.error("v2 window %s: service reported dry_run=False; rules discarded", span)
+        return [], "service reported dry_run=False"
+    _log.info("v2 window %s: %d rule(s) admitted by policy (dry run, not installed)",
+              span, len(outcome.rules))
+    for cls, by_reason in outcome.withheld_summary.items():
+        for reason, n in by_reason.items():
+            _log.info("v2 window %s: withheld %d %s flow(s): %s", span, n, cls, reason)
+    return [dict(r, dry_run=True) for r in outcome.rules], None
+
+
 def _window_payload(outcome: WindowOutcome, state: InferenceV2State) -> dict[str, Any]:
     gate = state.operating_points.binary_gate if state.operating_points else None
     flows = [_verdict_payload(v, state) for v in outcome.flows]
+    rules, rules_discarded = _rules_for(outcome, state)
 
     over_gate: int | None = None
     if gate is not None:
@@ -86,6 +115,12 @@ def _window_payload(outcome: WindowOutcome, state: InferenceV2State) -> dict[str
         "flows": flows,
         "flows_over_gate": over_gate,
         "latency_ms": round(outcome.latency_ms, 3),
+        # Mitigation, dry-run: what the policy admitted and what it held back.
+        "rules": rules,
+        "rules_admitted": len(rules),
+        "rules_withheld": outcome.withheld_summary,
+        "rules_discarded_reason": rules_discarded,
+        "dry_run": True,
     }
 
 
@@ -114,7 +149,8 @@ def score_flows(
             # identical to the one validated here, its labels are not scored.
             verify_service_contract(state, client.fetch_contract())
             client.contract_verified = True
-        outcomes = client.submit(flows, observed_at=observed_at)
+        outcomes = client.submit(flows, observed_at=observed_at,
+                                 policy=state.policy.wire() if state.policy else None)
     except ContractError as exc:
         _log.error("v2 service contract mismatch — NOT scoring: %s", exc)
         return {

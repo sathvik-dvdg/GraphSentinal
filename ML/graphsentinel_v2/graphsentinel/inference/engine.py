@@ -94,6 +94,13 @@ class WindowResult:
     #: so no graph could be built and nothing was scored. Silence and "nothing
     #: found" must not look the same to an operator.
     unscored: bool = False
+    #: {class: {reason: count}} for attack-classified flows that became no rule.
+    withheld_summary: Dict[str, Dict[str, int]] = field(default_factory=dict)
+    #: The first withheld flows, one record each (capped to bound the payload).
+    withheld: List[dict] = field(default_factory=list)
+    #: Digest of the policy the rules were made under; None = no policy given.
+    policy_sha256: Optional[str] = None
+    dry_run: bool = True
 
     def to_dict(self) -> dict:
         return {
@@ -104,6 +111,10 @@ class WindowResult:
             "latency_ms": self.latency_ms,
             "drift": self.drift,
             "unscored": self.unscored,
+            "withheld_summary": self.withheld_summary,
+            "withheld": self.withheld,
+            "policy_sha256": self.policy_sha256,
+            "dry_run": self.dry_run,
             "flows": [f.__dict__ for f in self.flows],
             "detections": [d.__dict__ for d in self.detections],
             "rules": [r.to_dict() for r in self.rules],
@@ -184,12 +195,17 @@ class InferenceEngine:
         return cls(model, cfg, edge_scaler, node_scaler, device=device, **kwargs)
 
     # ------------------------------------------------------------------
-    def ingest(self, flows: Sequence[dict] | pd.DataFrame) -> List[WindowResult]:
+    def ingest(self, flows: Sequence[dict] | pd.DataFrame,
+               policy: Optional[Dict[str, dict]] = None) -> List[WindowResult]:
         """Push flows in; get a result each time a window closes.
 
         Windows close on wall-clock, so a quiet minute still produces a (small)
         graph and a busy minute does not silently grow without bound.
+
+        ``policy`` is the caller's mitigation policy for the windows this call
+        closes. None means no policy: no rules, every attack flow withheld.
         """
+        self.translator.set_policy(policy)
         records = (
             flows.to_dict("records") if isinstance(flows, pd.DataFrame) else list(flows)
         )
@@ -207,7 +223,8 @@ class InferenceEngine:
             self._buffer.append(rec)
         return results
 
-    def flush(self) -> Optional[WindowResult]:
+    def flush(self, policy: Optional[Dict[str, dict]] = None) -> Optional[WindowResult]:
+        self.translator.set_policy(policy)
         return self._close_window() if self._buffer else None
 
     # ------------------------------------------------------------------
@@ -227,7 +244,8 @@ class InferenceEngine:
             # "scored, found nothing" -- otherwise a quiet-but-unscored minute
             # reads as a clean bill of health.
             return WindowResult(w_start, w_end, len(df), 0, latency_ms=0.0,
-                                unscored=True)
+                                unscored=True, policy_sha256=self.translator.policy_sha256,
+                                dry_run=self.translator.dry_run)
         data = graphs[0]
 
         drift = None
@@ -248,6 +266,7 @@ class InferenceEngine:
         detections = self._detections(out, data, node_ips, w_start, w_end)
 
         rules: List[FlowRule] = []
+        self.translator.withheld = []
         if "edge_probs" in out and "node_probs" in out:
             rules = self.translator.translate(
                 edge_probs=out["edge_probs"],
@@ -279,6 +298,10 @@ class InferenceEngine:
             drift=drift,
             latency_ms=(time.perf_counter() - t0) * 1000.0,
             flows=flows,
+            withheld_summary=self.translator.withheld_summary(),
+            withheld=self.translator.withheld[:50],
+            policy_sha256=self.translator.policy_sha256,
+            dry_run=self.translator.dry_run,
         )
 
     def _flow_verdicts(self, out, data, node_ips, df) -> List["FlowVerdict"]:

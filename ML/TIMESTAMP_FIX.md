@@ -393,7 +393,7 @@ reaches 0.85. Under this policy: one working mitigation path (Volumetric_Flood �
 meter), **at most** 2 false actions in 174,421 benign test edges (a ceiling of
 1.15 × 10⁻⁵), and **at most** 118 real attacks given the wrong action.
 
-**What actually generates rules today: not this policy.** Found 2026-10-04 while
+**What generated rules until 2026-10-04: not this policy.** Found while
 checking what `UNRELIABLE_CLASSES` does. (1) `UNRELIABLE_CLASSES` only annotates:
 a `reliability` note on each verdict, a `/health` listing, a boot warning. It
 suppresses nothing. (2) The backend builds and validates `MitigationPolicy` and
@@ -404,9 +404,12 @@ translator. (3) Rules are generated inside the inference service by
 DoSHulk): under the five-class contract Volumetric_Flood and BruteForce never
 fire, PortScan is `drop` at 0.85, Botnet `drop_and_quarantine` at 0.80. Those
 rules return in the HTTP response and the backend client reads only `flows`, so
-they are discarded, and the translator is `dry_run` in any case. No class has a
-wired enforcement path. Wiring the backend policy into rule generation, and
-suppressing classes there, is a design change for the project owner. **The class head is
+they are discarded, and the translator is `dry_run` in any case. **Wired the same day, on the
+project owner's decision, keeping dry-run:** the backend's policy now travels
+with every request, the six-class table is deleted, and rules are accepted only
+under the backend's own policy digest (INTEGRATION.md section 6). Live on the
+sample, 12 rules were admitted, all on correctly classified flows, and
+PortScan's floor was never reached (`ML/live_rule_check.json`). **The class head is
 unreliable, the confidence floors absorb almost all of that, and one class has a
 working end-to-end path.** "Volumetric_Flood → meter can never fire" is
 resolved for this model. No floor moves: 0.85 is the reason 17,909 wrong
@@ -684,7 +687,7 @@ fails, naming `C:\content`.
   run against the file as it stood before the fix: they flag lines 1376, 1401
   and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
 
-**The suite baseline is now 148 passed, 0 skipped** (2026-10-04). Earlier records say
+**The suite baseline is now 160 passed, 0 skipped** (2026-10-04, after the policy wiring). Earlier records say
 "98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
 split and graph construction tests. On the machine those records come from,
 the split code had therefore never run at all. With `pyarrow` installed they

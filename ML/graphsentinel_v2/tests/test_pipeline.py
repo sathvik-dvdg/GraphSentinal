@@ -524,7 +524,9 @@ def test_sdn_emits_actionable_rules():
     node_probs[:, 0] = 0.1
     edge_index = torch.tensor([[0, 0, 0, 1, 1, 2], [1, 2, 3, 2, 3, 3]])
 
-    t = SDNTranslator(require_node_corroboration=True)
+    t = SDNTranslator(require_node_corroboration=True,
+                      policy={"PortScan": dict(action="drop", idle=30, hard=300,
+                                               priority=45_000, min_conf=0.85)})
     rules = t.translate(
         edge_probs, node_probs, edge_index,
         node_ips=["10.0.0.1", "10.0.0.2", "10.0.0.3", "10.0.0.4"],
@@ -543,7 +545,9 @@ def test_sdn_emits_actionable_rules():
 
 
 def test_sdn_allowlist_blocks_enforcement():
-    t = SDNTranslator(allow_networks=["10.0.0.0/8"], require_node_corroboration=False)
+    t = SDNTranslator(allow_networks=["10.0.0.0/8"], require_node_corroboration=False,
+                      policy={"PortScan": dict(action="drop", idle=30, hard=300,
+                                               priority=45_000, min_conf=0.85)})
     edge_probs = torch.zeros(1, len(CLASS_NAMES))
     edge_probs[0, 2] = 0.99
     node_probs = torch.zeros(2, len(CLASS_NAMES))

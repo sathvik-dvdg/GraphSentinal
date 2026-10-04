@@ -10,22 +10,23 @@ The edge head gives exactly that, because every edge in the graph is one flow
 with its endpoints and its 5-tuple attached. This module turns scored edges
 into OpenFlow rules and, importantly, decides which ones are safe to install.
 
-Mitigation is chosen by attack class, because the correct response differs:
+THE POLICY IS NOT DEFINED HERE. Actions, floors, timeouts and priorities come
+from the caller: the backend's validated ``MitigationPolicy`` (one entry per
+class of the model card, an explicit ``alert_only`` for a class that must never
+be enforced), sent with every request. Without a policy the translator emits no
+rules at all. This module used to carry its own table keyed on the retired
+six-class taxonomy (DDoS, SSHBrute, DoSHulk, ...), under which Volumetric_Flood
+and BruteForce could never fire and Botnet was ``drop_and_quarantine`` at 0.80;
+it ran in the service while the backend's policy reached nothing. It is gone,
+and ``validate_policy`` refuses any class the live taxonomy does not have.
 
-  DDoS       -> rate-limit / meter the source, not a blanket drop; the victim
-                still needs to serve everyone else
-  PortScan   -> drop the scanner's traffic to the scanned host; short TTL,
-                scans are cheap to re-run from a new source
-  Botnet     -> block egress to the C2 destination for the whole subnet, and
-                quarantine the infected host -- one beacon means more hosts
-  SSHBrute   -> drop only the targeted service port from that source, so the
-                host stays reachable for everything else
-  DoSHulk    -> rate-limit at the application port
+Every attack-classified flow that does not become a rule is recorded as
+WITHHELD with its reason, so an operator sees what was held back and why.
 
 Safety rails, because an IDS with write access to the network is a
 denial-of-service tool if it is wrong:
 
-  * a confidence floor per class,
+  * a confidence floor per class (the policy's),
   * a corroboration rule (a flow's own endpoint must also look bad),
   * a never-block allowlist (gateways, DNS, the controller itself),
   * a hard cap on rules per interval,
@@ -34,6 +35,7 @@ denial-of-service tool if it is wrong:
 """
 from __future__ import annotations
 
+import hashlib
 import ipaddress
 import json
 import time
@@ -45,17 +47,41 @@ import torch
 
 from ..config import CLASS_NAMES
 
-# class -> (action, idle_timeout_s, hard_timeout_s, priority, min_confidence)
-MITIGATION_POLICY: Dict[str, dict] = {
-    "DDoS": dict(action="meter", idle=60, hard=600, priority=40_000, min_conf=0.90,
-                 meter_kbps=1_000),
-    "PortScan": dict(action="drop", idle=30, hard=300, priority=45_000, min_conf=0.85),
-    "Botnet": dict(action="drop_and_quarantine", idle=300, hard=3600, priority=50_000,
-                   min_conf=0.80),
-    "SSHBrute": dict(action="drop_port", idle=120, hard=1800, priority=48_000, min_conf=0.85),
-    "DoSHulk": dict(action="meter", idle=60, hard=600, priority=42_000, min_conf=0.90,
-                    meter_kbps=2_000),
-}
+#: An entry with this action is recognised, scored and reported, and never
+#: turned into a rule.
+ACTION_ALERT_ONLY = "alert_only"
+_REQUIRED = ("action", "idle", "hard", "priority", "min_conf")
+
+#: Why an attack-classified flow did not become a rule.
+WITHHELD_REASONS = ("no_policy", "class_suppressed", "below_floor", "allowlisted",
+                    "node_corroboration_absent", "rule_cap")
+
+
+class PolicyRejected(ValueError):
+    """The policy names a class the live taxonomy does not have, or is malformed."""
+
+
+def validate_policy(policy: Dict[str, dict]) -> Dict[str, dict]:
+    """Check a policy against the LIVE class list. Returns a copy."""
+    live = [c for c in CLASS_NAMES if c != "BENIGN"]
+    unknown = [c for c in policy if c not in live]
+    if unknown:
+        raise PolicyRejected(
+            f"policy names {unknown}, which are not attack classes of the live "
+            f"taxonomy {live}. A rule path keyed on another taxonomy is refused.")
+    for cls, entry in policy.items():
+        missing = [k for k in _REQUIRED if k not in entry]
+        if missing:
+            raise PolicyRejected(f"policy entry for {cls} lacks {missing}")
+    return {c: dict(e) for c, e in policy.items()}
+
+
+def policy_sha256(policy: Dict[str, dict]) -> str:
+    """Canonical digest of a policy. The backend computes the same digest over
+    what it sends and accepts rules only when the service echoes it."""
+    blob = json.dumps(policy, sort_keys=True, separators=(",", ":"))
+    return hashlib.sha256(blob.encode("utf-8")).hexdigest()
+
 
 DEFAULT_ALLOWLIST = ["255.255.255.255", "0.0.0.0"]
 
@@ -79,6 +105,7 @@ class FlowRule:
     table_id: int = 0
     cookie: int = 0
     meter_kbps: Optional[int] = None
+    policy_floor: float = 0.0          # the min_conf of the policy that admitted it
     window_start: float = 0.0
     window_end: float = 0.0
     reason: str = ""
@@ -140,11 +167,36 @@ class SDNTranslator:
     require_node_corroboration: bool = True
     node_threshold: float = 0.60
     dry_run: bool = True
+    #: The caller's policy. Empty means no rules: every attack-classified flow
+    #: is withheld with reason "no_policy".
+    policy: Dict[str, dict] = field(default_factory=dict)
     _cookie: int = 1
 
     def __post_init__(self):
         self._nets = [ipaddress.ip_network(n, strict=False) for n in self.allow_networks]
         self._allow = set(self.allowlist)
+        self.policy = validate_policy(self.policy)
+        #: Flows the last translate() held back, one record each.
+        self.withheld: List[dict] = []
+
+    def set_policy(self, policy: Optional[Dict[str, dict]]) -> None:
+        self.policy = validate_policy(policy or {})
+
+    @property
+    def policy_sha256(self) -> Optional[str]:
+        return policy_sha256(self.policy) if self.policy else None
+
+    def install(self, rules: List[FlowRule], writer) -> dict:
+        """The boundary between a rule and a switch.
+
+        In dry-run nothing reaches ``writer``. Outside dry-run this still
+        refuses: v2 enforcement is not enabled, and the allowlist does not yet
+        cover gateways, DNS and the controller. Enabling it is a code change
+        here, not a flag flip somewhere else.
+        """
+        if self.dry_run:
+            return {"dry_run": True, "installed": 0, "would_install": len(rules)}
+        raise RuntimeError("v2 rule installation is not enabled; dry_run must stay True")
 
     def _is_allowlisted(self, ip: str) -> bool:
         if ip in self._allow:
@@ -171,7 +223,12 @@ class SDNTranslator:
         window_start: float = 0.0,
         window_end: float = 0.0,
     ) -> List[FlowRule]:
-        """Score every flow, keep the ones that clear policy, emit rules."""
+        """Score every flow, keep the ones that clear policy, emit rules.
+
+        Every attack-classified flow that is not emitted is recorded in
+        ``self.withheld`` with its reason.
+        """
+        self.withheld = []
         ep = edge_probs.detach().cpu().numpy() if isinstance(edge_probs, torch.Tensor) else np.asarray(edge_probs)
         npb = node_probs.detach().cpu().numpy() if isinstance(node_probs, torch.Tensor) else np.asarray(node_probs)
         ei = edge_index.detach().cpu().numpy() if isinstance(edge_index, torch.Tensor) else np.asarray(edge_index)
@@ -198,23 +255,41 @@ class SDNTranslator:
 
         for e, cls_id, c in zip(idx.tolist(), pred.tolist(), conf.tolist()):
             cls = CLASS_NAMES[cls_id]
-            policy = MITIGATION_POLICY.get(cls)
-            if policy is None or c < policy["min_conf"]:
-                continue
-
             s_node, d_node = int(ei[0, e]), int(ei[1, e])
             src_ip, dst_ip = str(node_ips[s_node]), str(node_ips[d_node])
+            proto = int(protocols[e])
+            dport = int(dst_ports[e])
+            policy = self.policy.get(cls)
+
+            def withhold(reason: str) -> None:
+                self.withheld.append({
+                    "src_ip": src_ip, "dst_ip": dst_ip, "protocol": proto,
+                    "dst_port": dport, "attack_class": cls, "confidence": float(c),
+                    "policy_floor": None if policy is None else policy["min_conf"],
+                    "reason": reason})
+
+            if policy is None:
+                withhold("no_policy")
+                continue
+            if policy["action"] == ACTION_ALERT_ONLY:
+                withhold("class_suppressed")
+                continue
+            if c < policy["min_conf"]:
+                withhold("below_floor")
+                continue
             if self._is_allowlisted(src_ip) or self._is_allowlisted(dst_ip):
+                withhold("allowlisted")
                 continue
 
             n_conf = float(node_threat[s_node])
             if self.require_node_corroboration and n_conf < self.node_threshold:
                 # The flow looks bad but its own source does not. Alert, do not
                 # enforce -- one odd flow is not grounds for cutting a host off.
+                withhold("node_corroboration_absent")
                 continue
-
-            proto = int(protocols[e])
-            dport = int(dst_ports[e])
+            if len(rules) >= self.max_rules_per_window:
+                withhold("rule_cap")
+                continue
             # Dedup key: one rule per (src, dst, proto, port) per window.
             key = (src_ip, dst_ip, proto, dport if policy["action"] == "drop_port" else -1)
             if key in seen:
@@ -238,6 +313,7 @@ class SDNTranslator:
                     hard_timeout=policy["hard"],
                     cookie=self._cookie,
                     meter_kbps=policy.get("meter_kbps"),
+                    policy_floor=float(policy["min_conf"]),
                     window_start=window_start,
                     window_end=window_end,
                     reason=(
@@ -246,16 +322,23 @@ class SDNTranslator:
                     ),
                 )
             )
-            if len(rules) >= self.max_rules_per_window:
-                break
 
         return rules
+
+    def withheld_summary(self) -> Dict[str, Dict[str, int]]:
+        """{class: {reason: count}} for the last translate()."""
+        out: Dict[str, Dict[str, int]] = {}
+        for w in self.withheld:
+            by = out.setdefault(w["attack_class"], {})
+            by[w["reason"]] = by.get(w["reason"], 0) + 1
+        return out
 
     # ------------------------------------------------------------------
     def emit(self, rules: List[FlowRule], path: Optional[str] = None) -> dict:
         payload = {
             "generated_at": time.time(),
             "dry_run": self.dry_run,
+            "policy_sha256": self.policy_sha256,
             "count": len(rules),
             "rules": [r.to_dict() for r in rules],
             "openflow": [r.to_openflow() for r in rules],

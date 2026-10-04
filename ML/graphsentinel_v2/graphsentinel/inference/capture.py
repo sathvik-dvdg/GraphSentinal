@@ -258,20 +258,24 @@ class ScapyLiveSource(FlowSource):
         self._stop = True
 
 
-def run_pipeline(source: FlowSource, engine, batch_size: int = 256, on_result=None):
-    """Glue: pull from a source, push into the engine, hand results to a callback."""
+def run_pipeline(source: FlowSource, engine, batch_size: int = 256, on_result=None,
+                 policy=None):
+    """Glue: pull from a source, push into the engine, hand results to a callback.
+
+    ``policy`` is the mitigation policy passed with every batch; without one
+    the engine makes no rules (see sdn.SDNTranslator)."""
     batch: List[dict] = []
     for rec in source.stream():
         batch.append(rec)
         if len(batch) >= batch_size:
-            for result in engine.ingest(batch):
+            for result in engine.ingest(batch, policy=policy):
                 if on_result:
                     on_result(result)
             batch = []
     if batch:
-        for result in engine.ingest(batch):
+        for result in engine.ingest(batch, policy=policy):
             if on_result:
                 on_result(result)
-    tail = engine.flush()
+    tail = engine.flush(policy=policy)
     if tail and on_result:
         on_result(tail)

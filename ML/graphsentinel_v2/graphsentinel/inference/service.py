@@ -1,7 +1,10 @@
 """
 HTTP inference microservice -- the real decoupling boundary.
 
-The backend POSTs flow records and receives detections plus OpenFlow rules. It
+The backend POSTs flow records WITH its validated mitigation policy and
+receives per-flow verdicts plus the rules that policy admits (dry-run), the
+flows it withheld and why, and the digest of the policy applied. Without a
+policy no rules are made. It
 never imports a model class, never learns a feature count, and does not care
 whether the model behind this endpoint is a 3-layer SAGE, a GATv2 with memory,
 or something not written yet.
@@ -35,6 +38,7 @@ except ImportError:  # pragma: no cover
 
 from ..config import Config
 from .engine import InferenceEngine
+from .sdn import PolicyRejected
 
 MODEL_DIR = os.environ.get("GRAPHSENTINEL_MODEL_DIR", "models/")
 _engine: Optional[InferenceEngine] = None
@@ -63,6 +67,12 @@ if _HAS_FASTAPI:
 
     class FlowBatch(BaseModel):
         flows: List[Dict[str, Any]]
+        #: The backend's mitigation policy, {class: {action, idle, hard,
+        #: priority, min_conf[, meter_kbps]}}. Absent = no rules.
+        policy: Optional[Dict[str, Dict[str, Any]]] = None
+
+    class FlushRequest(BaseModel):
+        policy: Optional[Dict[str, Dict[str, Any]]] = None
 
     app = FastAPI(
         title="GraphSentinel Inference",
@@ -95,13 +105,24 @@ if _HAS_FASTAPI:
     @app.post("/flows")
     def ingest(batch: FlowBatch):
         eng = get_engine()
-        results = eng.ingest(batch.flows)
-        return {"closed_windows": len(results), "results": [r.to_dict() for r in results]}
+        try:
+            results = eng.ingest(batch.flows, policy=batch.policy)
+        except PolicyRejected as exc:
+            raise HTTPException(422, f"policy rejected: {exc}")
+        return {"closed_windows": len(results), "results": [r.to_dict() for r in results],
+                "policy_sha256": eng.translator.policy_sha256,
+                "dry_run": eng.translator.dry_run}
 
     @app.post("/flush")
-    def flush():
-        res = get_engine().flush()
-        return {"result": res.to_dict() if res else None}
+    def flush(req: Optional[FlushRequest] = None):
+        eng = get_engine()
+        try:
+            res = eng.flush(policy=req.policy if req else None)
+        except PolicyRejected as exc:
+            raise HTTPException(422, f"policy rejected: {exc}")
+        return {"result": res.to_dict() if res else None,
+                "policy_sha256": eng.translator.policy_sha256,
+                "dry_run": eng.translator.dry_run}
 
     @app.get("/stats")
     def stats():

@@ -98,6 +98,15 @@ class WindowOutcome:
     unscored: bool
     flows: list[FlowVerdict] = field(default_factory=list)
     latency_ms: float = 0.0
+    #: Rules the backend's policy admitted, as the service made them. Dry-run:
+    #: nothing here is ever installed. Accepted only if `policy_sha256` is the
+    #: digest of the policy the backend sent (analysis_pipeline_v2 checks).
+    rules: list[dict[str, Any]] = field(default_factory=list)
+    #: {class: {reason: count}} for attack-classified flows that became no rule.
+    withheld_summary: dict[str, dict[str, int]] = field(default_factory=dict)
+    withheld: list[dict[str, Any]] = field(default_factory=list)
+    policy_sha256: str | None = None
+    dry_run: bool = True
 
     @classmethod
     def from_payload(cls, d: dict[str, Any]) -> "WindowOutcome":
@@ -111,6 +120,13 @@ class WindowOutcome:
             # NODE head and is deliberately never read.
             flows=[FlowVerdict.from_payload(f) for f in (d.get("flows") or [])],
             latency_ms=float(d.get("latency_ms") or 0.0),
+            rules=list(d.get("rules") or []),
+            withheld_summary={str(c): {str(r): int(n) for r, n in (by or {}).items()}
+                              for c, by in (d.get("withheld_summary") or {}).items()},
+            withheld=list(d.get("withheld") or []),
+            policy_sha256=d.get("policy_sha256"),
+            # Absent means an older service: treat as dry-run, never as live.
+            dry_run=bool(d.get("dry_run", True)),
         )
 
 
@@ -194,7 +210,8 @@ class InferenceClient:
         """
         return self._get("/contract")
 
-    def submit(self, flows: list[Any], observed_at: float | None = None) -> list[WindowOutcome]:
+    def submit(self, flows: list[Any], observed_at: float | None = None,
+               policy: dict[str, dict[str, Any]] | None = None) -> list[WindowOutcome]:
         """POST a batch of FlowRecords; return any windows that closed.
 
         An empty list of outcomes means "no window closed yet", NOT "nothing
@@ -216,7 +233,7 @@ class InferenceClient:
         if not mapped:
             return []
 
-        payload = self._post("/flows", {"flows": mapped})
+        payload = self._post("/flows", {"flows": mapped, "policy": policy})
         self._counters["flows_sent"] += len(mapped)
 
         outcomes = [WindowOutcome.from_payload(r) for r in (payload.get("results") or [])]
@@ -232,9 +249,9 @@ class InferenceClient:
                 )
         return outcomes
 
-    def flush(self) -> WindowOutcome | None:
+    def flush(self, policy: dict[str, dict[str, Any]] | None = None) -> WindowOutcome | None:
         """POST /flush — force-close the current partial window."""
-        payload = self._post("/flush", {})
+        payload = self._post("/flush", {"policy": policy})
         result = payload.get("result")
         if not result:
             return None

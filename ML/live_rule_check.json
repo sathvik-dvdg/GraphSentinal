@@ -1,0 +1,192 @@
+{
+  "what": "the wired mitigation policy on the Phase 2b sample, through the live inference service",
+  "measured_at_utc": "2026-10-04T07:43:22Z",
+  "sample": {
+    "path": "ML/testdata/cicids2017_sample.csv",
+    "sha256": "2655e288b9b3e2ed81fa21c6110819c3b77121a5e2830ee524e1caea0124e6c3",
+    "flows_sent": 18264
+  },
+  "service_contract_version": "2.0.0",
+  "policy_sha256": "d030e547ae90aafe6611b87adc6733d288a1669c7945102e61f8222c5c26a0b2",
+  "windows": 58,
+  "windows_echoing_the_policy_digest": 58,
+  "dry_run_on_every_window": true,
+  "rules_admitted": {
+    "BruteForce:drop_port": 8,
+    "Volumetric_Flood:meter": 4
+  },
+  "rules": [
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.9312,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.9359,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.88,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.8812,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.9062,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.8677,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.8697,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "BruteForce",
+      "action": "drop_port",
+      "confidence": 0.9007,
+      "policy_floor": 0.85,
+      "true_label": [
+        "BruteForce"
+      ]
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "confidence": 0.9556,
+      "policy_floor": 0.9,
+      "true_label": [
+        "Volumetric_Flood"
+      ]
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "confidence": 0.9464,
+      "policy_floor": 0.9,
+      "true_label": [
+        "Volumetric_Flood"
+      ]
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "confidence": 0.9462,
+      "policy_floor": 0.9,
+      "true_label": [
+        "Volumetric_Flood"
+      ]
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "confidence": 0.9516,
+      "policy_floor": 0.9,
+      "true_label": [
+        "Volumetric_Flood"
+      ]
+    }
+  ],
+  "withheld": {
+    "BruteForce": {
+      "below_floor": 131
+    },
+    "Volumetric_Flood": {
+      "below_floor": 102
+    },
+    "Botnet": {
+      "class_suppressed": 1
+    },
+    "PortScan": {
+      "below_floor": 68
+    }
+  },
+  "per_true_class": {
+    "Volumetric_Flood": {
+      "true_flows": 894,
+      "predicted_as": {
+        "Volumetric_Flood": 892,
+        "BENIGN": 2
+      },
+      "correct": 892,
+      "correct_conf_p50": 0.9451,
+      "policy_floor": 0.9,
+      "correct_at_or_above_floor": 862
+    },
+    "PortScan": {
+      "true_flows": 193,
+      "predicted_as": {
+        "PortScan": 68,
+        "Volumetric_Flood": 66,
+        "BruteForce": 55,
+        "BENIGN": 4
+      },
+      "correct": 68,
+      "correct_conf_p50": 0.6307,
+      "policy_floor": 0.85,
+      "correct_at_or_above_floor": 0
+    },
+    "BruteForce": {
+      "true_flows": 413,
+      "predicted_as": {
+        "BruteForce": 400,
+        "BENIGN": 10,
+        "Volumetric_Flood": 3
+      },
+      "correct": 400,
+      "correct_conf_p50": 0.8796,
+      "policy_floor": 0.85,
+      "correct_at_or_above_floor": 327
+    },
+    "Botnet": {
+      "true_flows": 168,
+      "predicted_as": {
+        "BENIGN": 168
+      },
+      "correct": 0,
+      "correct_conf_p50": null,
+      "policy_floor": 1.01,
+      "correct_at_or_above_floor": 0
+    }
+  },
+  "unmatched_or_ambiguous_verdicts": 6,
+  "note": "Dry run: no rule was installed. One rule covers a (source, destination, protocol) pair per window, so admitted rules are far fewer than flows above the floor. Small, 91%-benign slice: not the test split."
+}

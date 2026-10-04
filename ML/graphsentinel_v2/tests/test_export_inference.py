@@ -102,10 +102,18 @@ def test_engine_streams_and_emits_rules(artifacts, tmp_path):
         limit=4000,
     )
 
+    # A permissive policy over the LIVE class list, so rules are actually made
+    # and the checks below cannot pass vacuously (no policy = no rules).
+    from graphsentinel.config import CLASS_NAMES
+    policy = {c: dict(action="drop", idle=30, hard=300, priority=1, min_conf=0.0)
+              for c in CLASS_NAMES if c != "BENIGN"}
+    engine.translator.require_node_corroboration = False
+
     results = []
-    run_pipeline(src, engine, batch_size=512, on_result=results.append)
+    run_pipeline(src, engine, batch_size=512, on_result=results.append, policy=policy)
 
     assert results, "no windows closed"
+    assert sum(len(r.rules) for r in results) > 0, "a permissive policy produced no rules"
     assert any(r.n_hosts > 0 for r in results)
     total_flows = sum(r.n_flows for r in results)
     assert total_flows > 3000, f"only {total_flows} flows made it through"
@@ -121,6 +129,7 @@ def test_engine_streams_and_emits_rules(artifacts, tmp_path):
             assert of["match"]["ipv4_src"] and of["match"]["ipv4_dst"]
             assert of["hard_timeout"] > 0 and of["idle_timeout"] > 0
             assert rule.attack_class != "BENIGN"
+            assert rule.policy_floor == 0.0          # the floor came from the policy given
 
 
 def test_engine_reports_drift(artifacts, tmp_path):

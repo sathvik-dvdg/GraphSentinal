@@ -1,9 +1,16 @@
 # [WSL2]
 """Mitigation policy, keyed off the model card's class list.
 
-WHY THIS IS NOT THE PACKAGE'S `MITIGATION_POLICY`
+THIS IS THE ONLY MITIGATION POLICY.
 
-`graphsentinel.inference.sdn.MITIGATION_POLICY` is a module-level dict keyed on
+It is sent, in wire form (`MitigationPolicy.wire()`), with every request to the
+inference service, whose translator has no policy of its own and makes no rule
+without one. The service echoes the policy's digest; rules are accepted only
+when the echo matches (`analysis_pipeline_v2`). Rules stay dry-run.
+
+WHY THE PACKAGE'S TABLE WAS DELETED (2026-10-04)
+
+`graphsentinel.inference.sdn.MITIGATION_POLICY` was a module-level dict keyed on
 the OLD six-class taxonomy (`DDoS`, `PortScan`, `Botnet`, `SSHBrute`,
 `DoSHulk`). The live model uses the five-class `flood4` taxonomy
 (`BENIGN`, `Volumetric_Flood`, `PortScan`, `BruteForce`, `Botnet`). Measured
@@ -30,12 +37,13 @@ drift from the taxonomy again:
     explicit `alert_only` entry, never an absent key — a deliberate decision and
     a forgotten one must not look identical.
 
-The result is validated and reported at /health. It is NOT passed to any
-translator: the backend generates no rules (INTEGRATION.md section 6). The
-module global is never mutated.
+The result is validated, reported at /health, and sent to the translator with
+every request. The module global is never mutated.
 """
 from __future__ import annotations
 
+import hashlib
+import json
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -116,9 +124,22 @@ class PolicyError(RuntimeError):
 
 @dataclass(frozen=True)
 class MitigationPolicy:
-    """Validated, card-derived policy. `table` is what SDNTranslator consumes."""
+    """Validated, card-derived policy. `wire()` is what the translator receives."""
 
     table: dict[str, dict[str, Any]] = field(default_factory=dict)
+
+    #: The keys the translator reads. `rationale` is documentation and stays here.
+    WIRE_KEYS = ("action", "idle", "hard", "priority", "min_conf", "meter_kbps")
+
+    def wire(self) -> dict[str, dict[str, Any]]:
+        """The policy as sent to the inference service: no rationale, and
+        `meter_kbps` only where the entry has one."""
+        return {c: {k: e[k] for k in self.WIRE_KEYS if k in e} for c, e in self.table.items()}
+
+    def wire_sha256(self) -> str:
+        """Same canonical digest as graphsentinel.inference.sdn.policy_sha256."""
+        blob = json.dumps(self.wire(), sort_keys=True, separators=(",", ":"))
+        return hashlib.sha256(blob.encode("utf-8")).hexdigest()
 
     def for_class(self, class_name: str) -> dict[str, Any] | None:
         return self.table.get(class_name)
@@ -149,8 +170,8 @@ def build_policy(contract: ModelContract) -> MitigationPolicy:
         raise PolicyError(
             f"No mitigation policy entry for class(es) {missing} declared by "
             f"{contract.card_path}.\n"
-            "A class with no entry is silently dropped by SDNTranslator and can "
-            "never produce a rule. If non-enforcement is intended, add an explicit "
+            "A class with no entry can never produce a rule; the translator "
+            "withholds it as 'no_policy'. If non-enforcement is intended, add an explicit "
             f"{ACTION_ALERT_ONLY!r} entry — do not leave the key absent."
         )
 

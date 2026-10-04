@@ -715,14 +715,29 @@ reached 0.90 0.0% of the time, is the epoch-31 model on the v1 sample.)
 ## 6. Mitigation policy
 
 `app/services/mitigation_policy.py`, built from the card's class list at
-startup, validated, and reported at `/health`. **It is not passed to any
-translator** (corrected 2026-10-04; earlier versions of this document said it
-was): the backend generates no rules. Rules are generated inside the inference
-service by the package's own six-class `MITIGATION_POLICY` (table below), returned
-in the HTTP response, and discarded by the backend client, which reads only
-`flows`. No class has a wired enforcement path.
+startup, validated, reported at `/health`, and **the only source of actions and
+floors** (wired 2026-10-04, dry-run):
 
-The package's own `MITIGATION_POLICY` is keyed on the **old six-class taxonomy**
+1. The backend sends `MitigationPolicy.wire()` with every `/flows` and `/flush`
+   request.
+2. The service's `SDNTranslator` has no table of its own. Without a policy it
+   makes no rule; a policy naming a class outside the live taxonomy is refused
+   with HTTP 422.
+3. Every attack-classified flow that does not become a rule is returned as
+   withheld, with its reason: `class_suppressed`, `below_floor`, `allowlisted`,
+   `node_corroboration_absent`, `rule_cap`, or `no_policy`.
+4. The service echoes the digest of the policy it applied. The backend accepts
+   the rules only when the echo matches its own digest, and when the service
+   reports `dry_run=True`. It logs rules admitted and each withholding reason.
+5. No rule is installed. `SDNTranslator.install()` writes nothing in dry-run and
+   refuses outside it, and no v2 rule reaches `EnforcementAgent` or
+   `SelfHealingEngine` (`backend/tests/test_v2_rule_wiring.py`).
+
+Before 2026-10-04 the backend built this policy and passed it nowhere. Rules were
+made inside the service by the package's own six-class table (below), returned,
+and discarded by the backend. That table is deleted.
+
+The package's own `MITIGATION_POLICY` (deleted 2026-10-04) was keyed on the **old six-class taxonomy**
 and was measured against the live contract as:
 
 ```
@@ -752,13 +767,12 @@ The replacement enforces two invariants at startup, both fatal:
 "Deliberately not enforced" is an explicit `alert_only` entry, never an absent
 key, so a decision and an oversight cannot look the same.
 
-### What these floors would let through, if wired
+### What these floors let through
 
 The class head is unreliable (§3). The question that matters for enforcement is
-what clears each class's floor, and it was measured on test
-(`ML/split_composition.json`, part B; floors as in `mitigation_policy.py`, which
-nothing currently applies, see above). Edge-head floor only, so every wrong
-action below is **at most** that count:
+what clears each class's floor. **On the test split**, offline
+(`ML/split_composition.json`, part B; the edge-head floor only, so every wrong
+action is **at most** that count):
 
 | Test edges | Edges | Clearing their class's floor |
 |---|---:|---:|
@@ -777,6 +791,23 @@ does not hold for this model.
 
 **No floor moves.** 0.85 is why 17,909 wrong predictions are harmless. Botnet's
 1.01 is a **disabled rule**, not a threshold anyone should tune.
+
+**Live, on real flows** (`ML/live_rule_check.py` → `ML/live_rule_check.json`;
+the 18,264-flow Phase 2b sample through the rebuilt inference container):
+
+| | Result |
+|---|---|
+| Windows echoing the backend's policy digest | 58 of 58; dry run on every window |
+| Rules admitted (dry run) | 12, all on correctly classified flows: 8 BruteForce `drop_port`, 4 Volumetric_Flood `meter` |
+| Rules on benign or wrong-class flows | 0 |
+| Withheld | BruteForce 131 below floor, Volumetric_Flood 102 below floor, PortScan 68 below floor, Botnet 1 class suppressed |
+| Correct predictions reaching the floor | Volumetric_Flood 862 of 892 (0.90); BruteForce 327 of 400 (0.85); **PortScan 0 of 68 (0.85; p50 0.631)**; Botnet 0 of 168 |
+
+**PortScan's floor is never reached** on this sample, so its `drop` can never
+fire here. Reported, not adjusted. One rule covers a (source, destination,
+protocol) pair per window, which is why 862 flows above the Volumetric_Flood
+floor give 4 rules. Small, 91%-benign slice: BruteForce does well here and not
+on the test split (§3), the composition effect again.
 
 ### The confidence floors are unfitted
 
@@ -985,7 +1016,7 @@ curl -s localhost:8001/health | jq .ml_v2
 | Policy: every card class has an entry; every entry names a card class; `Botnet` is `alert_only` | ✅ verified |
 | `SDNTranslator().dry_run is True` | ✅ verified |
 | Package suite (`ML/graphsentinel_v2`, local, Windows) | ✅ **98 passed, 7 skipped, 0 failed**. All 7 skips are training-only dependencies (`pyarrow`, and two tests guarded as training-only) that the inference path doesn't need |
-| Backend suite, full (2026-10-04) | ✅ **227 passed, 3 skipped, 0 failed**, after the threshold test was pointed at the declared default (§8) |
+| Backend suite, full (2026-10-04) | ✅ **232 passed, 3 skipped, 0 failed**: the threshold test points at the declared default (§8); 5 new tests pin the policy wiring (§6) |
 | Backend suite, full, after the gate, poll status, compose and contract changes (2026-09-14) | ✅ **226 passed, 3 skipped, 1 failure that predates this work**. The 226 are the previous 208 plus 18 new tests: 7 provenance gate, 4 poll status, 7 service contract. The failure is `test_production_default_threshold_is_conservative_075`: it expects `0.75` but `backend/.env` sets `0.40`, it passes with `THREAT_THRESHOLD=0.75`, and nothing in this integration touches it |
 | **Retrained model loads inside the container on torch 2.4.0** | ✅ **verified 2026-10-04**: image rebuilt (Docker's data disk had been lost), python 3.12.15, torch `2.4.0+cpu`, torch_geometric 2.5.0, pandas 2.3.3, numpy 2.2.6. Weights sha256 matches `MANIFEST.json`, 654,851 parameters, class order matches, `dry_run=True`; a fixed 40-flow window scores 40 of 40, probabilities equal to torch 2.13 locally to 6 decimals |
 | Retrained model, inference service over HTTP | ✅ verified 2026-10-04: healthy after ~45 s, `/health` 200, `/contract` 2.0.0 with the card's class order |
@@ -1005,7 +1036,9 @@ curl -s localhost:8001/health | jq .ml_v2
 | **End-to-end on real OVS flows** | ❌ **blocked** — needs `ML/testdata/ovs_dump_flows.txt` |
 | **Retrained model installed** | ✅ 2026-10-04, after the container load. Epoch-31 files in `ML/prefix_epoch31/` |
 | **What the backend floors would let through** (§6) | ✅ measured on test: at most 2 of 389 benign-as-attack and at most 118 of 20,976 wrong-class edges clear their floors; Volumetric_Flood is the only enforceable class. Floors unchanged |
-| **Backend mitigation policy wired to rule generation** (§6) | ❌ **not wired.** Built and validated, applied by nothing. The service's rules come from the package's six-class table and are discarded by the backend. `UNRELIABLE_CLASSES` annotates and suppresses nothing |
+| **Backend mitigation policy wired to rule generation** (§6) | ✅ **wired, dry-run** (2026-10-04). The policy travels with every request; the service's six-class table is deleted; rules are accepted only under the backend's own digest; withholdings logged with reasons. Tests: `ML/graphsentinel_v2/tests/test_sdn_policy.py`, `backend/tests/test_v2_rule_wiring.py`, both failing without the wiring. Live: 58 of 58 windows echoed the digest; 12 rules, all on correct flows (`ML/live_rule_check.json`) |
+| **PortScan floor reachable** (§6) | ❌ **no.** 0 of 68 correct live predictions reach 0.85 on the sample; 0.0% on the test split. Reported, not adjusted |
+| **`UNRELIABLE_CLASSES`** | ⚠️ annotates only. With the policy now live, suppressing PortScan and BruteForce would mean something; proposed as its own change |
 | **PortScan split boundary** (§4) | ⚠️ **named limitation.** Minute 14:55 is in train, validation and test; validation is not independent of training for PortScan. Measurements queued for the next Colab pass |
 
 The rows marked ❌ are still open. The plumbing is verified end to end in the
