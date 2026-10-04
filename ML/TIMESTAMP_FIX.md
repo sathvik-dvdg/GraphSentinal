@@ -105,8 +105,21 @@ handoffs and no gap or overlap:
 | Thursday-Morning-WebAttacks | 08:59 → 12:59 | 08:59 → 12:59 |
 | Thursday-Afternoon-Infilteration | 13:00 → 17:04 | 01:00 → 05:04 |
 
-The single-file days do the same: Monday 08:55 → 17:01, Tuesday 08:53 → 17:00,
-Wednesday 08:42 → 17:10.
+The single-file days close a hole. Monday, Tuesday and Wednesday each hold, under
+the old parse, the hours {1, 2, 3, 4, 5, 8, 9, 10, 11, 12}: ten hours with
+nothing at 6 or 7. Shifting {1–5} by twelve gives {13–17}, which abuts {8–12}
+with no gap and no overlap:
+
+| Day | Old parse | Fixed |
+|---|---|---|
+| Monday | 01:00:01 → 12:59:58 | 08:55:58 → 17:01:34 |
+| Tuesday | 01:00 → 12:59 | 08:53 → 17:00 |
+| Wednesday | 01:00 → 12:59 | 08:42 → 17:10 |
+
+Under the old parse each of those working-hours captures has a silence from
+05:00 to about 08:45. Three independent days closing to a contiguous
+08:4x–17:0x is the tiling argument on three more days. (Measured twice, in Cell A
+on 2026-10-03 and again on 2026-10-04 with a recorded basis.)
 
 This does not depend on the business-hours assumption behind `pm_hours`. The
 fixed timestamps reconstruct one contiguous capture day per date. The old parse
@@ -218,112 +231,191 @@ this run from the preflight record in `PROVENANCE.json`, not from the card.
 Section 8 of the analysis gains a row for the retrain; the existing rows stay as
 they are, because the current numbers came from the cu128 run.
 
-## The retrain result (received 2026-10-03, not yet installed)
+## The retrain result (2026-10-03) and the second pass (2026-10-04)
 
-**Provenance.** Session `20261003T032216Z-9c2ab8`, bundle commit `0e2129d`
-(clean tree). Between that commit and `eb770ca`, the only change to the
-training package is the card's `framework` block (`export.py`). Training,
-preprocessing and evaluation code are the same. Weights sha256 `3db34022…`,
-preprocessing digest `ce104121…`. Best epoch 18 of 30 (early stop; 40
-configured).
+**Provenance.** Training: session `20261003T032216Z-9c2ab8`, bundle commit
+`0e2129d` (clean tree). Between that commit and `eb770ca`, the only change to
+the training package is the card's `framework` block (`export.py`). Weights
+sha256 `3db34022…`, preprocessing digest `ce104121…`. Best epoch 18 of 30 (early
+stop; 40 configured). Second pass: session `20261004T043634Z-73f4bd`, bundle
+`c3df7d6`; it trained nothing, and its weights, card, test report, threshold
+study and probes are byte-identical to the first zip's. It added
+`split_composition`, the regenerated sample and Phase 2b.
+
+**Cell A re-ran first, and reproduced 2026-10-03 exactly**: 2,830,743 rows, 0
+unparseable, 0 hours ≥ 13, 0 AM/PM tokens, 1,471,716 rows moved (960,315 in the
+training files), package and embedded copy agreeing on every row under both
+parses, no MIXED day. `preprocess.py` had not changed and the audit confirms it.
+**That verdict carries its recorded basis**; it is the one to cite.
 
 **Three row counts agree.** The audit's 960,315 moved rows against the
 loader's 960,304, and the audit's 1,841,857 training rows against the loader's
 1,841,846. Both differences are the same 11 rows: Wednesday labels that
 `RAW_LABEL_MAP` does not map and the loader drops.
 
-**Container load: BLOCKED, not failed.** Docker Desktop will not start on this
-machine (its WSL engine never answers; drive C: has 1.3 GB free). The load was
-run locally instead, which is **not** the container check: torch 2.13.0 /
-PyTorch Geometric 2.8.0 / Python 3.10. `from_artifacts` loads, the weights
-sha256 matches `MANIFEST.json`, there are 654,851 parameters, the class order
-matches, `dry_run` is true, and 40 of 40 synthetic flows are scored. Nothing is
-installed into `ML/` until the container step passes.
+**Container load: see the status line at the end of this section.**
 
-**Two readings that do not survive the artefacts.** Both are checked against
-the committed pre-fix files.
+### Window-level alerting is not comparable across the runs
 
-1. *Window-level alerting improved.* It cannot be compared across the two
-   runs. Pre-fix, the binary gate missed exactly 266 attack flows, and they are
-   exactly the 266 Botnet test edges (`edge_confusion`: every other attack class
-   is fully detected). At `min_flows = 1`, 54 of the 80 attack windows had
-   **zero** flows over the gate, so they held only Botnet traffic, which the
-   pre-fix model never detected: unalertable by construction. The pre-fix
-   window figure is dominated by them. Excluding them does not rescue the
-   comparison either, because the remaining populations (26 windows of 265,
-   against 35 of 207) differ in composition entirely. **The comparison supports
-   no claim in either direction**; the only direction it points is down. No
-   window-level comparison between the two runs is to appear in any document.
-2. *"The pre-fix rank cut sliced a scrambled ordering."* The fix moves each
-   afternoon file by exactly 12 hours. A uniform shift preserves the order
-   inside a block, and it is a whole number of 60 s windows. So for a class
-   that lives in one afternoon block, the rank cut selects the same rows under
-   both parses. The counts agree: 27,191 Volumetric_Flood test edges under
-   both, and 23,807 against 23,812 PortScan test edges (the
-   difference of 5 is not explained yet). What the fix does move is the **BENIGN** cut, which runs over the
-   pooled timeline. Its tail was Friday morning under the old parse (Friday
-   afternoon sat at 01:00 to 05:02) and is Friday afternoon under the fix.
-   Graphs are built per split from that split's rows only. So the clock decides
-   whether a test attack shares its window with benign traffic, and whether a
-   Botnet window holds the 8 flows needed to become a graph at all.
+Pre-fix, the binary gate missed exactly 266 attack flows, and they are exactly
+the 266 Botnet test edges (`edge_confusion`: every other attack class is fully
+detected). At `min_flows = 1`, 54 of the 80 attack windows had **zero** flows
+over the gate, so they held only Botnet traffic, which the pre-fix model never
+detected: unalertable by construction. Excluding them does not rescue the
+comparison, because the remaining populations (26 windows of 265, against 35 of
+207) differ in composition entirely. **The comparison supports no claim in
+either direction.** No window-level comparison between the two runs is to
+appear in any document.
 
-   Carried one step further, this is a single mechanism for the whole run.
-   Pre-fix, the latest-stamped BENIGN rows were Friday morning, not co-temporal
-   with the test attacks at 01:00 to 05:02, so test attack windows were nearly
-   pure attack. A pure-attack window is classifiable from structure alone
-   (fan-out, degree, density), with no flow feature read. Post-fix, the BENIGN
-   tail is the Friday-afternoon traffic captured alongside PortScan and DDoS,
-   and the windows are mixed. That would account for: the burst classes
-   collapsing while BENIGN and Volumetric_Flood barely move; F6 changing sign;
-   leave-one-out going from two misleading features to zero; PortScan holding
-   on validation (0.9140) and failing on test (0.2598); and Botnet's test rows
-   no longer reaching 8 flows a window. The reading it supports is **not** "a
-   leak was removed", for which there is no duplication evidence. It is: the
-   pre-fix test task was easier than the deployed task, because the misparse
-   separated test attacks from co-temporal benign traffic, and the post-fix
-   numbers measure the harder task.
+### Why the numbers moved: measured, two mechanisms
 
-   **Not yet measured.** The `split_composition` stage settles it. Its
-   prediction, recorded in the code before any run:
+**The pre-registered prediction is confirmed.** It was printed before Part A ran
+and is stored in `split_composition.json`. Test attack rows sharing a 60 s window
+with benign traffic of the same split:
 
-   > If the mechanism holds, the pre-fix share of test attack flows sharing a
-   > window with benign traffic is **low** and the post-fix share is
-   > **substantially higher**. If both shares are similar, the mechanism is
-   > wrong and the drop needs another explanation.
+| | Old parse | Fixed parse |
+|---|---:|---:|
+| Test attack rows | 52,062 | 52,187 |
+| Sharing a window with benign | **266 (0.51%)** | **51,003 (97.73%)** |
+| Validation attack rows sharing | 41,412 of 42,065 (98.45%) | **221 of 42,215 (0.52%)** |
 
-**Where PortScan went.** It was not missed: 17,909 of 23,812 PortScan test
-edges are predicted **BruteForce**, and BruteForce's 904 test edges are
-predicted PortScan. Binary separation is intact (binary F1 0.9961). That
-matters for the policy: BruteForce's rule is `drop_port` at 0.85. The
-`split_composition` stage counts how many of those wrong-class predictions
-clear their class's floor, as a count and a share.
+The validation row is the mirror image. **The post-fix model chose its
+checkpoint and fitted its operating points on almost-pure attack windows, and
+was tested on mixed ones.** Pre-fix it was the other way round. This is why
+PortScan is 99.6% above its gate on validation and 0.0% on test, minutes apart,
+and why fitted operating points do not transfer from validation to test in this
+run.
 
-**Class-conditional mitigation is not supported by the retrained model.** This
-does not wait on that count. The system is reliably right that something is an
-attack (binary F1 0.996) and unreliably wrong about which (macro-F1 0.4441), and
-the action is selected by the part that is wrong. A class head at PortScan F1
-0.26 choosing between `drop_port`, `meter` and isolation picks the wrong
-intervention most of the time it fires. The architecture the evidence supports
-is one conservative action gated on the binary decision, with class-conditional
-actions as future work. `mitigation_policy.py` is **not** changed: its floors do
-not move, and whether to keep the per-class table (with `dry_run=True` and this
-paragraph beside it) is the user's decision.
+The stage is validated against the retrain: its fixed-parse test counts (BENIGN
+174,421, Volumetric_Flood 27,191, PortScan 23,812, BruteForce 918, Botnet 266
+rows of which 0 graphable) equal `edge_class_counts` `[174421, 27191, 23812,
+918, 0]`, five of five.
 
-**What the write-up can claim.** No performance headline favours the fixed
-model, and the write-up should say so rather than look for one. What stands:
-binary detection is reliable (edge binary F1 0.996); the integrity evidence is
-the contribution (F6's sign change, and leave-one-out going from two misleading
-features to zero, show the post-fix model depends on real flow features); and
-class-conditional performance is poor and now honestly measured. The only
-side-by-side number is 0.7042 against **0.4441**. The node head's binary F1
-(0.14 to 0.45) is recorded with the same caveat as every cross-run comparison:
-it is measured on a recomposed test split.
+**Mechanism 1: the pooled BENIGN cut moved.** BENIGN is the only class drawn
+from every file, and it is cut by rank over the pooled timeline. Old-parse test
+BENIGN: 175,271 rows, all Friday-Morning, 08:59–12:59. Fixed: 174,421 rows,
+Friday-Afternoon-DDos 90,300 and -PortScan 84,121, 13:53–17:02. Graphs are built
+per split, so the test attack windows went from pure attack to mixed. A
+pure-attack window is classifiable from structure alone; a mixed one forces
+per-edge discrimination. Botnet is the same mechanism in reverse: its 266 test
+rows (11:57–12:59, Friday-Morning, moved by neither parse) shared their windows
+with the morning benign traffic before the fix (`graphable` 100%) and sit alone
+after it, about 4 flows a minute against the 8-flow floor (`graphable` 0%).
 
-**F4 stands independently of the clock.** A whole-block 12-hour shift cannot
-create or merge gaps between bursts, so the episode counts, and the rank-cut
-fallback for all four attack classes ("sizes too uneven", Botnet "only 2
-episodes"), are a property of the splitter under both parses. The clock is
-ruled out as an explanation; the evenness criterion in `_split_episode`
+**Mechanism 2: inside Monday, Tuesday and Wednesday the fix is a reordering.**
+An earlier version of this file said a 12-hour shift preserves order inside a
+block. That holds for the three afternoon-only files (Friday-DDos,
+Friday-PortScan, Thursday-Infilteration), where every row moves. Monday, Tuesday
+and Wednesday hold both blocks; sorted by time, the blocks swap places. Under
+the old parse the BruteForce split was therefore **not in time order**: old
+train ran Tue 02:09 → 09:41 in parse time, which is real 14:09 and 09:41, while
+old test was 10:10 → 10:30, real. The model trained on BruteForce flows from
+the afternoon and was tested on the morning, inside one campaign. Fixed: train
+09:17 → 14:22, val 14:34 → 14:43, test 14:55 → 15:11, in order. The same
+violation existed for BENIGN (old train's last row is Fri 01:39, real 13:39,
+from Friday-Afternoon-PortScan), which is easy enough to be unaffected.
+
+| Class | What the fix did | Test F1, before → after |
+|---|---|---|
+| PortScan, Volumetric_Flood | rows unchanged; test windows went pure → mixed | 0.98 → 0.26, 0.99 → 0.96 |
+| BruteForce | split was out of time order; now ordered | 0.55 → 0.00 |
+| Botnet | test windows fell below the 8-flow floor | measured 0.00 → unevaluable |
+| BENIGN | both, and robust to both | 0.9992 → 0.9988 |
+
+Per-class F1 here is not a property of the model alone (next paragraph), and
+these are the cross-run figures only to show which class moved, not a
+comparison to quote.
+
+**PortScan and BruteForce are one finding, not two.** On test, 17,909 of 23,812
+PortScan edges are predicted BruteForce (75%) and 904 of 918 BruteForce edges
+are predicted PortScan (98%). On validation, 581 of 582 BruteForce edges are
+predicted PortScan, which is the threshold study's "0 predicted, 582 true in
+validation". The model does not separate these two classes, and which of them
+appears to collapse depends on the window population of the split. Neither
+PortScan 0.2598 nor BruteForce 0.0000 is to be quoted as the model's per-class
+performance.
+
+### The split totals differ by parse: the dead zone
+
+Old-parse splits hold 1,556,540 rows, fixed-parse 1,551,098; BENIGN −5,802,
+BruteForce +360, every other class identical. `clean()` cannot cause this: its
+dedup key is the 5-tuple plus `t`, both parses map raw stamps one-to-one, and the
+pooled sort is stable, so the same rows survive per class under either parse
+(`test_clean_keeps_the_same_rows_per_class_under_both_parses`). Cleaning leaves
+1,612,793 rows: measured under the fixed parse (the training log), and the same
+under the old parse by that invariance, not by a separate measurement. The rows that reach no split are removed by
+**the split's dead zone**: `_apply_cuts` trims rows within
+`split_gap_seconds` (300 s) of each class's rank cuts, inner edges only. So:
+
+| | Old parse | Fixed parse |
+|---|---:|---:|
+| Cleaned | 1,612,793 | 1,612,793 |
+| In the three splits | 1,556,540 | 1,551,098 |
+| **Removed by the dead zone** | **56,253** | **61,695** |
+
+The difference, 5,442, is exactly 5,802 − 360. It moves only for the two
+classes whose cuts fall inside a file the fix reorders (BENIGN inside Friday,
+BruteForce inside Tuesday): there the cut lands in a stretch of different
+density. PortScan, Volumetric_Flood and Botnet are cut between files and days,
+which block swapping cannot reach, and their totals are identical: they are the
+control. The per-class purge counts are not in this run's output;
+`split_composition` records them (`_purge`) from the next pass.
+
+### Enforcement: the floors absorb the class head's errors
+
+An earlier version of this file said class-conditional mitigation is not
+supported by the retrained model. **That was too strong.** Part B measured what
+the SDN floors (`mitigation_policy.py`, unchanged) let through on test:
+
+| Test edges | Edges | Clearing their floor |
+|---|---:|---:|
+| True BENIGN predicted as an attack class | 389 | **2** (as BruteForce) |
+| True Volumetric_Flood predicted Volumetric_Flood | 27,191 | **22,268 (81.9%)**, p50 0.938 |
+| True attack predicted a different attack class | 20,976 | **118** (BruteForce scored as PortScan) |
+
+Of the 17,909 PortScan edges predicted BruteForce, p95 is 0.623 and **none**
+reaches 0.85. The deployed behaviour is: one working mitigation path
+(Volumetric_Flood → meter), 2 false actions in 174,421 benign test edges
+(1.15 × 10⁻⁵), and 118 real attacks given the wrong action. **The class head is
+unreliable, the confidence floors absorb almost all of that, and one class has a
+working end-to-end path.** "Volumetric_Flood → meter can never fire" is
+resolved for this model. No floor moves: 0.85 is the reason 17,909 wrong
+predictions are harmless. Botnet's 1.01 is a **disabled rule**, not a threshold.
+
+### Phase 2b on the new sample
+
+The generator fixed the v1 defect: 52 of 58 windows are MIXED. The sample is
+18,264 rows, 90.8% BENIGN; PortScan 196 rows and Botnet 168 are small, and their
+figures carry their denominators.
+
+- **The macro cost is almost all PortScan.** Common flows, baseline → live:
+  BENIGN 0.9940 → 0.9941, Volumetric_Flood 0.9670 → 0.9568, BruteForce 0.9234 →
+  0.9344 (up), **PortScan 0.5208 → 0.3984 (−0.1224)**, macro −0.0243. "Small
+  cost" holds at macro level only.
+- **Botnet is measured here and the answer is zero**: 0 of 168 true Botnet edges
+  correct, F1 0.0000 in all four variants. "Unevaluable" was a statement about
+  the test split, not the model.
+- "All 20 features zeroed: argmax changed on 41 of 18,264" is 0.22% on a
+  91%-benign slice and is **not** the model's dependence on flow features. The
+  full-test-split probes are the instrument for that (−0.0265).
+- `IDLE_TIMEOUT = 0`, so every re-counting figure is the optimistic case.
+
+### What the write-up can claim
+
+No performance headline favours the fixed model, and the write-up should say
+so. What stands: binary detection is reliable (edge binary F1 0.996); the
+integrity evidence is the contribution (the pre-registered 0.51% → 97.73%
+measurement, F6's change of sign, and leave-one-out going from two misleading
+features to zero); class-conditional performance is poor and now honestly
+measured, with the floors keeping it from becoming wrong actions. The only
+side-by-side number is 0.7042 against **0.4441** (five classes). The node
+head's binary F1 (0.14 → 0.45) carries the same caveat as every cross-run
+comparison: it is measured on a recomposed test split.
+
+**F4 stands independently of the clock.** Block swapping reorders bursts but
+cannot create or merge the gaps between them, so the episode counts, and the
+rank-cut fallback for all four attack classes, are a property of the splitter
+under both parses. The evenness criterion in `_split_episode`
 (`min(len(tr), len(va), len(te)) < 2% of the class`) is what to examine.
 
 ## A retrain invalidates the evidence chain outside `ML/`
@@ -510,7 +602,7 @@ fails, naming `C:\content`.
   run against the file as it stood before the fix: they flag lines 1376, 1401
   and 1439 (the leaks) and 1456 and 1464 (the patch and its bad restore).
 
-**The suite baseline is now 141 passed, 0 skipped** (2026-10-04). Earlier records say
+**The suite baseline is now 145 passed, 0 skipped** (2026-10-04). Earlier records say
 "98 passed, 7 skipped". The seven skips were the tests that need `pyarrow`: the
 split and graph construction tests. On the machine those records come from,
 the split code had therefore never run at all. With `pyarrow` installed they

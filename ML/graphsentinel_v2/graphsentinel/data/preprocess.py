@@ -299,7 +299,11 @@ def clean(df: pd.DataFrame, cfg: Config, verbose: bool = True) -> pd.DataFrame:
     df[feat_cols] = numeric
     del numeric
 
-    df = df.dropna(subset=feat_cols + ["Source IP", "Destination IP", "t"])
+    # .copy(): dropna returns a slice of the caller's frame, and the strip below
+    # writes to it. pandas warns that such a write may not reach the frame it
+    # is meant for, and a silent no-op here would leave padded IPs (duplicate
+    # nodes) that nothing downstream can tell from clean ones.
+    df = df.dropna(subset=feat_cols + ["Source IP", "Destination IP", "t"]).copy()
 
     # IP hygiene: CICIDS2017 has a handful of malformed/empty address cells.
     for col in ("Source IP", "Destination IP"):

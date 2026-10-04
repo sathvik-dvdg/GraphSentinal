@@ -832,6 +832,15 @@ def _stage_records(env: Env) -> dict:
     return {s: read_marker(env, s) for s in STAGES if read_marker(env, s)}
 
 
+def _edges_in_test(report: dict, cls: str) -> bool:
+    """Whether the test split held any edge of this class (confusion row sum)."""
+    from graphsentinel.config import CLASS_NAMES
+    conf = report.get("edge_confusion")
+    if not conf or cls not in CLASS_NAMES:
+        return True
+    return sum(conf[list(CLASS_NAMES).index(cls)]) > 0
+
+
 def stage_package(env: Env, cfg) -> Path:
     from graphsentinel.config import CLASS_NAMES
     from graphsentinel.data.preprocess import preprocessing_digest, preprocessing_settings
@@ -848,6 +857,8 @@ def stage_package(env: Env, cfg) -> Path:
         "ML/probes.json": L / "probes.json",
         "ML/split_composition.json": L / "split_composition.json",
         "ML/timestamp_audit.json": L / "timestamp_audit.json",
+        # The verdict carries the recorded basis -- the reason Cell A re-runs.
+        "ML/timestamp_audit_verdict.json": L / "timestamp_audit_verdict.json",
         "ML/phase2b_sensitivity.json": L / "phase2b_sensitivity.json",
         "ML/phase2b_results.json": L / "phase2b_results.json",
         "ML/testdata/cicids2017_sample.csv": R / "testdata" / "cicids2017_sample.csv",
@@ -877,10 +888,20 @@ def stage_package(env: Env, cfg) -> Path:
                             "ML/test_report.json")],
         "classes": list(card["outputs"]["classes"]),
         "contract_version": card["contract_version"],
+        # edge_macro_f1 averages over the classes PRESENT in test;
+        # edge_macro_f1_all_classes over all five. Only the second compares
+        # across runs whose test splits hold different classes.
         "headline": {k: metrics[k] for k in (
-            "edge_macro_f1", "edge_binary_f1", "edge_binary_pr_auc",
+            "edge_macro_f1_all_classes", "edge_macro_f1", "edge_classes_present",
+            "edge_binary_f1", "edge_binary_pr_auc",
             "edge_recall_at_fpr_0.001", "node_macro_f1") if k in metrics},
-        "per_class_edge_f1": {c: metrics.get(f"edge_f1_{c}") for c in card["outputs"]["classes"]},
+        # None, not 0.0, for a class with no test edges: an empty class is not
+        # a measured zero.
+        "per_class_edge_f1": {c: (metrics.get(f"edge_f1_{c}")
+                                  if _edges_in_test(report, c) else None)
+                              for c in card["outputs"]["classes"]},
+        "classes_without_test_edges": [c for c in card["outputs"]["classes"]
+                                       if not _edges_in_test(report, c)],
         "best_epoch": report.get("best_epoch"),
         "split_protocol": ("episode -- train and test can share a burst; these are "
                            "NOT novel-attack numbers"

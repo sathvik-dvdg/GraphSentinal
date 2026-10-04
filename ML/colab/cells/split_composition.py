@@ -69,15 +69,27 @@ for fix in (False, True):
     tag = "fixed_parse" if fix else "old_parse"
     t0 = time.time()
     df = pre.clean(pre.load_raw(c, verbose=False), c, verbose=False)
+    cleaned = df["Label"].astype(str).value_counts().to_dict()
     splits = dict(zip(("train", "val", "test"), pre.split(df, c, verbose=False)))
     del df
     part_a[tag] = {name: split_composition(p, W, MIN_EDGES)
                    for name, p in splits.items()}
+    # Rows the split's dead zone removed (_apply_cuts, split_gap_seconds around
+    # each class's rank cuts): cleaned rows that reach no split.
+    in_splits = {}
+    for p in splits.values():
+        for k, v in p["Label"].astype(str).value_counts().items():
+            in_splits[k] = in_splits.get(k, 0) + int(v)
+    part_a[tag]["_purge"] = {k: {"cleaned": int(n), "in_splits": in_splits.get(k, 0),
+                                 "purged": int(n) - in_splits.get(k, 0)}
+                             for k, n in sorted(cleaned.items())}
     del splits
     print(f"\n  -- {tag}  ({time.time() - t0:.0f}s)")
     print(f"  {'split':<6s}{'class':<18s}{'rows':>9s}  {'first':<16s}{'last':<16s}"
           f"{'w/ benign':>10s}{'graphable':>10s}  benign from")
     for name, comp in part_a[tag].items():
+        if name == "_purge":
+            continue
         for cls, r in comp.items():
             share = r.get("share_sharing_window_with_benign")
             src = ", ".join(f"{k.split('.')[0]}:{v:,}" for k, v in r["source_files"].items()) \
@@ -85,6 +97,8 @@ for fix in (False, True):
             print(f"  {name:<6s}{cls:<18s}{r['rows']:>9,}  {r['first']:<16s}{r['last']:<16s}"
                   f"{'' if share is None else f'{share:.1%}':>10s}"
                   f"{r['rows_in_graphable_windows'] / max(r['rows'], 1):>10.1%}  {src}")
+    print(f"  dead-zone purge (cleaned rows reaching no split): " + ", ".join(
+        f"{k} {v['purged']:,} of {v['cleaned']:,}" for k, v in part_a[tag]["_purge"].items()))
 
 
 # ------------------------------------------------------------- PART B -------

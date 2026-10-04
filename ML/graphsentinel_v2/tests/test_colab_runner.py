@@ -423,3 +423,76 @@ def test_sample_generator_writes_mixed_windows_from_source_rows(tmp_path, capsys
     assert mixed >= 5, out
     assert "NO USABLE WINDOW" in out          # this source has PortScan only
     assert not Path("C:/content").exists() or Path("/content").is_dir()
+
+
+def _flows(stamps, labels):
+    import pandas as pd
+    n = len(stamps)
+    return pd.DataFrame({
+        "Timestamp": stamps, "Label": labels,
+        "Source IP": [f" 10.0.0.{i % 5} " for i in range(n)],   # padded on purpose
+        "Destination IP": [f"10.0.1.{i % 3}" for i in range(n)],
+        "Source Port": [1000 + i for i in range(n)], "Destination Port": 80, "Protocol": 6,
+        **{c: 1.0 for c in ("Flow Duration", "Total Fwd Packets", "Total Backward Packets",
+                            "Total Length of Fwd Packets", "Total Length of Bwd Packets",
+                            "Fwd Packet Length Max", "Bwd Packet Length Max", "Flow IAT Mean",
+                            "Fwd IAT Total", "Bwd IAT Total", "SYN Flag Count",
+                            "RST Flag Count", "ACK Flag Count", "PSH Flag Count",
+                            "Flow Bytes/s", "Flow Packets/s")}})
+
+
+def _cleaned(raw, fix):
+    from graphsentinel.config import Config
+    from graphsentinel.data import preprocess as pre
+    card = json.loads((ML_DIR / "model_card.json").read_text(encoding="utf-8"))
+    cfg = Config.from_dict(card["config"])
+    cfg.data.fix_12h_clock, cfg.data.pm_hours = fix, [1, 7]
+    df = raw.copy()
+    df["Timestamp"] = pre._parse_timestamps(df["Timestamp"], fix_12h=fix, pm_hours=[1, 7])
+    df = df.sort_values("Timestamp", kind="mergesort")
+    df["t"] = df["Timestamp"].to_numpy(dtype="datetime64[s]").astype("int64")
+    sliced = df[df["Label"] != "never"]           # a slice, as callers pass one
+    return pre.clean(sliced, cfg, verbose=False)
+
+
+def test_clean_writes_its_strip_without_a_chained_assignment_warning():
+    import warnings
+    raw = _flows(["4/7/2017 9:00"] * 20, ["BENIGN"] * 20)
+    raw.loc[3, "Flow Duration"] = float("inf")      # dropna must DROP, as on real data
+    with warnings.catch_warnings():
+        warnings.simplefilter("error")
+        out = _cleaned(raw, fix=True)
+    assert not out["Source IP"].str.startswith(" ").any(), "the strip must reach the frame"
+
+
+def test_clean_keeps_the_same_rows_per_class_under_both_parses():
+    """The split totals differ between parses; clean() must not be why. Its
+    dedup key includes t, and both parses map raw stamps one-to-one, so the
+    duplicate groups -- and, the sort being stable, the row kept -- match."""
+    stamps = ["4/7/2017 9:00", "4/7/2017 2:09", "4/7/2017 2:09", "4/7/2017 10:10",
+              "4/7/2017 3:00", "4/7/2017 9:00"]
+    labels = ["BENIGN", "BruteForce", "BENIGN", "BruteForce", "BENIGN", "BruteForce"]
+    import pandas as pd
+    base = _flows(stamps, labels)
+    twin = base.copy()
+    twin["Label"] = labels[::-1]           # exact duplicates whose labels CONFLICT
+    raw = pd.concat([base, twin], ignore_index=True)
+    old = _cleaned(raw, fix=False)
+    new = _cleaned(raw, fix=True)
+    assert len(old) == len(new) == len(base)      # every twin was a duplicate
+    assert old["Label"].value_counts().to_dict() == new["Label"].value_counts().to_dict()
+
+
+def test_manifest_records_an_empty_class_as_none_not_zero(cr):
+    report = {"edge_confusion": [[5, 0, 0, 0, 0], [0, 3, 0, 0, 0], [0, 0, 2, 0, 0],
+                                 [0, 0, 0, 1, 0], [0, 0, 0, 0, 0]]}
+    from graphsentinel.config import Config
+    card = json.loads((ML_DIR / "model_card.json").read_text(encoding="utf-8"))
+    Config.from_dict(card["config"])                    # sets the flood4 class list
+    assert cr._edges_in_test(report, "PortScan") is True
+    assert cr._edges_in_test(report, "Botnet") is False
+
+
+def test_package_includes_the_verdict_with_its_basis(cr):
+    import inspect
+    assert '"ML/timestamp_audit_verdict.json"' in inspect.getsource(cr.stage_package)
