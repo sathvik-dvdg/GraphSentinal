@@ -51,11 +51,30 @@ Three services, no browser, no Vite, and all ten checks, since none touches the
 frontend. Record the terminal through `docker compose ps` and
 `python ML/verify_stack.py`. A person has to do this.
 
-### 4. The Mininet run
+### 4. On live OVS flows, v2's rules were on the wrong traffic
 
-The prerequisite for v2 ever acting on a flow, not only the last unverified link
-(`MODEL_BEHAVIOUR.md` §1.1, §1.3). Needs Linux or WSL2 with Mininet and OVS;
-`RUN_GUIDE.md` §11.
+The Mininet run happened on 2026-10-05 (see Closed) and the mechanism works. What
+it found is now the open item: of the rules v2 admitted on live flows, most were
+on benign HTTP fetches and none was on the flood (`MODEL_BEHAVIOUR.md` §1.3, §9
+item 21; `ML/live_loop_run.json`). One run, one traffic script, no variance.
+
+To turn that observation into a measurement, in this order:
+
+1. **Separate the two candidate causes.** The monitor submits the whole flow
+   table on every poll with cumulative counters, so one conversation is scored
+   once per poll; and an OVS dump cannot supply every feature the model was
+   trained on. Replay the committed capture
+   (`ML/retrain_logs/live_loop/dump_flows_run2.txt`) through `flow_parser` twice:
+   as polled, and with each conversation submitted once. If the wrong rules
+   survive de-duplication, the features are the cause.
+2. **Record ground truth beside the capture**, per conversation, written by the
+   traffic script as it sends, so the result is counted and not read off a log.
+3. **Repeat the run** at least three times before quoting any rate.
+
+Until then: no claim that v2's rules are right on live traffic, and `dry_run`
+stays true. The run needs about 2 GB of free memory; on this machine the WSL page
+cache had to be dropped first (`echo 3 > /proc/sys/vm/drop_caches`, as root) and
+the inference service segfaulted once at start without that.
 
 ### 5. B05's remaining window — a timeout before broadcast
 
@@ -72,6 +91,22 @@ adopts it if one exists. The contract accepts duplicates for one URI and
 unacceptable on a request path (audit B10), acceptable in the scheduled
 reconciler, and it can scan recent incidents only. This closes the window for any
 cause, not only the race between the timeout and the broadcast.
+
+### 12. The backend's v2 log lines are invisible under the default start
+
+`rule(s) admitted`, `withheld … : reason` and the new per-rule lines are INFO on
+the `graphsentinel.*` loggers, and nothing configures a handler for them, so a
+backend started as `RUN_GUIDE.md` §5 describes prints none of them. The live run
+needed `--log-config`. Either configure logging in `backend/app/main.py` or put
+the config file in the repository and name it in §5; it is a decision about what
+the default log should carry, so it is not made here.
+
+### 13. The monitor keeps nothing of a scored window
+
+`_score_v2` discards the rules and verdicts `score_flows` returns; only counters
+reach `/health`. The first live run could not say which flows its rules were on.
+The per-rule log lines added on 2026-10-05 are the only record. If rules are ever
+to drive anything, they need to be kept somewhere a person or a test can read.
 
 ### 6. A second `live_rule_check.py` run against the same service gives a different answer
 
@@ -119,6 +154,15 @@ left as they are; `README.md` says where the file lives and the guard requires
 ---
 
 ## Closed on 2026-10-05
+
+- **The Mininet run: the backend's ingestion path, end to end, on real OVS flows.**
+  Live, not replayed, in WSL2 with the OVS kernel datapath and the repository's
+  own topology and daemon, unmodified. No poll failed, the provenance gate
+  refused nothing, no window was unscored, and the backend logged its own admitted
+  and withheld lines. Evidence: `ML/retrain_logs/live_loop_run.txt`,
+  `ML/live_loop_run.json`, `ML/retrain_logs/live_loop/`. What the rules were made
+  on is open item 4. Open vSwitch, Mininet, hping3 and nmap are now installed in
+  this machine's Ubuntu WSL distribution; how to run it again is `RUN_GUIDE.md` §7.
 
 - **PortScan is `alert_only`**, floor unchanged; BruteForce stays enforceable.
   The decision, and that it suppresses less than the one first approved, is

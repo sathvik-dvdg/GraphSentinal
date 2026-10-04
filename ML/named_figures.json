@@ -532,6 +532,103 @@
           "3, 1, 2, 2 and 0 across the five hosts"
         ]
       }
+    },
+    "live_run_rules_admitted": {
+      "value": 13,
+      "what": "rules admitted in the one live run on real OVS flows, dry-run",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "rules_admitted"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "13 rules were admitted",
+          "11 of 13 rules"
+        ]
+      }
+    },
+    "live_run_rules_on_benign_fetches": {
+      "value": 10,
+      "what": "of those, on a benign HTTP fetch",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "rules_by_what_the_flow_was",
+        "benign_http_fetch"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "| a benign HTTP fetch | 10 |"
+        ]
+      }
+    },
+    "live_run_rules_on_fetch_replies": {
+      "value": 1,
+      "what": "of those, on the reply to a benign HTTP fetch",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "rules_by_what_the_flow_was",
+        "reply_to_benign_http_fetch"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "| the reply to a benign HTTP fetch | 1 |"
+        ]
+      }
+    },
+    "live_run_rules_on_bruteforce_shape": {
+      "value": 2,
+      "what": "of those, on the brute-force-shaped connections, under the wrong class",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "rules_by_what_the_flow_was",
+        "bruteforce_shaped_connections"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "| the brute-force-shaped connections, labelled Volumetric_Flood | 2 |"
+        ]
+      }
+    },
+    "live_run_rules_on_flood": {
+      "value": 0,
+      "what": "of those, on the flood",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "rules_by_what_the_flow_was",
+        "flood"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "| the flood | **0** |"
+        ]
+      }
+    },
+    "live_run_polls_ok": {
+      "value": 45,
+      "what": "polls the switch answered with flows, in the live run",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "polls",
+        "ok"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "45 polls answered and none failed"
+        ]
+      }
+    },
+    "live_run_windows_closed": {
+      "value": 4,
+      "what": "windows closed and scored in the live run",
+      "artefact": [
+        "ML/live_loop_run.json",
+        "windows_closed"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "4 windows closed and none was unscored"
+        ]
+      }
     }
   }
 }

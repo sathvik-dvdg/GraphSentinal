@@ -85,6 +85,15 @@ def _rules_for(outcome: WindowOutcome, state: InferenceV2State) -> tuple[list[di
         return [], "service reported dry_run=False"
     _log.info("v2 window %s: %d rule(s) admitted by policy (dry run, not installed)",
               span, len(outcome.rules))
+    # Which flows, under which policy. The count alone cannot be checked against
+    # the traffic that was on the switch: a rule on the flood and a rule on a
+    # benign fetch read the same. The monitor keeps nothing of a window but this
+    # log, so what a rule was made on has to be said here.
+    for r in outcome.rules:
+        _log.info("v2 window %s: rule %s/%s on %s -> %s:%s proto %s, confidence %.4f (floor %s), policy %s",
+                  span, r.get("attack_class"), r.get("action"), r.get("src_ip"), r.get("dst_ip"),
+                  r.get("dst_port"), r.get("protocol"), float(r.get("confidence") or 0.0),
+                  r.get("policy_floor"), str(expected)[:12])
     for cls, by_reason in outcome.withheld_summary.items():
         for reason, n in by_reason.items():
             _log.info("v2 window %s: withheld %d %s flow(s): %s", span, n, cls, reason)
@@ -94,6 +103,13 @@ def _rules_for(outcome: WindowOutcome, state: InferenceV2State) -> tuple[list[di
 def _window_payload(outcome: WindowOutcome, state: InferenceV2State) -> dict[str, Any]:
     gate = state.operating_points.binary_gate if state.operating_points else None
     flows = [_verdict_payload(v, state) for v in outcome.flows]
+    if not outcome.unscored:
+        predicted: dict[str, int] = {}
+        for f in flows:
+            predicted[f["attack_class"]] = predicted.get(f["attack_class"], 0) + 1
+        _log.info("v2 window [%.0f,%.0f]: scored %d flow(s) from %d host(s); predicted %s",
+                  outcome.window_start, outcome.window_end, outcome.n_flows, outcome.n_hosts,
+                  dict(sorted(predicted.items())))
     rules, rules_discarded = _rules_for(outcome, state)
 
     over_gate: int | None = None

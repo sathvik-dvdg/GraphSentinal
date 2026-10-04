@@ -1,0 +1,136 @@
+{
+  "what": "one live run of OVS -> enforcement daemon -> flow_parser -> monitor -> provenance gate -> v2 client -> rules logged by the backend; derived from ML/retrain_logs/live_loop_run.txt",
+  "route": "B: local WSL2, Mininet with the OVS kernel datapath, no Docker; live polling, not a replay",
+  "run": 2,
+  "labels": "by construction: the traffic script knows what it sent. Not a dataset.",
+  "polls": {
+    "ok": 45,
+    "ok_empty": 1,
+    "failed": 0
+  },
+  "batches_refused_non_ovs": 0,
+  "last_poll_state": "submitted",
+  "windows_closed": 4,
+  "windows_unscored": 0,
+  "flows_sent": 7368,
+  "flows_dropped_in_mapping": 0,
+  "policy_sha256": "e99290226e2d4ad9b8293ffae19bbf53c2bfc673dde11aae4abd9bcff1c8f717",
+  "dry_run": true,
+  "rules_admitted": 13,
+  "rules_by_what_the_flow_was": {
+    "benign_http_fetch": 10,
+    "reply_to_benign_http_fetch": 1,
+    "bruteforce_shaped_connections": 2,
+    "flood": 0,
+    "other": 0
+  },
+  "rules_by_class": {
+    "Volumetric_Flood": 13
+  },
+  "rules": [
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.7",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.10",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.7",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.10",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.4",
+      "dst_port": "22",
+      "what_it_was": "bruteforce_shaped_connections"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.4",
+      "dst_port": "22",
+      "what_it_was": "bruteforce_shaped_connections"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.1",
+      "dst_ip": "10.0.0.9",
+      "dst_port": "37996",
+      "what_it_was": "reply_to_benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    }
+  ]
+}

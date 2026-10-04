@@ -362,15 +362,14 @@ sample flows:
 If your run differs from those numbers on the same sample, something is wrong with
 your setup — start with checks 4 and 8.
 
-**What check 9 is not — the unverified link.** The counts come from the inference
-service's response to the sample, sent to it directly with the backend's policy.
-"The loop is closed" is therefore verified **from the inference service outward**.
-The backend's own ingestion path — OVS flow → monitor → provenance gate → v2
-client → rules accepted and logged by the backend — **has never been exercised end
-to end** with the installed model. The backend logs the same counts (`rules
-admitted`, `withheld ... : reason`) only for flows that arrive through its monitor,
-and the monitor accepts OVS flows only. Closing this needs one Mininet run
-(`RUNNING.md` Tier 3) on Linux or WSL2, which this machine does not have. See §11.
+**What check 9 is not.** The counts come from the inference service's response
+to the committed sample, sent to it directly with the backend's policy. They
+verify the loop **from the inference service outward, on that sample**. The
+backend's own ingestion path — OVS flow → monitor → provenance gate → v2 client →
+rules accepted and logged by the backend — was run once on live flows on
+2026-10-05, and there the admitted rules were on benign traffic
+(`MODEL_BEHAVIOUR.md` §1.3). Check 9 passing does not mean the rules are right on
+a live network. See §7 and §11.
 
 ### The test suites
 
@@ -393,11 +392,43 @@ The backend suite takes about four minutes here. `backend/requirements.txt` pins
 
 ## 7. Traffic from Mininet
 
-Linux or WSL2 only. **Not run for this guide**: Mininet and Open vSwitch are not
-installed in this machine's WSL. The tested procedure is `RUNNING.md` Tier 3;
-installation is `INSTALLATION_GUIDE.md`; the topology is
-`mininet/topologies/base_topology.py` and the scenarios are in
+Linux or WSL2 only. **Run once, on 2026-10-05** (`MODEL_BEHAVIOUR.md` §1.3,
+`ML/retrain_logs/live_loop_run.txt`). The longer procedure is `RUNNING.md` Tier 3;
+installation is `INSTALLATION_GUIDE.md`; the scenarios are in
 `MININET_ATTACK_SCRIPTS.md`.
+
+**What puts per-flow entries in the table.** `ovs-ofctl dump-flows` returns the
+flow table, not a list of traffic. The topology starts Mininet's `OVSController`,
+which is `ovs-testcontroller`: a reactive learning switch that installs one
+exact-match entry per conversation (`nw_src`, `nw_dst`, `tp_src`, `tp_dst`,
+`idle_timeout=60`) with the switch in `fail_mode: secure`. Without that controller
+the table holds one `NORMAL` rule and the backend sees no flows. The backend never
+runs `ovs-ofctl` itself: it asks `backend/scripts/enforcement_daemon.py` over TCP
+(`DAEMON_HOST`, `DAEMON_PORT`, `DAEMON_TOKEN`), and the daemon runs
+`sudo ovs-ofctl dump-flows <switch>`. The switch must be one of `s1`, `s2`, `s3`
+(the daemon's allowlist) and equal `ENFORCEMENT_SWITCH`. The 10.0.0.0/24 range is
+required only for v1's block and unblock, not for polling or for v2.
+
+**As run** (WSL2 Ubuntu, as root; the backend and inference service on Windows as
+in §5, plus a logging config, below):
+
+```bash
+apt-get install -y openvswitch-switch openvswitch-testcontroller mininet hping3 nmap
+systemctl stop openvswitch-testcontroller      # Mininet starts its own on 6653
+systemctl start openvswitch-switch
+python3 mininet/topologies/base_topology_headless.py          # terminal 1
+DAEMON_TOKEN=<the backend's> python3 backend/scripts/enforcement_daemon.py   # terminal 2
+```
+
+The daemon's `DAEMON_TOKEN` must be the backend's, or every poll fails with
+`Unauthorized`. WSL2 forwards `127.0.0.1:50051` to Windows, so the backend needs
+no change. To put traffic on the switch, run commands inside a host:
+`mnexec -a $(pgrep -f 'mininet:h2$') <command>`.
+
+**The backend's v2 lines are INFO and are not printed by default.** Nothing
+configures a handler for the `graphsentinel.*` loggers, so only WARNING and above
+appear. Start the backend with `--log-config` and a config that sets
+`graphsentinel` to INFO, or `rule(s) admitted` and `withheld` never show.
 
 The flow source is gated: the provenance allowlist admits `data_source == "ovs"`
 only, it fails closed, and it refuses a whole batch rather than part of one. A
@@ -475,7 +506,8 @@ with that file, that file is right and this one needs fixing.
 
 ## 11. Not executed for this guide
 
-- **Mininet and real OVS flows** (§7): not installed on this machine.
+- **Mininet and real OVS flows** (§7): run once on 2026-10-05, in WSL2. Not part
+  of the ten checks, and not repeated for each revision of this guide.
 - **Ganache and the contract deploy by hand**: the deploy script rewrites the
   untracked `backend/.env`, so it was not run. Under Compose the `blockchain`
   service does this itself and was healthy.
@@ -486,15 +518,15 @@ with that file, that file is right and this one needs fixing.
 - **`docker compose build` with no service name** (all four at once): it failed
   here, first on the lock file and then on memory. The four per-service builds in
   §4 are what succeeded.
-- **UNVERIFIED LINK — the backend's ingestion path, end to end.** Checks 8 and 9
-  exercise the inference service with the backend's policy; they do not pass a
-  single flow through the backend's monitor. OVS flow → monitor → provenance gate
-  → v2 client → rules accepted by the backend has not been run with the installed
-  model, so the backend's own admitted/withheld log lines have never been observed
-  on real traffic (§6, "What check 9 is not"). It is the one link between this
-  project and a loop demonstrated end to end. It needs a Mininet run (`RUNNING.md`
-  Tier 3) on Linux or WSL2; it is scheduled for when WSL2 with Mininet and Open
-  vSwitch is available, and until then must be stated wherever the loop is claimed.
+- **The backend's ingestion path, end to end: run once, live, and the result is
+  not the one the sample gives.** On 2026-10-05 real OVS flows went through the
+  monitor, the provenance gate and the v2 client, and the backend logged its own
+  admitted and withheld lines (§7 for how; `MODEL_BEHAVIOUR.md` §1.3 for what).
+  The mechanism ran: no poll failed, no batch was refused, no window was unscored.
+  The rules it admitted were on benign web fetches and none was on the flood. So
+  checks 8 and 9, which pass on the committed sample, say nothing about live
+  traffic. One run, on one machine short of memory; the live path has not been
+  measured as a rate.
 
 ---
 
