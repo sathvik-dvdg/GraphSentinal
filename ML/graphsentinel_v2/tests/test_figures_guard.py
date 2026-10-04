@@ -125,3 +125,99 @@ def test_the_guard_catches_a_restated_figure_and_spares_the_sources():
     found = violations(files)
     assert [f.split(":")[0] for f in found] == ["INTEGRATION.md", "RUN_GUIDE.md", "backend/app/x.py"]
     assert "0.4441" in found[1]
+
+
+# ── Every figure in the owner, not only the eight key ones ───────────────────
+#
+# FIGURES above was a list written from memory, and on 2026-10-04 an audit found
+# 57 of the owner's figures restated in other tracked files while the guard
+# passed. So the list is now derived from MODEL_BEHAVIOUR.md itself: any number
+# of a distinctive shape that the owner states may appear in another tracked
+# file ONLY if it is declared for that file in RESTATED below. A declared
+# figure is held to EQUALITY: it must still be one of the owner's figures and
+# must still be in that file. Change a figure in the owner and every file that
+# restates it fails here by name until it follows.
+
+#: four-decimal values, thousands-separated counts, decimal percentages, "N of M"
+_FIGURE = re.compile(r"(?<![\d.,])(\d\.\d{4}|\d{1,3}(?:,\d{3})+|\d+\.\d+%|\d+ of \d[\d,]*\d|\d+ of \d)(?!\d)")
+#: shapes that are figures by form but identify nothing
+GENERIC = {"0.0000", "1.0000", "0.0%", "100.0%"}
+
+
+def _flat(text: str) -> str:
+    """Markdown wraps lines mid-phrase: '58 of\n58 windows' is one figure."""
+    return re.sub(r"\s+", " ", text)
+
+
+def owner_figures() -> set[str]:
+    return set(_FIGURE.findall(_flat((REPO / "MODEL_BEHAVIOUR.md").read_text(encoding="utf-8")))) - GENERIC
+
+
+def restated(files: dict[str, str], figures: set[str]) -> dict[str, set[str]]:
+    """path -> the owner's figures that file contains. Owners, the report, the
+    evidence files and this file are not restatements."""
+    out = {}
+    for path, text in files.items():
+        if path in OWNERS or path in (MIRROR, THIS) or path.startswith(EXEMPT_PREFIXES):
+            continue
+        flat = _flat(text)
+        found = {f for f in figures if _pattern(f).search(flat)}
+        if found:
+            out[path] = found
+    return out
+
+
+#: path -> the owner's figures it is allowed to carry, and must carry.
+#: Generated from the tree with `python tests/test_figures_guard.py`; a new
+#: entry is a decision to keep a copy, so prefer citing the owner instead.
+RESTATED: dict[str, list[str]] = {
+    'AUDIT_2026-10-04.md': ['0.1326', '0.2967', '0.3094', '0.3394', '0.5737', '0.6292', '0.7994', '0.9487', '18,264', '90.8%'],
+    'INTEGRATION.md': ['0 of 168', '0 of 68', '0.0038', '0.0232', '0.0243', '0.0265', '0.1224', '0.22%', '0.3984', '0.4475', '0.4571', '0.5208', '0.6567', '0.6811', '0.8706', '0.8857', '0.9234', '0.9344', '0.9568', '0.9670', '0.9688', '0.9804', '0.9940', '0.9941', '174,421', '18,264', '2 of 486', '226,342', '41 of 18,264', '58 of 58', '90.8%', '99.6%'],
+    'ML/b08_ovs_constants_check.py': ['90.8%'],
+    'ML/colab/cells/probes_confirm.py': ['0.5508', '0.7042'],
+    'ML/colab/colab_runner.py': ['0.7042', '23,812'],
+    'ML/graphsentinel_v2/graphsentinel/config.py': ['0.0024', '0.0158', '0.0192', '0.0397', '0.0723'],
+    'ML/graphsentinel_v2/graphsentinel/export.py': ['0.7042', '0.7568'],
+    'ML/graphsentinel_v2/tests/test_pipeline.py': ['0.0397', '0.0723', '0.1407', '0.7042', '0.7568', '0.9974', '158,746'],
+    'ML/phase2b_live_path_cost.py': ['227,325'],
+    'ML/verify_stack.py': ['18,264'],
+    'RUNNING.md': ['0 of 168', '0.4475'],
+    'RUN_GUIDE.md': ['0 of 68', '0.9961', '18,264', '58 of 58', '654,851'],
+    'backend/app/services/analysis_pipeline_v2.py': ['0.4475'],
+    'backend/app/services/inference_v2.py': ['0 of 168', '0.4475'],
+    'backend/app/services/mitigation_policy.py': ['0 of 168', '0.2598', '0.9617', '17,909', '23,812', '904 of 918'],
+}
+
+
+def test_every_restated_figure_is_declared():
+    found = restated(_tracked(), owner_figures())
+    undeclared = {p: sorted(figs - set(RESTATED.get(p, ()))) for p, figs in found.items()}
+    undeclared = {p: f for p, f in undeclared.items() if f}
+    assert not undeclared, (
+        "figures owned by MODEL_BEHAVIOUR.md are restated without being declared -- cite the "
+        "owner's section, or declare them in RESTATED:\n  "
+        + "\n  ".join(f"{p}: {f}" for p, f in sorted(undeclared.items())))
+
+
+def test_declared_restatements_still_equal_the_owner():
+    figures = owner_figures()
+    files = _tracked()
+    stale = []
+    for path, declared in sorted(RESTATED.items()):
+        flat = _flat(files.get(path, ""))
+        for fig in declared:
+            if fig not in figures:
+                stale.append(f"{path}: carries {fig}, which MODEL_BEHAVIOUR.md no longer states")
+            elif not _pattern(fig).search(flat):
+                stale.append(f"{path}: declared to carry {fig} and does not")
+    assert not stale, "\n  " + "\n  ".join(stale)
+
+
+if __name__ == "__main__":  # print RESTATED for the tree as it stands
+    names = subprocess.run(["git", "ls-files"], cwd=REPO, capture_output=True, text=True, check=True).stdout.split("\n")
+    tree = {n: (REPO / n).read_text(encoding="utf-8", errors="ignore")
+            for n in names if n.endswith(SCANNED) and (REPO / n).is_file()}
+    print("RESTATED: dict[str, list[str]] = {")
+    for path, figs in sorted(restated(tree, owner_figures()).items()):
+        print(f"    {path!r}: {sorted(figs)!r},")
+    print("}")

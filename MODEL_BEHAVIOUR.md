@@ -85,13 +85,38 @@ notebook built the features and once with those three forced to the constants:
 times as many sources that sent no attack flow.** v1 must not be presented as a
 detector on OVS traffic.
 
-This is not v1's test set, which is not in the repository: it is a small,
-90.8%-benign slice that may overlap v1's training rows, so the deltas are the
-result. The offline column is still a finding in itself — with every feature
-present, v1 recalls 13% of this sample's attack flows at 0.75, and 11 of the 21
-sources it would block sent none.
+**Lost information, not a shifted operating point.** Recall rises while precision
+falls, which one threshold cannot tell apart from a model that has simply become
+more aggressive. Threshold-free, and at the precision the offline features had:
+
+| | offline features | OVS constants |
+|---|---:|---:|
+| average precision, per flow (base rate 0.0917) | 0.6292 | 0.5737 |
+| average precision, per source and window (1,900 rows, base rate 0.0332) | 0.3394 | 0.2967 |
+| lowest flow threshold with precision ≥ 0.9487, and recall there | 0.6159 → 0.2790 | **none reaches it** |
+| lowest source threshold with precision ≥ 0.4762, and recall there | 0.7798 → 0.1587 | 0.9815 → 0.0159 |
+
+Average precision falls at both levels, and on OVS input **no threshold at all**
+recovers the flow precision the offline features gave at 0.75. At the source
+level, the unit the backend blocks, matching the offline precision costs nine
+tenths of the recall (10 sources found against 1). Re-tuning the threshold does
+not repair this; the three features carried information the model used. That
+leaves retraining — on OVS-shaped features, or as a four-feature model — or
+documenting the limit. There is no variance estimate: one sample, one run.
+
+**The offline column is a ceiling, not an estimate.** This is not v1's test set,
+which is not in the repository; it is a small, 90.8%-benign slice that may overlap
+v1's training rows. Overlap with training can only flatter a model, so on traffic
+like this sample these are bounds, with every feature present and before OVS
+removes three: v1 recalls **at most** 0.1326 of the attack flows at 0.75, and
+**at least** 11 of the 21 sources it would block sent no attack flow. They are
+bounds for this population, not for every dataset: v1's own held-out figures
+(`ML/GraphSage-model/test_results.json`) were measured on a different split that
+cannot be re-run here.
 
 *Source: `ML/b08_ovs_constants.json`, written by `ML/b08_ovs_constants_check.py`.*
+
+### 1.3 The v2 loop, in dry-run
 
 **The v2 loop is closed in code, in dry-run** (commit `9a4b114`, 2026-10-04):
 
@@ -688,7 +713,7 @@ replace.
    `.gitattributes` pins `-text` on every digest-bearing artefact, including the
    moved pre-fix files, the sample and the retrain logs.
 
-Suites at time of writing, on branch `fix/audit-p0-p1`: **ML 165 passed; backend
+Suites at time of writing, on branch `fix/audit-p0-p1`: **ML 167 passed; backend
 244 passed, 3 skipped; Hardhat 25 passing.** The backend figure was 233 passed
 before the audit fixes and was first produced with `web3` 7.16.0 installed against
 a pin of 7.4.0; the pin is now what is installed, and the count is the same under
