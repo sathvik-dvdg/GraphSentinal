@@ -107,6 +107,59 @@ def metrics(scores, labels, sources, threshold) -> dict:
     }
 
 
+def average_precision(scores, labels) -> float:
+    """Area under the precision-recall curve, threshold-free: the mean of the
+    precision at each true positive, taken in descending score order. Ties are
+    handled as one step, so tied scores cannot be ordered favourably."""
+    order = sorted(zip(scores, labels), key=lambda p: -p[0])
+    positives = sum(labels)
+    if not positives:
+        return 0.0
+    area = tp = seen = 0.0
+    i = 0
+    while i < len(order):
+        j = i
+        while j < len(order) and order[j][0] == order[i][0]:
+            j += 1
+        hits = sum(1 for _, y in order[i:j] if y)
+        tp += hits
+        seen = j
+        area += (hits / positives) * (tp / seen)
+        i = j
+    return round(area, 4)
+
+
+def threshold_for_precision(scores, labels, target: float) -> dict:
+    """The lowest threshold whose precision is at least ``target`` -- the most
+    recall available without giving up that precision."""
+    best = None
+    for t in sorted(set(scores)):
+        pred = [s >= t for s in scores]
+        tp = sum(p and y for p, y in zip(pred, labels))
+        fp = sum(p and not y for p, y in zip(pred, labels))
+        if tp + fp and tp / (tp + fp) >= target:
+            best = {"threshold": round(t, 4), "precision": round(tp / (tp + fp), 4),
+                    "recall": round(tp / sum(labels), 4), "tp": tp, "fp": fp}
+            break
+    return best or {"threshold": None, "note": f"no threshold reaches precision {target}"}
+
+
+def source_level(scores, labels, sources):
+    """One row per (window, source): its highest flow score, and whether it sent
+    any attack flow in that window. This is the unit the backend blocks."""
+    out_scores, out_labels = [], []
+    for start in range(0, len(scores), WINDOW):
+        best: dict[str, float] = {}
+        attacker: dict[str, bool] = {}
+        for s, y, src in zip(scores[start:start + WINDOW], labels[start:start + WINDOW], sources[start:start + WINDOW]):
+            best[src] = max(best.get(src, 0.0), s)
+            attacker[src] = attacker.get(src, False) or y
+        for src, s in best.items():
+            out_scores.append(s)
+            out_labels.append(attacker[src])
+    return out_scores, out_labels
+
+
 def main() -> None:
     inference = InferenceService.get_instance()
     if inference.model is None:
@@ -137,6 +190,26 @@ def main() -> None:
             by_class[cls] = {"n": len(vals), "mean_score": round(sum(vals) / len(vals), 4),
                              "share_over_0.75": round(sum(v >= 0.75 for v in vals) / len(vals), 4)}
         result["conditions"][name]["by_class"] = by_class
+    # Is the damage a shifted operating point or lost information? A threshold
+    # cannot tell; average precision can. And: what threshold on OVS input buys
+    # back the precision the offline features had at 0.75?
+    off_flow_p = result["conditions"]["offline"]["threshold_0.75"]["precision"]
+    off_src = source_level(scored["offline"], labels, sources)
+    off_src_pred = [s >= 0.75 for s in off_src[0]]
+    off_src_p = round(sum(p and y for p, y in zip(off_src_pred, off_src[1])) / max(sum(off_src_pred), 1), 4)
+    for name in scored:
+        src_scores, src_labels = source_level(scored[name], labels, sources)
+        result["conditions"][name]["threshold_free"] = {
+            "flow_average_precision": average_precision(scored[name], labels),
+            "flow_base_rate": round(sum(labels) / len(labels), 4),
+            "source_average_precision": average_precision(src_scores, src_labels),
+            "source_rows": len(src_scores),
+            "source_base_rate": round(sum(src_labels) / len(src_labels), 4),
+            f"flow_threshold_matching_offline_precision_{off_flow_p}":
+                threshold_for_precision(scored[name], labels, off_flow_p),
+            f"source_threshold_matching_offline_precision_{off_src_p}":
+                threshold_for_precision(src_scores, src_labels, off_src_p),
+        }
     flipped = sum((a >= 0.75) != (b >= 0.75) for a, b in zip(scored["offline"], scored["ovs_constants"]))
     result["flows_whose_0.75_decision_changes"] = flipped
     OUT.write_text(json.dumps(result, indent=2) + "\n", encoding="utf-8")

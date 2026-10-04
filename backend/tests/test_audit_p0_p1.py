@@ -129,8 +129,10 @@ def test_b04_out_of_range_source_is_skipped_not_fatal(simulated_enforcement, off
         "mode": "model",
     }
     flows = [_flow("10.0.0.204"), _flow("192.168.77.5"), _flow("10.0.0.205")]
-    alerts, healing = ThreatAnalyzer().evaluate(prediction, flows)
+    analyzer = ThreatAnalyzer()
+    alerts, healing = analyzer.evaluate(prediction, flows)
 
+    assert analyzer.skipped == [{"source_ip": "192.168.77.5", "score": 0.99, "reason": "outside_mininet_range"}]
     assert sorted(event["ip"] for event in healing) == ["10.0.0.204", "10.0.0.205"]
     db = SessionLocal()
     try:

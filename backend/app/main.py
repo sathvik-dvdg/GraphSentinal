@@ -185,6 +185,12 @@ async def health():
         "service": "GraphSentinel",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "ml": inference.health(),
+        # v1 is the path that blocks. What it is configured to do, as running:
+        # ThreatAnalyzer and EnforcementAgent read these on every analysis.
+        "v1": {
+            "threat_threshold": settings.threat_threshold,
+            "enforcement_mode": settings.enforcement_mode,
+        },
         "ml_v2": ml_v2,
         "blockchain": blockchain.health(),
         "monitor": monitor_health,

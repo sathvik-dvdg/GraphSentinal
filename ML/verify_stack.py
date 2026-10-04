@@ -1,10 +1,14 @@
-"""The nine checks of RUN_GUIDE.md section 6, against a running stack.
+"""The ten checks of RUN_GUIDE.md section 6, against a running stack.
 
 Works the same on the Docker Compose path and the manual path, because both
 publish the inference service on 8081 and the backend on 8001.
 
     python ML/verify_stack.py                 # from the repository root
     python ML/verify_stack.py --skip-sample   # checks 1-7 only (seconds)
+
+Checks 1-9 are about v2, the audited model, which blocks nothing. Check 10 reads
+back what v1 -- the path that does block -- is configured to do, and fails if
+that differs from the tracked defaults. It scores nothing.
 
 Checks 8 and 9 send the committed sample (18,264 flows) through the inference
 service with the backend's policy, via ML/live_rule_check.py, and take about a
@@ -77,6 +81,23 @@ def main() -> int:
           ", ".join(classes or []))
     check("7 dry_run", policy.get("dry_run") is True,
           f"backend policy.dry_run = {policy.get('dry_run')}")
+
+    # 10. v1 is the path that creates incidents and blocks hosts. Two stacks
+    # can pass checks 1-9 identically while running v1 at different thresholds,
+    # so read back what it is running with and compare to the tracked template.
+    tracked = {}
+    for line in (REPO / "backend" / ".env.example").read_text(encoding="utf-8").splitlines():
+        key, _, value = line.partition("=")
+        if key.strip() in ("THREAT_THRESHOLD", "ENFORCEMENT_MODE"):
+            tracked[key.strip()] = value.split("#")[0].strip()
+    v1 = bh.get("v1") or {}
+    same = (v1.get("threat_threshold") is not None
+            and abs(float(v1["threat_threshold"]) - float(tracked["THREAT_THRESHOLD"])) < 1e-9
+            and v1.get("enforcement_mode") == tracked["ENFORCEMENT_MODE"])
+    check("10 v1 threshold and enforcement mode", same,
+          f"running threshold {v1.get('threat_threshold')}, mode {v1.get('enforcement_mode')!r}; "
+          f"tracked default {tracked['THREAT_THRESHOLD']}, {tracked['ENFORCEMENT_MODE']!r}"
+          + ("" if same else " -- v1 is not running the tracked configuration (RUN_GUIDE.md section 3)"))
 
     if args.skip_sample:
         print("  checks 8 and 9 skipped (--skip-sample)")

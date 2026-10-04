@@ -89,6 +89,9 @@ def test_analyze_rejects_outside_cidr_without_persisting_incident(monkeypatch):
     assert response.status_code == 200
     assert response.json()["incidents_created"] == []
     assert response.json()["healing_triggered"] == []
+    # ...and the response says so: a skip must not look like a clean result.
+    skipped = response.json()["skipped"]
+    assert [(s["source_ip"], s["reason"]) for s in skipped] == [("192.168.1.100", "outside_mininet_range")]
 
     db = SessionLocal()
     orphan = db.query(Incident).filter(Incident.source_ip == "192.168.1.100").first()

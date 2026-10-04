@@ -79,6 +79,9 @@ class ThreatAnalyzer:
         self.threshold = settings.threat_threshold
         self.healer = SelfHealingEngine()
         self.blockchain = BlockchainAdapter.get_instance()
+        # Sources over the threshold that evaluate() did not act on, and why.
+        # Returned by /analyze so a skip is never silent.
+        self.skipped: list[dict[str, Any]] = []
 
     def evaluate(self, prediction: dict[str, Any], flows: list[Any]) -> tuple[list[dict], list[dict]]:
         flow_dicts = [flow.model_dump() if hasattr(flow, "model_dump") else dict(flow) for flow in flows]
@@ -98,11 +101,13 @@ class ThreatAnalyzer:
                 clean_ip = validate_mininet_ip(ip)
             except ValueError as exc:
                 _logger.warning("Skipping source %s (score %.2f): %s", ip, score, exc)
+                self.skipped.append({"source_ip": str(ip), "score": round(score, 4), "reason": "outside_mininet_range"})
                 continue
             # A host that is already blocked is not a new incident. Without
             # this, each new minute (the idempotency bucket) produced another
             # incident, block call and chain transaction for the same host.
             if self._already_blocked(clean_ip):
+                self.skipped.append({"source_ip": clean_ip, "score": round(score, 4), "reason": "already_blocked"})
                 continue
             related_flows = [flow for flow in flow_dicts if str(flow["src_ip"]) == ip]
             attack_type = infer_attack_type(clean_ip, score, related_flows)
