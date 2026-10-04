@@ -178,6 +178,17 @@ def main() -> None:
         "weights": str(Path(inference.weights_path).name),
         "conditions": {},
     }
+    # The base rates the source-level figures are read against. Distinct sources
+    # across the sample, and the (window, source) rows -- the unit that is
+    # blocked -- with how many of those rows each attacking source accounts for.
+    attackers = sorted({s for s, y in zip(sources, labels) if y})
+    rows = {(i // WINDOW, s) for i, (s, y) in enumerate(zip(sources, labels)) if y}
+    result["source_population"] = {
+        "distinct_sources": len(set(sources)),
+        "distinct_sources_with_attack_flow": len(attackers),
+        "source_rows_with_attack_flow": len(rows),
+        "source_rows_with_attack_flow_by_source": {a: sum(1 for _, s in rows if s == a) for a in attackers},
+    }
     scored = {}
     for name, ovs in (("offline", False), ("ovs_constants", True)):
         scored[name] = score(inference.model, inference.torch, flows_from(df[cols], ovs))

@@ -150,7 +150,10 @@ without the gitignored `ML/weights.pt` the inference service never becomes healt
 and the backend must still boot. So "backend healthy" does **not** mean the model
 is loaded; §6 checks that directly. The frontend waits for a healthy backend.
 
-The backend's health check allows it **180 seconds** to start. It allowed 75 until
+The backend's health check allows it **180 seconds** to start. That figure was
+chosen on an idle machine, the same condition the 75 it replaced was chosen
+under, and has not been checked under load: if the machine is busy (a build, a
+browser, a screen recorder) treat a slow start as expected, not as a fault. It allowed 75 until
 2026-10-04; on this machine the backend needed longer three times that day, was
 marked unhealthy, and `docker compose up -d` exited with `dependency failed to
 start` **without starting the frontend** — on a fresh clone too. If you see that
@@ -276,6 +279,8 @@ of them exercises v1, the path that creates incidents, blocks hosts and writes t
 chain (§1). Two stacks can pass them line for line while running v1 differently,
 and on this machine the two paths did: Compose reads `.env.docker` (0.75,
 `simulated`) and the manual path reads the untracked `backend/.env` (0.40, `ovs`).
+(That file was brought back to the tracked values on 2026-10-04; it is untracked,
+so nothing stops it drifting again, which is what check 10 is for.)
 Check 10 scores nothing; it reads back what v1 is configured to do and fails when
 that is not the tracked configuration. It does not test whether v1's detections
 are right — `MODEL_BEHAVIOUR.md` §1.2 is the only measurement of that.
@@ -284,6 +289,16 @@ Checks 8 and 9 are the ones worth showing someone. They are the proof that the
 loop is closed: the backend's policy — not a table inside the model package —
 decides every action, and anything below its floor is refused with a stated
 reason.
+
+**A check has three outcomes: `PASS`, `FAIL` and `UNVERIFIABLE`.** The last means
+what the check reads was not there to be read. Checks 5 and 6 describe the loaded
+model but read the model card, which the service serves whether or not a model is
+in memory; without `ML/weights.pt` they used to pass on a model that was not
+there, and now report `UNVERIFIABLE` whenever check 1 fails. Checks 7 and 10 do
+the same when the backend publishes no policy or does not answer, and 9 when 8
+could not score the sample. `UNVERIFIABLE` counts against the exit code. A
+service that refuses the connection, hangs, or answers with something that is not
+JSON is reported on its check's line, never as a traceback.
 
 **Output on Path A** (Compose, torch 2.4.0 in the container), 2026-10-04:
 

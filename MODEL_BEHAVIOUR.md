@@ -73,8 +73,9 @@ machine has no Mininet. On the current setup v2 is offered no flow at all; it is
 exercised only by sending the committed sample to the service directly (§1.3).
 So v1 stays as the demonstration of the self-healing **mechanism** — detect →
 block → chain → dashboard — and **no claim is made about its detection quality**
-anywhere. §1.2 is why: v1 is weak with every feature present, not only on OVS
-input.
+anywhere. §1.2 is why, and it is not only OVS: with every feature present v1
+ranks sources well above chance, yet 11 of the 21 sources it would block sent no
+attack flow and it does not score Bot traffic at all.
 
 **What would have to happen for v2 to replace it.** Future work, in this order.
 None of it is attempted here, and none of it should be before step 1:
@@ -131,6 +132,21 @@ tenths of the recall (10 sources found against 1). Re-tuning the threshold does
 not repair this; the three features carried information the model used. That
 leaves retraining — on OVS-shaped features, or as a four-feature model — or
 documenting the limit. There is no variance estimate: one sample, one run.
+
+**At the unit it blocks, v1 is well above chance — on one attacker.** What is
+blocked is a (window, source) row. 63 of the 1,900 rows have a source that sent an
+attack flow in that window, the 0.0332 base rate in the table, so a source-level
+average precision of 0.3394 is about ten times chance: with every feature present
+the ranking carries real signal. It is narrow signal. Only 6 of the 810 distinct
+sources in the sample sent any attack flow. One of them sent every slowloris,
+PortScan and SSH-Patator flow, nine tenths of the attack flows, and accounts for
+13 of the 63 rows. The other five are the Bot hosts, 10 rows each, and with full
+features no Bot flow scores over 0.75. So four fifths of the rows there are to
+find belong to a class v1 does not score. That is why the tracked threshold finds
+10 of the 63, and why no lower threshold finds more at that precision (the last
+row of the table: 0.7798 finds the same 10). The threshold is not wasting the
+signal; the signal stops. One sample, one run, and the ceiling caveat below
+applies to all of it.
 
 **The offline column is a ceiling, not an estimate.** This is not v1's test set,
 which is not in the repository; it is a small, 90.8%-benign slice that may overlap

@@ -1,0 +1,269 @@
+{
+  "_about": "Named figures owned by MODEL_BEHAVIOUR.md that the shape-matching guard cannot see: bare integers. Each has a value, the committed artefact it is read from (file, then the keys to follow; a dict leaf is summed), and the exact phrase each file states it in. ML/graphsentinel_v2/tests/test_figures_guard.py holds every phrase to the value and every value to its artefact. To change a figure: change the artefact, then this file, then the phrases.",
+  "owner": "MODEL_BEHAVIOUR.md",
+  "figures": {
+    "rules_admitted": {
+      "value": 12,
+      "what": "v2 rules admitted on the committed sample through the live service, dry-run",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "rules_admitted"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "12 rules admitted",
+          "12 rules, all on correctly classified flows"
+        ],
+        "RUN_GUIDE.md": [
+          "**12 rules admitted**",
+          "12 rules admitted and none wrong"
+        ],
+        "ML/TIMESTAMP_FIX.md": [
+          "12 rules were admitted"
+        ]
+      }
+    },
+    "rules_admitted_bruteforce": {
+      "value": 8,
+      "what": "of those, BruteForce drop_port rules",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "rules_admitted",
+        "BruteForce:drop_port"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "8 BruteForce `drop_port`"
+        ]
+      }
+    },
+    "rules_admitted_volumetric_flood": {
+      "value": 4,
+      "what": "of those, Volumetric_Flood meter rules",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "rules_admitted",
+        "Volumetric_Flood:meter"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "4 Volumetric_Flood `meter`"
+        ]
+      }
+    },
+    "windows_echoing_policy_digest": {
+      "value": 58,
+      "what": "sample windows that echoed the backend's policy digest, of 58 scored",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "windows_echoing_the_policy_digest"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "58 of 58 windows echoed"
+        ],
+        "RUN_GUIDE.md": [
+          "58 of 58"
+        ]
+      }
+    },
+    "windows_scored": {
+      "value": 58,
+      "what": "windows the committed sample makes",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "windows"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "58 of 58 windows echoed",
+          "58-window committed sample"
+        ]
+      }
+    },
+    "portscan_correct_on_sample": {
+      "value": 68,
+      "what": "correct PortScan predictions on the committed sample",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "per_true_class",
+        "PortScan",
+        "correct"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "0 of 68"
+        ],
+        "RUN_GUIDE.md": [
+          "0 of 68"
+        ],
+        "INTEGRATION.md": [
+          "0 of 68"
+        ]
+      }
+    },
+    "portscan_correct_reaching_floor": {
+      "value": 0,
+      "what": "of those, how many reach PortScan's floor",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "per_true_class",
+        "PortScan",
+        "correct_at_or_above_floor"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "0 of 68"
+        ],
+        "RUN_GUIDE.md": [
+          "0 of 68"
+        ],
+        "INTEGRATION.md": [
+          "0 of 68"
+        ]
+      }
+    },
+    "v1_sources_over_threshold_offline": {
+      "value": 21,
+      "what": "v1, full features, tracked threshold: (window, source) rows over it",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "sources_over_threshold"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "11 of the 21 sources",
+          "| sources over the threshold | 21 | 45 |"
+        ],
+        "AUDIT_2026-10-04.md": [
+          "11 of the 21 sources"
+        ]
+      }
+    },
+    "v1_sources_over_threshold_without_attack_offline": {
+      "value": 11,
+      "what": "of those, rows whose source sent no attack flow in that window",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_0.75",
+        "of_which_sent_no_attack_flow"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "11 of the 21 sources",
+          "against 11 with full features"
+        ],
+        "AUDIT_2026-10-04.md": [
+          "11 of the 21 sources"
+        ]
+      }
+    },
+    "v1_sources_over_threshold_ovs": {
+      "value": 45,
+      "what": "the same count on OVS-shaped input",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "sources_over_threshold"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "| sources over the threshold | 21 | 45 |"
+        ]
+      }
+    },
+    "v1_sources_over_threshold_without_attack_ovs": {
+      "value": 31,
+      "what": "of those, rows whose source sent no attack flow in that window",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "of_which_sent_no_attack_flow"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "31 sources that sent no attack flow"
+        ]
+      }
+    },
+    "benign_flows_given_a_rule_on_test": {
+      "value": 2,
+      "what": "benign test flows that would receive a wrong-class rule under the policy floors",
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "**2** of 174,421 benign flows"
+        ]
+      }
+    },
+    "sample_distinct_sources": {
+      "value": 810,
+      "what": "distinct source addresses in the committed sample",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "source_population",
+        "distinct_sources"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "6 of the 810 distinct sources"
+        ]
+      }
+    },
+    "sample_distinct_attacking_sources": {
+      "value": 6,
+      "what": "of those, sources that sent at least one attack flow",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "source_population",
+        "distinct_sources_with_attack_flow"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "6 of the 810 distinct sources"
+        ]
+      }
+    },
+    "sample_source_rows_with_attack_flow": {
+      "value": 63,
+      "what": "(window, source) rows whose source sent an attack flow in that window",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "source_population",
+        "source_rows_with_attack_flow"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "63 of the 1,900 rows",
+          "10 of the 63"
+        ]
+      }
+    },
+    "v1_source_rows_found_offline": {
+      "value": 10,
+      "what": "of those, rows over the matched source threshold, full features",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "offline",
+        "threshold_free",
+        "source_threshold_matching_offline_precision_0.4762",
+        "tp"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "10 of the 63",
+          "10 sources found against 1"
+        ]
+      }
+    }
+  }
+}

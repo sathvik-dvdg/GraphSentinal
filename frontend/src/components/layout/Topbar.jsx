@@ -36,6 +36,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
     connectionMode,
     dataErrors,
     mlHealth,
+    mlV2Health,
   } = useGraphStore()
 
   const [time, setTime] = useState(new Date().toLocaleTimeString())
@@ -97,7 +98,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
 
         <ConnectionModeBadge mode={connectionMode} />
         <EnforcementModeBadge mode={stats.enforcement_mode} />
-        <DetectionPathBadge />
+        <DetectionPathBadge mlV2={mlV2Health} />
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
         <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />

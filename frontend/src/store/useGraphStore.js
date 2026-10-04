@@ -36,6 +36,9 @@ const useGraphStore = create((set, get) => ({
   // operator couldn't tell real GraphSAGE scores from the heuristic fallback.
   mlHealth: { mode: 'model', degraded_reason: null },
   setMlHealth: (health) => set({ mlHealth: health }),
+  // /health's ml_v2: whether the v2 path runs at all. null until /health answers.
+  mlV2Health: null,
+  setMlV2Health: (health) => set({ mlV2Health: health ?? null }),
   healingEvents: [],
   healingNodeId: null,
   timeline: [],

@@ -175,5 +175,18 @@
       }
     }
   },
+  "source_population": {
+    "distinct_sources": 810,
+    "distinct_sources_with_attack_flow": 6,
+    "source_rows_with_attack_flow": 63,
+    "source_rows_with_attack_flow_by_source": {
+      "172.16.0.1": 13,
+      "192.168.10.14": 10,
+      "192.168.10.15": 10,
+      "192.168.10.5": 10,
+      "192.168.10.8": 10,
+      "192.168.10.9": 10
+    }
+  },
   "flows_whose_0.75_decision_changes": 794
 }
