@@ -40,3 +40,6 @@ ML\testdata\cicids2017_sample.csv
 # needed to run: the v2 path is on in docker-compose.yml, and the v1-only variant
 # is the tracked docker-compose.v1.yml.
 docker-compose.override.yml
+
+# Local frontend env; create it from frontend/.env.example (RUN_GUIDE.md section 3).
+frontend/.env
