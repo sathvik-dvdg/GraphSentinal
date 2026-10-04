@@ -23,7 +23,7 @@
 #
 #  Read-only: trains nothing, overwrites no checkpoint or cache.
 # ============================================================================
-import copy, json, time
+import contextlib, copy, io, json, time
 from pathlib import Path
 
 import numpy as np
@@ -68,9 +68,25 @@ for fix in (False, True):
     c.data.fix_12h_clock = fix
     tag = "fixed_parse" if fix else "old_parse"
     t0 = time.time()
-    df = pre.clean(pre.load_raw(c, verbose=False), c, verbose=False)
+    df = pre.load_raw(c, verbose=False)
+    if fix:
+        # Timestamp resolution per training file: is it minute-only? (the
+        # argument that a cut can fall inside one timestamp rests on it)
+        sec = df["t"].to_numpy() % 60
+        part_a["_resolution"] = {
+            str(f): {"rows": int(m.sum()),
+                     "rows_off_the_minute": int((sec[m] != 0).sum()),
+                     "distinct_second_values": int(len(set(sec[m].tolist())))}
+            for f in sorted(df["source_file"].unique())
+            for m in [df["source_file"].to_numpy() == f]}
+    df = pre.clean(df, c, verbose=False)
     cleaned = df["Label"].astype(str).value_counts().to_dict()
-    splits = dict(zip(("train", "val", "test"), pre.split(df, c, verbose=False)))
+    # The split's own episode lines, captured so they are committed rather than
+    # left in a console: per class, episodes found and what the splitter did.
+    buf = io.StringIO()
+    with contextlib.redirect_stdout(buf):
+        parts = pre.split(df, c, verbose=True)
+    splits = dict(zip(("train", "val", "test"), parts))
     del df
     part_a[tag] = {name: split_composition(p, W, MIN_EDGES)
                    for name, p in splits.items()}
@@ -85,6 +101,8 @@ for fix in (False, True):
                              for k, n in sorted(cleaned.items())}
     # PART C: timestamps adjacent splits share (a cut inside one timestamp)
     part_a[tag]["_boundary"] = boundary_sharing(splits)
+    part_a[tag]["_episodes"] = [ln.strip() for ln in buf.getvalue().splitlines()
+                                if "episode" in ln]
     del splits
     print(f"\n  -- {tag}  ({time.time() - t0:.0f}s)")
     print(f"  {'split':<6s}{'class':<18s}{'rows':>9s}  {'first':<16s}{'last':<16s}"
@@ -110,6 +128,14 @@ for fix in (False, True):
                 print(f"    {cls:<18s}{edge:<10s} {e['shared_timestamps']} timestamp(s): "
                       f"{e[a + '_rows_on_shared']:,} {a} rows, {e[z + '_rows_on_shared']:,} {z} rows")
         print(f"    {cls:<18s}distinct timestamps per split: {b['distinct_timestamps']}")
+    print("  episode assignment (the split's own lines):")
+    for ln in part_a[tag]["_episodes"]:
+        print(f"    {ln}")
+if "_resolution" in part_a:
+    print("\n  timestamp resolution per training file (fixed parse):")
+    for f, r in part_a["_resolution"].items():
+        print(f"    {f:<52s} rows {r['rows']:>8,}  off the minute {r['rows_off_the_minute']:>8,}"
+              f"  distinct second values {r['distinct_second_values']}")
 
 
 # ------------------------------------------------------------- PART B -------
