@@ -88,11 +88,30 @@ _POLICY_BY_CLASS: dict[str, dict[str, Any]] = {
                   "everyone else. Inherited from the old DDoS/DoSHulk entries, "
                   "which flood4 merges into this one class.",
     ),
+    # DELIBERATE NON-ENFORCEMENT since 2026-10-05; it was `drop`. No CORRECT
+    # PortScan prediction reaches its floor in either population the model has
+    # been scored on, the test split or the live sample (MODEL_BEHAVIOUR.md
+    # sections 6 and 1.3). The only PortScan predictions that do reach it are
+    # wrong ones: on the test split, true BruteForce edges labelled PortScan.
+    # So `drop` could only ever have fired on the wrong class, and this removes
+    # that; on the live sample it changes the withholding reason and nothing
+    # else. The floor is unchanged.
+    #
+    # This suppresses LESS than the decision it implements. Suppressing BOTH
+    # PortScan and BruteForce was approved when the evidence was "no correct
+    # rule from either". That was narrowed, on later evidence, to PortScan
+    # only. BruteForce stays enforceable because the live rule check then
+    # admitted BruteForce rules on genuinely BruteForce flows
+    # (ML/live_rule_check.json), and because its zero test F1 is measured on the
+    # one class whose test windows hold no benign traffic, which section 5.1's
+    # pre-registered measurement says is not the representative condition:
+    # live traffic is mixed.
     "PortScan": dict(
-        action="drop", idle=30, hard=300, priority=45_000, min_conf=0.85,
-        rationale="Short TTL — scans are cheap to re-run from a new source. "
-                  "The model does not separate PortScan from BruteForce (test "
-                  "F1 0.2598); its predictions rarely reach this floor.",
+        action=ACTION_ALERT_ONLY, idle=30, hard=300, priority=45_000, min_conf=0.85,
+        rationale="NOT ENFORCEABLE. No correct PortScan prediction reaches this "
+                  "floor on the test split or on the live sample, and the model "
+                  "does not separate PortScan from BruteForce. Recognised, "
+                  "scored and reported; never turned into a rule.",
     ),
     "BruteForce": dict(
         action="drop_port", idle=120, hard=1800, priority=48_000, min_conf=0.85,

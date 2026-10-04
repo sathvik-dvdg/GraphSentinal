@@ -204,7 +204,7 @@ bind with `[Errno 13]`.
 ### Terminal 1 — inference service
 
 ```powershell
-cd ML\graphsentinel_v2
+cd ML/graphsentinel_v2
 $env:GRAPHSENTINEL_MODEL_DIR = "C:\dev\GraphSentinal\ML"      # the folder holding weights.pt
 python -m uvicorn graphsentinel.inference.service:app --host 127.0.0.1 --port 8081
 ```
@@ -253,7 +253,7 @@ service, with the backend's own policy, by §6's last two checks.
 One command, the same on both paths:
 
 ```powershell
-python ML\verify_stack.py
+python ML/verify_stack.py
 ```
 
 It needs the Python environment of §2. Checks 1–7 and 10 take seconds
@@ -306,12 +306,12 @@ JSON is reported on its check's line, never as a traceback.
 inference http://localhost:8081 | backend http://localhost:8001
   [PASS] 1 inference /health: HTTP 200, model_dir '/app/ML'
   [PASS] 2 inference /contract: contract_version 2.0.0
-  [PASS] 3 backend /health lists the policy: HTTP 200, enforceable ['Volumetric_Flood', 'PortScan', 'BruteForce'], alert_only ['Botnet'], floors {'Volumetric_Flood': 0.9, 'PortScan': 0.85, 'BruteForce': 0.85, 'Botnet': 1.01}
+  [PASS] 3 backend /health lists the policy: HTTP 200, enforceable ['Volumetric_Flood', 'BruteForce'], alert_only ['PortScan', 'Botnet'], floors {'Volumetric_Flood': 0.9, 'PortScan': 0.85, 'BruteForce': 0.85, 'Botnet': 1.01}
   [PASS] 4 weights identity: served card 3db34022bcbab050, MANIFEST 3db34022bcbab050, ML/weights.pt 3db34022bcbab050
   [PASS] 5 parameter count: 654,851
   [PASS] 6 class order: BENIGN, Volumetric_Flood, PortScan, BruteForce, Botnet
   [PASS] 7 dry_run: backend policy.dry_run = True
-  [PASS] 8 policy digest echo: 58 of 58 windows echoed d030e547ae90aafe, backend publishes d030e547ae90aafe
+  [PASS] 8 policy digest echo: 58 of 58 windows echoed e99290226e2d4ad9, backend publishes e99290226e2d4ad9
   [PASS] 9 rules admitted / withheld: admitted {'BruteForce:drop_port': 8, 'Volumetric_Flood:meter': 4}, on a wrong or benign flow: 0; withheld {'BruteForce': {'below_floor': 131}, 'Volumetric_Flood': {'below_floor': 102}, 'Botnet': {'class_suppressed': 1}, 'PortScan': {'below_floor': 68}}
   [PASS] 10 v1 threshold and enforcement mode: running threshold 0.75, mode 'simulated'; tracked default 0.75, 'simulated'
 
@@ -356,7 +356,8 @@ sample flows:
 - **12 rules admitted**, every one on a correctly classified flow;
 - **0 rules on benign traffic, 0 on a wrong-class prediction**;
 - PortScan's 0.85 floor was **never reached** — 0 of 68 correct PortScan
-  predictions. Reported, not adjusted.
+  predictions. PortScan has been `alert_only` since 2026-10-05, so those 68 are
+  withheld as `class_suppressed`; the floor itself is unchanged.
 
 If your run differs from those numbers on the same sample, something is wrong with
 your setup — start with checks 4 and 8.
@@ -374,7 +375,7 @@ and the monitor accepts OVS flows only. Closing this needs one Mininet run
 ### The test suites
 
 ```powershell
-cd ML\graphsentinel_v2
+cd ML/graphsentinel_v2
 python -m pytest tests -q -p no:cacheprovider      # 167 passed
 
 cd ..\..\backend
@@ -466,7 +467,7 @@ with that file, that file is right and this one needs fixing.
 | check 1 passes but nothing else does, on the manual path | something else is answering on that port (8080 on this machine). Use 8081 |
 | inference never becomes healthy | `ML/weights.pt` is missing (it is gitignored); see `INTEGRATION.md` §1 |
 | service healthy but no verdicts through the backend | the provenance gate is refusing the batch — check `data_source` in `docker logs graphsentinel-backend` |
-| no PortScan rule ever appears | expected. Its floor is never reached on the sample. Check the withheld counts before suspecting a bug |
+| no PortScan rule ever appears | expected. PortScan is `alert_only`: recognised and reported, never turned into a rule (`MODEL_BEHAVIOUR.md` §6). Check the withheld counts before suspecting a bug |
 | a test passes elsewhere and fails here | `backend/.env` — see §3 |
 | check 4 fails | `ML/weights.pt` and `ML/MANIFEST.json` are out of step; re-unzip the result at the repository root |
 
@@ -508,7 +509,7 @@ of value:
 1. **The recording is the plan; the live run is the bonus.** With Docker up this
    machine had **76 MB** of RAM free, and the working session died under load again on
    2026-10-04. Screen-capture `docker compose up -d` through all ten checks of
-   `python ML\verify_stack.py`, with the output legible, on a quiet machine. Save
+   `python ML/verify_stack.py`, with the output legible, on a quiet machine. Save
    it as **`docs/demo/verify_stack_run.mp4`** so it is findable under pressure.
    **That file does not exist yet**; until it does, there is no fallback.
 2. **Build ahead, never during.** Run the four `docker compose build <service>`

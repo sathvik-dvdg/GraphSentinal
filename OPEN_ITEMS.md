@@ -43,7 +43,7 @@ docker compose up -d blockchain inference backend
 
 Three services, no browser, no Vite, and all ten checks, since none touches the
 frontend. Record the terminal through `docker compose ps` and
-`python ML\verify_stack.py`. A person has to do this.
+`python ML/verify_stack.py`. A person has to do this.
 
 ### 4. The Mininet run
 
@@ -107,7 +107,7 @@ left as they are; `README.md` says where the file lives and the guard requires
   `backend/tests/test_b05_broadcast_hash.py`, each failing before the fix; the
   third reproduced the double write. Open item 5 is what is left.
 - **Check 10 on the manual path.** With `backend/.env` at the tracked values,
-  `python MLerify_stack.py` on the manual path passed all ten checks.
+  `python ML/verify_stack.py` on the manual path passed all ten checks.
 - **Both models are blind to Botnet traffic.** Recorded as a limitation and as a
   non-claim in `MODEL_BEHAVIOUR.md` §9 and §10.
 - **The registry's last figure has its artefact**, read from the confidence table

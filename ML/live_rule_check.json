@@ -1,13 +1,13 @@
 {
   "what": "the wired mitigation policy on the Phase 2b sample, through the live inference service",
-  "measured_at_utc": "2026-10-04T07:43:22Z",
+  "measured_at_utc": "2026-10-04T19:14:45Z",
   "sample": {
     "path": "ML/testdata/cicids2017_sample.csv",
     "sha256": "2655e288b9b3e2ed81fa21c6110819c3b77121a5e2830ee524e1caea0124e6c3",
     "flows_sent": 18264
   },
   "service_contract_version": "2.0.0",
-  "policy_sha256": "d030e547ae90aafe6611b87adc6733d288a1669c7945102e61f8222c5c26a0b2",
+  "policy_sha256": "e99290226e2d4ad9b8293ffae19bbf53c2bfc673dde11aae4abd9bcff1c8f717",
   "windows": 58,
   "windows_echoing_the_policy_digest": 58,
   "dry_run_on_every_window": true,
@@ -136,7 +136,7 @@
       "class_suppressed": 1
     },
     "PortScan": {
-      "below_floor": 68
+      "class_suppressed": 68
     }
   },
   "per_true_class": {

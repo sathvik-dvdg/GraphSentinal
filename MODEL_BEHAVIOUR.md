@@ -156,11 +156,18 @@ present, at the tracked threshold, counted from the scores:
 So: real ranking signal, most of what it is able to see found, precision that
 cannot be deployed unattended, and four fifths of the positive rows invisible to
 it. Lowering the threshold does not help (the last row of the table: 0.7798 finds
-the same 10); the threshold is not wasting the signal, the signal stops. On
-OVS-shaped input the picture is worse and less clean: 6 of that host's 13 rows,
-and 8 Bot rows over the threshold although under one percent of Bot flows are,
-so those rows are over it on the hosts' other traffic. One sample, one run, and
-the ceiling caveat below applies to all of it.
+the same 10); the threshold is not wasting the signal, the signal stops. One
+sample, one run, and the ceiling caveat below applies to all of it.
+
+**On OVS-shaped input, Bot rows over the threshold go from 0 to 8, and that is
+not detection.** (8 is 3, 1, 2, 2 and 0 across the five hosts.) Under one percent of Bot flows score over 0.75 on OVS input
+(one flow in 168), so those 8 rows are over the threshold on the hosts' *other*
+traffic: they are false flags that happen to land on Bot hosts. Quoted alone,
+"0 → 8" reads as OVS input improving Bot detection; it is the opposite. So B08's
+cost is worse than more false positives: **OVS-shaped input produces false
+positives that are indistinguishable from true positives at the row level**, and
+on exactly the class both models are blind to (§9 item 20). The one attacker v1
+can see fares worse as well: 6 of that host's 13 rows, against 10.
 
 **The offline column is a ceiling, not an estimate.** This is not v1's test set,
 which is not in the repository; it is a small, 90.8%-benign slice that may overlap
@@ -197,9 +204,11 @@ cannot be re-run here.
 58 windows echoed the backend's policy digest; **12 rules admitted, all on
 correctly classified flows** (8 BruteForce `drop_port`, 4 Volumetric_Flood
 `meter`); 0 on benign or wrong-class flows; withheld: BruteForce 131 and
-Volumetric_Flood 102 and PortScan 68 below floor, Botnet 1 suppressed. **No correct
-PortScan prediction reached its 0.85 floor** (0 of 68; p50 0.631) — reported, not
-adjusted.
+Volumetric_Flood 102 below floor, PortScan 68 and Botnet 1 suppressed. **No correct
+PortScan prediction reached its 0.85 floor** (0 of 68; p50 0.631). Until
+2026-10-05 PortScan was enforceable and those 68 were withheld as below floor;
+it is now `alert_only` (§6), re-run through the live service with the same 12
+rules admitted.
 
 **Unverified link: the backend's own ingestion path.** The result above was
 obtained by sending the sample to the inference service directly, with the
@@ -582,6 +591,22 @@ Part B counts the edge head alone.
 | correct PortScan rules | **0** — 0 of 3,735 correct predictions clear 0.85 |
 | correct BruteForce rules | **0** — true BruteForce is never predicted BruteForce |
 
+**PortScan is `alert_only` since 2026-10-05; its floor is unchanged.** The table
+above is the policy as it was measured, with PortScan enforceable. Read it for
+why: no correct PortScan prediction clears the floor on the test split or on the
+live sample, and the only PortScan predictions that do are the 118 wrong ones in
+the second row. `drop` could only have fired on the wrong class, so the second
+row no longer produces rules.
+
+**This suppresses less than the decision it implements, and that is on purpose.**
+Suppressing both PortScan and BruteForce was approved when the evidence was that
+neither produced a correct rule. It was narrowed to PortScan on two later pieces
+of evidence. On the live sample 400 of 413 true BruteForce flows are predicted
+BruteForce and 8 rules were admitted on them (§1.3). And BruteForce's 0.0000 test
+F1 is measured on the one class whose test windows hold no benign traffic, which
+§5.1's pre-registered measurement says is not the representative condition; live
+traffic is mixed. BruteForce therefore stays enforceable, at the same floor.
+
 The 17,909 PortScan edges mislabelled BruteForce have p95 **0.623**; **none**
 reaches 0.85. The class head is unreliable and the confidence floors absorb almost
 all of that unreliability. **On the test split, Volumetric_Flood is the only class
@@ -694,8 +719,9 @@ output of `ML/GraphSentinel_Training.ipynb`.*
    policy and none is installed; the allowlist does not cover gateways, DNS or the
    controller, and no rule has been validated against a controller.
 4. **PortScan's floor is unreachable** on the live sample (0 of 68 correct
-   predictions reach 0.85) and on the test split (0 of 3,735): its `drop` action
-   never fires.
+   predictions reach 0.85) and on the test split (0 of 3,735). Its `drop` action
+   could only fire on wrong-class predictions, and it has been `alert_only` since
+   2026-10-05 (§6).
 5. **The host memory is untrained** (§2). Not learned state.
 6. **PortScan's validation is contaminated** — one graph window appears in train,
    validation and test (§5.3). Validation chose the checkpoint and fitted every

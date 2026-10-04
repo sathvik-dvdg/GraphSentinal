@@ -959,7 +959,7 @@ curl -s localhost:8001/health | jq .ml_v2
 | **Retrained model installed** | ✅ 2026-10-04, after the container load. Epoch-31 files in `ML/prefix_epoch31/` |
 | **What the backend floors would let through** (§6) | ✅ measured on test: at most 2 of 389 benign-as-attack and at most 118 of 20,976 wrong-class edges clear their floors; Volumetric_Flood is the only enforceable class. Floors unchanged |
 | **Backend mitigation policy wired to rule generation** (§6) | ✅ **wired, dry-run** (2026-10-04). The policy travels with every request; the service's six-class table is deleted; rules are accepted only under the backend's own digest; withholdings logged with reasons. Tests: `ML/graphsentinel_v2/tests/test_sdn_policy.py`, `backend/tests/test_v2_rule_wiring.py`, both failing without the wiring. Live: 58 of 58 windows echoed the digest; 12 rules, all on correct flows (`ML/live_rule_check.json`) |
-| **PortScan floor reachable** (§6) | ❌ **no.** 0 of 68 correct live predictions reach 0.85 on the sample; 0.0% on the test split. Reported, not adjusted |
+| **PortScan floor reachable** (§6) | ❌ **no.** 0 of 68 correct live predictions reach 0.85 on the sample; 0.0% on the test split. PortScan is `alert_only` since 2026-10-05, floor unchanged (`MODEL_BEHAVIOUR.md` §6) |
 | **`UNRELIABLE_CLASSES`** | ⚠️ annotates only. With the policy now live, suppressing PortScan and BruteForce would mean something; proposed as its own change |
 | **PortScan split boundary** (§4) | ⚠️ **named limitation.** Minute 14:55 is in train, validation and test; validation is not independent of training for PortScan. Measurements queued for the next Colab pass |
 

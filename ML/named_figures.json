@@ -412,6 +412,126 @@
           "6 of that host's 13 rows"
         ]
       }
+    },
+    "wrong_class_portscan_rules_on_test": {
+      "value": 118,
+      "what": "true BruteForce test edges predicted PortScan at or above PortScan's floor: the only PortScan predictions that reach it",
+      "artefact": [
+        "ML/split_composition.json",
+        "part_b_confidence",
+        "test",
+        {
+          "true": "BruteForce",
+          "predicted": "PortScan"
+        },
+        "edges_at_or_above_floor"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "118 — PortScan rule on true BruteForce",
+          "the 118 wrong ones"
+        ]
+      }
+    },
+    "bruteforce_correct_on_sample": {
+      "value": 400,
+      "what": "true BruteForce flows predicted BruteForce on the committed sample, of 413",
+      "artefact": [
+        "ML/live_rule_check.json",
+        "per_true_class",
+        "BruteForce",
+        "correct"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "400 of 413 true BruteForce flows"
+        ]
+      }
+    },
+    "v1_bot_rows_over_threshold_ovs_192.168.10.14": {
+      "value": 3,
+      "what": "rows of this Bot host over the tracked threshold on OVS-shaped input",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.14"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "3, 1, 2, 2 and 0 across the five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_over_threshold_ovs_192.168.10.15": {
+      "value": 1,
+      "what": "rows of this Bot host over the tracked threshold on OVS-shaped input",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.15"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "3, 1, 2, 2 and 0 across the five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_over_threshold_ovs_192.168.10.5": {
+      "value": 2,
+      "what": "rows of this Bot host over the tracked threshold on OVS-shaped input",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.5"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "3, 1, 2, 2 and 0 across the five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_over_threshold_ovs_192.168.10.8": {
+      "value": 2,
+      "what": "rows of this Bot host over the tracked threshold on OVS-shaped input",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.8"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "3, 1, 2, 2 and 0 across the five hosts"
+        ]
+      }
+    },
+    "v1_bot_rows_over_threshold_ovs_192.168.10.9": {
+      "value": 0,
+      "what": "rows of this Bot host over the tracked threshold on OVS-shaped input",
+      "artefact": [
+        "ML/b08_ovs_constants.json",
+        "conditions",
+        "ovs_constants",
+        "threshold_0.75",
+        "attack_source_rows_over_threshold_by_source",
+        "192.168.10.9"
+      ],
+      "stated_as": {
+        "MODEL_BEHAVIOUR.md": [
+          "3, 1, 2, 2 and 0 across the five hosts"
+        ]
+      }
     }
   }
 }
