@@ -52,7 +52,7 @@ SYSTEM FLOW:
 ```bash
 # Windows: Node.js 20 LTS installed
 # WSL2: Ubuntu 22.04 with Python 3.10.11 via pyenv
-# See each member's plan in docs/ for full setup
+# See INSTALLATION_GUIDE.md for full setup
 ```
 
 ### Step 1 — Start Blockchain [Windows Terminal 1]
@@ -111,7 +111,7 @@ graphsentinel/
 ├── blockchain/      ← Skanda: Solidity contract, Ganache, Web3.py
 ├── ml/              ← Sathvik: CICIDS2017, GraphSAGE training
 ├── mininet/         ← Sairaj: topology + attack scripts
-├── docs/            ← Shared: API contracts, schemas, member plans
+├── docs/            ← Machine notes (docs/machine/)
 ├── datasets/        ← GITIGNORED: local CSV files only
 ├── .env.shared.example
 ├── .gitignore
@@ -182,14 +182,11 @@ OS:          Windows 11 (host) + WSL2 Ubuntu 22.04 (backend/ML)
 
 | File | Purpose |
 |------|---------|
-| `docs/API_CONTRACTS.md` | Frozen API shapes — read before building |
-| `docs/DATA_SCHEMAS.md` | All JSON schemas shared between members |
-| `INTEGRATION_GUIDE.md` (repo root) | The frozen v1 integration contract. For the current v2 wiring see `INTEGRATION.md` |
-| `docs/SAIRAJ_BACKEND_PLAN.md` | Backend week-by-week implementation |
-| `docs/SUSHEEP_FRONTEND_PLAN.md` | Frontend week-by-week implementation |
-| `docs/SKANDA_BLOCKCHAIN_PLAN.md` | Blockchain week-by-week implementation |
-| `docs/SATHVIK_ML_PLAN.md` | ML/GNN week-by-week implementation |
-| `GRAPHSENTINEL_MASTER_PROMPT.md` | God-tier AI IDE master prompt |
+| `RUN_GUIDE.md` | **Start here.** How to start the system and verify it in one command |
+| `MODEL_BEHAVIOUR.md` | Every measured number about the model, and what may be claimed |
+| `INTEGRATION.md` | The current v2 wiring: inference service, policy, provenance gate |
+| `INTEGRATION_GUIDE.md` | The frozen v1 integration contract (API shapes and schemas) |
+| `Error.md`, `decisions.md` | The numbered issue tracker and decision log that code comments cite |
 
 ---
 
@@ -249,7 +246,7 @@ GANACHE_URL=http://127.0.0.1:8545
 
 If any component fails during the 60-minute demo:
 - Frontend can run on mock data (`VITE_USE_MOCK=true`) — UI looks identical
-- Pre-recorded demo video: `docs/fallback_demo.mp4`
+- Pre-recorded demo video: none is committed. Record one before the demo (`RUN_GUIDE.md` §12)
 - Detailed fallback protocol: see `INTEGRATION_GUIDE.md` Section 9
 
 ---
