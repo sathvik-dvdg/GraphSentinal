@@ -1,0 +1,70 @@
+{
+  "bundle": "deploy",
+  "created_utc": "2026-10-04T04:40:32Z",
+  "files": [
+    {
+      "file": "model_card.json",
+      "bytes": 10355,
+      "sha256": "734943afb43e45c636d50ff8c14cd0c81ce8b2875c1418aa754d09116d8db7b9",
+      "source": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models",
+      "from": "colab_runner session 20261004T043634Z-73f4bd"
+    },
+    {
+      "file": "weights.pt",
+      "bytes": 76178357,
+      "sha256": "3db34022bcbab0501ceec50f4050319d997fd5abbb66430f4a75508e65054709",
+      "source": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models",
+      "from": "colab_runner session 20261004T043634Z-73f4bd"
+    },
+    {
+      "file": "model.ts",
+      "bytes": 76272252,
+      "sha256": "6ff399088b24f81a582a6b187d41e66053de4dbe5e4374ef28959fe8e1737a5c",
+      "source": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models",
+      "from": "colab_runner session 20261004T043634Z-73f4bd"
+    },
+    {
+      "file": "test_report.json",
+      "bytes": 70261,
+      "sha256": "08acb2e4bf72a33ed77e827a0471f7723cc85a17f162267a9c98f42e2e3e4aab",
+      "source": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs",
+      "from": "colab_runner session 20261004T043634Z-73f4bd"
+    }
+  ],
+  "classes": [
+    "BENIGN",
+    "Volumetric_Flood",
+    "PortScan",
+    "BruteForce",
+    "Botnet"
+  ],
+  "contract_version": "2.0.0",
+  "headline": {
+    "edge_macro_f1_all_classes": 0.4440737052503045,
+    "edge_macro_f1": 0.5550921315628806,
+    "edge_classes_present": 4.0,
+    "edge_binary_f1": 0.9960849038498445,
+    "edge_binary_pr_auc": 0.9997056841225213,
+    "edge_recall_at_fpr_0.001": 0.984746056508927,
+    "node_macro_f1": 0.3806721659480935
+  },
+  "per_class_edge_f1": {
+    "BENIGN": 0.9988291742234671,
+    "Volumetric_Flood": 0.9617132650715334,
+    "PortScan": 0.25982608695652176,
+    "BruteForce": 0.0,
+    "Botnet": null
+  },
+  "best_epoch": 18,
+  "split_protocol": "episode -- train and test can share a burst; these are NOT novel-attack numbers",
+  "fix_12h_clock": true,
+  "pm_hours": [
+    1,
+    7
+  ],
+  "preprocessing_sha256": "ce1041215ed4e5c14166180f66047cbccea9b0ee06a2b967b9b68cd69d9a475b",
+  "classes_without_test_edges": [
+    "Botnet"
+  ],
+  "note": "edge_macro_f1 averages the classes present in test; edge_macro_f1_all_classes averages all five and is the figure that compares across runs. Headline and per-class fields rewritten on install from test_report.json; file digests unchanged."
+}

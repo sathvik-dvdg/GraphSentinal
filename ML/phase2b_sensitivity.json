@@ -1,0 +1,169 @@
+{
+  "note": "Sensitivity control for phase2b_live_path_cost.py on the same sample. If all_zero_edge_features.argmax_changed is 0, the sample is separable without edge features and phase2b's deltas cannot measure edge-feature damage.",
+  "inputs": {
+    "sample": {
+      "path": "ML/testdata/cicids2017_sample.csv",
+      "sha256": "2655e288b9b3e2ed81fa21c6110819c3b77121a5e2830ee524e1caea0124e6c3",
+      "rows_in_file": 18264,
+      "rows_after_preprocessing": 18264
+    },
+    "model_card_sha256": "734943afb43e45c636d50ff8c14cd0c81ce8b2875c1418aa754d09116d8db7b9",
+    "weights_sha256": "3db34022bcbab0501ceec50f4050319d997fd5abbb66430f4a75508e65054709",
+    "preprocessing_sha256": "ce1041215ed4e5c14166180f66047cbccea9b0ee06a2b967b9b68cd69d9a475b",
+    "preprocessing_settings": {
+      "data": {
+        "taxonomy": "flood4",
+        "fix_12h_clock": true,
+        "pm_hours": [
+          1,
+          7
+        ],
+        "drop_duplicates": true,
+        "clip_quantile": 0.999,
+        "edge_feature_cols": [
+          "Flow Duration",
+          "Total Fwd Packets",
+          "Total Backward Packets",
+          "Total Length of Fwd Packets",
+          "Total Length of Bwd Packets",
+          "Fwd Packet Length Max",
+          "Bwd Packet Length Max",
+          "Flow IAT Mean",
+          "Fwd IAT Total",
+          "Bwd IAT Total",
+          "SYN Flag Count",
+          "RST Flag Count",
+          "ACK Flag Count",
+          "PSH Flag Count"
+        ],
+        "volumetric_cols": [
+          "Flow Bytes/s",
+          "Flow Packets/s"
+        ],
+        "drop_edge_features": []
+      },
+      "graph": {
+        "window_seconds": 60,
+        "window_stride_seconds": 60,
+        "min_edges_per_graph": 8,
+        "max_edges_per_graph": 200000,
+        "node_key": "ip",
+        "subnet_fallback_prefix": 24,
+        "add_reverse_edges": true
+      }
+    }
+  },
+  "windows": 58,
+  "real_edges": 18264,
+  "live_path_degradation": {
+    "argmax_changed": 42,
+    "max_abs_delta_prob": 0.42597872018814087,
+    "per_class_recall": {
+      "BENIGN": {
+        "baseline": 0.9995780590717299,
+        "variant": 0.9996383363471971
+      },
+      "Volumetric_Flood": {
+        "baseline": 0.9977703455964325,
+        "variant": 1.0
+      },
+      "PortScan": {
+        "baseline": 0.3520408163265306,
+        "variant": 0.25510204081632654
+      },
+      "BruteForce": {
+        "baseline": 0.9782082324455206,
+        "variant": 0.9975786924939467
+      },
+      "Botnet": {
+        "baseline": 0.0,
+        "variant": 0.0
+      }
+    },
+    "edges_with_changed_features_share": 1.0
+  },
+  "all_zero_edge_features": {
+    "argmax_changed": 41,
+    "max_abs_delta_prob": 0.6476246118545532,
+    "per_class_recall": {
+      "BENIGN": {
+        "baseline": 0.9995780590717299,
+        "variant": 0.9998191681735985
+      },
+      "Volumetric_Flood": {
+        "baseline": 0.9977703455964325,
+        "variant": 1.0
+      },
+      "PortScan": {
+        "baseline": 0.3520408163265306,
+        "variant": 0.28061224489795916
+      },
+      "BruteForce": {
+        "baseline": 0.9782082324455206,
+        "variant": 1.0
+      },
+      "Botnet": {
+        "baseline": 0.0,
+        "variant": 0.0
+      }
+    }
+  },
+  "baseline_confidence_of_correct_predictions": {
+    "BENIGN": {
+      "true_edges": 16590,
+      "correct": 16583,
+      "p05": 0.9553027212619781,
+      "p50": 0.9846483469009399,
+      "p95": 0.9924061894416809,
+      "max": 0.9928354620933533,
+      "share_at_or_above": {
+        "0.80": 0.9987939456069469,
+        "0.85": 0.9986130374479889,
+        "0.90": 0.9967436531387566
+      }
+    },
+    "Volumetric_Flood": {
+      "true_edges": 897,
+      "correct": 895,
+      "p05": 0.9369267582893371,
+      "p50": 0.9435356259346008,
+      "p95": 0.9538677096366882,
+      "max": 0.9563321471214294,
+      "share_at_or_above": {
+        "0.80": 1.0,
+        "0.85": 1.0,
+        "0.90": 0.958659217877095
+      }
+    },
+    "PortScan": {
+      "true_edges": 196,
+      "correct": 69,
+      "p05": 0.4713738441467285,
+      "p50": 0.6276874542236328,
+      "p95": 0.8095572471618652,
+      "max": 0.8140021562576294,
+      "share_at_or_above": {
+        "0.80": 0.13043478260869565,
+        "0.85": 0.0,
+        "0.90": 0.0
+      }
+    },
+    "BruteForce": {
+      "true_edges": 413,
+      "correct": 404,
+      "p05": 0.7081577211618424,
+      "p50": 0.8920250833034515,
+      "p95": 0.9362586736679077,
+      "max": 0.9363775849342346,
+      "share_at_or_above": {
+        "0.80": 0.8861386138613861,
+        "0.85": 0.8242574257425742,
+        "0.90": 0.36386138613861385
+      }
+    },
+    "Botnet": {
+      "true_edges": 168,
+      "correct": 0
+    }
+  }
+}

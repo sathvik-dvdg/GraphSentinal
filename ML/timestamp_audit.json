@@ -1,0 +1,515 @@
+{
+  "package_state": "has_fix",
+  "verdict": {
+    "clean": true,
+    "reason": "no mixed-clock day, no package disagreement, and the fix moves 960,315 rows in the training files",
+    "mixed_days": [],
+    "package_state": "has_fix",
+    "package_disagreements": [],
+    "missing_training_files": [],
+    "rows_moved_training_files": 960315,
+    "pm_hours": [
+      1,
+      7
+    ],
+    "files": [
+      {
+        "file": "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+        "rows": 225745,
+        "hour_ge_13": 0,
+        "pm_window_rows": 225745,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 225745,
+        "is_training_file": true
+      },
+      {
+        "file": "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv",
+        "rows": 286467,
+        "hour_ge_13": 0,
+        "pm_window_rows": 286467,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 286467,
+        "is_training_file": true
+      },
+      {
+        "file": "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+        "rows": 191033,
+        "hour_ge_13": 0,
+        "pm_window_rows": 0,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 0,
+        "is_training_file": true
+      },
+      {
+        "file": "Monday-WorkingHours.pcap_ISCX.csv",
+        "rows": 529918,
+        "hour_ge_13": 0,
+        "pm_window_rows": 222799,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 222799,
+        "is_training_file": false
+      },
+      {
+        "file": "Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv",
+        "rows": 288602,
+        "hour_ge_13": 0,
+        "pm_window_rows": 288602,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 288602,
+        "is_training_file": false
+      },
+      {
+        "file": "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+        "rows": 170366,
+        "hour_ge_13": 0,
+        "pm_window_rows": 0,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 0,
+        "is_training_file": false
+      },
+      {
+        "file": "Tuesday-WorkingHours.pcap_ISCX.csv",
+        "rows": 445909,
+        "hour_ge_13": 0,
+        "pm_window_rows": 220766,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 220766,
+        "is_training_file": true
+      },
+      {
+        "file": "Wednesday-workingHours.pcap_ISCX.csv",
+        "rows": 692703,
+        "hour_ge_13": 0,
+        "pm_window_rows": 227337,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 227337,
+        "is_training_file": true
+      }
+    ],
+    "audited_at_utc": "2026-10-04T04:35:59Z"
+  },
+  "files": [
+    {
+      "file": "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 225745,
+      "unparseable": 0,
+      "hour_lt_12": 225745,
+      "hour_ge_12": 0,
+      "hour_ge_13": 0,
+      "pm_window_rows": 225745,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        3,
+        4,
+        5
+      ],
+      "min_before": "2017-07-07 03:30:00",
+      "max_before": "2017-07-07 05:02:00",
+      "rows_moved_by_fix": 225745,
+      "hours_present_after": [
+        15,
+        16,
+        17
+      ],
+      "min_after": "2017-07-07 15:30:00",
+      "max_after": "2017-07-07 17:02:00",
+      "days": [
+        {
+          "day": "2017-07-07",
+          "rows": 225745,
+          "hour_ge_13": 0,
+          "pm_window_rows": 225745,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 225745,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    },
+    {
+      "file": "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 286467,
+      "unparseable": 0,
+      "hour_lt_12": 286467,
+      "hour_ge_12": 0,
+      "hour_ge_13": 0,
+      "pm_window_rows": 286467,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        1,
+        2,
+        3
+      ],
+      "min_before": "2017-07-07 01:00:00",
+      "max_before": "2017-07-07 03:29:00",
+      "rows_moved_by_fix": 286467,
+      "hours_present_after": [
+        13,
+        14,
+        15
+      ],
+      "min_after": "2017-07-07 13:00:00",
+      "max_after": "2017-07-07 15:29:00",
+      "days": [
+        {
+          "day": "2017-07-07",
+          "rows": 286467,
+          "hour_ge_13": 0,
+          "pm_window_rows": 286467,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 286467,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    },
+    {
+      "file": "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 191033,
+      "unparseable": 0,
+      "hour_lt_12": 176984,
+      "hour_ge_12": 14049,
+      "hour_ge_13": 0,
+      "pm_window_rows": 0,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "min_before": "2017-07-07 08:59:00",
+      "max_before": "2017-07-07 12:59:00",
+      "rows_moved_by_fix": 0,
+      "hours_present_after": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "min_after": "2017-07-07 08:59:00",
+      "max_after": "2017-07-07 12:59:00",
+      "days": [
+        {
+          "day": "2017-07-07",
+          "rows": 191033,
+          "hour_ge_13": 0,
+          "pm_window_rows": 0,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 0,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    },
+    {
+      "file": "Monday-WorkingHours.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 529918,
+      "unparseable": 0,
+      "hour_lt_12": 471977,
+      "hour_ge_12": 57941,
+      "hour_ge_13": 0,
+      "pm_window_rows": 222799,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "min_before": "2017-07-03 01:00:01",
+      "max_before": "2017-07-03 12:59:58",
+      "rows_moved_by_fix": 222799,
+      "hours_present_after": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "min_after": "2017-07-03 08:55:58",
+      "max_after": "2017-07-03 17:01:34",
+      "days": [
+        {
+          "day": "2017-07-03",
+          "rows": 529918,
+          "hour_ge_13": 0,
+          "pm_window_rows": 222799,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 222799,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    },
+    {
+      "file": "Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 288602,
+      "unparseable": 0,
+      "hour_lt_12": 288602,
+      "hour_ge_12": 0,
+      "hour_ge_13": 0,
+      "pm_window_rows": 288602,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        1,
+        2,
+        3,
+        4,
+        5
+      ],
+      "min_before": "2017-07-06 01:00:00",
+      "max_before": "2017-07-06 05:04:00",
+      "rows_moved_by_fix": 288602,
+      "hours_present_after": [
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "min_after": "2017-07-06 13:00:00",
+      "max_after": "2017-07-06 17:04:00",
+      "days": [
+        {
+          "day": "2017-07-06",
+          "rows": 288602,
+          "hour_ge_13": 0,
+          "pm_window_rows": 288602,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 288602,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    },
+    {
+      "file": "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 170366,
+      "unparseable": 0,
+      "hour_lt_12": 150814,
+      "hour_ge_12": 19552,
+      "hour_ge_13": 0,
+      "pm_window_rows": 0,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "min_before": "2017-07-06 08:59:00",
+      "max_before": "2017-07-06 12:59:00",
+      "rows_moved_by_fix": 0,
+      "hours_present_after": [
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "min_after": "2017-07-06 08:59:00",
+      "max_after": "2017-07-06 12:59:00",
+      "days": [
+        {
+          "day": "2017-07-06",
+          "rows": 170366,
+          "hour_ge_13": 0,
+          "pm_window_rows": 0,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 0,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    },
+    {
+      "file": "Tuesday-WorkingHours.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 445909,
+      "unparseable": 0,
+      "hour_lt_12": 427830,
+      "hour_ge_12": 18079,
+      "hour_ge_13": 0,
+      "pm_window_rows": 220766,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "min_before": "2017-07-04 01:00:00",
+      "max_before": "2017-07-04 12:59:00",
+      "rows_moved_by_fix": 220766,
+      "hours_present_after": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "min_after": "2017-07-04 08:53:00",
+      "max_after": "2017-07-04 17:00:00",
+      "days": [
+        {
+          "day": "2017-07-04",
+          "rows": 445909,
+          "hour_ge_13": 0,
+          "pm_window_rows": 220766,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 220766,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    },
+    {
+      "file": "Wednesday-workingHours.pcap_ISCX.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 692703,
+      "unparseable": 0,
+      "hour_lt_12": 668710,
+      "hour_ge_12": 23993,
+      "hour_ge_13": 0,
+      "pm_window_rows": 227337,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        1,
+        2,
+        3,
+        4,
+        5,
+        8,
+        9,
+        10,
+        11,
+        12
+      ],
+      "min_before": "2017-07-05 01:00:00",
+      "max_before": "2017-07-05 12:59:00",
+      "rows_moved_by_fix": 227337,
+      "hours_present_after": [
+        8,
+        9,
+        10,
+        11,
+        12,
+        13,
+        14,
+        15,
+        16,
+        17
+      ],
+      "min_after": "2017-07-05 08:42:00",
+      "max_after": "2017-07-05 17:10:00",
+      "days": [
+        {
+          "day": "2017-07-05",
+          "rows": 692703,
+          "hour_ge_13": 0,
+          "pm_window_rows": 227337,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 227337,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    }
+  ]
+}

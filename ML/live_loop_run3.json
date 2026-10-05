@@ -1,0 +1,348 @@
+{
+  "what": "third live run: as run 2 with ONE change, the flood sent as many conversations (a new source port per packet, from two hosts) instead of one. Derived from ML/retrain_logs/live_loop_run3.txt and the daemon's own responses.",
+  "route": "B: local WSL2, Mininet with the OVS kernel datapath, no Docker; live polling, not a replay",
+  "labels": "by construction: the traffic script knows what it sent. Not a dataset.",
+  "backend_started_with_log_config": false,
+  "raw_input": "ML/retrain_logs/live_loop/daemon_responses_run3.txt: every dump_flows answer as the daemon returned it to the backend (DAEMON_DUMP_LOG), not a parallel capture",
+  "daemon_responses": 59,
+  "flows_parsed_from_daemon_responses": 23526,
+  "flows_admitted_by_gate": 23526,
+  "batches_admitted_by_gate": 51,
+  "batches_refused_non_ovs": 0,
+  "polls": {
+    "ok": 51,
+    "ok_empty": 7,
+    "failed": 0
+  },
+  "windows_closed": 5,
+  "windows_unscored": 0,
+  "flows_sent": 23526,
+  "flows_dropped_in_mapping": 0,
+  "policy_sha256": "e99290226e2d4ad9b8293ffae19bbf53c2bfc673dde11aae4abd9bcff1c8f717",
+  "dry_run": true,
+  "rules_admitted": 19,
+  "rules_by_what_the_flow_was": {
+    "benign_http_fetch": 12,
+    "reply_to_benign_http_fetch": 0,
+    "reply_to_port_scan": 1,
+    "bruteforce_shaped_connections": 2,
+    "flood": 4,
+    "other": 0
+  },
+  "rules_by_class": {
+    "Volumetric_Flood": 19
+  },
+  "flood_rule_confidences": [
+    0.9504,
+    0.9534,
+    0.9551,
+    0.9551
+  ],
+  "benign_fetch_rule_confidences": [
+    0.9193,
+    0.9259,
+    0.9415,
+    0.9415,
+    0.9418,
+    0.9532,
+    0.9575,
+    0.9575,
+    0.9599,
+    0.9607,
+    0.9619,
+    0.9628
+  ],
+  "windows": [
+    {
+      "window_start": 1791145800,
+      "scored_by_backend": 24,
+      "predicted": {
+        "BENIGN": 23,
+        "Botnet": 1
+      },
+      "predicted_attack": 1,
+      "flows_parsed_from_daemon_responses_in_window": 24,
+      "distinct_conversations": 14,
+      "flood_conversations": 0,
+      "resubmission_factor": 1.71,
+      "volumetric_flood_predicted": 0,
+      "volumetric_flood_below_floor": 0,
+      "volumetric_flood_at_or_above_floor": 0,
+      "rules_admitted": 0
+    },
+    {
+      "window_start": 1791145860,
+      "scored_by_backend": 652,
+      "predicted": {
+        "BENIGN": 323,
+        "Botnet": 22,
+        "Volumetric_Flood": 307
+      },
+      "predicted_attack": 329,
+      "flows_parsed_from_daemon_responses_in_window": 652,
+      "distinct_conversations": 100,
+      "flood_conversations": 0,
+      "resubmission_factor": 6.52,
+      "volumetric_flood_predicted": 307,
+      "volumetric_flood_below_floor": 3,
+      "volumetric_flood_at_or_above_floor": 304,
+      "rules_admitted": 4
+    },
+    {
+      "window_start": 1791145920,
+      "scored_by_backend": 5540,
+      "predicted": {
+        "BENIGN": 2642,
+        "BruteForce": 34,
+        "PortScan": 2177,
+        "Volumetric_Flood": 687
+      },
+      "predicted_attack": 2898,
+      "flows_parsed_from_daemon_responses_in_window": 5540,
+      "distinct_conversations": 604,
+      "flood_conversations": 0,
+      "resubmission_factor": 9.17,
+      "volumetric_flood_predicted": 687,
+      "volumetric_flood_below_floor": 427,
+      "volumetric_flood_at_or_above_floor": 260,
+      "rules_admitted": 6
+    },
+    {
+      "window_start": 1791145980,
+      "scored_by_backend": 14890,
+      "predicted": {
+        "BENIGN": 7448,
+        "PortScan": 1,
+        "Volumetric_Flood": 7441
+      },
+      "predicted_attack": 7442,
+      "flows_parsed_from_daemon_responses_in_window": 14890,
+      "distinct_conversations": 2158,
+      "flood_conversations": 1000,
+      "resubmission_factor": 6.9,
+      "volumetric_flood_predicted": 7441,
+      "volumetric_flood_below_floor": 232,
+      "volumetric_flood_at_or_above_floor": 7209,
+      "rules_admitted": 5
+    },
+    {
+      "window_start": 1791146040,
+      "scored_by_backend": 2390,
+      "predicted": {
+        "BENIGN": 1182,
+        "Botnet": 22,
+        "Volumetric_Flood": 1186
+      },
+      "predicted_attack": 1208,
+      "flows_parsed_from_daemon_responses_in_window": 2390,
+      "distinct_conversations": 2058,
+      "flood_conversations": 1000,
+      "resubmission_factor": 1.16,
+      "volumetric_flood_predicted": 1186,
+      "volumetric_flood_below_floor": 2,
+      "volumetric_flood_at_or_above_floor": 1184,
+      "rules_admitted": 4
+    }
+  ],
+  "totals": {
+    "scored_by_backend": 23496,
+    "predicted_attack": 11878,
+    "distinct_conversations": 4934,
+    "flood_conversations": 2000,
+    "volumetric_flood_predicted": 9621,
+    "volumetric_flood_below_floor": 664,
+    "volumetric_flood_at_or_above_floor": 8957
+  },
+  "rules": [
+    {
+      "window_start": 1791145860,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.7",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9619,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145860,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.10",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "confidence": 0.9575,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145860,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "confidence": 0.9575,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145860,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9193,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145920,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.7",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9628,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145920,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.4",
+      "dst_port": "22",
+      "confidence": 0.9444,
+      "what_it_was": "bruteforce_shaped_connections"
+    },
+    {
+      "window_start": 1791145920,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "confidence": 0.9418,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145920,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.10",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "confidence": 0.9415,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145920,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9259,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145920,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.1",
+      "dst_ip": "10.0.0.2",
+      "dst_port": "35712",
+      "confidence": 0.9257,
+      "what_it_was": "reply_to_port_scan"
+    },
+    {
+      "window_start": 1791145980,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "confidence": 0.9607,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791145980,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.2",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9534,
+      "what_it_was": "flood"
+    },
+    {
+      "window_start": 1791145980,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9504,
+      "what_it_was": "flood"
+    },
+    {
+      "window_start": 1791145980,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.4",
+      "dst_port": "22",
+      "confidence": 0.9457,
+      "what_it_was": "bruteforce_shaped_connections"
+    },
+    {
+      "window_start": 1791145980,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9415,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791146040,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "confidence": 0.9599,
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "window_start": 1791146040,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9551,
+      "what_it_was": "flood"
+    },
+    {
+      "window_start": 1791146040,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.2",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9551,
+      "what_it_was": "flood"
+    },
+    {
+      "window_start": 1791146040,
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "confidence": 0.9532,
+      "what_it_was": "benign_http_fetch"
+    }
+  ]
+}

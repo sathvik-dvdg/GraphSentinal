@@ -1,0 +1,456 @@
+{
+  "what": "retrain under the fixed 12-hour timestamp parse (ML/TIMESTAMP_FIX.md)",
+  "packaged_at_utc": "2026-10-04T04:40:32Z",
+  "packaged_in_session": "20261004T043634Z-73f4bd",
+  "weights_sha256": "3db34022bcbab0501ceec50f4050319d997fd5abbb66430f4a75508e65054709",
+  "preprocessing_sha256": "ce1041215ed4e5c14166180f66047cbccea9b0ee06a2b967b9b68cd69d9a475b",
+  "preprocessing_settings": {
+    "data": {
+      "taxonomy": "flood4",
+      "fix_12h_clock": true,
+      "pm_hours": [
+        1,
+        7
+      ],
+      "drop_duplicates": true,
+      "clip_quantile": 0.999,
+      "edge_feature_cols": [
+        "Flow Duration",
+        "Total Fwd Packets",
+        "Total Backward Packets",
+        "Total Length of Fwd Packets",
+        "Total Length of Bwd Packets",
+        "Fwd Packet Length Max",
+        "Bwd Packet Length Max",
+        "Flow IAT Mean",
+        "Fwd IAT Total",
+        "Bwd IAT Total",
+        "SYN Flag Count",
+        "RST Flag Count",
+        "ACK Flag Count",
+        "PSH Flag Count"
+      ],
+      "volumetric_cols": [
+        "Flow Bytes/s",
+        "Flow Packets/s"
+      ],
+      "drop_edge_features": []
+    },
+    "graph": {
+      "window_seconds": 60,
+      "window_stride_seconds": 60,
+      "min_edges_per_graph": 8,
+      "max_edges_per_graph": 200000,
+      "node_key": "ip",
+      "subnet_fallback_prefix": 24,
+      "add_reverse_edges": true
+    }
+  },
+  "fix_12h_clock": true,
+  "pm_hours": [
+    1,
+    7
+  ],
+  "package_built_from": {
+    "commit": "c3df7d6a8db7780f3ed3322a85d53c64dc554ad8",
+    "branch": "feat/integrate-graphsentinel-v2",
+    "dirty": false,
+    "dirty_files": [],
+    "built_at_utc": "2026-10-04T04:28:21Z",
+    "has_sample_generator": true,
+    "files": [
+      "ML/colab/build_bundle.py",
+      "ML/colab/cell_a.py",
+      "ML/colab/cell_b.py",
+      "ML/colab/cells/probes_confirm.py",
+      "ML/colab/cells/probes_information.py",
+      "ML/colab/cells/split_composition.py",
+      "ML/colab/cells/threshold_study.py",
+      "ML/colab/colab_runner.py",
+      "ML/graphsentinel_v2/graphsentinel/__init__.py",
+      "ML/graphsentinel_v2/graphsentinel/baseline.py",
+      "ML/graphsentinel_v2/graphsentinel/config.py",
+      "ML/graphsentinel_v2/graphsentinel/data/__init__.py",
+      "ML/graphsentinel_v2/graphsentinel/data/graph_builder.py",
+      "ML/graphsentinel_v2/graphsentinel/data/ports.py",
+      "ML/graphsentinel_v2/graphsentinel/data/preprocess.py",
+      "ML/graphsentinel_v2/graphsentinel/data/schema.py",
+      "ML/graphsentinel_v2/graphsentinel/evaluate.py",
+      "ML/graphsentinel_v2/graphsentinel/export.py",
+      "ML/graphsentinel_v2/graphsentinel/inference/__init__.py",
+      "ML/graphsentinel_v2/graphsentinel/inference/capture.py",
+      "ML/graphsentinel_v2/graphsentinel/inference/ema_scaler.py",
+      "ML/graphsentinel_v2/graphsentinel/inference/engine.py",
+      "ML/graphsentinel_v2/graphsentinel/inference/sdn.py",
+      "ML/graphsentinel_v2/graphsentinel/inference/service.py",
+      "ML/graphsentinel_v2/graphsentinel/losses.py",
+      "ML/graphsentinel_v2/graphsentinel/models/__init__.py",
+      "ML/graphsentinel_v2/graphsentinel/models/compat.py",
+      "ML/graphsentinel_v2/graphsentinel/models/layers.py",
+      "ML/graphsentinel_v2/graphsentinel/models/memory.py",
+      "ML/graphsentinel_v2/graphsentinel/models/net.py",
+      "ML/graphsentinel_v2/graphsentinel/models/recon.py",
+      "ML/graphsentinel_v2/graphsentinel/ood.py",
+      "ML/graphsentinel_v2/graphsentinel/train.py",
+      "ML/graphsentinel_v2/graphsentinel/utils/__init__.py",
+      "ML/graphsentinel_v2/graphsentinel/utils/scratch.py",
+      "ML/graphsentinel_v2/graphsentinel/utils/seed.py",
+      "ML/graphsentinel_v2/requirements-train.txt",
+      "ML/graphsentinel_v2/requirements.txt",
+      "ML/make_testdata_sample.py",
+      "ML/model_card.json",
+      "ML/phase2b_live_path_cost.py",
+      "ML/phase2b_sensitivity_check.py",
+      "ML/timestamp_audit.py"
+    ]
+  },
+  "classes": [
+    "BENIGN",
+    "Volumetric_Flood",
+    "PortScan",
+    "BruteForce",
+    "Botnet"
+  ],
+  "epochs_configured": 40,
+  "seed": 42,
+  "environment": {
+    "python": "3.13.15",
+    "torch": "2.11.0+cu130",
+    "gpu": "Tesla T4",
+    "colab": true
+  },
+  "stages": {
+    "audit_gate": {
+      "stage": "audit_gate",
+      "session": "20261004T043634Z-73f4bd",
+      "finished_at_utc": "2026-10-04T04:36:39Z",
+      "outputs": {},
+      "verdict": {
+        "clean": true,
+        "reason": "no mixed-clock day, no package disagreement, and the fix moves 960,315 rows in the training files",
+        "mixed_days": [],
+        "package_state": "has_fix",
+        "package_disagreements": [],
+        "missing_training_files": [],
+        "rows_moved_training_files": 960315,
+        "pm_hours": [
+          1,
+          7
+        ],
+        "files": [
+          {
+            "file": "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+            "rows": 225745,
+            "hour_ge_13": 0,
+            "pm_window_rows": 225745,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 225745,
+            "is_training_file": true
+          },
+          {
+            "file": "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv",
+            "rows": 286467,
+            "hour_ge_13": 0,
+            "pm_window_rows": 286467,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 286467,
+            "is_training_file": true
+          },
+          {
+            "file": "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+            "rows": 191033,
+            "hour_ge_13": 0,
+            "pm_window_rows": 0,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 0,
+            "is_training_file": true
+          },
+          {
+            "file": "Monday-WorkingHours.pcap_ISCX.csv",
+            "rows": 529918,
+            "hour_ge_13": 0,
+            "pm_window_rows": 222799,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 222799,
+            "is_training_file": false
+          },
+          {
+            "file": "Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv",
+            "rows": 288602,
+            "hour_ge_13": 0,
+            "pm_window_rows": 288602,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 288602,
+            "is_training_file": false
+          },
+          {
+            "file": "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv",
+            "rows": 170366,
+            "hour_ge_13": 0,
+            "pm_window_rows": 0,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 0,
+            "is_training_file": false
+          },
+          {
+            "file": "Tuesday-WorkingHours.pcap_ISCX.csv",
+            "rows": 445909,
+            "hour_ge_13": 0,
+            "pm_window_rows": 220766,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 220766,
+            "is_training_file": true
+          },
+          {
+            "file": "Wednesday-workingHours.pcap_ISCX.csv",
+            "rows": 692703,
+            "hour_ge_13": 0,
+            "pm_window_rows": 227337,
+            "am_pm_tokens": 0,
+            "rows_moved_by_fix": 227337,
+            "is_training_file": true
+          }
+        ],
+        "audited_at_utc": "2026-10-04T04:35:59Z",
+        "basis": {
+          "parse_code_sha256": "60da7b0ddcbb0437ba3f60fbd9ecdc3bf2f7246a5074ac60cda8c3862112a3a5",
+          "dataset_files": {
+            "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv": 96101069,
+            "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv": 101874777,
+            "Friday-WorkingHours-Morning.pcap_ISCX.csv": 75386737,
+            "Monday-WorkingHours.pcap_ISCX.csv": 268649908,
+            "Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv": 108723183,
+            "Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv": 92030223,
+            "Tuesday-WorkingHours.pcap_ISCX.csv": 174696560,
+            "Wednesday-workingHours.pcap_ISCX.csv": 285642925
+          },
+          "bundle_commit": "c3df7d6a8db7780f3ed3322a85d53c64dc554ad8"
+        }
+      }
+    },
+    "graphs": {
+      "stage": "graphs",
+      "session": "20261003T032216Z-9c2ab8",
+      "finished_at_utc": "2026-10-03T03:22:55Z",
+      "outputs": {},
+      "cache_tag": "_pm1-7",
+      "n_graphs": {
+        "train": 1074,
+        "val": 249,
+        "test": 207
+      }
+    },
+    "train_export": {
+      "stage": "train_export",
+      "session": "20261003T032216Z-9c2ab8",
+      "finished_at_utc": "2026-10-03T03:39:06Z",
+      "outputs": {
+        "weights.pt": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models/weights.pt",
+          "bytes": 76178357
+        },
+        "model.ts": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models/model.ts",
+          "bytes": 76272252
+        },
+        "model_card.json": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/models/model_card.json",
+          "bytes": 10355
+        },
+        "test_report.json": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/test_report.json",
+          "bytes": 70261
+        },
+        "training_log.csv": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/training_log.csv",
+          "bytes": 22702
+        },
+        "best.pt": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/checkpoints/best.pt",
+          "bytes": 76176407
+        },
+        "train_output.txt": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/train_output.txt",
+          "bytes": 6747
+        }
+      },
+      "best_epoch": 18,
+      "best_val_metric": 0.5564984928009918,
+      "epochs_run": 30,
+      "seconds": 969.5,
+      "weights_sha256": "3db34022bcbab0501ceec50f4050319d997fd5abbb66430f4a75508e65054709",
+      "test_edge_macro_f1": 0.5550921315628806
+    },
+    "threshold_study": {
+      "stage": "threshold_study",
+      "session": "20261003T032216Z-9c2ab8",
+      "finished_at_utc": "2026-10-03T03:39:43Z",
+      "outputs": {
+        "threshold_study.json": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/threshold_study.json",
+          "bytes": 2517
+        },
+        "threshold_flow_level.csv": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/threshold_flow_level.csv",
+          "bytes": 511
+        },
+        "threshold_window_level.csv": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/threshold_window_level.csv",
+          "bytes": 2976
+        },
+        "threshold_study_output.txt": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/threshold_study_output.txt",
+          "bytes": 8607
+        }
+      },
+      "binary_gate": 0.5,
+      "alert_min_flows": 5
+    },
+    "probes": {
+      "stage": "probes",
+      "session": "20261003T032216Z-9c2ab8",
+      "finished_at_utc": "2026-10-03T03:41:01Z",
+      "outputs": {
+        "probes.json": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/probes.json",
+          "bytes": 14399
+        },
+        "probes_information_output.txt": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/probes_information_output.txt",
+          "bytes": 3090
+        },
+        "probes_confirm_output.txt": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/probes_confirm_output.txt",
+          "bytes": 5652
+        }
+      },
+      "F6_delta_test": -0.026500392459470334,
+      "F2_delta_test": 0.01876433263248567
+    },
+    "split_composition": {
+      "stage": "split_composition",
+      "session": "20261004T043634Z-73f4bd",
+      "finished_at_utc": "2026-10-04T04:38:12Z",
+      "outputs": {
+        "split_composition.json": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/split_composition.json",
+          "bytes": 18234
+        },
+        "split_composition_output.txt": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/split_composition_output.txt",
+          "bytes": 6169
+        }
+      }
+    },
+    "sample": {
+      "stage": "sample",
+      "session": "20261004T043634Z-73f4bd",
+      "finished_at_utc": "2026-10-04T04:39:57Z",
+      "outputs": {
+        "cicids2017_sample.csv": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/testdata/cicids2017_sample.csv",
+          "bytes": 7207002
+        }
+      },
+      "sample_sha256": "2655e288b9b3e2ed81fa21c6110819c3b77121a5e2830ee524e1caea0124e6c3",
+      "generator_wrote": "cicids2017_sample.csv",
+      "mixed_windows": 52,
+      "mixed_windows_sufficient": true
+    },
+    "phase2b": {
+      "stage": "phase2b",
+      "session": "20261004T043634Z-73f4bd",
+      "finished_at_utc": "2026-10-04T04:40:29Z",
+      "outputs": {
+        "phase2b_sensitivity.json": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/phase2b_sensitivity.json",
+          "bytes": 4682
+        },
+        "phase2b_results.json": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/logs/phase2b_results.json",
+          "bytes": 14406
+        }
+      },
+      "phase2b_sensitivity_check.py": {
+        "exit_code": 0
+      },
+      "control_argmax_changed": 41,
+      "phase2b_live_path_cost.py": {
+        "exit_code": 0
+      }
+    }
+  },
+  "sample_mixed_windows": 52,
+  "sample_mixed_windows_sufficient": true,
+  "preflight": {
+    "session": "20261004T043500Z-9eb89d",
+    "at_utc": "2026-10-04T04:36:24Z",
+    "checks": [
+      {
+        "status": "PASS",
+        "check": "Drive mounted, project folder resolved",
+        "detail": "/content/drive/MyDrive/GraphsentinalV2"
+      },
+      {
+        "status": "PASS",
+        "check": "bundle installed",
+        "detail": "built from commit c3df7d6a8d"
+      },
+      {
+        "status": "PASS",
+        "check": "dependencies import",
+        "detail": "torch 2.11.0+cu130, torch-geometric 2.8.0.post1, pyarrow 23.0.1; cache tag _pm1-7"
+      },
+      {
+        "status": "PASS",
+        "check": "cfg built from the model card; dataset folder holds 8 CSVs",
+        "detail": "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv, Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv, Friday-WorkingHours-Morning.pcap_ISCX.csv, Monday-WorkingHours.pcap_ISCX.csv, Thursday-WorkingHours-Afternoon-Infilteration.pcap_ISCX.csv, Thursday-WorkingHours-Morning-WebAttacks.pcap_ISCX.csv, Tuesday-WorkingHours.pcap_ISCX.csv, Wednesday-workingHours.pcap_ISCX.csv"
+      },
+      {
+        "status": "PASS",
+        "check": "run folder is writable and reads back",
+        "detail": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h"
+      },
+      {
+        "status": "PASS",
+        "check": "free local disk",
+        "detail": "74.1 GB"
+      },
+      {
+        "status": "PASS",
+        "check": "GPU present",
+        "detail": "Tesla T4"
+      },
+      {
+        "status": "PASS",
+        "check": "audit verdict",
+        "detail": "CLEAN -- no mixed-clock day, no package disagreement, and the fix moves 960,315 rows in the training files"
+      }
+    ]
+  },
+  "artefact_sha256": {
+    "ML/weights.pt": "3db34022bcbab0501ceec50f4050319d997fd5abbb66430f4a75508e65054709",
+    "ML/model.ts": "6ff399088b24f81a582a6b187d41e66053de4dbe5e4374ef28959fe8e1737a5c",
+    "ML/model_card.json": "734943afb43e45c636d50ff8c14cd0c81ce8b2875c1418aa754d09116d8db7b9",
+    "ML/test_report.json": "08acb2e4bf72a33ed77e827a0471f7723cc85a17f162267a9c98f42e2e3e4aab",
+    "ML/threshold_study.json": "e068a714598c1dad0e0e4c7a6d9d7d1201b3fa7238637535a4974d12bca2cb8a",
+    "ML/threshold_flow_level.csv": "0fc56ff9394b9e673ef84a0cc58925d17c64814bd5df14bfff59814b2156afa2",
+    "ML/threshold_window_level.csv": "ffc05b5bd16e3575d19f15520123a0378dc3b7344aa9a4a331b5421b899529e6",
+    "ML/probes.json": "3a24be8b0b29ea5523999ddcb1feeb27689e79a101e6e322e11f9d6262652749",
+    "ML/split_composition.json": "eaace8e57e34145aa4e2f03fe468fc60a2baafa26a744b63ae51593adfe57d90",
+    "ML/timestamp_audit.json": "82deec78836b90a4fb02b336444d732c7ccf0becf8030912ccf0f85bf2112b35",
+    "ML/phase2b_sensitivity.json": "d856f2ce556a7eed7c777db3142c2221cdc570a56481b893d29ff9760ba216df",
+    "ML/phase2b_results.json": "37967f9a7d7613ed43d660acb2236d2dbcc13d324add25676d4eeb15e968c6d9",
+    "ML/testdata/cicids2017_sample.csv": "2655e288b9b3e2ed81fa21c6110819c3b77121a5e2830ee524e1caea0124e6c3",
+    "ML/retrain_logs/phase2b_live_path_cost_output.txt": "12b0bc40d9baec7a00b21c0a30a1575203f54c7d24c15939a36c3b4d22c6f98f",
+    "ML/retrain_logs/phase2b_sensitivity_check_output.txt": "c8a14c70401cc0c4988236f3d447cf19d372723a18922e014a5bb5f4d84cbd58",
+    "ML/retrain_logs/probes_confirm_output.txt": "5d31a31677fdffb640022be43b1277a09ca861c20f2f3bbf0d94209144bb109c",
+    "ML/retrain_logs/probes_information_output.txt": "e2fcd281ee630eab24afd0eb83d443ce8654203a0d9f60ac83d2a62e61c5d74d",
+    "ML/retrain_logs/sample_output.txt": "a5a1fcbfe355d110e71b9b84db832faff861a25ffe7b937fb4984cb8a0643335",
+    "ML/retrain_logs/split_composition_output.txt": "28b62088a8bb7399a15292f8009c67539289ee5e75c955da4d2128ae3b4f9ad2",
+    "ML/retrain_logs/threshold_study_output.txt": "2f44947747deca7112bae9b6d608e76829d674c46f8d709ad1798be9f7f355a2",
+    "ML/retrain_logs/train_output.txt": "3f3d01534bbdd7a04a96a36137be06cdb1b56c1e41e9b7a257a4dae31c9b7a9e",
+    "ML/retrain_logs/training_log.csv": "7c983d026d350fb8742b46ea7917802eab218f1c2d97d51101f09fcf884c4b7d"
+  },
+  "not_in_this_zip": []
+}

@@ -27,3 +27,22 @@ __pycache__/
 
 # Local IDE-generated hardhat temp configs
 blockchain/.vscode_hardhat_config_*.ts
+
+# ── GraphSentinel v2 model binaries ───────────────────────────────────────────
+# weights.pt and model.ts are ~72.7 MiB each. Git cannot delta-compress them,
+# so every re-export would add ~145 MiB to history permanently. Their sha256
+# digests live in ML/MANIFEST.json, so integrity is verifiable without the blob.
+# See INTEGRATION.md for how to fetch them.
+ML/weights.pt
+ML/model.ts
+# the pre-fix epoch-31 binaries, kept locally beside their manifest
+ML/prefix_epoch31/weights.pt
+ML/prefix_epoch31/model.ts
+ML\testdata\cicids2017_sample.csv
+# Local Compose override, for per-machine settings. Never committed, and no longer
+# needed to run: the v2 path is on in docker-compose.yml, and the v1-only variant
+# is the tracked docker-compose.v1.yml.
+docker-compose.override.yml
+
+# Local frontend env; create it from frontend/.env.example (RUN_GUIDE.md section 3).
+frontend/.env

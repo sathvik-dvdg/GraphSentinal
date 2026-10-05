@@ -22,7 +22,15 @@ COPY web3_bridge/ ./web3_bridge/
 COPY hardhat.config.js ./
 
 # ── Compile contracts so artifacts are available before deploy ────────────────
-RUN npx hardhat compile
+# Hardhat downloads solc from binaries.soliditylang.org on first compile, which
+# makes this step fail on any transient DNS/network blip (HH502 / EAI_AGAIN).
+# Retry rather than lose the whole cached build to one bad lookup.
+RUN for i in 1 2 3 4 5; do \
+        npx hardhat compile && exit 0; \
+        echo "hardhat compile failed (attempt $i/5) — retrying in 10s"; \
+        sleep 10; \
+    done; \
+    echo "hardhat compile failed after 5 attempts"; exit 1
 
 # ── Entrypoint script ─────────────────────────────────────────────────────────
 COPY docker-entrypoint.sh /usr/local/bin/docker-entrypoint.sh

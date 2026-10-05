@@ -1,0 +1,102 @@
+{
+  "checkpoint_epoch": 18,
+  "fitted_on": "validation split",
+  "binary_gate": 0.5,
+  "binary_criterion": "max F1 on validation",
+  "alert_window_seconds": 60,
+  "alert_min_flows": 5,
+  "per_class_min_conf": [
+    {
+      "class": "Volumetric_Flood",
+      "min_conf": 0.45710518956184387,
+      "fitted": true,
+      "val_precision": 1.0,
+      "val_recall": 0.7980113636363636,
+      "test_precision": 0.9803504470723969,
+      "test_recall": 1.0,
+      "test_f1": 0.9900777395452146
+    },
+    {
+      "class": "PortScan",
+      "min_conf": 0.8705789869590511,
+      "fitted": true,
+      "val_precision": 0.9994508975712777,
+      "val_recall": 0.9937006551318663,
+      "test_precision": 0.0,
+      "test_recall": 0.0,
+      "test_f1": 0.0
+    },
+    {
+      "class": "BruteForce",
+      "min_conf": 0.85,
+      "fitted": false,
+      "reason": "no validation support"
+    },
+    {
+      "class": "Botnet",
+      "min_conf": 0.5,
+      "fitted": true,
+      "val_precision": 0.0,
+      "val_recall": 0.0,
+      "test_precision": 0.0,
+      "test_recall": NaN,
+      "test_f1": 0.0
+    }
+  ],
+  "flow_level": [
+    {
+      "dataset": "test",
+      "flows": 226342,
+      "attacks": 51921,
+      "precision": 0.9921062691131498,
+      "recall": 0.9997303595847538,
+      "fpr": 0.0023678341484110283,
+      "f1": 0.9959037231031934,
+      "tp": 51907.0,
+      "fp": 413.0,
+      "fn": 14.0,
+      "tn": 174008.0
+    },
+    {
+      "dataset": "monday",
+      "flows": 500531,
+      "attacks": 0,
+      "precision": 0.0,
+      "recall": NaN,
+      "fpr": 0.00011987269519770005,
+      "f1": 0.0,
+      "tp": 0.0,
+      "fp": 60.0,
+      "fn": 0.0,
+      "tn": 500471.0
+    },
+    {
+      "dataset": "thursday",
+      "flows": 426958,
+      "attacks": 2111,
+      "precision": 0.06694260665515106,
+      "recall": 0.9729985788725722,
+      "fpr": 0.06738661212154022,
+      "f1": 0.12526681710068915,
+      "tp": 2054.0,
+      "fp": 28629.0,
+      "fn": 57.0,
+      "tn": 396218.0
+    },
+    {
+      "dataset": "shuffled",
+      "flows": 226342,
+      "attacks": 51921,
+      "precision": 0.9890989480103675,
+      "recall": 0.9995955393771306,
+      "fpr": 0.0032794216292762915,
+      "f1": 0.9943195424980602,
+      "tp": 51900.0,
+      "fp": 572.0,
+      "fn": 21.0,
+      "tn": 173849.0
+    }
+  ],
+  "split_protocol": "episode",
+  "caveat": "thresholds fitted on validation and reported on test/monday/thursday; monday has no attacks so only FPR is meaningful; thursday is unseen families with no class label"
+}

@@ -1,0 +1,11 @@
+windows 58 | real edges 18,264
+live-path degradation: features changed on 100.0% of edges, max |dP| 0.426, argmax changed on 42
+ALL 20 edge features zeroed: max |dP| 0.648, argmax changed on 41 of 18,264
+confidence of correct predictions:
+  BENIGN             correct 16,583  p05 0.9553  p50 0.9846  p95 0.9924  max 0.9928  >=0.80: 99.9%  >=0.85: 99.9%  >=0.90: 99.7%
+  Volumetric_Flood   correct    895  p05 0.9369  p50 0.9435  p95 0.9539  max 0.9563  >=0.80: 100.0%  >=0.85: 100.0%  >=0.90: 95.9%
+  PortScan           correct     69  p05 0.4714  p50 0.6277  p95 0.8096  max 0.8140  >=0.80: 13.0%  >=0.85: 0.0%  >=0.90: 0.0%
+  BruteForce         correct    404  p05 0.7082  p50 0.8920  p95 0.9363  max 0.9364  >=0.80: 88.6%  >=0.85: 82.4%  >=0.90: 36.4%
+  Botnet             correct      0  (of 168 true edges)
+saved -> /content/gs_stage/ML/phase2b_sensitivity.json
+

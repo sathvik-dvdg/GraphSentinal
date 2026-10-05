@@ -1,0 +1,100 @@
+{
+  "package_state": "has_fix",
+  "verdict": {
+    "clean": false,
+    "reason": "training files not audited: ['Tuesday-WorkingHours.pcap_ISCX.csv', 'Wednesday-workingHours.pcap_ISCX.csv', 'Friday-WorkingHours-Morning.pcap_ISCX.csv', 'Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv', 'Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv']",
+    "mixed_days": [],
+    "package_state": "has_fix",
+    "package_disagreements": [],
+    "missing_training_files": [
+      "Tuesday-WorkingHours.pcap_ISCX.csv",
+      "Wednesday-workingHours.pcap_ISCX.csv",
+      "Friday-WorkingHours-Morning.pcap_ISCX.csv",
+      "Friday-WorkingHours-Afternoon-DDos.pcap_ISCX.csv",
+      "Friday-WorkingHours-Afternoon-PortScan.pcap_ISCX.csv"
+    ],
+    "rows_moved_training_files": 0,
+    "pm_hours": [
+      1,
+      7
+    ],
+    "files": [
+      {
+        "file": "cicids2017_sample.csv",
+        "rows": 20000,
+        "hour_ge_13": 0,
+        "pm_window_rows": 8000,
+        "am_pm_tokens": 0,
+        "rows_moved_by_fix": 8000,
+        "is_training_file": false
+      }
+    ],
+    "audited_at_utc": "2026-10-02T16:52:38Z"
+  },
+  "files": [
+    {
+      "file": "cicids2017_sample.csv",
+      "package_check": {
+        "old_parse_rows_differing": 0,
+        "fixed_parse_rows_differing": 0,
+        "agrees": true
+      },
+      "pm_hours": [
+        1,
+        7
+      ],
+      "rows": 20000,
+      "unparseable": 0,
+      "hour_lt_12": 20000,
+      "hour_ge_12": 0,
+      "hour_ge_13": 0,
+      "pm_window_rows": 8000,
+      "rows_with_am_pm_token": 0,
+      "hours_present_before": [
+        2,
+        3,
+        10
+      ],
+      "min_before": "2017-07-04 10:10:00",
+      "max_before": "2017-07-07 10:51:00",
+      "rows_moved_by_fix": 8000,
+      "hours_present_after": [
+        10,
+        14,
+        15
+      ],
+      "min_after": "2017-07-04 10:10:00",
+      "max_after": "2017-07-07 15:57:00",
+      "days": [
+        {
+          "day": "2017-07-04",
+          "rows": 4000,
+          "hour_ge_13": 0,
+          "pm_window_rows": 0,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 0,
+          "MIXED": false
+        },
+        {
+          "day": "2017-07-05",
+          "rows": 4000,
+          "hour_ge_13": 0,
+          "pm_window_rows": 0,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 0,
+          "MIXED": false
+        },
+        {
+          "day": "2017-07-07",
+          "rows": 12000,
+          "hour_ge_13": 0,
+          "pm_window_rows": 8000,
+          "am_pm_tokens": 0,
+          "rows_moved_by_fix": 8000,
+          "MIXED": false
+        }
+      ],
+      "MIXED": false
+    }
+  ]
+}
