@@ -203,6 +203,16 @@ left as they are; `README.md` says where the file lives and the guard requires
 
 ## Closed on 2026-10-05
 
+- **Demo attacks that run against the long-lived topology.** `mininet/demo/`:
+  three attack modules, a controller (`run_demo.py`) and a checklist
+  (`DEMO_SETUP.md`). Run once end to end against the backend: three attacks,
+  three incidents (`mininet/demo/tested_run.txt`). What that run also showed is
+  recorded in the checklist: v1 scores only completed TCP conversations over its
+  threshold, so each attack opens the service it needs on the target; a ping
+  flood or a scan of closed ports produces nothing. The original scripts in
+  `mininet/topologies/attack_scripts/` are unchanged and cannot be used with the
+  long-lived topology.
+
 - **The loop shows itself from the log.** The backend prints its `graphsentinel.*`
   INFO lines by default; the provenance gate logs admissions as it logs refusals;
   the daemon can record its own responses (`DAEMON_DUMP_LOG`). Tests in
