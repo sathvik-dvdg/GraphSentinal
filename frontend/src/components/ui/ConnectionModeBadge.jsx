@@ -4,51 +4,52 @@
 // Safety-critical: operator must always know which mode they're looking at
 import { motion } from 'framer-motion'
 import { connectionDisplay } from '../../utils/connection'
+import { GS } from '../../constants/colors'
 
 const MODES = {
   live: {
     label: 'LIVE',
-    dot: '#12a672',
+    dot: GS.success,
     cls: 'badge-live',
     icon: '●',
     pulse: true,
   },
   simulating: {
     label: 'SIMULATION',
-    dot: '#b7791f',
+    dot: GS.warn,
     cls: 'badge-sim',
     icon: '◆',
     pulse: true,
   },
   mock: {
     label: 'OFFLINE',
-    dot: '#727a86',
+    dot: GS.textSubtle,
     cls: 'badge-mock',
     icon: '○',
     pulse: false,
   },
   connecting: {
     label: 'CONNECTING',
-    dot: '#3b56d9',
+    dot: GS.primary,
     cls: 'badge-connecting',
     icon: '◌',
     pulse: true,
   },
   // Socket reconnecting, during the fast retries.
   reconnecting: {
-    dot: '#b7791f',
+    dot: GS.warn,
     cls: 'badge-sim',
     pulse: true,
   },
   // The backend was answering and has stopped; retrying on a backoff.
   lost: {
-    dot: '#727a86',
+    dot: GS.textSubtle,
     cls: 'badge-mock',
     pulse: false,
   },
   // REST is answering and the socket is not: current, by polling.
   polling: {
-    dot: '#12a672',
+    dot: GS.success,
     cls: 'badge-live',
     pulse: false,
   },

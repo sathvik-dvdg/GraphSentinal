@@ -14,6 +14,7 @@ import {
 import useGraphStore from '../store/useGraphStore'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
+import { GS } from '../constants/colors'
 
 function LastUpdated({ ts }) {
   // Error.md U4 — a freshness read distinct from the connection badge: shows
@@ -28,7 +29,7 @@ function LastUpdated({ ts }) {
   const label = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)}m ago`
   const stale = secs > 15
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: stale ? '#b7791f' : '#12a672', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: stale ? GS.warn : GS.success, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: stale ? 'none' : 'pulse-threat 2s infinite' }} />
       Updated {label}
     </span>
@@ -39,7 +40,7 @@ export default function DashboardPage() {
   const { stats = {}, alerts = [], healingEvents = [], timeline = [], dataErrors = {}, lastDataAt = null } = useGraphStore()
 
   const health = Math.max(0, Math.min(100, stats?.system_health ?? 100))
-  const healthColor = health >= 80 ? '#12a672' : health >= 50 ? '#b7791f' : '#E03C3C'
+  const healthColor = health >= 80 ? GS.success : health >= 50 ? GS.warn : GS.danger
   const healthLabel = health >= 80 ? 'Healthy' : health >= 50 ? 'Degraded' : 'Critical'
 
   const recentThreats = Array.isArray(alerts) ? [...alerts].slice(0, 5) : []
@@ -49,11 +50,11 @@ export default function DashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Page header */}
       <div>
-        <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Dashboard
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
             Network overview · Real-time threat summary
           </p>
           <LastUpdated ts={lastDataAt} />
@@ -75,16 +76,16 @@ export default function DashboardPage() {
           title="Active Nodes"
           value={stats.total_nodes ?? 0}
           sub="Connected endpoints"
-          icon={<Network size={18} style={{ color: '#3b56d9' }} />}
-          accent="#3b56d9"
+          icon={<Network size={18} style={{ color: GS.primary }} />}
+          accent={GS.primary}
           delay={0.06}
         />
         <StatCard
           title="Threats (24h)"
           value={stats.active_threats ?? 0}
           sub={stats.active_threats > 0 ? '⚠ Action required' : 'All clear'}
-          icon={<ShieldAlert size={18} style={{ color: '#E03C3C' }} />}
-          accent="#E03C3C"
+          icon={<ShieldAlert size={18} style={{ color: GS.danger }} />}
+          accent={GS.danger}
           pulse={stats.active_threats > 0}
           delay={0.12}
         />
@@ -92,8 +93,8 @@ export default function DashboardPage() {
           title="Nodes Isolated"
           value={stats.blocked_ips ?? 0}
           sub="Self-healing active"
-          icon={<Shield size={18} style={{ color: '#12a672' }} />}
-          accent="#12a672"
+          icon={<Shield size={18} style={{ color: GS.success }} />}
+          accent={GS.success}
           delay={0.18}
         />
       </div>
@@ -112,21 +113,21 @@ export default function DashboardPage() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <ShieldAlert size={14} style={{ color: '#E03C3C' }} />
-              <span style={{ color: '#E03C3C', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <ShieldAlert size={14} style={{ color: GS.danger }} />
+              <span style={{ color: GS.danger, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 Recent Threats
               </span>
             </div>
             <Link
               to="/threats"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
             >
               View all <ChevronRight size={12} />
             </Link>
           </div>
           <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentThreats.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No threats detected. Network secure.
               </div>
             ) : (
@@ -142,25 +143,25 @@ export default function DashboardPage() {
                     gap: 10,
                     padding: '8px 10px',
                     borderRadius: 8,
-                    background: '#f0f2f5',
+                    background: GS.surfaceRaised,
                     border: `1px solid ${alert.severity === 'critical' ? 'rgba(224,60,60,0.2)' : 'rgba(232,146,42,0.15)'}`,
-                    borderLeft: `2px solid ${alert.severity === 'critical' ? '#E03C3C' : '#b7791f'}`,
+                    borderLeft: `2px solid ${alert.severity === 'critical' ? GS.danger : GS.warn}`,
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: alert.severity === 'critical' ? '#E03C3C' : '#b7791f', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: alert.severity === 'critical' ? GS.danger : GS.warn, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                         {alert.severity}
                       </span>
-                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#5a616e' }}>
+                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textMuted }}>
                         {alert.attack_type}
                       </span>
                     </div>
-                    <div style={{ color: '#1b1f27', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: GS.text, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
                       {alert.source_ip}
                     </div>
                   </div>
-                  <div style={{ color: '#9aa1ad', fontSize: 10, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>
+                  <div style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>
                     {formatEventTimestamp(alert.timestamp)}
                   </div>
                   {/* Threat score */}
@@ -168,7 +169,7 @@ export default function DashboardPage() {
                     style={{
                       width: 36,
                       textAlign: 'right',
-                      color: (alert.threat_score ?? 0) >= 0.75 ? '#E03C3C' : '#b7791f',
+                      color: (alert.threat_score ?? 0) >= 0.75 ? GS.danger : GS.warn,
                       fontSize: 11,
                       fontFamily: "'DM Mono', monospace",
                       fontWeight: 700,
@@ -196,21 +197,21 @@ export default function DashboardPage() {
             }}
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-              <Cpu size={14} style={{ color: '#12a672' }} />
-              <span style={{ color: '#12a672', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <Cpu size={14} style={{ color: GS.success }} />
+              <span style={{ color: GS.success, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
                 Self-Healing Activity
               </span>
             </div>
             <Link
               to="/healing"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
             >
               View all <ChevronRight size={12} />
             </Link>
           </div>
           <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentHealing.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No healing events. System stable.
               </div>
             ) : (
@@ -226,31 +227,31 @@ export default function DashboardPage() {
                     gap: 10,
                     padding: '8px 10px',
                     borderRadius: 8,
-                    background: '#f0f2f5',
+                    background: GS.surfaceRaised,
                     border: '1px solid rgba(46,204,138,0.15)',
                     borderLeft: '2px solid rgba(46,204,138,0.5)',
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: '#12a672', textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: GS.success, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                         {ev.action}
                       </span>
-                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#727a86' }}>
+                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textSubtle }}>
                         {ev.edges_severed || 0} edges cut
                       </span>
                     </div>
-                    <div style={{ color: '#1b1f27', fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: GS.text, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
                       {ev.ip}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: '#12a672', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: GS.success, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
                       {ev.network_stability_before != null && ev.network_stability_after != null
                         ? `${ev.network_stability_before}%→${ev.network_stability_after}%`
                         : (ev.network_stability_after != null ? `${ev.network_stability_after}%` : '—')}
                     </div>
-                    <div style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
+                    <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
                       {ev.duration_ms != null ? `${ev.duration_ms}ms` : (ev.responseTimeMs != null ? `${ev.responseTimeMs}ms` : '—')}
                     </div>
                   </div>
@@ -273,14 +274,14 @@ export default function DashboardPage() {
           }}
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={14} style={{ color: '#3b56d9' }} />
-            <span style={{ color: '#3b56d9', fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <TrendingUp size={14} style={{ color: GS.primary }} />
+            <span style={{ color: GS.primary, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Threat Timeline
             </span>
           </div>
           <Link
             to="/timeline"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
           >
             View full timeline <ChevronRight size={12} />
           </Link>
@@ -290,24 +291,24 @@ export default function DashboardPage() {
             <AreaChart data={timeline} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
               <defs>
                 <linearGradient id="dash-threats-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#E03C3C" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#E03C3C" stopOpacity={0} />
+                  <stop offset="5%"  stopColor={GS.danger} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={GS.danger} stopOpacity={0} />
                 </linearGradient>
                 <linearGradient id="dash-blocked-grad" x1="0" y1="0" x2="0" y2="1">
-                  <stop offset="5%"  stopColor="#12a672" stopOpacity={0.3} />
-                  <stop offset="95%" stopColor="#12a672" stopOpacity={0} />
+                  <stop offset="5%"  stopColor={GS.success} stopOpacity={0.3} />
+                  <stop offset="95%" stopColor={GS.success} stopOpacity={0} />
                 </linearGradient>
               </defs>
               <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.9)" vertical={false} />
-              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
               <Tooltip
                 labelFormatter={formatTimelineTick}
-                contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#1b1f27' }}
-                itemStyle={{ color: '#5a616e' }}
+                contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: GS.text }}
+                itemStyle={{ color: GS.textMuted }}
               />
-              <Area type="monotone" dataKey="threats" stroke="#E03C3C" fill="url(#dash-threats-grad)" strokeWidth={1.5} dot={false} name="Threats" />
-              <Area type="monotone" dataKey="blocked" stroke="#12a672" fill="url(#dash-blocked-grad)" strokeWidth={1.5} dot={false} name="Blocked" />
+              <Area type="monotone" dataKey="threats" stroke={GS.danger} fill="url(#dash-threats-grad)" strokeWidth={1.5} dot={false} name="Threats" />
+              <Area type="monotone" dataKey="blocked" stroke={GS.success} fill="url(#dash-blocked-grad)" strokeWidth={1.5} dot={false} name="Blocked" />
             </AreaChart>
           </ResponsiveContainer>
         </div>
@@ -340,7 +341,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
         }}
       />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
           {title}
         </span>
         <div
@@ -371,7 +372,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
       >
         {value}
       </div>
-      <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+      <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
         {sub}
       </div>
     </motion.div>

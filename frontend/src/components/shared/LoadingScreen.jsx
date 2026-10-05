@@ -1,11 +1,12 @@
 // [Windows] GraphSentinel — Susheep
 import { motion } from 'framer-motion'
+import { GS } from '../../constants/colors'
 
 export default function LoadingScreen() {
   return (
     <div
       className="fixed inset-0 z-50 flex flex-col items-center justify-center gs-mesh-bg"
-      style={{ backgroundColor: '#f4f6f8' }}
+      style={{ backgroundColor: GS.base }}
     >
       {/* Subtle ambient glow */}
       <div
@@ -56,7 +57,7 @@ export default function LoadingScreen() {
             <motion.div
               key={i}
               className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: i % 2 === 0 ? '#3b56d9' : '#12a672' }}
+              style={{ backgroundColor: i % 2 === 0 ? GS.primary : GS.success }}
               animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
               transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
             />

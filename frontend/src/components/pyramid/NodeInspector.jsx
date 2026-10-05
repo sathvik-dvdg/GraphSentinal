@@ -8,6 +8,7 @@ import useGraphStore from '../../store/useGraphStore'
 import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../../services/api'
 import useAuthStore from '../../store/useAuthStore'
 import { canEnforce, enforceFailureMessage, ENFORCE_DENIED_REASON } from '../../utils/triage'
+import { GS } from '../../constants/colors'
 
 export default function NodeInspector({ node, onClose }) {
   const navigate = useNavigate()
@@ -84,7 +85,7 @@ export default function NodeInspector({ node, onClose }) {
         right: 0,
         height: '100%',
         width: 300,
-        background: '#ffffff',
+        background: GS.surface,
         borderLeft: '1px solid rgba(17,20,26,0.10)',
         boxShadow: '-12px 0 40px rgba(17,20,26,0.10)',
         display: 'flex',
@@ -108,7 +109,7 @@ export default function NodeInspector({ node, onClose }) {
           <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 4 }}>
             <span
               style={{
-                color: '#1b1f27',
+                color: GS.text,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 fontWeight: 600,
                 fontSize: 14,
@@ -121,7 +122,7 @@ export default function NodeInspector({ node, onClose }) {
               <span
                 style={{
                   background: colors.border,
-                  color: '#fff',
+                  color: GS.surface,
                   fontSize: 9,
                   fontWeight: 700,
                   padding: '1px 6px',
@@ -135,7 +136,7 @@ export default function NodeInspector({ node, onClose }) {
               </span>
             )}
           </div>
-          <div style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+          <div style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
             {node.ip}
           </div>
         </div>
@@ -144,7 +145,7 @@ export default function NodeInspector({ node, onClose }) {
           style={{
             background: 'none',
             border: '1px solid rgba(17,20,26,0.10)',
-            color: '#727a86',
+            color: GS.textSubtle,
             cursor: 'pointer',
             borderRadius: 6,
             padding: 5,
@@ -165,7 +166,7 @@ export default function NodeInspector({ node, onClose }) {
               display: 'inline-block',
               background: 'rgba(79,110,247,0.12)',
               border: '1px solid rgba(79,110,247,0.3)',
-              color: '#3b56d9',
+              color: GS.primary,
               fontSize: 11,
               fontFamily: "'DM Mono', monospace",
               fontWeight: 600,
@@ -198,7 +199,7 @@ export default function NodeInspector({ node, onClose }) {
           <div style={{ marginBottom: 16 }}>
             <Label>Data Source</Label>
             <span
-              style={{ color: realNode.source === 'observed' ? '#12a672' : '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}
+              style={{ color: realNode.source === 'observed' ? GS.success : GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}
               title={realNode.source === 'observed'
                 ? 'This host appeared in real captured traffic'
                 : 'Configured topology baseline — no traffic seen from this host yet'}
@@ -225,13 +226,13 @@ export default function NodeInspector({ node, onClose }) {
                 style={{
                   height: '100%',
                   width: `${anomalyScore}%`,
-                  background: anomalyScore > 75 ? '#E03C3C' : anomalyScore > 50 ? '#b7791f' : '#3b56d9',
+                  background: anomalyScore > 75 ? GS.danger : anomalyScore > 50 ? GS.warn : GS.primary,
                   borderRadius: 99,
                   transition: 'width 600ms ease',
                 }}
               />
             </div>
-            <span style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 32 }}>
+            <span style={{ color: GS.textMuted, fontSize: 12, fontFamily: "'DM Mono', monospace", minWidth: 32 }}>
               {anomalyScore}%
             </span>
           </div>
@@ -241,7 +242,7 @@ export default function NodeInspector({ node, onClose }) {
         <div style={{ marginBottom: 20 }}>
           <Label>Blockchain Events ({nodeChainEvents.length})</Label>
           {nodeChainEvents.length === 0 ? (
-            <span style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+            <span style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
               No on-chain records for this node
             </span>
           ) : (
@@ -256,10 +257,10 @@ export default function NodeInspector({ node, onClose }) {
                     padding: '6px 10px',
                   }}
                 >
-                  <div style={{ color: '#7c3aed', fontSize: 10, fontFamily: "'DM Mono', monospace", marginBottom: 2 }}>
+                  <div style={{ color: GS.chain, fontSize: 10, fontFamily: "'DM Mono', monospace", marginBottom: 2 }}>
                     {tx.tx_hash?.slice(0, 14)}…
                   </div>
-                  <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                  <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                     {tx.attack_type} · #{tx.block_number}
                   </div>
                 </div>
@@ -284,28 +285,28 @@ export default function NodeInspector({ node, onClose }) {
           onClick={handleToggleIsolate}
           disabled={isToggling || !mayEnforce}
           title={mayEnforce ? undefined : ENFORCE_DENIED_REASON}
-          style={{ ...actionBtnStyle(isIsolated ? '#12a672' : '#E03C3C'), opacity: isToggling || !mayEnforce ? 0.6 : 1, cursor: isToggling || !mayEnforce ? 'default' : 'pointer' }}
+          style={{ ...actionBtnStyle(isIsolated ? GS.success : GS.danger), opacity: isToggling || !mayEnforce ? 0.6 : 1, cursor: isToggling || !mayEnforce ? 'default' : 'pointer' }}
         >
           <Shield size={12} />
           {isToggling ? 'Working…' : isIsolated ? 'Deisolate Node' : 'Isolate Node'}
         </button>
         {/* Audit B20 — the reason in text, and a refusal shown, not only logged */}
         {!mayEnforce && (
-          <div role="note" style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#6b7280' }}>{ENFORCE_DENIED_REASON}</div>
+          <div role="note" style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textSubtle }}>{ENFORCE_DENIED_REASON}</div>
         )}
         {actionError && (
-          <div role="alert" style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#E03C3C' }}>{actionError}</div>
+          <div role="alert" style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.danger }}>{actionError}</div>
         )}
         <button
           onClick={() => navigate('/forensics')}
-          style={actionBtnStyle('#3b56d9')}
+          style={actionBtnStyle(GS.primary)}
         >
           <ExternalLink size={12} />
           Open Forensics
         </button>
         <button
           onClick={() => navigate('/network')}
-          style={actionBtnStyle('#12a672')}
+          style={actionBtnStyle(GS.success)}
         >
           <Zap size={12} />
           View in 3D Graph
@@ -317,7 +318,7 @@ export default function NodeInspector({ node, onClose }) {
 
 function Label({ children }) {
   return (
-    <div style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+    <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
       {children}
     </div>
   )
@@ -325,7 +326,7 @@ function Label({ children }) {
 
 function Value({ children }) {
   return (
-    <div style={{ color: '#5a616e', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+    <div style={{ color: GS.textMuted, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
       {children}
     </div>
   )

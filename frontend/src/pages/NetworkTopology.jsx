@@ -10,6 +10,7 @@ import ErrorBoundary from '../components/shared/ErrorBoundary'
 import ConnectionModeBadge from '../components/ui/ConnectionModeBadge'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { withTopologyScaffold } from '../utils/topologyScaffold'
+import { GS } from '../constants/colors'
 
 const VIEW_MODES = [
   { id: 'split',   label: 'Split View' },
@@ -45,11 +46,11 @@ export default function NetworkTopology() {
       {/* Header + controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
-          <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+          <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Network Topology
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
               Live network graph · Org hierarchy · Threat vectors
             </p>
             <DataFreshnessBadge dataErrors={{ graph: dataErrors.graph }} />
@@ -62,7 +63,7 @@ export default function NetworkTopology() {
             display: 'flex',
             alignItems: 'center',
             gap: 2,
-            background: '#f0f2f5',
+            background: GS.surfaceRaised,
             border: '1px solid rgba(17,20,26,0.10)',
             borderRadius: 8,
             padding: 3,
@@ -77,7 +78,7 @@ export default function NetworkTopology() {
                 borderRadius: 6,
                 border: 'none',
                 background: viewMode === m.id ? 'rgba(79,110,247,0.2)' : 'transparent',
-                color: viewMode === m.id ? '#3b56d9' : '#727a86',
+                color: viewMode === m.id ? GS.primary : GS.textSubtle,
                 fontSize: 11,
                 fontFamily: "'DM Mono', monospace",
                 cursor: 'pointer',
@@ -128,7 +129,7 @@ export default function NetworkTopology() {
                 padding: '4px 10px',
               }}
             >
-              <span style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+              <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                 {show2D ? '2D Network Graph' : '3D Network Graph'}
               </span>
               <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
@@ -182,7 +183,7 @@ export default function NetworkTopology() {
                 gap: 8,
               }}
             >
-              <span style={{ color: '#1D9E75', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <span style={{ color: GS.successDeep, fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 Org Hierarchy · Lateral Movement Detection
               </span>
             </div>
@@ -217,23 +218,23 @@ function TopologyEmptyState({ connectionMode, compact = false }) {
           width: 44,
           height: 44,
           borderRadius: 12,
-          border: '1px solid #e2e5ea',
-          background: '#f4f6f8',
+          border: `1px solid ${GS.border}`,
+          background: GS.base,
           display: 'flex',
           alignItems: 'center',
           justifyContent: 'center',
-          color: '#9aa1ad',
+          color: GS.textFaint,
           fontFamily: "'DM Mono', monospace",
           fontSize: 18,
         }}
       >
         ⬡
       </div>
-      <div style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: 14 }}>
+      <div style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: 14 }}>
         {offline ? 'Backend offline — no live topology' : 'Waiting for the first graph snapshot…'}
       </div>
       {!compact && (
-        <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 11, lineHeight: 1.7, maxWidth: 320 }}>
+        <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 11, lineHeight: 1.7, maxWidth: 320 }}>
           {offline
             ? 'No hosts to show: the backend is not answering.'
             : 'No hosts detected yet — start the monitor to populate the graph.'}

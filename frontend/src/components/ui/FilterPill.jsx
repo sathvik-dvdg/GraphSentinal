@@ -3,7 +3,9 @@
 // AlertCentre.jsx (line 284) and ThreatFeed.jsx (line 239), which had
 // identical implementations that had drifted slightly apart (padding/fontWeight).
 // This is the superset: ThreatFeed's fontWeight active state is preserved.
-export default function FilterPill({ label, active, onClick, color = '#3b56d9' }) {
+import { GS } from '../../constants/colors'
+
+export default function FilterPill({ label, active, onClick, color = GS.primary }) {
   return (
     <button
       onClick={onClick}
@@ -12,7 +14,7 @@ export default function FilterPill({ label, active, onClick, color = '#3b56d9' }
         borderRadius: 6,
         border: `1px solid ${active ? color : 'rgba(17,20,26,0.10)'}`,
         background: active ? `${color}18` : 'transparent',
-        color: active ? color : '#727a86',
+        color: active ? color : GS.textSubtle,
         fontSize: 10,
         fontFamily: "'DM Mono', monospace",
         fontWeight: active ? 600 : 400,

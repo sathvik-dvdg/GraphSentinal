@@ -4,6 +4,7 @@ import { Network, Server, Brain, Shield, Link2, Globe } from 'lucide-react'
 import Navbar from '../components/landing/Navbar'
 import Footer from '../components/landing/Footer'
 import useAuthStore from '../store/useAuthStore'
+import { GS } from '../constants/colors'
 
 const PIPELINE_STAGES = [
   {
@@ -11,7 +12,7 @@ const PIPELINE_STAGES = [
     icon: Network,
     title: 'Mininet Network',
     desc: '10-host SDN topology simulating real enterprise traffic patterns',
-    color: '#12a672',
+    color: GS.success,
     owner: 'Sairaj',
   },
   {
@@ -19,7 +20,7 @@ const PIPELINE_STAGES = [
     icon: Server,
     title: 'FastAPI Backend',
     desc: 'Flow collection, graph construction, and API orchestration',
-    color: '#3b56d9',
+    color: GS.primary,
     owner: 'Sairaj',
   },
   {
@@ -27,7 +28,7 @@ const PIPELINE_STAGES = [
     icon: Brain,
     title: 'GraphSAGE GNN',
     desc: '3-layer graph neural network with 97.7% detection accuracy',
-    color: '#E03C3C',
+    color: GS.danger,
     owner: 'Sathvik',
   },
   {
@@ -35,7 +36,7 @@ const PIPELINE_STAGES = [
     icon: Shield,
     title: 'Self-Healing Engine',
     desc: 'Autonomous node isolation via OVS flow rules in under 500ms',
-    color: '#b7791f',
+    color: GS.warn,
     owner: 'Sairaj',
   },
   {
@@ -43,7 +44,7 @@ const PIPELINE_STAGES = [
     icon: Link2,
     title: 'Blockchain Ledger',
     desc: 'Tamper-proof keccak256 audit trail on local Ganache chain',
-    color: '#7c3aed',
+    color: GS.chain,
     owner: 'Skanda',
   },
 ]
@@ -54,44 +55,44 @@ const CAPABILITIES = [
     title: 'GraphSAGE Detection',
     body: '3-layer Graph Neural Network trained on CICIDS2017 dataset. Detects DDoS, PortScan, Botnet, SSH Brute Force, DoS Hulk with >92% accuracy and <200ms inference latency.',
     badge: 'F1 >= 0.88',
-    color: '#E03C3C',
+    color: GS.danger,
   },
   {
     icon: Shield,
     title: 'Autonomous Self-Healing',
     body: 'When threat score exceeds 0.75, the system automatically isolates the malicious node via OVS drop rules. Network stability recovers in under 500ms with zero admin action.',
     badge: '< 500ms',
-    color: '#12a672',
+    color: GS.success,
   },
   {
     icon: Link2,
     title: 'Immutable Audit Trail',
     body: 'Every incident is fingerprinted with keccak256 and stored on a local Ganache blockchain. Tamper-proof proof-of-existence that survives even if the SQLite log is modified.',
     badge: 'Chain ID: 1337',
-    color: '#7c3aed',
+    color: GS.chain,
   },
   {
     icon: Globe,
     title: 'Real-Time Dashboard',
     body: 'Force-directed network graph updates every 5 seconds via WebSocket. Node shapes encode threat levels. Animated particles show live traffic flows.',
     badge: 'WebSocket',
-    color: '#3b56d9',
+    color: GS.primary,
   },
 ]
 
 const ATTACK_TYPES = [
-  { name: 'DDoS', signal: 'Extreme connection_rate', dataset: 'Friday-DDos.csv', color: '#E03C3C' },
-  { name: 'PortScan', signal: 'High port_entropy', dataset: 'Friday-PortScan.csv', color: '#b7791f' },
-  { name: 'SSHBrute', signal: 'High syn_ratio + port 22', dataset: 'Tuesday.csv', color: '#a16207' },
-  { name: 'Botnet', signal: 'byte_asymmetry + C2 ports', dataset: 'Friday-Morning.csv', color: '#7c3aed' },
-  { name: 'DoS Hulk', signal: 'HTTP flood + port 80', dataset: 'Wednesday.csv', color: '#EC4899' },
+  { name: 'DDoS', signal: 'Extreme connection_rate', dataset: 'Friday-DDos.csv', color: GS.danger },
+  { name: 'PortScan', signal: 'High port_entropy', dataset: 'Friday-PortScan.csv', color: GS.warn },
+  { name: 'SSHBrute', signal: 'High syn_ratio + port 22', dataset: 'Tuesday.csv', color: GS.attackSshBrute },
+  { name: 'Botnet', signal: 'byte_asymmetry + C2 ports', dataset: 'Friday-Morning.csv', color: GS.chain },
+  { name: 'DoS Hulk', signal: 'HTTP flood + port 80', dataset: 'Wednesday.csv', color: GS.attackDosHulkLight },
 ]
 
 const METRICS = [
-  { value: '10', label: 'Virtual Nodes', color: '#3b56d9' },
-  { value: '5', label: 'Attack Types', color: '#E03C3C' },
-  { value: '< 5s', label: 'Response Time', color: '#12a672' },
-  { value: '97.7%', label: 'GNN Accuracy', color: '#7c3aed' },
+  { value: '10', label: 'Virtual Nodes', color: GS.primary },
+  { value: '5', label: 'Attack Types', color: GS.danger },
+  { value: '< 5s', label: 'Response Time', color: GS.success },
+  { value: '97.7%', label: 'GNN Accuracy', color: GS.chain },
 ]
 
 const fadeUp = {
@@ -112,7 +113,7 @@ export default function LandingPage() {
   return (
     <div
       className="antialiased min-h-screen flex flex-col"
-      style={{ backgroundColor: '#f4f6f8', color: '#1b1f27' }}
+      style={{ backgroundColor: GS.base, color: GS.text }}
     >
       <div
         className="fixed inset-0 pointer-events-none z-0"
@@ -212,7 +213,7 @@ export default function LandingPage() {
         <section
           id="pipeline"
           className="py-16 sm:py-20 px-5 sm:px-6 border-t border-gs-border"
-          style={{ backgroundColor: '#ffffff' }}
+          style={{ backgroundColor: GS.surface }}
         >
           <div className="w-full max-w-6xl mx-auto">
             <motion.div {...fadeUp} className="text-center mb-14">
@@ -327,7 +328,7 @@ export default function LandingPage() {
         <section
           id="threats"
           className="py-16 sm:py-20 px-5 sm:px-6 border-t border-gs-border"
-          style={{ backgroundColor: '#ffffff' }}
+          style={{ backgroundColor: GS.surface }}
         >
           <div className="w-full max-w-5xl mx-auto">
             <motion.div {...fadeUp} className="text-center mb-12">

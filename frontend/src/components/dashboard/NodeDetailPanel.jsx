@@ -6,6 +6,7 @@ import { X, Shield, ShieldOff } from 'lucide-react'
 import StatusBadge from '../ui/StatusBadge'
 import ThreatBar from '../ui/ThreatBar'
 import { ENFORCE_DENIED_REASON } from '../../utils/triage'
+import { GS } from '../../constants/colors'
 
 export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = true, actionError = null }) {
   if (!node) return null
@@ -35,8 +36,8 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
         transition={{ type: 'spring', damping: 26, stiffness: 220 }}
         className="fixed top-0 right-0 w-72 h-full z-40 overflow-auto"
         style={{
-          background: '#f0f2f5',
-          borderLeft: '1px solid #e2e5ea',
+          background: GS.surfaceRaised,
+          borderLeft: `1px solid ${GS.border}`,
           boxShadow: '-16px 0 48px rgba(17,20,26,0.12)',
         }}
         role="dialog"
@@ -44,7 +45,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
         aria-modal="true"
       >
         {/* Top accent line */}
-        <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, #4F6EF740, transparent)' }} />
+        <div className="h-px w-full" style={{ background: `linear-gradient(90deg, transparent, ${GS.primaryGlow}, transparent)` }} />
 
         <div className="p-5">
           {/* Close button — onClick original handler preserved */}
@@ -82,7 +83,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
                 </span>
                 <span
                   className="text-[11px] font-mono px-2 py-0.5 rounded-md border"
-                  style={{ color: '#E03C3C', borderColor: '#E03C3C25', background: '#E03C3C08' }}
+                  style={{ color: GS.danger, borderColor: GS.dangerBorderSoft, background: GS.dangerWash }}
                 >
                   {node.attack_type}
                 </span>
@@ -94,7 +95,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
               </span>
               <span
                 className="text-[11px] font-mono"
-                style={{ color: node.is_blocked ? '#3b56d9' : '#12a672' }}
+                style={{ color: node.is_blocked ? GS.primary : GS.success }}
               >
                 {node.is_blocked
                   ? '⬡ Isolated — blocked'
@@ -110,7 +111,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
                 </span>
                 <span
                   className="text-[11px] font-mono"
-                  style={{ color: node.source === 'observed' ? '#12a672' : '#727a86' }}
+                  style={{ color: node.source === 'observed' ? GS.success : GS.textSubtle }}
                   title={node.source === 'observed'
                     ? 'This host appeared in real captured traffic'
                     : 'Configured topology baseline — no traffic seen from this host yet'}

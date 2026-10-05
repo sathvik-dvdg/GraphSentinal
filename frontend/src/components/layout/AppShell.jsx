@@ -15,6 +15,7 @@ import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../..
 import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
 import { canEnforce, enforceFailureMessage } from '../../utils/triage'
+import { GS } from '../../constants/colors'
 
 export default function AppShell() {
   const [sidebarPinned, setSidebarPinned] = useState(false)
@@ -87,7 +88,7 @@ export default function AppShell() {
         height: '100vh',
         overflow: 'hidden',
         transition: 'grid-template-columns 200ms ease',
-        background: '#f4f6f8',
+        background: GS.base,
       }}
     >
       {/* Sidebar spans both rows */}

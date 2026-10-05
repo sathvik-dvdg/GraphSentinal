@@ -15,21 +15,31 @@ Last updated: 2026-10-05.
 
 ## Open
 
-### 1. Look at four things in a browser
+### 1. Look at the frontend in a browser
 
-None of these has been seen rendered; each was compiled, linted and, where it has
-logic, unit-tested (`node --test tests/unit/triage.test.js` from `frontend/`).
+Nothing below has been seen rendered. Each was built, linted against the
+baseline and, where it has logic, unit-tested (`node --test tests/unit/*.test.js`
+from `frontend/`; 16 tests).
 
-- **The header badge.** Reads `ml_v2` from `/health`: `v2: DRY-RUN`, `v2: OFF` on
-  the `docker-compose.v1.yml` path, `v2: NO ANSWER`, `v2: UNKNOWN` before
-  `/health` answers. The text has to stand alone; a tooltip is invisible on a
-  projector. One screenshot on each compose path.
-- **B17.** A blocked alert with no triage now reads `open` in the Alert Centre,
-  with a separate `Host blocked` marker beside its status.
-- **B19.** Resolve an incident in Forensics, reopen it on the server, and confirm
-  it reappears on the next poll.
-- **B20.** Sign in as a non-admin: Block, Unblock and Isolate are disabled with
-  the reason in text under the button.
+- **The header badges.** `BLOCKS: v1 MODEL` with `v2: DRY-RUN` / `OFF` /
+  `NO ANSWER` / `UNKNOWN`; and the connection badge: `LIVE`, `RECONNECTING…`,
+  `CONNECTION LOST — RETRYING`, `LIVE (POLLING) — SOCKET RETRYING`, `OFFLINE`.
+  The longer labels may wrap or crowd the top bar.
+- **Stop the backend while the dashboard is open.** The badge should leave
+  `LIVE` within one poll, the panels should keep their last data marked stale
+  with the reason (`HTTP 500` / `no answer`), and the socket should keep retrying.
+- **B17, B18, B19, B20.** A blocked alert reads `open` with a `Host blocked`
+  marker; a triage click does not flicker back; a reopened incident reappears;
+  a non-admin sees Block, Unblock, Isolate, the threshold Save and Reload Model
+  disabled with the reason in text.
+- **Simulate Attack.** Absent on Forensics, Audit & Ledger and Timeline;
+  disabled with its reason on a live backend.
+- **The colour refactor.** 661 hex literals became references to
+  `src/constants/colors.js` with the same values, so nothing should look
+  different. One exception: a note colour in the node inspector moved from
+  `#6b7280` to the subtle text grey.
+- **The shell notices.** The first-load skeleton, and the truncation banner on
+  the two graph pages.
 
 ### 2. The backend health window has not been checked under load
 
@@ -106,6 +116,38 @@ adopts it if one exists. The contract accepts duplicates for one URI and
 unacceptable on a request path (audit B10), acceptable in the scheduled
 reconciler, and it can scan recent incidents only. This closes the window for any
 cause, not only the race between the timeout and the broadcast.
+
+### 14. Frontend decisions that were not made
+
+Found while doing the frontend pass of 2026-10-05; each needs a person, most
+need a browser.
+
+- **Simulate Attack is now disabled against a live backend.** That was the
+  instruction, and it follows from the rule that synthetic flows must not enter
+  the real incident record. The consequence: with `VITE_USE_MOCK` unset there is
+  no way to trigger a demo incident from the dashboard; it needs Mininet
+  traffic. If the demo depends on the button, this has to be revisited.
+- **The landing page states figures the project does not claim.** A detection
+  accuracy and a sub-second isolation time appear as marketing copy
+  (`frontend/src/pages/LandingPage.jsx`). `MODEL_BEHAVIOUR.md` §10 says latency
+  has not been measured and scopes every accuracy figure. The figures guard does
+  not scan `.jsx`. Left as written; it is the authors' copy.
+- **Two palettes.** The pages draw with one red, grey and green
+  (`danger`, `textSubtle`, `success`) and the Tailwind tokens define others
+  (`gs-threat`, `gs-muted`). Both are now named in `constants/colors.js`;
+  merging them changes how the app looks.
+- **The timed splash.** `AppShell` shows a full-page loading screen for a fixed
+  1.8 s regardless of whether anything is loading.
+- **The topology scaffold.** `utils/topologyScaffold.js` draws a controller and a
+  switch that the backend does not report, marked `source: 'configured'`, around
+  the hosts it does report. It adds no hosts and draws nothing when the backend
+  returns none. Whether configured infrastructure counts as "not from the API"
+  is a judgement; it was kept.
+- **Per-panel skeletons.** The first-load skeleton is one strip from the shell,
+  not a skeleton shaped like each page's panels.
+- **Tailwind utility fallbacks in `globals.css`.** Eighteen hand-written
+  spacing utilities (`mt-1`, `p-2`, ...) are unused by name but were kept: they
+  are utility names, and the file says they work around a Tailwind 4 regression.
 
 ### 13. The monitor keeps nothing of a scored window
 

@@ -5,13 +5,14 @@
 import { Link2 } from 'lucide-react'
 import CopyableHash from '../ui/CopyableHash'
 import BlockchainStatusBadge from '../ui/BlockchainStatusBadge'
+import { GS } from '../../constants/colors'
 
 const HEADERS = ['ID', 'TX Hash', 'Block #', 'Attack', 'Severity', 'Gas', 'Status']
 
 export default function BlockchainRecordsTable({ records, blockchainError, stickyHeader = false }) {
   return (
     <table className="gs-table w-full">
-      <thead className={stickyHeader ? 'sticky top-0' : undefined} style={{ background: '#eef1f5' }}>
+      <thead className={stickyHeader ? 'sticky top-0' : undefined} style={{ background: GS.surfaceHeader }}>
         <tr>
           {HEADERS.map((h) => <th key={h}>{h}</th>)}
         </tr>

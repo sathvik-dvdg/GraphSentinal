@@ -3,6 +3,7 @@ import { useNavigate, Link, Navigate } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import LoginForm from '../components/auth/LoginForm'
 import useAuthStore from '../store/useAuthStore'
+import { GS } from '../constants/colors'
 
 // System status lines shown in the terminal panel
 const TERMINAL_LINES = [
@@ -91,7 +92,7 @@ export default function LoginPage() {
               style={{
                 marginBottom: 14, padding: '10px 14px', borderRadius: 8,
                 border: '1px solid rgba(232,146,42,0.35)', background: 'rgba(232,146,42,0.1)',
-                color: '#b7791f', fontSize: 12, fontFamily: "'DM Mono', monospace",
+                color: GS.warn, fontSize: 12, fontFamily: "'DM Mono', monospace",
               }}
             >
               Your session ended (expired or the backend restarted). Sign in again to continue.
