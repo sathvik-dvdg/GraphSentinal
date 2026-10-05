@@ -4,6 +4,11 @@ import { useState, useEffect } from 'react'
 import { Zap, Shield, Network, Link2, Lock, RefreshCw } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import { getSettings, updateThreatThreshold, reloadMlModel } from '../services/api'
+import useAuthStore from '../store/useAuthStore'
+import { simulationBlockedReason } from '../utils/connection'
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+const ADMIN_REQUIRED = 'An admin is required to change this.'
 
 const TABS = [
   { id: 'simulation',  label: 'Simulation',           icon: <Zap size={14} /> },
@@ -16,10 +21,14 @@ const ATTACK_TYPES = ['DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('simulation')
-  const { connectionMode, setConnectionMode, isConnected, simulateAttack } = useGraphStore()
+  const { connectionMode, setConnectionMode, endSimulation, simulateAttack } = useGraphStore()
 
   // Simulation
   const isSimulating = connectionMode === 'simulating'
+  const simulateBlocked = simulationBlockedReason(USE_MOCK, connectionMode)
+  // Audit B20 — changing the threshold and reloading the model are admin-only on
+  // the backend. Shown disabled with the reason, never enabled-and-refused.
+  const isAdmin = useAuthStore((s) => s.user?.role) === 'admin'
   const [simSpeed, setSimSpeed] = useState('1x')
   const [injectType, setInjectType] = useState('DDoS')
   const [injectTarget, setInjectTarget] = useState('10.0.0.2')
@@ -66,7 +75,7 @@ export default function Settings() {
 
   const toggleSimulation = () => {
     if (isSimulating) {
-      setConnectionMode(isConnected ? 'live' : 'mock')
+      endSimulation()
     } else {
       setConnectionMode('simulating')
     }
@@ -147,7 +156,7 @@ export default function Settings() {
               </div>
             </Section>
 
-            <Section title="Inject Attack">
+            <Section title="Simulate Attack">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
                 <div>
                   <Label>Attack Type</Label>
@@ -179,16 +188,20 @@ export default function Settings() {
                     />
                   </div>
                 </div>
-                <button style={{ ...primaryBtnStyle('#E03C3C'), alignSelf: 'flex-start' }}
-                  disabled={isSimulating}
+                <button style={{ ...primaryBtnStyle('#E03C3C'), alignSelf: 'flex-start', opacity: simulateBlocked ? 0.5 : 1, cursor: simulateBlocked ? 'not-allowed' : 'pointer' }}
+                  disabled={isSimulating || Boolean(simulateBlocked)}
+                  title={simulateBlocked || undefined}
                   onClick={() => simulateAttack({
                     attackType: injectType,
                     targetIp: injectTarget,
                     victimIp: injectVictim.trim() || undefined,
                     speedMultiplier: parseInt(simSpeed, 10) || 1,
                   })}>
-                  {isSimulating ? 'Injecting…' : 'Inject Attack'}
+                  {isSimulating ? 'Simulating…' : 'Simulate Attack'}
                 </button>
+                {simulateBlocked && (
+                  <div role="note" style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{simulateBlocked}</div>
+                )}
               </div>
             </Section>
           </div>
@@ -207,17 +220,19 @@ export default function Settings() {
                 value={isolateThreshold ?? 0}
                 onChange={setIsolateThreshold}
                 color="#E03C3C"
-                disabled={thresholdStatus === 'loading'}
+                disabled={thresholdStatus === 'loading' || !isAdmin}
               />
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginTop: 10 }}>
                 <button
                   style={{ ...primaryBtnStyle('#E03C3C'), opacity: (thresholdStatus === 'loading' || isolateThreshold === savedThreshold) ? 0.5 : 1 }}
-                  disabled={thresholdStatus === 'loading' || thresholdStatus === 'saving' || isolateThreshold === savedThreshold}
+                  disabled={!isAdmin || thresholdStatus === 'loading' || thresholdStatus === 'saving' || isolateThreshold === savedThreshold}
+                  title={isAdmin ? undefined : ADMIN_REQUIRED}
                   onClick={saveThreshold}
                 >
                   {thresholdStatus === 'saving' ? 'Saving…' : 'Save'}
                 </button>
                 <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: thresholdStatus === 'error' ? '#E03C3C' : thresholdStatus === 'saved' ? '#12a672' : '#9aa1ad' }}>
+                  {!isAdmin && `${ADMIN_REQUIRED} `}
                   {thresholdStatus === 'loading' && 'Loading current value from backend…'}
                   {thresholdStatus === 'error' && 'Failed to reach the backend'}
                   {thresholdStatus === 'saved' && `Saved — live threshold is now ${(savedThreshold / 100).toFixed(2)}`}
@@ -244,7 +259,7 @@ export default function Settings() {
                 UI could trigger it; an operator who saw HEURISTIC in the topbar
                 badge had to curl the endpoint. Admin-only, so it can 403. */}
             <Section title="GraphSAGE Model">
-              <MlReloadControl />
+              <MlReloadControl isAdmin={isAdmin} />
             </Section>
 
             <Section title="Lateral Movement Sensitivity (not implemented)">
@@ -402,7 +417,7 @@ function primaryBtnStyle(color) {
   }
 }
 
-function MlReloadControl() {
+function MlReloadControl({ isAdmin }) {
   const mlHealth = useGraphStore((s) => s.mlHealth)
   const setMlHealth = useGraphStore((s) => s.setMlHealth)
   const [state, setState] = useState('idle') // idle | loading | ok | error
@@ -444,8 +459,9 @@ function MlReloadControl() {
       </div>
       <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
         <button
-          style={{ ...primaryBtnStyle('#3b56d9'), opacity: state === 'loading' ? 0.5 : 1, display: 'flex', alignItems: 'center', gap: 6 }}
-          disabled={state === 'loading'}
+          style={{ ...primaryBtnStyle('#3b56d9'), opacity: state === 'loading' || !isAdmin ? 0.5 : 1, cursor: isAdmin ? 'pointer' : 'not-allowed', display: 'flex', alignItems: 'center', gap: 6 }}
+          disabled={state === 'loading' || !isAdmin}
+          title={isAdmin ? undefined : ADMIN_REQUIRED}
           onClick={run}
         >
           <RefreshCw size={12} className={state === 'loading' ? 'spin-slow' : undefined} />
@@ -458,7 +474,7 @@ function MlReloadControl() {
         )}
       </div>
       <div style={{ color: '#9aa1ad', fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
-        Reloads GraphSAGE weights from disk and clears degraded mode. Admin only.
+        Reloads GraphSAGE weights from disk and clears degraded mode. {isAdmin ? 'Admin only.' : ADMIN_REQUIRED}
       </div>
     </div>
   )

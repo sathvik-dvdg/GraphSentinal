@@ -4,6 +4,7 @@
 import { useEffect, useCallback } from 'react'
 import { getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealth, getEnforcementActions, getHealingEvents } from '../services/api'
 import useGraphStore from '../store/useGraphStore'
+import { modeAfterPoll, fetchErrorLabel } from '../utils/connection'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
@@ -31,9 +32,12 @@ const RESOURCE_FETCHERS = {
 }
 
 export function useGraphData() {
-  const { setConnectionMode, connectionMode } = useGraphStore()
-
+  // Audit B34 — fetchAll reads the mode from the store when it runs instead of
+  // closing over it. With `connectionMode` in its dependencies the callback
+  // was rebuilt on every mode change, the effect below restarted, and each
+  // change fired an immediate extra fetch of all nine endpoints.
   const fetchAll = useCallback(async () => {
+    const { setConnectionMode, connectionMode } = useGraphStore.getState()
     if (USE_MOCK) {
       setConnectionMode('mock')
       return
@@ -48,23 +52,22 @@ export function useGraphData() {
     const store = useGraphStore.getState()
     if (store.connectionMode === 'simulating') return // may have started mid-fetch
 
+    // Audit B21 — the mode follows whether the backend answered THIS poll.
     const graphIndex = entries.findIndex(([name]) => name === 'graph')
-    if (results[graphIndex].status === 'fulfilled') {
-      setConnectionMode('live')
-    } else if (connectionMode === 'connecting') {
-      setConnectionMode('mock')
-    }
+    const next = modeAfterPoll(store.connectionMode, results[graphIndex].status === 'fulfilled')
+    if (next !== store.connectionMode) setConnectionMode(next)
 
+    if (!store.initialLoadDone) store.setInitialLoadDone()
     entries.forEach(([name, resource], i) => {
       const result = results[i]
       if (result.status === 'fulfilled') {
         resource.apply(result.value, store)
         store.setDataError(name, null)
       } else {
-        store.setDataError(name, result.reason?.message || 'request failed')
+        store.setDataError(name, fetchErrorLabel(result.reason))
       }
     })
-  }, [connectionMode, setConnectionMode])
+  }, [])
 
   useEffect(() => {
     fetchAll()

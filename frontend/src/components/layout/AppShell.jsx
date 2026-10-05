@@ -3,13 +3,14 @@
 // WebSocket, simulateAttack, and NodeDetailPanel all live here so they
 // survive navigation between routes without resetting.
 import { useState, useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import NodeDetailPanel from '../dashboard/NodeDetailPanel'
 import ForensicsModal from '../dashboard/ForensicsModal'
 import LoadingScreen from '../shared/LoadingScreen'
+import ShellNotices from '../shared/ShellNotices'
 import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../../services/api'
 import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
@@ -19,6 +20,7 @@ export default function AppShell() {
   const [sidebarPinned, setSidebarPinned] = useState(false)
   const [sidebarHovered, setSidebarHovered] = useState(false)
   const [showLoading, setShowLoading] = useState(true)
+  const { pathname } = useLocation()
   // Audit B20 — why the last block/unblock did not take effect, shown in the panel.
   const [blockError, setBlockError] = useState(null)
   const role = useAuthStore((s) => s.user?.role)
@@ -129,6 +131,7 @@ export default function AppShell() {
         </div>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
+          <ShellNotices pathname={pathname} />
           <Outlet />
         </div>
       </main>

@@ -11,6 +11,7 @@ export default function SimulationProvider({ children }) {
     addHealingEvent,
     addTimelinePoint,
     setConnected,
+    setSocketStatus,
   } = useGraphStore()
 
   const { refresh: refreshData } = useGraphData()
@@ -47,9 +48,13 @@ export default function SimulationProvider({ children }) {
     onGraphUpdate: handleGraphUpdate,
     onAlert: handleAlert,
     onHealingTriggered: handleHealingTriggered,
-    onConnect: () => setConnected(true),
-    onDisconnect: () => setConnected(false),
-    onReconnect: () => refreshData(),
+    // The socket no longer decides the connection mode (audit B21): on either
+    // edge, poll at once and let the answer say whether the backend is there.
+    // (onConnect covers a reconnect too, so onReconnect is not passed: it would
+    // fetch everything twice.)
+    onConnect: () => { setConnected(true); refreshData() },
+    onDisconnect: () => { setConnected(false); refreshData() },
+    onStatus: setSocketStatus,
   })
 
   return children

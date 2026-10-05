@@ -12,6 +12,9 @@ import DetectionPathBadge from '../ui/DetectionPathBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
 import DemoModeBadge from '../ui/DemoModeBadge'
+import { simulationHiddenOn, simulationBlockedReason } from '../../utils/connection'
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
@@ -34,6 +37,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
   const {
     stats,
     connectionMode,
+    socketStatus,
     dataErrors,
     mlHealth,
     mlV2Health,
@@ -52,6 +56,9 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
     healthClamped >= 50 ? '#b7791f' : '#E03C3C'
 
   const isSimulating = connectionMode === 'simulating'
+  // Where the simulate control exists and when it may be used: utils/connection.
+  const simulateHidden = simulationHiddenOn(pathname)
+  const simulateBlocked = isSimulating ? null : simulationBlockedReason(USE_MOCK, connectionMode)
 
   const handleLogout = async () => {
     // logout() calls POST /api/v1/auth/logout to invalidate the session
@@ -96,7 +103,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           {ROUTE_TITLES[pathname] || 'GraphSentinel'}
         </span>
 
-        <ConnectionModeBadge mode={connectionMode} />
+        <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
         <EnforcementModeBadge mode={stats.enforcement_mode} />
         <DetectionPathBadge mlV2={mlV2Health} />
         <MlModeBadge mlHealth={mlHealth} />
@@ -216,10 +223,11 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
         </button>
 
         {/* Simulate toggle */}
-        {onSimulate && (
+        {onSimulate && !simulateHidden && (
           <button
             id="topbar-simulate"
             onClick={isSimulating ? onStopSimulate : onSimulate}
+            disabled={Boolean(simulateBlocked)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -232,15 +240,17 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
               fontSize: 10,
               fontFamily: "'DM Mono', monospace",
               fontWeight: 500,
-              cursor: 'pointer',
+              cursor: simulateBlocked ? 'not-allowed' : 'pointer',
+              opacity: simulateBlocked ? 0.5 : 1,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               transition: 'all 200ms',
+              whiteSpace: 'nowrap',
             }}
-            title="Simulate an attack sequence"
+            title={simulateBlocked || 'Send a synthetic attack to the backend. What it records is real.'}
           >
             <Zap size={10} />
-            <span>{isSimulating ? 'Stop Sim' : 'Simulate'}</span>
+            <span>{isSimulating ? 'Stop Simulation' : 'Simulate Attack'}</span>
           </button>
         )}
 

@@ -60,7 +60,7 @@ export default function TimelineAnalytics() {
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
           <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
-            Timeline Analytics
+            Timeline
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
             <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>

@@ -160,7 +160,7 @@ export default function Forensics() {
                 <div style={{ fontSize: 10, color: '#e2e5ea' }}>
                   {fetchError
                     ? 'Check the error above — this may be stale, not empty'
-                    : 'Incidents appear here once real traffic crosses the threat threshold, or use Simulate in the top bar to trigger one'}
+                    : 'Incidents appear here once real traffic crosses the threat threshold'}
                 </div>
               </div>
             )}

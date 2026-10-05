@@ -1,7 +1,9 @@
 // [Windows] GraphSentinel — Susheep
-// ui/ConnectionModeBadge — LIVE / SIMULATING / MOCK / CONNECTING
+// ui/ConnectionModeBadge — LIVE / SIMULATION / OFFLINE / CONNECTING, and the
+// socket's reconnection states. What it says is decided in utils/connection.
 // Safety-critical: operator must always know which mode they're looking at
 import { motion } from 'framer-motion'
+import { connectionDisplay } from '../../utils/connection'
 
 const MODES = {
   live: {
@@ -32,6 +34,24 @@ const MODES = {
     icon: '◌',
     pulse: true,
   },
+  // Socket reconnecting, during the fast retries.
+  reconnecting: {
+    dot: '#b7791f',
+    cls: 'badge-sim',
+    pulse: true,
+  },
+  // The backend was answering and has stopped; retrying on a backoff.
+  lost: {
+    dot: '#727a86',
+    cls: 'badge-mock',
+    pulse: false,
+  },
+  // REST is answering and the socket is not: current, by polling.
+  polling: {
+    dot: '#12a672',
+    cls: 'badge-live',
+    pulse: false,
+  },
 }
 
 /**
@@ -39,12 +59,13 @@ const MODES = {
  * Read directly from connectionMode store field — never inferred.
  * Safety-critical: operators must distinguish LIVE from SIMULATION at a glance.
  */
-export default function ConnectionModeBadge({ mode, className = '' }) {
-  const cfg = MODES[mode] ?? MODES.connecting
+export default function ConnectionModeBadge({ mode, socketStatus = 'idle', className = '' }) {
+  const display = connectionDisplay(mode, socketStatus)
+  const cfg = { ...(MODES[display.key] ?? MODES.connecting), label: display.label }
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider ${cfg.cls} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider whitespace-nowrap ${cfg.cls} ${className}`}
       role="status"
       aria-label={`Data source: ${cfg.label}`}
       aria-live="polite"

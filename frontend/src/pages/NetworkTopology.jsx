@@ -20,7 +20,7 @@ const VIEW_MODES = [
 
 export default function NetworkTopology() {
   const [viewMode, setViewMode] = useState('split')
-  const { graphData, healingNodeId, connectionMode, setSelectedNode, dataErrors } = useGraphStore()
+  const { graphData, healingNodeId, connectionMode, socketStatus, setSelectedNode, dataErrors } = useGraphStore()
 
   // Overlay the configured star topology (c0 → s1 → h1..h10) so the graph is
   // never a disconnected scatter when the pipeline is idle. Real traffic
@@ -131,7 +131,7 @@ export default function NetworkTopology() {
               <span style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                 {show2D ? '2D Network Graph' : '3D Network Graph'}
               </span>
-              <ConnectionModeBadge mode={connectionMode} />
+              <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
             </div>
 
             {!hasTopology ? (
@@ -197,7 +197,7 @@ export default function NetworkTopology() {
 }
 
 function TopologyEmptyState({ connectionMode, compact = false }) {
-  const offline = connectionMode === 'mock' || connectionMode === 'connecting'
+  const offline = connectionMode === 'mock' || connectionMode === 'offline' || connectionMode === 'connecting'
   return (
     <div
       style={{
@@ -234,9 +234,9 @@ function TopologyEmptyState({ connectionMode, compact = false }) {
       </div>
       {!compact && (
         <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 11, lineHeight: 1.7, maxWidth: 320 }}>
-          Start the FastAPI backend to load the configured 10-host topology.
-          Run Mininet or press <strong style={{ color: '#3b56d9' }}>Simulate</strong> in the top bar to see live
-          traffic and threat vectors overlaid on the star.
+          {offline
+            ? 'No hosts to show: the backend is not answering.'
+            : 'No hosts detected yet — start the monitor to populate the graph.'}
         </p>
       )}
     </div>

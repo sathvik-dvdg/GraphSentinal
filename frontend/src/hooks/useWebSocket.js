@@ -5,6 +5,7 @@
 import { useEffect, useRef, useState } from 'react'
 import { io } from 'socket.io-client'
 import { SESSION_STORAGE_KEY } from '../store/useAuthStore'
+import { reconnectDelay, socketStatusFor } from '../utils/connection'
 
 // Same-origin by default — rides the Vite (or Docker) proxy exactly like REST
 // calls already do (see vite.config.js / vite.config.docker.js). Only set
@@ -21,6 +22,7 @@ export function useWebSocket({
   onConnect,
   onDisconnect,
   onReconnect, // Optional: called after reconnect so caller can re-fetch via REST
+  onStatus,    // Optional: 'connected' | 'reconnecting' | 'lost'
 }) {
   const socketRef = useRef(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -33,7 +35,7 @@ export function useWebSocket({
   // (e.g. connectionMode-dependent behavior in SimulationProvider) while the
   // socket connection itself stays stable.
   const callbacksRef = useRef({})
-  callbacksRef.current = { onGraphUpdate, onAlert, onHealingTriggered, onConnect, onDisconnect, onReconnect }
+  callbacksRef.current = { onGraphUpdate, onAlert, onHealingTriggered, onConnect, onDisconnect, onReconnect, onStatus }
 
   useEffect(() => {
     // This hook only mounts inside ProtectedRoute (via SimulationProvider),
@@ -42,16 +44,36 @@ export function useWebSocket({
     // (graph updates, alerts, healing events) as the REST endpoints with no
     // auth at all, which would have made the new REST session gate pointless
     // for anyone who just connected a socket.io client directly instead.
+    // Reconnection is scheduled here, not by socket.io. Its built-in policy
+    // gave up after five attempts (about ten seconds) and nothing retried until
+    // the page was reloaded. The schedule is utils/connection.reconnectDelay:
+    // five fast retries, then backoff to a 30 s ceiling, with no limit.
     const socket = io(WS_URL, {
       transports: ['websocket', 'polling'],
-      reconnectionAttempts: 5,
-      reconnectionDelay: 2000,
+      reconnection: false,
       timeout: 5000,
       auth: { token: sessionStorage.getItem(SESSION_STORAGE_KEY) },
     })
+    let attempt = 0
+    let retryTimer = null
+    let closed = false
+
+    const scheduleReconnect = () => {
+      if (closed || retryTimer) return
+      attempt += 1
+      callbacksRef.current.onStatus?.(socketStatusFor(attempt))
+      retryTimer = setTimeout(() => {
+        retryTimer = null
+        if (closed) return
+        // A session can be renewed while the socket is down.
+        socket.auth = { token: sessionStorage.getItem(SESSION_STORAGE_KEY) }
+        socket.connect()
+      }, reconnectDelay(attempt))
+    }
 
     socket.on('connect', () => {
       const wasConnected = socketRef.current?._wasConnected
+      attempt = 0
       setIsConnected(true)
       console.log('[WS] Connected to GraphSentinel backend ✓')
       callbacksRef.current.onConnect?.()
@@ -81,14 +103,18 @@ export function useWebSocket({
       setIsConnected(false)
       console.warn('[WS] Disconnected from backend — falling back to REST polling')
       callbacksRef.current.onDisconnect?.()
+      scheduleReconnect()
     })
 
     socket.on('connect_error', () => {
-      console.info('[WS] Backend not reachable — falling back to REST polling')
+      if (attempt === 0) console.info('[WS] Backend not reachable — falling back to REST polling')
+      scheduleReconnect()
     })
 
     socketRef.current = socket
     return () => {
+      closed = true
+      clearTimeout(retryTimer)
       socket.disconnect()
     }
   }, []) // eslint-disable-line react-hooks/exhaustive-deps

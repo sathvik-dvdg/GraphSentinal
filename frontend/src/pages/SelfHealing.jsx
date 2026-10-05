@@ -39,7 +39,7 @@ export default function SelfHealing() {
       {/* Header */}
       <div>
         <h1 style={{ color: '#1b1f27', fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
-          Self-Healing Engine
+          Self-Healing
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>

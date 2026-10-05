@@ -37,6 +37,7 @@ export default function AlertCentre() {
   const navigate = useNavigate()
   const { alerts: unified, stats } = useAlerts()
   const { timeline, dataErrors } = useGraphStore()
+  const applyAlertStatus = useGraphStore((s) => s.applyAlertStatus)
 
   // Error.md H5 — triage is server-authoritative (PATCH /api/v1/incidents/{id}
   // /status). localStorage is only an optimistic layer: written on click,
@@ -71,7 +72,15 @@ export default function AlertCentre() {
     // Persist to the backend when this alert maps to a real incident row.
     if (alert?.incidentId != null) {
       updateIncidentStatus(alert.incidentId, next)
-        .then(() => setLocalStatuses((prev) => clearAlertStatus(prev, id)))
+        .then((res) => {
+          // Audit B18 — the store takes the confirmed status BEFORE the
+          // optimistic entry is dropped, so the row never shows the old one.
+          applyAlertStatus(
+            alert.raw?.id, res?.alert_status ?? next,
+            res?.acknowledged_at ?? (next === 'acknowledged' ? new Date().toISOString() : undefined),
+          )
+          setLocalStatuses((prev) => clearAlertStatus(prev, id))
+        })
         .catch(() => { /* keep the optimistic local value as an offline fallback */ })
     }
   }
@@ -105,7 +114,7 @@ export default function AlertCentre() {
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <p style={{ color: '#727a86', fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
-            Unified incident hub · Acknowledge / resolve state saved on this device
+            Unified incident hub · Acknowledge / resolve state is saved on the server
           </p>
           <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
         </div>
