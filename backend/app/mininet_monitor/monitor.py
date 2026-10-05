@@ -59,8 +59,9 @@ def _source_of(flow: Any) -> Any:
 
 
 class MininetMonitor:
-    def __init__(self, sio, gs2_state=None):
+    def __init__(self, sio, gs2_state=None, loop=None):
         self.sio = sio
+        self.loop = loop
         self.interval = settings.poll_interval_seconds
         self._stop_event = threading.Event()
         self._thread = threading.Thread(target=self._run, daemon=True)
@@ -95,6 +96,10 @@ class MininetMonitor:
         self.v2_last_refused_at: str | None = None
         self._v2_refusing_since: float | None = None
         self._v2_last_refusal_warning: float | None = None
+        self.v2_batches_admitted: int = 0
+        self.v2_flows_admitted: int = 0
+        self._v2_last_admission_log: float | None = None
+        self._v2_admitted_since_log: tuple[int, int] = (0, 0)
         # Injectable so the once-a-minute reminder can be tested without sleeping.
         self._clock = time.monotonic
 
@@ -121,6 +126,8 @@ class MininetMonitor:
             "v2_provenance": {
                 "last_poll_state": self.v2_last_poll_state,
                 "allowed_source": V2_ALLOWED_SOURCE,
+                "batches_admitted": self.v2_batches_admitted,
+                "flows_admitted": self.v2_flows_admitted,
                 "batches_refused_non_ovs": self.v2_batches_refused_non_ovs,
                 "flows_refused_non_ovs": self.v2_flows_refused_non_ovs,
                 "last_refused_sources": dict(self.v2_last_refused_sources),
@@ -203,6 +210,37 @@ class MininetMonitor:
             )
         self.v2_last_poll_state = V2_REFUSED_NON_OVS
 
+    def _admit_v2(self, n_flows: int) -> None:
+        """Say that a poll was admitted, on the same schedule as a refusal.
+
+        A refusal was logged and an admission was not, so the path that works
+        could only be shown from /health. Logged when admission STARTS and then
+        at most once a minute with the tally since the last line: every poll
+        would be 720 lines an hour. INFO, not WARNING: this is the normal state.
+        """
+        now = self._clock()
+        self.v2_batches_admitted += 1
+        self.v2_flows_admitted += n_flows
+        batches, flows = self._v2_admitted_since_log
+        batches, flows = batches + 1, flows + n_flows
+        if self.v2_last_poll_state != V2_SUBMITTED:
+            _log.info(
+                "v2 provenance gate: ADMITTING poll -- every flow tagged %r by the "
+                "parser (%d flows). Sent to the inference service.",
+                V2_ALLOWED_SOURCE, n_flows,
+            )
+            self._v2_last_admission_log = now
+            batches, flows = 0, 0
+        elif (self._v2_last_admission_log is None
+              or now - self._v2_last_admission_log >= _REFUSAL_REMINDER_SECONDS):
+            _log.info(
+                "v2 provenance gate: still admitting -- %d poll(s), %d flow(s) since "
+                "the last line, all tagged %r.", batches, flows, V2_ALLOWED_SOURCE,
+            )
+            self._v2_last_admission_log = now
+            batches, flows = 0, 0
+        self._v2_admitted_since_log = (batches, flows)
+
     def _score_v2(self, flows: list, observed_at: float) -> None:
         """Hand this poll's flows to the v2 path -- only if they came from OVS.
 
@@ -246,6 +284,7 @@ class MininetMonitor:
             self._refuse_v2(sources, len(flows))
             return
 
+        self._admit_v2(len(flows))
         self._set_v2_state(V2_SUBMITTED)
         # Imported lazily so a backend without the v2 artefacts still starts.
         from app.services.analysis_pipeline_v2 import score_flows
@@ -257,6 +296,25 @@ class MininetMonitor:
         self.last_v2_error = None
         self.last_v2_windows += result.get("closed_windows", 0)
 
+    def _emit(self, result: dict) -> None:
+        """Push this poll's events from the monitor thread.
+
+        The server's sockets belong to the server's event loop, so the emit is
+        scheduled onto that loop. `asyncio.run` here would drive `sio.emit` on
+        a second loop in this thread. Without a loop (unit tests that mock
+        `sio`) it falls back to a private one.
+        """
+        loop = self.loop
+        if loop is None or not loop.is_running():
+            asyncio.run(emit_analysis_events(self.sio, result))
+            return
+        future = asyncio.run_coroutine_threadsafe(emit_analysis_events(self.sio, result), loop)
+        try:
+            future.result(timeout=max(self.interval, 1))
+        except Exception as exc:  # noqa: BLE001 - a push must not fail the poll
+            future.cancel()
+            print(f"[Monitor] Socket emit failed: {exc!r}")
+
     def _run(self) -> None:
         print(f"[Monitor] Polling OVS every {self.interval}s")
         while not self._stop_event.is_set():
@@ -267,7 +325,7 @@ class MininetMonitor:
                 # reflects "no current traffic" instead of leaving stale
                 # threats/nodes on screen after traffic actually stops.
                 result = analyze_flows(flows)
-                asyncio.run(emit_analysis_events(self.sio, result))
+                self._emit(result)
                 # v2 sees this poll's flows ONLY if they came from OVS: with
                 # DEMO_FALLBACK_FLOWS on, `flows` can be randomised output of
                 # demo_flows(), which _score_v2 refuses before anything is sent.

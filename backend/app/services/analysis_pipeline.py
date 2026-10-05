@@ -17,7 +17,8 @@ def analyze_flows(flows: list[Any]) -> dict[str, Any]:
     flow_records = [flow if isinstance(flow, FlowRecord) else FlowRecord(**dict(flow)) for flow in flows]
     inference = InferenceService.get_instance()
     prediction = inference.predict(flow_records)
-    alerts, healing_events = ThreatAnalyzer().evaluate(prediction, flow_records)
+    analyzer = ThreatAnalyzer()
+    alerts, healing_events = analyzer.evaluate(prediction, flow_records)
     graph = graph_state.update(flow_records, prediction)
     return {
         "predictions": prediction["ip_scores"],
@@ -27,6 +28,7 @@ def analyze_flows(flows: list[Any]) -> dict[str, Any]:
         "graph_snapshot": graph,
         "alerts": alerts,
         "healing_events": healing_events,
+        "skipped": analyzer.skipped,
         "ml_mode": prediction.get("mode"),
         "degraded_reason": prediction.get("degraded_reason"),
     }

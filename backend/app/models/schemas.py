@@ -3,7 +3,7 @@ from __future__ import annotations
 
 from ipaddress import ip_address
 from math import isfinite
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, IPvAnyAddress, field_validator
 
@@ -410,6 +410,9 @@ class AnalyzeResponse(BaseModel):
     graph_snapshot: GraphResponse
     alerts: list[AlertRecord]
     healing_events: list[HealingEvent]
+    # Sources over the threshold that were not acted on: {source_ip, score,
+    # reason}, reason "outside_mininet_range" or "already_blocked".
+    skipped: list[dict[str, Any]] = Field(default_factory=list)
     ml_mode: Optional[str] = None
     degraded_reason: Optional[str] = None
 

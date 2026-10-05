@@ -6,7 +6,8 @@ timestamp investigation (`TIMESTAMP_FIX.md`) and how to run things (`RUNNING.md`
 where they mention a measurement they cite this file rather than restating it.
 
 **Scope:** behaviour of the model and pipeline **as they exist in this codebase**.
-No new experiments. Every figure below is traceable to a committed artefact, named
+No new experiments, with one exception made on 2026-10-04: §1.2, an offline
+re-scoring of the v1 model. Every figure below is traceable to a committed artefact, named
 at the end of its section. Nothing here is estimated, projected or rounded from
 memory.
 
@@ -54,12 +55,134 @@ flows to v2 (`mininet_monitor/monitor.py`).
 `backend/scripts/enforcement_daemon.py`, which runs `ovs-ofctl add-flow` with
 `priority=1000,ip,nw_src=<ip>,actions=drop` on the switch. Under Compose the
 tracked `.env.docker` sets `ENFORCEMENT_MODE=simulated`, so the agent logs the
-block and applies nothing; that setting, and the absence of Mininet on the
-development machine, are the only reasons no drop rule was installed during the
-runs behind this file. v1's incidents and chain writes happen in either mode.
+block and applies nothing; that setting is the only reason no drop rule was
+installed during the runs behind this file, including the live run of §1.3,
+where a real switch was attached. v1's incidents and chain writes happen in either mode.
 
 Every statement below that says "dry-run", "no rule is installed" or "nothing
 reaches a switch" is a statement about **v2 only**.
+
+**Why v1 is kept, and what it is kept as.** v1 is the only thing in the system
+that creates an incident, blocks a host or writes to the chain; v2 creates no
+incidents and is dry-run by design. Remove v1 and the system demonstrates neither
+self-healing nor a single write to the audit trail: the dashboard would show
+scores and nothing else. v2 cannot take over yet, for a reason that has nothing
+to do with its accuracy: it receives only flows tagged `data_source == "ovs"`, the
+provenance gate refuses everything else and refuses whole batches, so without
+Mininet and OVS it is offered no flow at all. The one time it was offered live
+flows (§1.3) the rules it admitted were on benign traffic and none was on the
+flood, which is a reason of its own.
+So v1 stays as the demonstration of the self-healing **mechanism** — detect →
+block → chain → dashboard — and **no claim is made about its detection quality**
+anywhere. §1.2 is why, and it is not "v1 is weak": on the six attacking hosts of
+the one sample it has been scored on, with every feature present, 11 of the 21
+sources it would block sent no attack flow — one wrong block for every right one
+is not deployable unattended — and it reaches none of the Bot rows, which are
+four fifths of the positive rows, so it cannot be presented as a detector.
+
+**What would have to happen for v2 to replace it.** Future work, in this order.
+None of it is attempted here, and none of it should be before step 1:
+
+1. Mininet and OVS available, so the provenance gate admits real flows. The
+   Mininet run is therefore not only the unverified link of §1.3; it is the
+   prerequisite for v2 acting on anything.
+2. v2's **binary** decision drives incident creation and the chain write. The
+   binary edge figure (§4.1) supports that where the class head does not.
+3. The class chooses only the *action*, and only above its floor. That part
+   already holds: none of the 17,909 PortScan edges mislabelled BruteForce
+   reaches 0.85 (§6).
+4. `dry_run` stays true for the switch until the allowlist covers gateways, DNS
+   and the controller and a rule has been validated against a controller.
+
+What each object and field is called along the v1 path is mapped in
+`NAMING_MAP.md`; the defects found in that path are in `AUDIT_2026-10-04.md`.
+
+### 1.2 The one measurement of v1: what OVS's missing features cost
+
+v1 reads seven features per flow. An OVS flow dump has no direction split and no
+TCP flags, so on live traffic three of them are constants: `fwd_ratio` = 1.0,
+`byte_asymmetry` = +1.0, `syn_ratio` = 0. The §7 sample was scored twice with the
+installed v1 weights and the backend's own feature builder, once as the training
+notebook built the features and once with those three forced to the constants:
+
+| at the tracked 0.75 threshold | offline features | OVS constants |
+|---|---:|---:|
+| precision | 0.9487 | 0.7994 |
+| recall | 0.1326 | 0.3094 |
+| benign flows scored as attacks | 12 | 130 |
+| sources over the threshold | 21 | 45 |
+| of those, sources that sent no attack flow | 11 | 31 |
+
+794 of 18,264 flows change side. **On OVS-shaped input v1 would block nearly three
+times as many sources that sent no attack flow.** v1 must not be presented as a
+detector on OVS traffic.
+
+**Lost information, not a shifted operating point.** Recall rises while precision
+falls, which one threshold cannot tell apart from a model that has simply become
+more aggressive. Threshold-free, and at the precision the offline features had:
+
+| | offline features | OVS constants |
+|---|---:|---:|
+| average precision, per flow (base rate 0.0917) | 0.6292 | 0.5737 |
+| average precision, per source and window (1,900 rows, base rate 0.0332) | 0.3394 | 0.2967 |
+| lowest flow threshold with precision ≥ 0.9487, and recall there | 0.6159 → 0.2790 | **none reaches it** |
+| lowest source threshold with precision ≥ 0.4762, and recall there | 0.7798 → 0.1587 | 0.9815 → 0.0159 |
+
+Average precision falls at both levels, and on OVS input **no threshold at all**
+recovers the flow precision the offline features gave at 0.75. At the source
+level, the unit the backend blocks, matching the offline precision costs nine
+tenths of the recall (10 sources found against 1). Re-tuning the threshold does
+not repair this; the three features carried information the model used. That
+leaves retraining — on OVS-shaped features, or as a four-feature model — or
+documenting the limit. There is no variance estimate: one sample, one run.
+
+**What v1 does at the unit it blocks — on six attacking hosts.** Everything in
+this paragraph rests on **n = 6**: only 6 of the 810 distinct sources in the
+sample sent any attack flow, one of them (172.16.0.1) sent every slowloris,
+PortScan and SSH-Patator flow, and the other five are the Bot hosts. These are
+observations about six hosts, not estimates of a rate. What is blocked is a
+(window, source) row; 63 of the 1,900 rows have a source that sent an attack flow
+in that window, which is the 0.0332 base rate in the table, so the source-level
+average precision of 0.3394 is about ten times chance. With every feature
+present, at the tracked threshold, counted from the scores:
+
+- **v1 is blind to one entire class.** None of the 50 Bot rows is over the
+  threshold: 0 of 50, for all five hosts. Its ceiling is therefore the 13 rows of
+  the one other attacker, 13 of 63, before any tuning.
+- **Of the 13 rows it can reach it finds 10.** All 10 are that one host's.
+- **It is wrong about as often as it is right.** Beside those 10 are 11 rows
+  whose source sent no attack flow: 10 of 21, precision 0.4762, roughly one wrong
+  block for every right one.
+
+So: real ranking signal, most of what it is able to see found, precision that
+cannot be deployed unattended, and four fifths of the positive rows invisible to
+it. Lowering the threshold does not help (the last row of the table: 0.7798 finds
+the same 10); the threshold is not wasting the signal, the signal stops. One
+sample, one run, and the ceiling caveat below applies to all of it.
+
+**On OVS-shaped input, Bot rows over the threshold go from 0 to 8, and that is
+not detection.** (8 is 3, 1, 2, 2 and 0 across the five hosts.) Under one percent of Bot flows score over 0.75 on OVS input
+(one flow in 168), so those 8 rows are over the threshold on the hosts' *other*
+traffic: they are false flags that happen to land on Bot hosts. Quoted alone,
+"0 → 8" reads as OVS input improving Bot detection; it is the opposite. So B08's
+cost is worse than more false positives: **OVS-shaped input produces false
+positives that are indistinguishable from true positives at the row level**, and
+on exactly the class both models are blind to (§9 item 20). The one attacker v1
+can see fares worse as well: 6 of that host's 13 rows, against 10.
+
+**The offline column is a ceiling, not an estimate.** This is not v1's test set,
+which is not in the repository; it is a small, 90.8%-benign slice that may overlap
+v1's training rows. Overlap with training can only flatter a model, so on traffic
+like this sample these are bounds, with every feature present and before OVS
+removes three: v1 recalls **at most** 0.1326 of the attack flows at 0.75, and
+**at least** 11 of the 21 sources it would block sent no attack flow. They are
+bounds for this population, not for every dataset: v1's own held-out figures
+(`ML/GraphSage-model/test_results.json`) were measured on a different split that
+cannot be re-run here.
+
+*Source: `ML/b08_ovs_constants.json`, written by `ML/b08_ovs_constants_check.py`.*
+
+### 1.3 The v2 loop, in dry-run
 
 **The v2 loop is closed in code, in dry-run** (commit `9a4b114`, 2026-10-04):
 
@@ -82,23 +205,113 @@ reaches a switch" is a statement about **v2 only**.
 58 windows echoed the backend's policy digest; **12 rules admitted, all on
 correctly classified flows** (8 BruteForce `drop_port`, 4 Volumetric_Flood
 `meter`); 0 on benign or wrong-class flows; withheld: BruteForce 131 and
-Volumetric_Flood 102 and PortScan 68 below floor, Botnet 1 suppressed. **No correct
-PortScan prediction reached its 0.85 floor** (0 of 68; p50 0.631) — reported, not
-adjusted.
+Volumetric_Flood 102 below floor, PortScan 68 and Botnet 1 suppressed. **No correct
+PortScan prediction reached its 0.85 floor** (0 of 68; p50 0.631). Until
+2026-10-05 PortScan was enforceable and those 68 were withheld as below floor;
+it is now `alert_only` (§6), re-run through the live service with the same 12
+rules admitted.
 
-**Unverified link: the backend's own ingestion path.** The result above was
-obtained by sending the sample to the inference service directly, with the
-backend's policy. It verifies the loop **from the inference service outward**. The
-path a real flow takes — OVS → the backend's monitor → the provenance gate → the
-v2 client → rules accepted by the backend — has **not been exercised end to end**
-with the installed model: the monitor admits OVS flows only, and the machine these
-measurements were made on has no Mininet. Each stage is covered by tests
-(`backend/tests/test_v2_provenance_gate.py`, `backend/tests/test_v2_rule_wiring.py`);
-the chain as a whole is not. It needs one Mininet run on Linux or WSL2
-(`RUN_GUIDE.md` §11).
+**The backend's own ingestion path, run once on real OVS flows (2026-10-05).**
+Until this run the loop was verified only from the inference service outward. The
+path a real flow takes — OVS → the enforcement daemon's `ovs-ofctl dump-flows s1`
+→ `flow_parser` → the monitor → the provenance gate → the v2 client → rules
+accepted and logged by the backend — has now been exercised end to end, **live,
+not replayed**: Mininet with the OVS kernel datapath in WSL2, the repository's own
+topology script and daemon unmodified, the backend and the inference service as
+the two processes of `RUN_GUIDE.md` §5. Every flow's `data_source` was set by
+`flow_parser` from the dump text; the gate was not changed.
+
+What that run establishes is the **mechanism**: 45 polls answered and none failed;
+the gate refused none and its state read `submitted`; 4 windows closed and none
+was unscored; no flow was dropped in mapping; every window echoed the backend's
+policy digest and the backend logged its own `rule(s) admitted` and `withheld … :
+reason` lines for each.
+
+**What it shows about the model is unfavourable, and it is the more important
+result.** The traffic was generated by one script, so what each flow was is known
+by construction.
+
+**Binary discrimination did not transfer.** The first window of run 2 held benign
+traffic only, and **202 of 400** scored flows were predicted as an attack class.
+The offline figure this project leads with, edge binary F1 0.9961 (§4.1), is
+measured on CICIDS2017's episode-split test set; on OVS-derived input in this
+topology the model called half of a benign window attacks. A reader who has got
+as far as "the loop runs" must read this in the same breath: **the loop runs, and
+what it decides on live traffic is wrong.**
+
+**The confidence floors did not absorb it.** In that benign window 182 flows were
+predicted Volumetric_Flood and 180 of them were at or above the 0.90 floor. They
+became only 4 rules because a rule covers one source and destination pair for a
+window, not because the floor held them back. Across the four windows 689 of the
+1,433 Volumetric_Flood predictions cleared the floor. On the committed sample and
+the test split the floors absorb the class head's errors (above, §6); here they
+did not, because the wrong predictions were confident.
+
+13 rules were admitted in run 2, all `Volumetric_Flood`/`meter`:
+
+| the flow the rule was made on | rules |
+|---|---:|
+| a benign HTTP fetch | 10 |
+| the reply to a benign HTTP fetch | 1 |
+| the brute-force-shaped connections, labelled Volumetric_Flood | 2 |
+| the flood | **0** |
+
+The flood was in the flow table in 14 consecutive dumps, five seconds apart, with
+tens of thousands of packets, and received no rule. **Had these rules been
+installed, they would have rate-limited ordinary web traffic and left the flood
+alone.** Dry-run is what stood between this result and the switch.
+
+**Why, as far as it has been separated: three candidate causes, one tested.**
+
+1. *The flood's shape.* The controller installs one table entry per conversation,
+   so a flood from one source port is one edge of the window's graph, whatever
+   its packet count, where a CICIDS2017 flood window is many flows converging on
+   a victim. **Tested, run 3:** the same traffic with one change, the flood sent
+   as a thousand conversations from two hosts. Both flood sources then received a
+   rule, in both windows the flood was in: 4 of that run's 19 rules. **That is
+   not evidence the model recognises a flood.** 12 of the 19 were again on benign
+   fetches, and the flood rules' confidence (0.9504 to 0.9551) sits inside the
+   range of the rules on benign fetches (0.9193 to 0.9628): at the rule level a
+   flood and a web fetch to the same port are indistinguishable. Run 3's
+   benign-only window gave the same half: 329 of 652 flows predicted as attacks.
+2. *Re-submission.* The monitor submits the whole table on every poll with
+   cumulative counters. Measured from the daemon's own responses in run 3: a
+   conversation was submitted between 1.16 and 9.17 times per window. It inflates
+   every conversation alike, so it cannot change the flood's share of a window;
+   §7 models its cost offline. Not yet removed and re-run.
+3. *Features.* Of the model's 20 edge features an OVS dump fills 10; 2 are pinned
+   to a constant (`fwd_packet_ratio`, `byte_asymmetry`, because OVS has no
+   direction split) and 8 are zero (the two maximum packet lengths, the two
+   inter-arrival features, and the four TCP-flag ratios: no dump in either
+   capture carries a `tcp_flags` field). All flows in a poll also share one
+   observation time, so the three timing features take poll-shaped values.
+   Listed in `backend/app/services/flow_mapping.py`; its effect on v2 is **not
+   measured** — this is the v2 counterpart of §1.2's work on v1.
+
+Until 2 and 3 are measured the causes are not separated, and the cause of the
+benign fetches being labelled attacks is not known.
+
+**The floors are not moved on this evidence.** Wrong rules cleared 0.90; raising
+it on three runs of one hand-written script, on one topology, with no variance
+estimate, would be fitting an operating point to an anecdote.
+
+Read all of it with its limits: one small topology, one traffic script, three
+runs that are not a variance estimate, and a machine short enough of memory that
+no timing means anything. It is an observation that the live path produces wrong
+rules, not a measured rate.
+
+*Source: runs 1 and 2 — `ML/retrain_logs/live_loop_run.txt`,
+`ML/live_loop_run.json`; their raw dumps in `ML/retrain_logs/live_loop/` are a
+second reading of the flow table taken beside the daemon, up to five seconds from
+its polls, not the parser's input. Run 3 — `ML/retrain_logs/live_loop_run3.txt`,
+`ML/live_loop_run3.json`, and `ML/retrain_logs/live_loop/daemon_responses_run3.txt`,
+which is the daemon's own answers, byte for byte what `flow_parser` was given:
+parsed again they give the same flow count per window as the backend logged.*
 
 What may be said about mitigation: rule generation under a validated policy works
-end to end **in dry-run**, verified at the service boundary. No v2 rule has been installed on a switch, the allowlist
+end to end **in dry-run**, on the committed sample at the service boundary and
+once through the backend's own monitor on live OVS flows, where the rules it
+admitted were on the wrong flows. No v2 rule has been installed on a switch, the allowlist
 does not yet cover gateways, DNS and the controller, and no rule has been validated
 against a controller. "Self-healing" of live traffic by the measured model is
 **not** demonstrated; the blocking the dashboard shows is v1's (§1.1).
@@ -125,8 +338,22 @@ against a controller. "Self-healing" of live traffic by the measured model is
 The class order is a contract, not a convenience: `apply_taxonomy()` mutates
 `CLASS_NAMES[:]` and `RAW_LABEL_MAP` in place, and `default_config()` resets them.
 
-**The host memory is untrained.** It is instantiated, bounded and exercised, but no
-training signal reaches it. It must not be described as learned state.
+**The host memory is untrained.** It is v2's only; v1 has no memory at all. It
+exists to carry per-host state **across** 60-second windows, so that a host that
+scanned in one window is still known in the next: it is the temporal half of the
+architecture. It is instantiated, bounded and exercised, but no training signal
+reaches it, so its `GRUCell` weights are at initialisation and what it injects is
+initialisation-valued state. It must not be described as learned state.
+
+What its ablation supports (§8), and no more:
+
+> The host memory is untrained. Disabling it changes macro F1 by +0.0188, with no
+> variance estimate, so the measurement does not establish that the memory harms
+> the model — only that it does not help it. Most of the larger pre-fix figure
+> (+0.1270) was the timestamp defect.
+
+The memory stays on. Every figure in this file was measured with it on; turning
+it off would invalidate them for a change the probe cannot justify.
 
 **Graph construction.** IP-as-node, flow-as-edge, 60-second non-overlapping
 windows. A window needs `min_edges_per_graph = 8` to become a graph; windows above
@@ -453,6 +680,22 @@ Part B counts the edge head alone.
 | correct PortScan rules | **0** — 0 of 3,735 correct predictions clear 0.85 |
 | correct BruteForce rules | **0** — true BruteForce is never predicted BruteForce |
 
+**PortScan is `alert_only` since 2026-10-05; its floor is unchanged.** The table
+above is the policy as it was measured, with PortScan enforceable. Read it for
+why: no correct PortScan prediction clears the floor on the test split or on the
+live sample, and the only PortScan predictions that do are the 118 wrong ones in
+the second row. `drop` could only have fired on the wrong class, so the second
+row no longer produces rules.
+
+**This suppresses less than the decision it implements, and that is on purpose.**
+Suppressing both PortScan and BruteForce was approved when the evidence was that
+neither produced a correct rule. It was narrowed to PortScan on two later pieces
+of evidence. On the live sample 400 of 413 true BruteForce flows are predicted
+BruteForce and 8 rules were admitted on them (§1.3). And BruteForce's 0.0000 test
+F1 is measured on the one class whose test windows hold no benign traffic, which
+§5.1's pre-registered measurement says is not the representative condition; live
+traffic is mixed. BruteForce therefore stays enforceable, at the same floor.
+
 The 17,909 PortScan edges mislabelled BruteForce have p95 **0.623**; **none**
 reaches 0.85. The class head is unreliable and the confidence floors absorb almost
 all of that unreliability. **On the test split, Volumetric_Flood is the only class
@@ -521,8 +764,10 @@ verdict with it: `no_edge_feat` is val **+0.0397** / test **−0.0265**, i.e.
 **split-specific**. The honest statement is that the pre-fix direction does not
 survive the fix, not that the effect cleanly reversed.
 
-**The host memory still costs a little.** +0.1270 → +0.0188: most of that headline
-was the clock, and the residual is consistent with memory being untrained.
+**The host memory does not help; the probe does not show that it harms.**
++0.1270 → +0.0188: most of that headline was the clock, and the residual is
+consistent with memory being untrained. Like leave-one-out below, this probe has
+no variance estimate (§2 has the sentence to quote).
 
 **On leave-one-out, be careful.** "Two misleading features became zero" is a
 **reporting-threshold artefact** — the probe only flags gains above +0.02, and
@@ -551,7 +796,9 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 1. **The dry-run guarantee is v2's only; the path that blocks hosts is unmeasured**
    (§1.1). v1 — a two-class GraphSAGE over 7 features — creates the incidents,
    blocks the hosts and writes the chain records, and with `ENFORCEMENT_MODE=ovs`
-   installs real drop rules. No figure in this file describes it.
+   installs real drop rules. The only figures in this file that describe it are
+   §1.2's, and they are unfavourable: on OVS-shaped input it puts 31 sources that
+   sent no attack flow over its threshold, against 11 with full features.
 2. **Both models are scored on graph sizes they were not trained on.** v1 trained
    on 500-flow windows and at inference scores whatever one poll returns, down to
    a single flow with no edges (`backend/app/services/inference_service.py`). v2
@@ -561,8 +808,9 @@ output of `ML/GraphSentinel_Training.ipynb`.*
    policy and none is installed; the allowlist does not cover gateways, DNS or the
    controller, and no rule has been validated against a controller.
 4. **PortScan's floor is unreachable** on the live sample (0 of 68 correct
-   predictions reach 0.85) and on the test split (0 of 3,735): its `drop` action
-   never fires.
+   predictions reach 0.85) and on the test split (0 of 3,735). Its `drop` action
+   could only fire on wrong-class predictions, and it has been `alert_only` since
+   2026-10-05 (§6).
 5. **The host memory is untrained** (§2). Not learned state.
 6. **PortScan's validation is contaminated** — one graph window appears in train,
    validation and test (§5.3). Validation chose the checkpoint and fitted every
@@ -586,6 +834,28 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 17. **`pm_hours = [1, 7]` is unexercised at its edges** (§3.2).
 18. **The MIXED check is per file, the pipeline is pooled** (§3.2); they coincide
     only because no hour ≥ 13 exists anywhere.
+19. **The host memory has never run in the condition it was designed for.** Its
+    purpose is continuity across windows for the same hosts, which needs a
+    sustained stream of flows from a stable host population. Every measurement
+    here was made on offline CICIDS2017 windows or on the 58-window committed
+    sample; the one live run (§1.3) lasted four windows. So the §8 ablation is not the last word on the memory: it measures an
+    untrained memory on input that gives it nothing to remember.
+20. **Neither model detects Botnet traffic.** On the one sample both have been
+    run against (§7), v2 classifies 0 of 168 Botnet edges correctly and has no
+    Botnet edges in its test split to say otherwise (item 9); v1, with every
+    feature present, puts 0 of 50 Bot rows over its threshold, and those are
+    most of the 63 positive rows of its source-level evaluation (§1.2).
+    Two models, two architectures, one blind spot. The sample has five Bot hosts,
+    so this is an observation about them, not a rate; but it is a measured gap,
+    which makes it the best-evidenced item of future work the project has.
+21. **On live OVS flows, v2 is wrong at both levels** (§1.3). Half the flows of a
+    benign-only window were predicted as attacks, in each of two runs; and of the
+    13 rules run 2 admitted, 11 were on benign HTTP fetches or their replies, 2
+    on brute-force-shaped connections under the wrong class, and none on the
+    flood. The floors did not absorb it: the wrong predictions were confident.
+    Three candidate causes are named there; one has been tested, and the cause of
+    benign traffic being labelled an attack is not known. Three runs of one
+    script on one topology: unmeasured as a rate.
 
 ---
 
@@ -593,10 +863,15 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 
 **May be claimed, with the cited figure:**
 
-- Reliable binary attack/benign discrimination at the flow level — **edge binary
-  F1 0.9961**, which moved only **−0.0013** (from 0.9974) through the correction
-  that took the five-class macro F1 from 0.7042 to 0.4441. This is the strongest
-  claim the project has.
+- Binary attack/benign discrimination at the flow level, **offline, on the
+  CICIDS2017 episode-split test set** — **edge binary F1 0.9961**, which moved
+  only **−0.0013** (from 0.9974) through the correction that took the five-class
+  macro F1 from 0.7042 to 0.4441. It was the strongest claim the project had, and
+  it is a claim about that test set only: see the first item of the next list.
+- That an offline headline was tested against live input and did not survive, and
+  that the worse result is the one reported (§1.3). This is the second time in
+  this project a headline has not survived a better measurement; both times the
+  lower number was published. That, not either number, is the contribution.
 - A reproducible, measured defect in CICIDS2017's `TrafficLabelling_` timestamps
   affecting **52.0% of 2,830,743 rows**, with an independently-confirmed capture-day
   reconstruction.
@@ -605,17 +880,33 @@ output of `ML/GraphSentinel_Training.ipynb`.*
   traffic, **0.51% → 97.73%**.
 - That the installed model depends on its flow features where the pre-fix model did
   not — with §8's split-specificity and variance caveats attached.
-- Rule generation under a validated policy, in **dry-run**, verified at the
-  inference-service boundary and not through the backend's monitor (§1): on the
-  live sample, 12 rules, all on correctly classified flows (8 BruteForce, 4
-  Volumetric_Flood). On the test split, offline, Volumetric_Flood is the one class
+- That the loop runs end to end on real OVS flows, as a **mechanism**: polled,
+  parsed, admitted by the provenance gate, scored, and rules accepted and logged
+  by the backend under its own policy digest, in dry-run (§1.3). Run once, live,
+  on Mininet in WSL2.
+- Rule generation under a validated policy, in **dry-run**, on the committed
+  sample at the inference-service boundary (§1): 12 rules, all on correctly
+  classified flows (8 BruteForce, 4 Volumetric_Flood). On the test split, offline, Volumetric_Flood is the one class
   with a correct path, at a false-action ceiling of **2 in 174,421 benign flows**.
 
 **Must not be claimed:**
 
-- That the loop has been demonstrated end to end. It is verified from the inference
-  service outward; the backend's ingestion path from a real OVS flow to an accepted
-  rule is a **named unverified link** (§1) until a Mininet run exercises it.
+- That binary discrimination transfers to live traffic. On OVS-derived input in
+  this topology it did not: 202 of 400 flows in a benign-only window were
+  predicted as an attack class, and 329 of 652 in the next run's (§1.3). "Binary
+  F1 0.9961" without "offline, on the CICIDS2017 test set" is a misstatement.
+- That the confidence floors make the rules safe. On the committed sample and the
+  test split they absorb the class head's errors; on live flows 180 of 182 wrong
+  Volumetric_Flood predictions in one benign window were above the floor.
+- That the model detected the flood in run 3. It received a rule; so did benign
+  fetches to the same port, at the same confidence.
+- That the loop **works**, in the sense of acting on the right traffic. It has
+  run end to end once on real OVS flows, and the rules it admitted there were on
+  benign fetches, not on the flood (§1.3, §9 item 21). "Demonstrated end to end"
+  is true of the mechanism and false of the outcome; say which.
+- That the committed sample's result — every admitted rule on a correctly
+  classified flow — carries over to live traffic. The one live run says it does
+  not.
 - Zero-day detection. Nothing in this project measures unseen attack families.
 - Real-time performance. Latency has not been measured for the installed model.
 - Production readiness.
@@ -632,6 +923,9 @@ output of `ML/GraphSentinel_Training.ipynb`.*
 - Flow classification as host classification. They are different heads with
   different numbers.
 - Any per-class F1 for PortScan or BruteForce as a model property (§5.4).
+- Detection of Botnet traffic, by either model, or "a five-class detector"
+  without qualification. The taxonomy includes a class that nothing in this
+  project has detected (§9 item 20).
 
 The contribution this codebase supports is **the audit and the honest
 re-measurement**: a defect found at full scale, a pre-registered test of its
@@ -654,7 +948,11 @@ replace.
    `.gitattributes` pins `-text` on every digest-bearing artefact, including the
    moved pre-fix files, the sample and the retrain logs.
 
-Suites at time of writing: **ML 165 passed; backend 233 passed, 3 skipped.** How to
+Suites at time of writing, on branch `fix/audit-p0-p1`: **ML 167 passed; backend
+244 passed, 3 skipped; Hardhat 25 passing.** The backend figure was 233 passed
+before the audit fixes and was first produced with `web3` 7.16.0 installed against
+a pin of 7.4.0; the pin is now what is installed, and the count is the same under
+both (`AUDIT_2026-10-04.md` §1.7). How to
 start the system and verify it in one command: `RUN_GUIDE.md` (§6,
 `python ML/verify_stack.py`).
 

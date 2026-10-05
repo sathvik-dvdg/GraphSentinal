@@ -4,11 +4,12 @@
 // copy or inspect the full value)
 import { useState } from 'react'
 import { Copy, Check } from 'lucide-react'
+import { GS } from '../../constants/colors'
 
 export default function CopyableHash({ value, prefixLen = 14, suffixLen = 0, style = {}, iconSize = 10 }) {
   const [copied, setCopied] = useState(false)
 
-  if (!value) return <span style={{ color: '#9aa1ad' }}>—</span>
+  if (!value) return <span style={{ color: GS.textFaint }}>—</span>
 
   const display = suffixLen > 0
     ? `${value.slice(0, prefixLen)}…${value.slice(-suffixLen)}`
@@ -38,7 +39,7 @@ export default function CopyableHash({ value, prefixLen = 14, suffixLen = 0, sty
     >
       <span>{display}</span>
       {copied ? (
-        <Check size={iconSize} style={{ color: '#12a672', flexShrink: 0 }} />
+        <Check size={iconSize} style={{ color: GS.success, flexShrink: 0 }} />
       ) : (
         <Copy size={iconSize} style={{ opacity: 0.5, flexShrink: 0 }} />
       )}

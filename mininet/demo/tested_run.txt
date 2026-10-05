@@ -1,0 +1,40 @@
+run_demo.py, run on 2026-10-05 against the backend (v1 only, GS2 off, ENFORCEMENT_MODE=simulated),
+Mininet + OVS in WSL, no background traffic. Output as printed:
+
+backend: ok | switch poll: ok_empty (0 flows)
+v1: mode model, threshold 0.75, enforcement simulated | v2: off
+
+--- FLOOD ATTACK (h2 -> h1) ---
+flood: h2 (10.0.0.2) -> 10.0.0.1:80, 2000 HTTP requests, a new connection each
+flood: done
+Check the dashboard -- node h2 / 10.0.0.2 should be red.
+  backend: 10.0.0.2 is recorded as blocked -- label 'DDoS', score 0.7709769010543823
+
+--- Unblocking 10.0.0.2 ---
+  10.0.0.2 unblocked (unblocked)
+
+--- PORT SCAN (h3 -> h1) ---
+portscan: h3 (10.0.0.3) -> 10.0.0.1, TCP connect to ports 20-30 (11 ports, open, nmap)
+portscan: done
+Check the dashboard -- node h3 / 10.0.0.3 should be red.
+  backend: 10.0.0.3 is recorded as blocked -- label 'PortScan', score 0.9251700043678284
+
+--- SSH BRUTE FORCE (h4 -> h1) ---
+bruteforce: NOTE -- v1 is a binary model. The attack type on the dashboard is a port/volume heuristic: 'SSHBrute' needs port 22 and more than 250 packets, and anything it does not match is called 'Botnet'. Whatever label appears, say that first.
+bruteforce: h4 (10.0.0.4) -> 10.0.0.1:22, 300 TCP connection attempts (port open)
+bruteforce: done
+Check the dashboard -- node h4 / 10.0.0.4 should be red. Whatever attack type it shows is the heuristic's, not a model output: the model is binary.
+  backend: 10.0.0.4 is recorded as blocked -- label 'SSHBrute', score 0.8057800531387329
+
+--- Demo complete ---
+Do not run benign traffic. Keep ENFORCEMENT_MODE=simulated.
+
+Incidents the backend recorded (its SQLite database, read afterwards):
+   ('10.0.0.2', 'DDoS', 0.77, 0, 'simulated', '2026-10-05 04:49:47.522741')
+   ('10.0.0.2', 'Manual', 0.0, 0, 'simulated', '2026-10-05 04:50:10.389556')
+   ('10.0.0.2', 'DDoS', 0.94, 1, 'simulated', '2026-10-05 04:50:14.464145')
+   ('10.0.0.3', 'PortScan', 0.93, 1, 'simulated', '2026-10-05 04:50:22.328567')
+   ('10.0.0.4', 'SSHBrute', 0.81, 1, 'simulated', '2026-10-05 04:51:06.331856')
+
+The same three attacks against CLOSED ports / as a ping flood, same day: no incident for any
+attacker (two rows only, both the 'Manual' unblock of 10.0.0.2).

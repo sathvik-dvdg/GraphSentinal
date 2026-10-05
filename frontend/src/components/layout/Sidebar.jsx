@@ -8,17 +8,18 @@ import {
 import useGraphStore from '../../store/useGraphStore'
 import useAuthStore from '../../store/useAuthStore'
 import { loadAlertStatuses } from '../../utils/alertStatus'
+import { GS } from '../../constants/colors'
 
 const NAV_ITEMS = [
-  { path: '/dashboard',  Icon: LayoutDashboard, label: 'Dashboard',         color: '#5a616e' },
-  { path: '/network',    Icon: Network,          label: 'Network Topology',  color: '#1D9E75' },
-  { path: '/threats',    Icon: ShieldAlert,      label: 'Threat Feed',       color: '#E03C3C' },
-  { path: '/forensics',  Icon: Search,           label: 'Forensics',         color: '#3b56d9' },
-  { path: '/blockchain', Icon: Link2,            label: 'Audit & Ledger',    color: '#7c3aed' },
-  { path: '/timeline',   Icon: TrendingUp,       label: 'Timeline',          color: '#1D9E75' },
-  { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: '#12a672' },
-  { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: '#b7791f' },
-  { path: '/audit',      Icon: ScrollText,       label: 'Audit Log',         color: '#5a616e' },
+  { path: '/dashboard',  Icon: LayoutDashboard, label: 'Dashboard',         color: GS.textMuted },
+  { path: '/network',    Icon: Network,          label: 'Network Topology',  color: GS.successDeep },
+  { path: '/threats',    Icon: ShieldAlert,      label: 'Threat Feed',       color: GS.danger },
+  { path: '/forensics',  Icon: Search,           label: 'Forensics',         color: GS.primary },
+  { path: '/blockchain', Icon: Link2,            label: 'Audit & Ledger',    color: GS.chain },
+  { path: '/timeline',   Icon: TrendingUp,       label: 'Timeline',          color: GS.successDeep },
+  { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: GS.success },
+  { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: GS.warn },
+  { path: '/audit',      Icon: ScrollText,       label: 'Audit Log',         color: GS.textMuted },
 ]
 
 export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }) {
@@ -43,7 +44,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
     <aside
       style={{
         height: '100%',
-        background: '#ffffff',
+        background: GS.surface,
         borderRight: '1px solid rgba(17,20,26,0.08)',
         display: 'flex',
         flexDirection: 'column',
@@ -79,7 +80,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             flexShrink: 0,
           }}
         >
-          <svg viewBox="0 0 24 24" fill="none" style={{ width: 14, height: 14, color: '#3b56d9' }} stroke="currentColor" strokeWidth={2}>
+          <svg viewBox="0 0 24 24" fill="none" style={{ width: 14, height: 14, color: GS.primary }} stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" />
           </svg>
         </div>
@@ -87,7 +88,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
         {expanded && (
           <span
             style={{
-              color: '#1b1f27',
+              color: GS.text,
               fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
               fontWeight: 600,
               fontSize: 13,
@@ -108,7 +109,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             marginLeft: expanded ? 0 : 'auto',
             background: pinned ? 'rgba(79,110,247,0.12)' : 'none',
             border: 'none',
-            color: pinned ? '#3b56d9' : 'rgba(27,31,39,0.32)',
+            color: pinned ? GS.primary : 'rgba(27,31,39,0.32)',
             cursor: 'pointer',
             padding: 4,
             borderRadius: 6,
@@ -166,8 +167,8 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               <span
                 style={{
                   marginLeft: 'auto',
-                  background: '#b7791f',
-                  color: '#fff',
+                  background: GS.warn,
+                  color: GS.surface,
                   borderRadius: 999,
                   fontSize: 9,
                   fontWeight: 700,
@@ -195,12 +196,12 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             gap: 12,
             padding: '9px 16px',
             textDecoration: 'none',
-            borderLeft: isActive ? '3px solid #5a616e' : '3px solid transparent',
+            borderLeft: isActive ? `3px solid ${GS.textMuted}` : '3px solid transparent',
             background: isActive ? 'rgba(17,20,26,0.08)' : 'transparent',
             transition: 'background 150ms',
           })}
         >
-          <Settings size={18} style={{ color: '#5a616e', flexShrink: 0 }} />
+          <Settings size={18} style={{ color: GS.textMuted, flexShrink: 0 }} />
           {expanded && (
             <span style={{ color: 'rgba(27,31,39,0.80)', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
               Settings
@@ -227,13 +228,13 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1D9E75, #3b56d9)',
+                background: `linear-gradient(135deg, ${GS.successDeep}, ${GS.primary})`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 11,
                 fontWeight: 700,
-                color: '#fff',
+                color: GS.surface,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 flexShrink: 0,
               }}
@@ -241,7 +242,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               {initials}
             </div>
             <div>
-              <div style={{ color: '#1b1f27', fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <div style={{ color: GS.text, fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {username || 'operator'}
               </div>
               <div style={{ color: 'rgba(27,31,39,0.45)', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
@@ -259,13 +260,13 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1D9E75, #3b56d9)',
+                background: `linear-gradient(135deg, ${GS.successDeep}, ${GS.primary})`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#fff',
+                color: GS.surface,
               }}
             >
               {initials}

@@ -171,7 +171,12 @@ services:
       interval: 10s
       timeout: 5s
       retries: 6
-      start_period: 15s
+      # Failures during start_period do not count. It was 15s, which with six
+      # retries gave the backend 75s to import torch, migrate and answer. On
+      # the 3.8 GB development machine it needed longer three times on
+      # 2026-10-04, was marked unhealthy, and `docker compose up -d` then
+      # failed without starting the frontend -- including on a fresh clone.
+      start_period: 180s
 
   # ── React + Vite Frontend ───────────────────────────────────────────────────
   frontend:

@@ -185,8 +185,8 @@ OS:          Windows 11 (host) + WSL2 Ubuntu 22.04 (backend/ML)
 | `RUN_GUIDE.md` | **Start here.** How to start the system and verify it in one command |
 | `MODEL_BEHAVIOUR.md` | Every measured number about the model, and what may be claimed |
 | `INTEGRATION.md` | The current v2 wiring: inference service, policy, provenance gate |
-| `INTEGRATION_GUIDE.md` | The frozen v1 integration contract (API shapes and schemas) |
-| `Error.md`, `decisions.md` | The numbered issue tracker and decision log that code comments cite |
+| `docs/archive/INTEGRATION_GUIDE.md` | The frozen v1 integration contract (API shapes and schemas) |
+| `docs/archive/Error.md`, `docs/archive/decisions.md` | The numbered issue tracker and decision log. Code comments cite them by file name (`Error.md #29`); this is where they live |
 
 ---
 
@@ -247,7 +247,7 @@ GANACHE_URL=http://127.0.0.1:8545
 If any component fails during the 60-minute demo:
 - Frontend can run on mock data (`VITE_USE_MOCK=true`) — UI looks identical
 - Pre-recorded demo video: none is committed. Record one before the demo (`RUN_GUIDE.md` §12)
-- Detailed fallback protocol: see `INTEGRATION_GUIDE.md` Section 9
+- Detailed fallback protocol: see `docs/archive/INTEGRATION_GUIDE.md` Section 9
 
 ---
 

@@ -1,3 +1,4 @@
+import asyncio
 import re
 import secrets
 import uuid
@@ -12,6 +13,7 @@ from starlette.middleware.base import BaseHTTPMiddleware
 
 from app.config import settings
 from app.database import init_db
+from app.logging_setup import configure_graphsentinel_logging
 from app.services import auth_service
 from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.inference_client import InferenceClient, InferenceUnavailable
@@ -20,6 +22,8 @@ from app.services.inference_v2 import build_state, verify_service_contract
 from app.services.model_contract import ContractError
 from app.services.reconciliation import ReconciliationWorker
 
+
+configure_graphsentinel_logging()
 
 request_id_ctx_var: ContextVar[str] = ContextVar("request_id", default="")
 _REQ_ID_PATTERN = re.compile(r"^[a-zA-Z0-9_-]{1,64}$")
@@ -76,7 +80,7 @@ async def lifespan(app: FastAPI):
     try:
         from app.mininet_monitor.monitor import MininetMonitor
 
-        app.state.monitor = MininetMonitor(sio=sio, gs2_state=app.state.gs2)
+        app.state.monitor = MininetMonitor(sio=sio, gs2_state=app.state.gs2, loop=asyncio.get_running_loop())
         app.state.monitor.start()
     except Exception as exc:
         print(f"[Monitor] Disabled: {exc}")
@@ -125,8 +129,13 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 
     async def dispatch(self, request: Request, call_next) -> Response:
         content_length = request.headers.get("content-length")
-        if content_length and int(content_length) > _MAX_BODY_BYTES:
-            return Response(content="Request body too large", status_code=413)
+        if content_length:
+            try:
+                declared = int(content_length)
+            except ValueError:
+                return Response(content="Invalid Content-Length", status_code=400)
+            if declared > _MAX_BODY_BYTES:
+                return Response(content="Request body too large", status_code=413)
         return await call_next(request)
 
 
@@ -179,6 +188,12 @@ async def health():
         "service": "GraphSentinel",
         "timestamp": datetime.now(timezone.utc).isoformat(),
         "ml": inference.health(),
+        # v1 is the path that blocks. What it is configured to do, as running:
+        # ThreatAnalyzer and EnforcementAgent read these on every analysis.
+        "v1": {
+            "threat_threshold": settings.threat_threshold,
+            "enforcement_mode": settings.enforcement_mode,
+        },
         "ml_v2": ml_v2,
         "blockchain": blockchain.health(),
         "monitor": monitor_health,

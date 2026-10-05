@@ -2,11 +2,13 @@
 // Theme constants — clean white design system
 
 // Node status colors — tuned for filled shapes on a white canvas
+import { GS } from './colors'
+
 export const STATUS_COLORS = {
-  normal:     '#9AA1AD',  // neutral gray
-  suspicious: '#E8922A',  // amber
-  malicious:  '#E5484D',  // red
-  blocked:    '#5E5CE6',  // indigo
+  normal:     GS.textFaint,  // neutral gray
+  suspicious: GS.statusSuspicious,  // amber
+  malicious:  GS.statusMalicious,  // red
+  blocked:    GS.heal,  // indigo
 }
 
 // Node status icons/shapes — used alongside color for accessibility
@@ -26,12 +28,12 @@ export const STATUS_LABELS = {
 
 // Attack type colors — 'null' is the no-attack baseline link color (light gray on white)
 export const ATTACK_COLORS = {
-  DDoS:     '#E5484D',
-  SSHBrute: '#E8922A',
-  PortScan: '#C99A0B',
-  Botnet:   '#7C3AED',
-  DoSHulk:  '#DB2777',
-  null:     '#C7CBD2',
+  DDoS:     GS.statusMalicious,
+  SSHBrute: GS.statusSuspicious,
+  PortScan: GS.attackPortScan,
+  Botnet:   GS.chain,
+  DoSHulk:  GS.attackDosHulk,
+  null:     GS.borderStrong,
 }
 
 // Severity styles — color + icon for accessibility
@@ -39,7 +41,7 @@ export const SEVERITY_STYLES = {
   critical: {
     border:    'border-gs-threat/40',
     badge:     'bg-gs-threat-soft text-gs-threat border-gs-threat/25',
-    dot:       '#D92D2D',
+    dot:       GS.threat,
     icon:      '⬛',  // square — distinct shape
     label:     'CRITICAL',
     textColor: 'text-gs-threat',
@@ -47,7 +49,7 @@ export const SEVERITY_STYLES = {
   warning: {
     border:    'border-gs-warn/30',
     badge:     'bg-gs-warn-soft text-gs-warn border-gs-warn/25',
-    dot:       '#B7791F',
+    dot:       GS.warn,
     icon:      '◆',  // diamond
     label:     'WARNING',
     textColor: 'text-gs-warn',
@@ -55,7 +57,7 @@ export const SEVERITY_STYLES = {
   info: {
     border:    'border-gs-accent/20',
     badge:     'bg-gs-accent-soft text-gs-accent border-gs-accent/20',
-    dot:       '#5A616E',
+    dot:       GS.textMuted,
     icon:      '●',  // circle
     label:     'INFO',
     textColor: 'text-gs-accent',
@@ -63,16 +65,16 @@ export const SEVERITY_STYLES = {
 }
 
 export const THEME = {
-  base:      '#F4F6F8',
-  surface:   '#FFFFFF',
-  raised:    '#F0F2F5',
-  border:    '#E2E5EA',
-  accent:    '#1B1F27',
-  threat:    '#D92D2D',
-  warn:      '#B7791F',
-  heal:      '#5E5CE6',
-  chain:     '#7C3AED',
-  textPrimary: '#1B1F27',
-  textMuted:   '#5A616E',
-  textFaint:   '#9AA1AD',
+  base:      GS.base,
+  surface:   GS.surface,
+  raised:    GS.surfaceRaised,
+  border:    GS.border,
+  accent:    GS.text,
+  threat:    GS.threat,
+  warn:      GS.warn,
+  heal:      GS.heal,
+  chain:     GS.chain,
+  textPrimary: GS.text,
+  textMuted:   GS.textMuted,
+  textFaint:   GS.textFaint,
 }

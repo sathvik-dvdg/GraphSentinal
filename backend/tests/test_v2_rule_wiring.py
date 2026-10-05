@@ -28,7 +28,7 @@ from app.services.self_healing import SelfHealingEngine
 
 #: Pinned in ML/graphsentinel_v2/tests/test_sdn_policy.py too: the package's
 #: policy_sha256 over the same wire policy.
-EXPECTED_POLICY_SHA256 = "d030e547ae90aafe6611b87adc6733d288a1669c7945102e61f8222c5c26a0b2"
+EXPECTED_POLICY_SHA256 = "e99290226e2d4ad9b8293ffae19bbf53c2bfc673dde11aae4abd9bcff1c8f717"
 
 
 @pytest.fixture(scope="module")
@@ -136,4 +136,4 @@ def test_health_publishes_the_policy_digest_floors_and_dry_run(state):
     assert policy["floors"] == {"Volumetric_Flood": 0.90, "PortScan": 0.85,
                                 "BruteForce": 0.85, "Botnet": 1.01}
     assert policy["dry_run"] is True
-    assert policy["alert_only"] == ["Botnet"]
+    assert policy["alert_only"] == ["PortScan", "Botnet"]

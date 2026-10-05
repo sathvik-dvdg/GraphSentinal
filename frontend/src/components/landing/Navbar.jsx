@@ -2,6 +2,7 @@
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { Menu, X } from 'lucide-react'
+import { GS } from '../../constants/colors'
 
 export default function Navbar() {
   const [scrolled, setScrolled] = useState(false)
@@ -18,7 +19,7 @@ export default function Navbar() {
       className="fixed top-0 left-0 right-0 z-50 transition-all duration-300"
       style={{
         backgroundColor: scrolled || menuOpen ? 'rgba(255,255,255,0.90)' : 'rgba(255,255,255,0.80)',
-        borderBottom: scrolled || menuOpen ? '1px solid #e2e5ea' : '1px solid rgba(226,229,234,0.6)',
+        borderBottom: scrolled || menuOpen ? `1px solid ${GS.border}` : '1px solid rgba(226,229,234,0.6)',
         backdropFilter: 'blur(12px)',
       }}
     >

@@ -29,7 +29,7 @@ from graphsentinel.inference.sdn import (  # noqa: E402
 POLICY = {
     "Volumetric_Flood": dict(action="meter", idle=60, hard=600, priority=40_000,
                              min_conf=0.90, meter_kbps=1_000),
-    "PortScan": dict(action="drop", idle=30, hard=300, priority=45_000, min_conf=0.85),
+    "PortScan": dict(action="alert_only", idle=30, hard=300, priority=45_000, min_conf=0.85),
     "BruteForce": dict(action="drop_port", idle=120, hard=1800, priority=48_000, min_conf=0.85),
     "Botnet": dict(action="alert_only", idle=0, hard=0, priority=0, min_conf=1.01),
 }
@@ -66,13 +66,24 @@ def test_the_stale_six_class_table_is_gone():
 
 
 def test_a_rule_carries_the_policy_floor_not_another():
-    rules = SDNTranslator(policy=POLICY).translate(**_one_edge("PortScan", 0.95))
-    assert len(rules) == 1 and rules[0].policy_floor == 0.85 and rules[0].action == "drop"
+    rules = SDNTranslator(policy=POLICY).translate(**_one_edge("BruteForce", 0.95))
+    assert len(rules) == 1 and rules[0].policy_floor == 0.85 and rules[0].action == "drop_port"
     # the same flow under a stricter policy is withheld: the floor is the caller's
-    stricter = {**POLICY, "PortScan": {**POLICY["PortScan"], "min_conf": 0.97}}
+    stricter = {**POLICY, "BruteForce": {**POLICY["BruteForce"], "min_conf": 0.97}}
     t = SDNTranslator(policy=stricter)
-    assert t.translate(**_one_edge("PortScan", 0.95)) == []
+    assert t.translate(**_one_edge("BruteForce", 0.95)) == []
     assert t.withheld[0]["reason"] == "below_floor" and t.withheld[0]["policy_floor"] == 0.97
+
+
+@pytest.mark.parametrize("p", [0.5, 0.86, 0.999])
+def test_portscan_is_alert_only_and_admits_nothing_above_its_floor_either(p):
+    """PortScan was `drop` until 2026-10-05. Its floor is unchanged; it is the
+    action that makes it unenforceable, so a confident prediction is withheld as
+    suppressed, not as below the floor."""
+    t = SDNTranslator(policy=POLICY)
+    assert POLICY["PortScan"]["min_conf"] == 0.85
+    assert t.translate(**_one_edge("PortScan", p)) == []
+    assert t.withheld[0]["reason"] == "class_suppressed"
 
 
 def test_below_the_floor_no_rule_and_exactly_one_withholding():
@@ -103,7 +114,7 @@ def test_botnet_admits_nothing_at_any_confidence(p):
 
 def test_dry_run_writes_nothing_at_the_boundary():
     t = SDNTranslator(policy=POLICY)
-    rules = t.translate(**_one_edge("PortScan", 0.95))
+    rules = t.translate(**_one_edge("BruteForce", 0.95))
     assert rules and t.dry_run is True
     written = []
     report = t.install(rules, writer=written.append)
@@ -156,4 +167,4 @@ def test_engine_echoes_the_policy_it_was_given():
 
 
 #: Pinned literal, also in backend/tests/test_v2_rule_wiring.py.
-EXPECTED_POLICY_SHA256 = "d030e547ae90aafe6611b87adc6733d288a1669c7945102e61f8222c5c26a0b2"
+EXPECTED_POLICY_SHA256 = "e99290226e2d4ad9b8293ffae19bbf53c2bfc673dde11aae4abd9bcff1c8f717"
