@@ -33,6 +33,29 @@ const api = axios.create({
 // (previously VITE_BACKEND_API_TOKEN was embedded in the frontend bundle —
 // "Keep service API keys server-side only" was the explicit required fix).
 
+// Session token helpers — kept here so the axios instance and the store
+// share one source of truth for the Authorization header.
+const SESSION_KEY = 'gs_session_token'
+let unauthorizedHandler = null
+
+export const setSessionToken = (token) => {
+  sessionStorage.setItem(SESSION_KEY, token)
+  api.defaults.headers.common['Authorization'] = `Bearer ${token}`
+}
+
+export const clearSessionToken = () => {
+  sessionStorage.removeItem(SESSION_KEY)
+  delete api.defaults.headers.common['Authorization']
+}
+
+export const setUnauthorizedHandler = (fn) => {
+  unauthorizedHandler = fn
+}
+
+// Restore session from storage on module load (page refresh)
+const _stored = sessionStorage.getItem(SESSION_KEY)
+if (_stored) api.defaults.headers.common['Authorization'] = `Bearer ${_stored}`
+
 
 api.interceptors.response.use(
   (r) => r.data,
@@ -92,5 +115,15 @@ export const reloadMlModel = () => api.post('/api/v1/ml/reload')
 // Error.md H6 — admin-only control-plane audit log (who did what)
 export const getAuditLogs = (limit = 100, offset = 0) =>
   api.get('/api/v1/audit-logs', { params: { limit, offset } })
+
+// Auth API calls \u2014 used by useAuthStore
+export const login = (username, password) =>
+  api.post('/api/v1/auth/login', { username, password })
+
+export const logout = () =>
+  api.post('/api/v1/auth/logout')
+
+export const getMe = () =>
+  api.get('/api/v1/auth/me')
 
 export default api
