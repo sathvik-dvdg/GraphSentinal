@@ -82,7 +82,11 @@ export default function AppShell() {
     <div
       style={{
         display: 'grid',
-        gridTemplateColumns: `${sidebarOpen ? '220px' : '64px'} 1fr`,
+        // minmax(0, 1fr), not 1fr: a 1fr track never shrinks below its content's
+        // min-content width, so the header's badge row widened the whole column
+        // past the window at laptop widths (1280 px) and pushed Simulate, the
+        // account menu and the last stat card off-screen (handover FE-01).
+        gridTemplateColumns: `${sidebarOpen ? '220px' : '64px'} minmax(0, 1fr)`,
         gridTemplateRows: '48px 1fr',
         height: '100vh',
         overflow: 'hidden',
