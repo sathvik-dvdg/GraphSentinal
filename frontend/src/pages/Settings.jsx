@@ -22,14 +22,15 @@ const ATTACK_TYPES = ['DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('simulation')
-  const { connectionMode, setConnectionMode, endSimulation, simulateAttack } = useGraphStore()
+  const { connectionMode, endSimulation, simulateAttack } = useGraphStore()
 
   // Simulation
   const isSimulating = connectionMode === 'simulating'
-  const simulateBlocked = simulationBlockedReason(USE_MOCK, connectionMode)
   // Audit B20 — changing the threshold and reloading the model are admin-only on
   // the backend. Shown disabled with the reason, never enabled-and-refused.
-  const isAdmin = useSessionUser().role === 'admin'
+  const { role } = useSessionUser()
+  const isAdmin = role === 'admin'
+  const simulateBlocked = simulationBlockedReason(USE_MOCK, connectionMode, role)
   const [simSpeed, setSimSpeed] = useState('1x')
   const [injectType, setInjectType] = useState('DDoS')
   const [injectTarget, setInjectTarget] = useState('10.0.0.2')
@@ -48,7 +49,7 @@ export default function Settings() {
 
   // Blockchain — real values, read-only (see note in the Blockchain tab
   // below for why these aren't live-editable)
-  const [chainConfig, setChainConfig] = useState({ ganache_url: null, contract_address: null })
+  const [chainConfig, setChainConfig] = useState({ ganache_url: null, contract_address: null, max_gas: null })
   const [chainConfigLoading, setChainConfigLoading] = useState(true)
 
   useEffect(() => {
@@ -57,7 +58,7 @@ export default function Settings() {
         setIsolateThreshold(Math.round(res.threat_threshold * 100))
         setSavedThreshold(Math.round(res.threat_threshold * 100))
         setThresholdStatus('idle')
-        setChainConfig({ ganache_url: res.ganache_url, contract_address: res.contract_address })
+        setChainConfig({ ganache_url: res.ganache_url, contract_address: res.contract_address, max_gas: res.blockchain_max_gas ?? null })
       })
       .catch(() => setThresholdStatus('error'))
       .finally(() => setChainConfigLoading(false))
@@ -74,12 +75,13 @@ export default function Settings() {
       .catch(() => setThresholdStatus('error'))
   }
 
+  // FE-22 — the switch only ends a running simulation. Turning it on used to
+  // set the mode to 'simulating' without sending any attack, which stops the
+  // polling and drops socket pushes: the whole dashboard froze until someone
+  // switched it off, and it bypassed the gate on the Simulate Attack button.
+  // Starting a simulation is that button's job, gate included.
   const toggleSimulation = () => {
-    if (isSimulating) {
-      endSimulation()
-    } else {
-      setConnectionMode('simulating')
-    }
+    if (isSimulating) endSimulation()
   }
 
   return (
@@ -133,10 +135,10 @@ export default function Settings() {
                     Enable Simulation
                   </div>
                   <div style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                    {isSimulating ? 'Demo attack sequence is running' : 'Live or mock mode active'}
+                    {isSimulating ? 'Demo attack sequence is running · switch off to end it' : 'Off · start one with Simulate Attack below'}
                   </div>
                 </div>
-                <Toggle active={isSimulating} onClick={toggleSimulation} />
+                <Toggle active={isSimulating} onClick={toggleSimulation} disabled={!isSimulating} />
               </div>
             </Section>
 
@@ -311,9 +313,14 @@ export default function Settings() {
                   <input value={chainConfigLoading ? 'Loading…' : (chainConfig.contract_address || 'Not deployed / not connected')} readOnly style={{ ...inputStyle, opacity: 0.7, cursor: 'default' }} />
                 </div>
                 <div>
-                  <Label>Gas Limit (fixed)</Label>
+                  {/* FE-25 — was a constant "1,000,000" in this file. The backend
+                      estimates gas per call and caps it at BLOCKCHAIN_MAX_GAS. */}
+                  <Label>Gas Cap per Transaction</Label>
                   <div style={{ color: GS.chain, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
-                    1,000,000
+                    {chainConfigLoading ? 'Loading…' : chainConfig.max_gas != null ? chainConfig.max_gas.toLocaleString() : '—'}
+                  </div>
+                  <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 2 }}>
+                    Estimated per call, never above this cap (<code>BLOCKCHAIN_MAX_GAS</code>).
                   </div>
                 </div>
                 <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
@@ -347,12 +354,15 @@ function Label({ children }) {
   )
 }
 
-function Toggle({ active, onClick }) {
+function Toggle({ active, onClick, disabled = false }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      aria-pressed={active}
       style={{
-        width: 44, height: 24, borderRadius: 12, border: 'none', cursor: 'pointer',
+        width: 44, height: 24, borderRadius: 12, border: 'none',
+        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
         background: active ? GS.success : 'rgba(17,20,26,0.12)',
         position: 'relative', transition: 'background 200ms', flexShrink: 0,
       }}

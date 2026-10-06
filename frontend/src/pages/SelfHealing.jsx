@@ -6,7 +6,7 @@ import { Cpu, ShieldCheck, Zap } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import StatTile from '../components/ui/StatTile'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
-import { formatEventTimestamp } from '../utils/formatTimestamp'
+import { formatEventTimestamp, parseTimestamp } from '../utils/formatTimestamp'
 import { GS } from '../constants/colors'
 
 export default function SelfHealing() {
@@ -19,7 +19,16 @@ export default function SelfHealing() {
     const total = timed.reduce((s, e) => s + (e.duration_ms || e.responseTimeMs || 0), 0)
     return Math.round(total / timed.length)
   }, [healingEvents])
-  const totalIsolations = healingEvents.filter((e) => e.action === 'ISOLATED' || e.action === 'block' || e.action === 'BLOCKED').length
+  // FE-25 — "today" means today: it used to count every event in the store,
+  // whatever its date. The poll loads the newest 50, so a full list of today's
+  // events may be missing older ones: shown as "50+".
+  const isToday = (ts) => parseTimestamp(ts)?.toDateString() === new Date().toDateString()
+  const isolationsToday = healingEvents.filter((e) => (e.action === 'ISOLATED' || e.action === 'block' || e.action === 'BLOCKED') && isToday(e.timestamp)).length
+  const isolationsTodayLabel = healingEvents.length >= 50 && healingEvents.every((e) => isToday(e.timestamp))
+    ? `${isolationsToday}+` : isolationsToday
+  // In simulated enforcement no rule is applied, so a duration is the time
+  // of a log call (~1 ms), not a response time anyone measured (FE-23).
+  const simulatedEnforcement = stats.enforcement_mode === 'simulated'
 
   const stabilityColor =
     stability >= 80 ? GS.success :
@@ -53,14 +62,14 @@ export default function SelfHealing() {
       {/* Stat cards row */}
       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', gap: 16 }}>
         <StatTile
-          label="Total Isolations Today"
-          value={totalIsolations}
+          label="Isolations Today"
+          value={isolationsTodayLabel}
           color={GS.danger}
           icon={<Zap size={16} style={{ color: GS.danger }} />}
           valueFontSize={26}
         />
         <StatTile
-          label="Avg Response Time"
+          label={simulatedEnforcement ? 'Avg Response (simulated: no rule applied)' : 'Avg Rule-Apply Time'}
           value={`${avgResponseMs}ms`}
           color={GS.primary}
           icon={<Cpu size={16} style={{ color: GS.primary }} />}

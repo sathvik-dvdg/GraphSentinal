@@ -26,7 +26,7 @@ const RESOURCE_FETCHERS = {
   },
   stats: { fetch: getStats, apply: (v, s) => s.updateStats(v) },
   timeline: { fetch: getTimeline, apply: (v, s) => s.setTimeline(v.data_points) },
-  health: { fetch: getHealth, apply: (v, s) => { s.setMlHealth(v.ml); s.setMlV2Health(v.ml_v2) } },
+  health: { fetch: getHealth, apply: (v, s) => { s.setMlHealth(v.ml); s.setMlV2Health(v.ml_v2); s.setChainHealth(v.blockchain) } },
   enforcement: { fetch: getEnforcementActions, apply: (v, s) => s.setEnforcementActions(v.actions) },
   healing: { fetch: getHealingEvents, apply: (v, s) => s.setHealingEvents(v.events) },
 }
@@ -38,13 +38,13 @@ export function useGraphData() {
   // change fired an immediate extra fetch of all nine endpoints.
   const fetchAll = useCallback(async () => {
     const { setConnectionMode, connectionMode } = useGraphStore.getState()
+    // Don't overwrite data during an active simulation. Checked first: in a
+    // mock build the check below used to cut a simulation short (FE-21).
+    if (connectionMode === 'simulating') return
     if (USE_MOCK) {
-      setConnectionMode('mock')
+      if (connectionMode !== 'mock') setConnectionMode('mock')
       return
     }
-
-    // Don't overwrite data during an active simulation
-    if (connectionMode === 'simulating') return
 
     const entries = Object.entries(RESOURCE_FETCHERS)
     const results = await Promise.allSettled(entries.map(([, r]) => r.fetch()))

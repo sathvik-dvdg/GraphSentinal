@@ -10,27 +10,35 @@ import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 import { GS } from '../constants/colors'
+import { attackTypeOptions } from '../utils/attackTypes'
 
-const STATUSES = ['All', 'confirmed', 'pending', 'failed']
-const ATTACK_TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet']
 
 export default function BlockchainLedger() {
   const { chainTxs, enforcementActions, connectionMode, chainId, dataErrors } = useGraphStore()
   const [tab, setTab] = useState('blockchain') // 'blockchain' | 'enforcement'
 
-  const [statusFilter, setStatusFilter] = useState('All')
   const [typeFilter, setTypeFilter] = useState('All')
+  // FE-13 — every type the backend can send, DoSHulk and Manual included.
+  const ATTACK_TYPES = ['All', ...attackTypeOptions(chainTxs.map((tx) => tx.attack_type))]
   const [expandedRow, setExpandedRow] = useState(null)
 
-  const isConnected = connectionMode === 'live'
+  // FE-27 — the dot is about the CHAIN, from /health's blockchain block. It
+  // used to be connectionMode === 'live' (whether the REST API answers), so
+  // with Ganache down and the backend up the page read "Connected". While the
+  // backend itself is not answering, the last chain state is unknown.
+  const chainHealth = useGraphStore((s) => s.chainHealth)
+  const chainState = connectionMode !== 'live' || !chainHealth
+    ? { label: 'Chain status unknown', color: GS.textSubtle }
+    : chainHealth.connected
+      ? { label: 'Chain connected', color: GS.success }
+      : { label: 'Chain offline', color: GS.danger }
 
   const filtered = useMemo(() => {
     return chainTxs.filter((tx) => {
-      if (statusFilter !== 'All' && tx.status !== statusFilter) return false
       if (typeFilter !== 'All' && tx.attack_type !== typeFilter) return false
       return true
     })
-  }, [chainTxs, statusFilter, typeFilter])
+  }, [chainTxs, typeFilter])
 
   const totalGas = chainTxs.reduce((sum, tx) => sum + (tx.gas_used || 0), 0)
   const confirmedCount = chainTxs.filter((tx) => tx.status === 'confirmed').length
@@ -109,13 +117,13 @@ export default function BlockchainLedger() {
               <span style={{ color: GS.chain, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>Ganache · Chain {chainId ?? '—'}</span>
             )}
             <DataFreshnessBadge dataErrors={{ forensics: dataErrors.forensics, enforcement: dataErrors.enforcement }} />
-            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
+            <div style={{ display: 'flex', alignItems: 'center', gap: 5 }} title={chainHealth?.error || undefined}>
               <div style={{
                 width: 7, height: 7, borderRadius: '50%',
-                background: isConnected ? GS.success : GS.textSubtle,
+                background: chainState.color,
               }} />
               <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                {isConnected ? 'Connected' : 'Offline'}
+                {chainState.label}
               </span>
             </div>
           </div>
@@ -144,21 +152,22 @@ export default function BlockchainLedger() {
           <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 12 }}>
             <StatTile label="Total Records" value={chainTxs.length} color={GS.chain} valueFontSize={22} />
             <StatTile label="Confirmed" value={confirmedCount} color={GS.success} valueFontSize={22} />
-            <StatTile label="Gas Used Today" value={formatGas(totalGas)} color={GS.warn} valueFontSize={22} />
+            <StatTile label="Gas Used (all records)" value={formatGas(totalGas)} color={GS.warn} valueFontSize={22} />
             <StatTile label="Last Block" value={lastBlock} color={GS.primary} valueFontSize={22} />
           </div>
 
           {/* Filters */}
           <div className="gs-panel" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 12 }}>
             <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Filter:</span>
-            {STATUSES.map((s) => (
-              <FilterPill key={s} label={s} active={statusFilter === s} onClick={() => setStatusFilter(s)} color={GS.success} />
-            ))}
-            <div style={{ width: 1, height: 18, background: 'rgba(17,20,26,0.10)' }} />
             {ATTACK_TYPES.map((t) => (
               <FilterPill key={t} label={t} active={typeFilter === t} onClick={() => setTypeFilter(t)} color={GS.danger} />
             ))}
           </div>
+          {/* FE-13 — the pending / failed pills could never match: every record
+              here is read back from the chain, so each one is mined. */}
+          <p role="note" style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace", margin: '-4px 2px 0' }}>
+            Records are read back from the chain, so each one here is confirmed. Writes still pending, retrying or failed are on Forensics, per incident.
+          </p>
 
           {/* Table */}
           <div className="gs-panel" style={{ overflow: 'hidden' }}>
@@ -235,10 +244,12 @@ export default function BlockchainLedger() {
                                     <span style={{ color: GS.textFaint }}>Incident Hash: </span>
                                     <span style={{ color: GS.textSubtle }}>{tx.incident_hash}</span>
                                   </div>
-                                  <div>
-                                    <span style={{ color: GS.textFaint }}>Forensics URI: </span>
-                                    <span style={{ color: GS.primary }}>{tx.forensics_uri}</span>
-                                  </div>
+                                  {tx.forensics_uri && (
+                                    <div>
+                                      <span style={{ color: GS.textFaint }}>Forensics URI: </span>
+                                      <span style={{ color: GS.primary }}>{tx.forensics_uri}</span>
+                                    </div>
+                                  )}
                                 </div>
                               </motion.div>
                             </td>

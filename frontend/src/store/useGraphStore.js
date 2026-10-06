@@ -14,6 +14,9 @@ import { overlayAfterFetch } from '../utils/triage'
 //   'simulating'  — a real attack burst was sent to POST /api/v1/analyze and results are loading
 
 const EMPTY_STATE = {
+  // demo_fallback_flows is null until /api/v1/stats says otherwise: the demo
+  // badge must not claim synthetic traffic is allowed before the backend has
+  // answered (it used to default to true, so it showed on every first load).
   graphData: { nodes: [], links: [] },
   alerts: [],
   blockedIPs: [],
@@ -21,7 +24,7 @@ const EMPTY_STATE = {
   timeline: [],
   enforcementActions: [],
   lastDataAt: null,
-  stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
+  stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: null },
   dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null },
 }
 
@@ -44,6 +47,10 @@ const useGraphStore = create((set, get) => ({
   // /health's ml_v2: whether the v2 path runs at all. null until /health answers.
   mlV2Health: null,
   setMlV2Health: (health) => set({ mlV2Health: health ?? null }),
+  // /health's blockchain block ({ connected, error, contract_address }): whether
+  // the BACKEND can reach Ganache. null until /health answers (FE-27).
+  chainHealth: null,
+  setChainHealth: (health) => set({ chainHealth: health ?? null }),
   healingEvents: [],
   healingNodeId: null,
   timeline: [],
@@ -52,7 +59,7 @@ const useGraphStore = create((set, get) => ({
   // WebSocket push), so the UI can show "updated Ns ago" separately from the
   // connection badge.
   lastDataAt: null,
-  stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
+  stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: null },
   nodeOverrides: {},
   // Error.md H7 — persisted so incidents marked resolved in Forensics stay
   // resolved across a refresh (still per-device until there's a backend).
@@ -87,6 +94,10 @@ const useGraphStore = create((set, get) => ({
   // The server caps what it broadcasts and says when it did (`truncated` on the
   // graph_update payload). Kept so the graph pages can say so too.
   graphTruncated: false,
+  // The operator dismissed the truncation banner; kept here, not in the
+  // banner, so it survives the banner unmounting and remounting.
+  graphTruncatedDismissed: false,
+  dismissGraphTruncated: () => set({ graphTruncatedDismissed: true }),
   setSocketStatus: (socketStatus) => set({ socketStatus }),
   // The mode a simulation interrupted, restored when it ends.
   modeBeforeSimulation: null,
@@ -115,7 +126,10 @@ const useGraphStore = create((set, get) => ({
     const current = get().connectionMode
     if (mode === 'simulating' && current !== 'simulating') set({ modeBeforeSimulation: current })
     set({ connectionMode: mode })
-    if (mode === 'mock') {
+    // Blank the panels on ENTERING 'mock' only. It used to run on every call,
+    // and a mock build calls this on every poll tick, so whatever was on screen
+    // (a simulation's results included) was wiped every 10 s (FE-21).
+    if (mode === 'mock' && current !== 'mock') {
       set(EMPTY_STATE)
     }
   },
@@ -139,6 +153,13 @@ const useGraphStore = create((set, get) => ({
   // ── Data setters ──────────────────────────────────────────
   setGraphData: (newData) =>
     set((state) => {
+      // FE-10 — a socket push the server capped (truncated: true) must not
+      // replace a fuller graph already on screen: the REST poll brings the
+      // whole graph every 10 s, so the two used to alternate. Keep the fuller
+      // one and just record that pushes are being capped.
+      if (newData.truncated && state.graphData.nodes.length >= (newData.nodes?.length ?? 0)) {
+        return { graphTruncated: true }
+      }
       // Preserve node object references so react-force-graph-3d doesn't lose
       // their x, y, z physics coordinates on every 10s polling tick.
       const existingNodes = new Map(state.graphData.nodes.map(n => [n.id, n]))
@@ -152,7 +173,10 @@ const useGraphStore = create((set, get) => ({
       })
       return {
         graphData: { nodes: mergedNodes, links: newData.links },
-        graphTruncated: Boolean(newData.truncated),
+        // Only a payload that says so changes the flag: the REST graph has no
+        // `truncated` field, and resetting it on every poll made the banner
+        // vanish and come back (with its dismissal forgotten) every 10 s.
+        graphTruncated: newData.truncated === undefined ? state.graphTruncated : Boolean(newData.truncated),
         lastDataAt: Date.now(),
       }
     }),

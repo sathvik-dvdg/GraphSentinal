@@ -2,7 +2,10 @@
 import test from 'node:test'
 import assert from 'node:assert/strict'
 
-import { reconnectDelay, socketStatusFor, modeAfterPoll, connectionDisplay } from '../../src/utils/connection.js'
+import {
+  reconnectDelay, socketStatusFor, modeAfterPoll, connectionDisplay,
+  simulationBlockedReason, SIMULATION_BLOCKED_REASON, SIMULATION_ROLE_REASON, staleBadgeText,
+} from '../../src/utils/connection.js'
 
 test('reconnection: five fast retries, then 5 s doubling to a 30 s ceiling, forever', () => {
   assert.deepEqual([1, 2, 3, 4, 5].map(reconnectDelay), [2000, 2000, 2000, 2000, 2000])
@@ -48,3 +51,33 @@ test('badge: REST answering with the socket down is polling, not lost', () => {
   assert.equal(connectionDisplay('live', 'connected').label, 'LIVE')
   assert.equal(connectionDisplay('simulating', 'lost').label, 'SIMULATION')
 })
+
+test('FE-24: a read-only role may not simulate, in any build', () => {
+  assert.equal(simulationBlockedReason(true, 'mock', 'readonly'), SIMULATION_ROLE_REASON)
+  assert.equal(simulationBlockedReason(false, 'live', 'readonly'), SIMULATION_ROLE_REASON)
+  assert.equal(simulationBlockedReason(true, 'mock', null), SIMULATION_ROLE_REASON)
+  assert.equal(simulationBlockedReason(true, 'mock', 'admin'), null)
+  assert.equal(simulationBlockedReason(false, 'live', 'admin'), SIMULATION_BLOCKED_REASON)
+  // Without a role argument the build/backend rule is unchanged.
+  assert.equal(simulationBlockedReason(true, 'live'), null)
+})
+
+const NINE = { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null }
+
+test('FE-03: the stale badge names up to three resources with their reason', () => {
+  assert.equal(staleBadgeText(NINE), null)
+  assert.equal(staleBadgeText({ ...NINE, alerts: 'HTTP 500' }), 'alerts (HTTP 500)')
+  assert.equal(staleBadgeText({ ...NINE, alerts: 'HTTP 500', blocked: 'timed out' }), 'alerts (HTTP 500), blocked IPs (timed out)')
+})
+
+test('FE-03: the backend down collapses to "all", not a 200-character list', () => {
+  const allDown = Object.fromEntries(Object.keys(NINE).map((k) => [k, 'no answer']))
+  assert.equal(staleBadgeText(allDown), 'all (no answer)')
+  const five = { ...NINE, graph: 'no answer', alerts: 'no answer', blocked: 'no answer', stats: 'HTTP 502', health: 'no answer' }
+  assert.equal(staleBadgeText(five), '5 of 9 feeds (no answer, HTTP 502)')
+})
+
+test('FE-03: a per-page badge with every one of its few resources stale still names them', () => {
+  assert.equal(staleBadgeText({ alerts: 'no answer', timeline: 'no answer' }), 'alerts (no answer), timeline (no answer)')
+})
+

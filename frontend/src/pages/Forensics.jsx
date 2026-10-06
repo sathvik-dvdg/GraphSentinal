@@ -15,6 +15,8 @@ import StatTile from '../components/ui/StatTile'
 import BlockchainRecordsTable from '../components/forensics/BlockchainRecordsTable'
 import { formatEventTimestamp } from '../utils/formatTimestamp'
 import { GS } from '../constants/colors'
+import useSessionUser from '../hooks/useSessionUser'
+import { canTriage, triageFailureMessage, TRIAGE_DENIED_REASON } from '../utils/triage'
 
 export default function Forensics() {
   const [tab, setTab] = useState('incidents')
@@ -24,6 +26,10 @@ export default function Forensics() {
   const resolvedIncidentIds = useGraphStore((s) => s.resolvedIncidentIds)
   const resolveIncident = useGraphStore((s) => s.resolveIncident)
   const settleResolve = useGraphStore((s) => s.settleResolve)
+  const mayTriage = canTriage(useSessionUser().role)
+  // Why the last Mark Resolved did not save (FE-24). It used to be swallowed:
+  // the incident vanished, came back on the next refresh, and nothing said why.
+  const [resolveError, setResolveError] = useState(null)
 
   // Error.md H5 — resolution is server-authoritative (`inc.alert_status`), with
   // the local `resolvedIncidentIds` set kept only as an optimistic overlay
@@ -32,9 +38,11 @@ export default function Forensics() {
   const activeIncidents = data.incidents.filter((inc) => !isResolved(inc))
 
   const markResolved = (incidentId) => {
+    if (!mayTriage) return
+    setResolveError(null)
     resolveIncident(incidentId) // optimistic, until the PATCH settles
     updateIncidentStatus(incidentId, 'resolved')
-      .catch(() => { /* the next fetch shows the server's state */ })
+      .catch((err) => setResolveError(`Incident #${incidentId}: ${triageFailureMessage(err)}`))
       .finally(() => { settleResolve(incidentId); refresh() })
   }
 
@@ -95,6 +103,26 @@ export default function Forensics() {
         >
           <ShieldAlert size={14} style={{ flexShrink: 0 }} />
           Failed to refresh forensics data: {fetchError}
+        </div>
+      )}
+      {resolveError && (
+        <div
+          role="alert"
+          style={{
+            display: 'flex', alignItems: 'center', gap: 8,
+            padding: '10px 14px', borderRadius: 8,
+            border: '1px solid rgba(224,60,60,0.3)', background: 'rgba(224,60,60,0.08)',
+            color: GS.danger, fontSize: 12, fontFamily: "'DM Mono', monospace",
+          }}
+        >
+          <ShieldAlert size={14} style={{ flexShrink: 0 }} />
+          <span style={{ flex: 1 }}>{resolveError}</span>
+          <button
+            onClick={() => setResolveError(null)}
+            style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+          >
+            Dismiss
+          </button>
         </div>
       )}
 
@@ -249,7 +277,8 @@ export default function Forensics() {
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)' }}>
                         <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' }}>Transaction</span>
-                        <span style={{ color: GS.chain, fontSize: 11, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
+                        {/* FE-12 — the full 66-character hash wraps instead of overflowing the card */}
+                        <span style={{ color: GS.chain, fontSize: 11, fontFamily: "'DM Mono', monospace", marginLeft: 'auto', minWidth: 0, overflowWrap: 'anywhere', textAlign: 'right' }}>
                           <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={selectedIncident.blockchain_tx.length} />
                         </span>
                       </div>
@@ -282,23 +311,26 @@ export default function Forensics() {
                         </div>
                       </div>
 
-                      {/* Retry attempts if relevant */}
-                      {(selectedIncident.blockchain_retry_count > 0 || selectedIncident.blockchain_status === 'retry') && (
-                        <div style={{ display: 'flex', alignItems: 'center', gap: 6, padding: '6px 10px', borderRadius: 4, background: 'rgba(232,146,42,0.08)', border: '1px solid rgba(232,146,42,0.2)', color: GS.warn, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                          <span>Retry attempts: {selectedIncident.blockchain_retry_count || 1}</span>
-                        </div>
-                      )}
-
-                      {/* Failure/error details if present */}
-                      {selectedIncident.blockchain_last_error && (
-                        <div style={{ padding: '8px 10px', borderRadius: 4, background: 'rgba(224,60,60,0.08)', border: '1px solid rgba(224,60,60,0.2)', color: GS.danger, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                          <span style={{ fontWeight: 600 }}>Last error:</span> {selectedIncident.blockchain_last_error}
-                        </div>
-                      )}
                     </div>
                   ) : (
                     <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace", padding: '4px 0' }}>
                       No transaction recorded
+                    </div>
+                  )}
+
+                  {/* FE-12 — the retry count and the last error are shown with or
+                      without a hash. They used to be inside the "has a hash" branch,
+                      so with Ganache down (no hash, status retry) -- the one case
+                      where the reason matters -- the card said only "No transaction
+                      recorded". */}
+                  {(selectedIncident.blockchain_retry_count > 0 || selectedIncident.blockchain_status === 'retry') && (
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 10px', borderRadius: 4, background: 'rgba(232,146,42,0.08)', border: '1px solid rgba(232,146,42,0.2)', color: GS.warn, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                      <span>Retry attempts: {selectedIncident.blockchain_retry_count || 1}</span>
+                    </div>
+                  )}
+                  {selectedIncident.blockchain_last_error && (
+                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 4, background: 'rgba(224,60,60,0.08)', border: '1px solid rgba(224,60,60,0.2)', color: GS.danger, fontSize: 11, fontFamily: "'DM Mono', monospace", overflowWrap: 'anywhere' }}>
+                      <span style={{ fontWeight: 600 }}>Last error:</span> {selectedIncident.blockchain_last_error}
                     </div>
                   )}
                 </div>
@@ -309,12 +341,19 @@ export default function Forensics() {
                   <ActionBtn
                     label="Mark Resolved"
                     color={GS.success}
+                    disabled={!mayTriage}
+                    title={mayTriage ? undefined : TRIAGE_DENIED_REASON}
                     onClick={() => {
                       markResolved(selectedIncident.id)
                       setSelectedIncident(null)
                     }}
                   />
                 </div>
+                {!mayTriage && (
+                  <p role="note" style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+                    {TRIAGE_DENIED_REASON}
+                  </p>
+                )}
               </motion.div>
             </AnimatePresence>
           ) : (
@@ -458,12 +497,14 @@ function ProvenancePill({ source }) {
   )
 }
 
-function ActionBtn({ label, color, onClick }) {
+function ActionBtn({ label, color, onClick, disabled = false, title }) {
   return (
     <button
       onClick={onClick}
+      disabled={disabled}
+      title={title}
       style={{
-        padding: '8px 16px', borderRadius: 6, cursor: 'pointer',
+        padding: '8px 16px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
         border: `1px solid ${color}30`, background: `${color}10`, color,
         fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 500, transition: 'all 150ms',
       }}
@@ -523,12 +564,17 @@ function deriveAttackTimelineSteps(incident) {
     }
   }
 
-  // Step 2: Classification (GraphSAGE threat assessment)
-  const classificationStep = {
-    step: 'GraphSAGE classified',
-    detail: `${displayType} classified (threat score: ${threatPercent})`,
-    color: GS.danger,
-  }
+  // Step 2: Scoring. FE-23 — GraphSAGE gives a malicious-or-not score; it does
+  // not name the attack. The type is a port/volume heuristic
+  // (backend threat_analyzer.infer_attack_type). This step used to read
+  // "GraphSAGE classified — <type> classified", even for a manual block.
+  const classificationStep = normType === 'manual'
+    ? { step: 'Blocked by an operator', detail: 'Manual block: not scored by a model', color: GS.danger }
+    : {
+        step: 'Scored by GraphSAGE',
+        detail: `Threat score ${threatPercent} · labelled ${displayType} by port/volume heuristic`,
+        color: GS.danger,
+      }
 
   // Step 3: Enforcement State (truthful OVS / daemon execution state)
   const normEnforcement = typeof incident.enforcement_status === 'string' ? incident.enforcement_status.trim().toLowerCase() : ''

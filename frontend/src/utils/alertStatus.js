@@ -65,6 +65,14 @@ export function clearAlertStatus(prev, id) {
   return next
 }
 
+/** Forget every optimistic triage entry. Called once at app start: an entry
+ *  only means anything while its PATCH is in flight, and nothing is in flight
+ *  in a page that has just loaded. Left in place, an entry from a refused or
+ *  unanswered request would override the server's status for ever (FE-24). */
+export function dropAllAlertStatuses() {
+  saveAlertStatuses({})
+}
+
 export function loadResolvedIncidentIds() {
   if (typeof localStorage === 'undefined') return []
   try {

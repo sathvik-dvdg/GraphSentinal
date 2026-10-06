@@ -38,6 +38,14 @@ const STATUS_CONFIG = {
     pulse: true,
     ariaLabel: 'Blockchain status: Retrying submission',
   },
+  // reconciliation.py gives up after BLOCKCHAIN_MAX_RETRIES: no further retries.
+  permanent_failure: {
+    label: 'Failed (final)',
+    colorClass: 'bg-gs-threat-soft text-gs-threat border-gs-threat/20',
+    dotClass: 'bg-gs-threat',
+    pulse: false,
+    ariaLabel: 'Blockchain status: Failed, no further retries',
+  },
   failed: {
     label: 'Failed',
     colorClass: 'bg-gs-threat-soft text-gs-threat border-gs-threat/20',

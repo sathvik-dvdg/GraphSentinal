@@ -41,6 +41,9 @@ async def get_alerts(
             "description": f"{row.attack_type} detected from {row.source_ip} (score: {row.threat_score:.2f})",
             "is_blocked": row.is_blocked,
             "blockchain_tx": row.blockchain_tx,
+            # Whether that transaction is confirmed: a hash alone is not "on-chain"
+            # (it can be pending, retrying or failed).
+            "blockchain_status": row.blockchain_status,
             "data_source": row.data_source,
             # Error.md H5 — server-authoritative triage state
             "alert_status": getattr(row, "alert_status", None) or "open",

@@ -16,6 +16,8 @@ import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp, formatTimelineTick } from '../utils/formatTimestamp'
 import { loadAlertStatuses, setAlertStatus, clearAlertStatus } from '../utils/alertStatus'
 import { updateIncidentStatus } from '../services/api'
+import useSessionUser from '../hooks/useSessionUser'
+import { canTriage, triageFailureMessage, TRIAGE_DENIED_REASON } from '../utils/triage'
 import { GS } from '../constants/colors'
 
 const SEVERITY_COLORS = { critical: GS.danger, warning: GS.warn, info: GS.primary }
@@ -39,10 +41,14 @@ export default function AlertCentre() {
   const { alerts: unified, stats } = useAlerts()
   const { timeline, dataErrors } = useGraphStore()
   const applyAlertStatus = useGraphStore((s) => s.applyAlertStatus)
+  const mayTriage = canTriage(useSessionUser().role)
+  // Why the last triage change did not save (FE-24): shown, never only logged.
+  const [triageError, setTriageError] = useState(null)
 
   // Error.md H5 — triage is server-authoritative (PATCH /api/v1/incidents/{id}
-  // /status). localStorage is only an optimistic layer: written on click,
-  // cleared once the server confirms, kept if the backend was unreachable.
+  // /status). localStorage is only an optimistic layer while the PATCH is in
+  // flight: cleared when the server confirms AND when it refuses or does not
+  // answer (FE-24) -- a kept entry used to override the server for ever.
   const [localStatuses, setLocalStatuses] = useState(() => loadAlertStatuses())
   const [filterSeverity, setFilterSeverity] = useState('All')
   const [filterStatus, setFilterStatus] = useState('All')
@@ -66,30 +72,35 @@ export default function AlertCentre() {
 
   const cycleStatus = (id) => {
     const alert = unified.find((a) => a.id === id)
+    // Only incidents have a server row to save to; healing notices are records.
+    if (!mayTriage || alert?.incidentId == null) return
+    setTriageError(null)
     const cur = localStatuses[id]?.status || alert?.status || 'open'
     const next = STATUS_CYCLE[cur] || 'open'
     // Optimistic local write for instant feedback.
     setLocalStatuses((prev) => setAlertStatus(prev, id, next))
-    // Persist to the backend when this alert maps to a real incident row.
-    if (alert?.incidentId != null) {
-      updateIncidentStatus(alert.incidentId, next)
-        .then((res) => {
-          // Audit B18 — the store takes the confirmed status BEFORE the
-          // optimistic entry is dropped, so the row never shows the old one.
-          applyAlertStatus(
-            alert.raw?.id, res?.alert_status ?? next,
-            res?.acknowledged_at ?? (next === 'acknowledged' ? new Date().toISOString() : undefined),
-          )
-          setLocalStatuses((prev) => clearAlertStatus(prev, id))
-        })
-        .catch(() => { /* keep the optimistic local value as an offline fallback */ })
-    }
+    updateIncidentStatus(alert.incidentId, next)
+      .then((res) => {
+        // Audit B18 — the store takes the confirmed status BEFORE the
+        // optimistic entry is dropped, so the row never shows the old one.
+        applyAlertStatus(
+          alert.raw?.id, res?.alert_status ?? next,
+          res?.acknowledged_at ?? (next === 'acknowledged' ? new Date().toISOString() : undefined),
+        )
+        setLocalStatuses((prev) => clearAlertStatus(prev, id))
+      })
+      .catch((err) => {
+        // The server's status stands: drop the optimistic value and say why.
+        setLocalStatuses((prev) => clearAlertStatus(prev, id))
+        setTriageError(`${alert.title}: ${triageFailureMessage(err)}`)
+      })
   }
 
   // Donut data
   const donutData = [
-    { name: 'Critical', value: stats.open, color: GS.danger },
-    { name: 'Warning', value: stats.acked, color: GS.warn },
+    // FE-25 — these are triage states, not severities.
+    { name: 'Open', value: stats.open, color: GS.danger },
+    { name: 'Acknowledged', value: stats.acked, color: GS.warn },
     { name: 'Resolved', value: stats.resolved, color: GS.success },
   ].filter((d) => d.value > 0)
 
@@ -119,6 +130,30 @@ export default function AlertCentre() {
           </p>
           <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
         </div>
+        {!mayTriage && (
+          <p role="note" style={{ color: GS.textMuted, fontFamily: "'DM Mono', monospace", fontSize: 11, marginTop: 6 }}>
+            {TRIAGE_DENIED_REASON}
+          </p>
+        )}
+        {triageError && (
+          <div
+            role="alert"
+            style={{
+              marginTop: 8, padding: '8px 12px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 10,
+              border: '1px solid rgba(224,60,60,0.3)', background: 'rgba(224,60,60,0.08)',
+              color: GS.danger, fontFamily: "'DM Mono', monospace", fontSize: 11,
+            }}
+          >
+            <span style={{ flex: 1 }}>{triageError}</span>
+            <button
+              onClick={() => setTriageError(null)}
+              style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+              aria-label="Dismiss"
+            >
+              Dismiss
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Stats bar */}
@@ -187,7 +222,7 @@ export default function AlertCentre() {
                       {/* Row 2: IP + relative time */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {alert.nodeIp && (
-                          <span style={{ color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace', cursor: 'pointer'" }}>
+                          <span style={{ color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
                             {alert.nodeIp}
                           </span>
                         )}
@@ -213,12 +248,16 @@ export default function AlertCentre() {
                           Host blocked
                         </span>
                       )}
-                      {/* Cycle status button */}
+                      {/* Cycle status button. Healing notices have no server row to
+                          save to, and a read-only role may not triage: both disabled. */}
                       <button
                         onClick={() => cycleStatus(alert.id)}
+                        disabled={!mayTriage || alert.incidentId == null}
                         style={{
                           fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700,
-                          padding: '3px 8px', borderRadius: 4, cursor: 'pointer',
+                          padding: '3px 8px', borderRadius: 4,
+                          cursor: !mayTriage || alert.incidentId == null ? 'not-allowed' : 'pointer',
+                          opacity: !mayTriage || alert.incidentId == null ? 0.6 : 1,
                           letterSpacing: '0.06em', textTransform: 'uppercase', border: '1px solid',
                           ...(status === 'open'
                             ? { background: 'rgba(224,60,60,0.1)', color: GS.danger, borderColor: 'rgba(224,60,60,0.3)' }
@@ -226,7 +265,9 @@ export default function AlertCentre() {
                             ? { background: 'rgba(232,146,42,0.1)', color: GS.warn, borderColor: 'rgba(232,146,42,0.3)' }
                             : { background: 'rgba(46,204,138,0.1)', color: GS.success, borderColor: 'rgba(46,204,138,0.3)' }),
                         }}
-                        title="Click to cycle status"
+                        title={alert.incidentId == null
+                          ? 'A self-healing notice is a record, not an incident: it has no status to change.'
+                          : mayTriage ? 'Click to cycle status' : TRIAGE_DENIED_REASON}
                       >
                         {status}
                       </button>
@@ -263,7 +304,7 @@ export default function AlertCentre() {
           {/* Donut chart */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
             <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
-              Open by Severity
+              Alerts by Status
             </div>
             {donutData.length > 0 ? (
               <ResponsiveContainer width="100%" height={140}>
@@ -288,7 +329,7 @@ export default function AlertCentre() {
           {/* Sparkline: alerts per hour */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
             <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
-              Alerts / Hour (last 6h)
+              Threats per 5 min (last hour)
             </div>
             <ResponsiveContainer width="100%" height={80}>
               <LineChart data={sparkData} margin={{ top: 4, right: 4, left: -30, bottom: 0 }}>

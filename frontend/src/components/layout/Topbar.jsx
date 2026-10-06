@@ -13,6 +13,7 @@ import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
 import DemoModeBadge from '../ui/DemoModeBadge'
 import { simulationHiddenOn, simulationBlockedReason } from '../../utils/connection'
+import useSessionUser from '../../hooks/useSessionUser'
 import { GS } from '../../constants/colors'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
@@ -58,7 +59,8 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
   const isSimulating = connectionMode === 'simulating'
   // Where the simulate control exists and when it may be used: utils/connection.
   const simulateHidden = simulationHiddenOn(pathname)
-  const simulateBlocked = isSimulating ? null : simulationBlockedReason(USE_MOCK, connectionMode)
+  const { role } = useSessionUser()
+  const simulateBlocked = isSimulating ? null : simulationBlockedReason(USE_MOCK, connectionMode, role)
 
   return (
     <header

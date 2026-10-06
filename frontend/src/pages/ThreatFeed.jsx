@@ -12,14 +12,18 @@ import FilterPill from '../components/ui/FilterPill'
 import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatEventTimestamp as formatAlertTimestamp, parseTimestamp } from '../utils/formatTimestamp'
 import { GS } from '../constants/colors'
+import { attackTypeOptions } from '../utils/attackTypes'
+import BlockchainStatusBadge from '../components/ui/BlockchainStatusBadge'
 
 const SEVERITIES = ['All', 'critical', 'warning', 'info']
-const TYPES = ['All', 'DDoS', 'SSHBrute', 'PortScan', 'Botnet', 'Manual']
 const TIME_RANGES = ['All', '1h', '6h', '24h', '7d', '30d']
 
 export default function ThreatFeed() {
   const { alerts, dataErrors } = useGraphStore()
   const resolvedIncidentIds = useGraphStore((s) => s.resolvedIncidentIds)
+  // Every type the backend can send (FE-11): DoSHulk and Manual used to have
+  // no pill and were never counted under Attack Types.
+  const TYPES = ['All', ...attackTypeOptions(alerts.map((a) => a.attack_type))]
 
   const [severity, setSeverity] = useState('All')
   const [attackType, setAttackType] = useState('All')
@@ -173,7 +177,9 @@ export default function ThreatFeed() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
                         <span style={{ color: GS.chain }}>⛓</span>
                         <CopyableHash value={alert.blockchain_tx} style={{ color: GS.chain }} iconSize={9} />
-                        <span style={{ color: GS.success, marginLeft: 4 }}>✓ on-chain</span>
+                        {/* The transaction's real state (FE-25): it used to read
+                            "✓ on-chain" for any hash, pending or failed included. */}
+                        <BlockchainStatusBadge status={alert.blockchain_status} className="ml-1" />
                       </div>
                     )}
                   </div>

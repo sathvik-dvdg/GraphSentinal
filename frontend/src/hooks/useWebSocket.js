@@ -23,6 +23,7 @@ export function useWebSocket({
   onDisconnect,
   onReconnect, // Optional: called after reconnect so caller can re-fetch via REST
   onStatus,    // Optional: 'connected' | 'reconnecting' | 'lost'
+  enabled = true, // false: open no socket at all (a VITE_USE_MOCK build)
 }) {
   const socketRef = useRef(null)
   // The socket authenticates with the same Clerk session token as REST (see
@@ -46,6 +47,7 @@ export function useWebSocket({
   callbacksRef.current = { onGraphUpdate, onAlert, onHealingTriggered, onConnect, onDisconnect, onReconnect, onStatus }
 
   useEffect(() => {
+    if (!enabled) return undefined
     // This hook only mounts inside ProtectedRoute (via SimulationProvider),
     // so a valid session token is already guaranteed to exist by the time
     // this runs — the socket used to push the same live security data

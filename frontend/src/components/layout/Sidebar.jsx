@@ -5,9 +5,8 @@ import {
   LayoutDashboard, Network, ShieldAlert, Search,
   Link2, TrendingUp, Zap, Bell, Settings, ChevronRight, Pin, ScrollText,
 } from 'lucide-react'
-import useGraphStore from '../../store/useGraphStore'
+import { useAlerts } from '../../hooks/useAlerts'
 import useSessionUser from '../../hooks/useSessionUser'
-import { loadAlertStatuses } from '../../utils/alertStatus'
 import { GS } from '../../constants/colors'
 
 const NAV_ITEMS = [
@@ -23,17 +22,12 @@ const NAV_ITEMS = [
 ]
 
 export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }) {
-  // Error.md N5 / H5 — count alerts that aren't blocked and haven't been
-  // acknowledged/resolved. Server `alert_status` (from /api/v1/alerts) is the
-  // source of truth; the localStorage layer only covers un-synced optimism.
-  const alerts = useGraphStore((s) => s.alerts)
-  const statuses = loadAlertStatuses()
-  const unread = alerts.filter((a) => {
-    if (a.is_blocked) return false
-    const local = (statuses[`alert-${a.id}`] || statuses[a.id])?.status
-    const st = local || a.alert_status || 'open'
-    return st !== 'acknowledged' && st !== 'resolved'
-  }).length
+  // The Alert Centre badge is Alert Centre's own "Open" count (useAlerts), so
+  // the two can never disagree. It used to skip every blocked alert -- but
+  // blocking is enforcement, not triage (audit B17), and v1 blocks every source
+  // it raises an incident for, so the badge stayed empty while Alert Centre said
+  // "Open: 3" -- and looked up local statuses under keys Alert Centre never wrote.
+  const unread = useAlerts().stats.open
 
   // Error.md N6 — subscribe to the username so the strip re-renders when it
   // loads, and use one consistent fallback everywhere.

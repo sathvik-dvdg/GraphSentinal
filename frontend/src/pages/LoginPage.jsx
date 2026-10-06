@@ -3,18 +3,18 @@ import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'
 import { SignIn } from '@clerk/react'
 
-// System status lines shown in the terminal panel
+// Decorative terminal panel. FE-23 — it used to print a fixed "system status:
+// OPERATIONAL", "threat level: ELEVATED", "active nodes: 10" and
+// "backend: localhost:8000", which read as live status but never changed. The
+// live state is on the dashboard after sign-in.
 const TERMINAL_LINES = [
   { text: 'GRAPHSENTINEL v1.0.0',        cls: 'terminal-heading' },
   { text: '────────────────────────',     cls: 'terminal-divider' },
-  { text: '> system status: OPERATIONAL', cls: 'terminal-ok' },
-  { text: '> backend: localhost:8000',    cls: 'terminal-dim' },
-  { text: '> blockchain: ganache:8545',   cls: 'terminal-dim' },
-  { text: '> gnn model: graphsage_v1',    cls: 'terminal-dim' },
-  { text: '> active nodes: 10',           cls: 'terminal-dim' },
-  { text: '> threat level: ELEVATED',     cls: 'terminal-warn' },
+  { text: '> graph-based threat detection', cls: 'terminal-dim' },
+  { text: '> self-healing enforcement',     cls: 'terminal-dim' },
+  { text: '> blockchain audit trail',       cls: 'terminal-dim' },
   { text: '────────────────────────',     cls: 'terminal-divider' },
-  { text: 'Awaiting operator...',         cls: 'terminal-faint' },
+  { text: 'Sign in to see live status...', cls: 'terminal-faint' },
 ]
 
 export default function LoginPage() {

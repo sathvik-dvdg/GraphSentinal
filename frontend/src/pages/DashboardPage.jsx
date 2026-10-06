@@ -81,9 +81,11 @@ export default function DashboardPage() {
           delay={0.06}
         />
         <StatCard
-          title="Threats (24h)"
+          // stats.active_threats counts hosts flagged malicious or suspicious
+          // RIGHT NOW, not threats over 24 hours (FE-25).
+          title="Active Threats"
           value={stats.active_threats ?? 0}
-          sub={stats.active_threats > 0 ? '⚠ Action required' : 'All clear'}
+          sub={stats.active_threats > 0 ? '⚠ Hosts flagged now' : 'None flagged now'}
           icon={<ShieldAlert size={18} style={{ color: GS.danger }} />}
           accent={GS.danger}
           pulse={stats.active_threats > 0}

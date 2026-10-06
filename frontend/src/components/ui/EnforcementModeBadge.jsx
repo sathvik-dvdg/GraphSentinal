@@ -19,7 +19,7 @@ export default function EnforcementModeBadge({ mode, className = '' }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider ${cfg.cls} ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider whitespace-nowrap ${cfg.cls} ${className}`}
       role="status"
       aria-label={`Enforcement mode: ${cfg.label}`}
     >

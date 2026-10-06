@@ -184,7 +184,7 @@ export default function NetworkTopology() {
               }}
             >
               <span style={{ color: GS.successDeep, fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-                Org Hierarchy · Lateral Movement Detection
+                Org Hierarchy
               </span>
             </div>
             <div style={{ paddingTop: 42, height: '100%', overflowY: 'auto' }}>

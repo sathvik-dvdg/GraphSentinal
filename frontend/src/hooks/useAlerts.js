@@ -2,9 +2,13 @@
 // useAlerts — aggregates threats + healing events into a unified alert feed
 import { useMemo } from 'react'
 import useGraphStore from '../store/useGraphStore'
-import { loadAlertStatuses } from '../utils/alertStatus'
+import { loadAlertStatuses, dropAllAlertStatuses } from '../utils/alertStatus'
 import { parseTimestamp } from '../utils/formatTimestamp'
 import { alertStatusOf } from '../utils/triage'
+
+// Once per page load: optimistic entries from an earlier session are stale
+// (their requests are long settled), so the server's status is shown (FE-24).
+dropAllAlertStatuses()
 
 const ms = (ts) => { const d = parseTimestamp(ts); return d ? d.getTime() : 0 }
 
