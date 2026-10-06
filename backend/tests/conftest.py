@@ -61,6 +61,12 @@ def _reset_module_singletons():
     so concurrency tests do not pollute subsequent tests (O-F06)."""
     from app.api.v1.deps import _login_attempts, _requests
 
+    import logging
+    logger = logging.getLogger("graphsentinel")
+    logger.handlers.clear()
+    logger.propagate = True
+    logger.setLevel(logging.NOTSET)
+
     _requests.clear()
     _login_attempts.clear()
     yield

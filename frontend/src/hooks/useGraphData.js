@@ -25,7 +25,7 @@ const RESOURCE_FETCHERS = {
   },
   stats: { fetch: getStats, apply: (v, s) => s.updateStats(v) },
   timeline: { fetch: getTimeline, apply: (v, s) => s.setTimeline(v.data_points) },
-  health: { fetch: getHealth, apply: (v, s) => s.setMlHealth(v.ml) },
+  health: { fetch: getHealth, apply: (v, s) => { s.setMlHealth(v.ml); s.setMlV2Health(v.ml_v2) } },
   enforcement: { fetch: getEnforcementActions, apply: (v, s) => s.setEnforcementActions(v.actions) },
   healing: { fetch: getHealingEvents, apply: (v, s) => s.setHealingEvents(v.events) },
 }

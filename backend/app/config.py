@@ -25,6 +25,23 @@ class Settings(BaseSettings):
     scaler_path: str = "../ML/GraphSage-model/scaler.pkl"
     use_scaler_for_inference: bool = False
 
+    # ── GraphSentinel v2 (flow/edge-level model, contract 2.0.0) ──────────────
+    # The v2 model runs in its OWN process (graphsentinel.inference.service), not
+    # in this one: InferenceEngine is stateful (flow buffer, 60s window boundary,
+    # persistent host memory) and the MininetMonitor thread plus /analyze request
+    # handlers would interleave into one shared buffer if it were imported here.
+    gs2_enabled: bool = False
+    gs2_service_url: str = "http://127.0.0.1:8080"
+    gs2_request_timeout_seconds: float = 10.0
+    # Directory holding model_card.json (and, when fetched, weights.pt). The
+    # backend reads the CARD to learn the class list, feature names and their
+    # order; it never loads the weights itself.
+    gs2_model_dir: str = "../ML"
+    # Refuse to boot when gs2_enabled and the contract is missing or the wrong
+    # version. Failing loudly beats mislabelling traffic silently. Turning this
+    # off is a deliberate, logged choice for local work without the artefacts.
+    gs2_require_contract: bool = True
+
     ganache_url: str = "http://127.0.0.1:8545"
     contract_address: str = ""
     blockchain_tx_timeout_seconds: int = 5
@@ -121,6 +138,15 @@ class Settings(BaseSettings):
             return [configured]
         backend_dir = Path(__file__).resolve().parent.parent
         return [(backend_dir / configured).resolve()]
+
+    @property
+    def resolved_gs2_model_dir(self) -> Path:
+        """Absolute path to the v2 artefact directory (holds model_card.json)."""
+        configured = Path(self.gs2_model_dir)
+        if configured.is_absolute():
+            return configured
+        backend_dir = Path(__file__).resolve().parent.parent
+        return (backend_dir / configured).resolve()
 
 
 @lru_cache

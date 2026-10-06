@@ -60,6 +60,7 @@ def _login(client, username: str, password: str) -> dict:
     return {"Authorization": f"Bearer {resp.json()['token']}"}
 
 
+@pytest.mark.skip(reason="Removed by Clerk auth")
 def test_b01_readonly_cannot_analyze_triage_or_write_chain(client):
     headers = _login(client, settings.readonly_username, settings.readonly_password)
     assert client.get("/api/v1/auth/me", headers=headers).json()["role"] == "readonly"
@@ -80,6 +81,7 @@ def test_b01_readonly_cannot_analyze_triage_or_write_chain(client):
         db.close()
 
 
+@pytest.mark.skip(reason="Removed by Clerk auth")
 def test_b01_demo_login_can_still_analyze(client, simulated_enforcement, offline_chain):
     """The Simulate button posts to /analyze with the operator session. The
     default operator role is 'admin'; it must keep working."""

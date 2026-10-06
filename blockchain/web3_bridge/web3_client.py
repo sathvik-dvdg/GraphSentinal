@@ -6,6 +6,13 @@ from datetime import datetime, timezone
 from web3 import Web3
 from web3.exceptions import ContractLogicError
 
+def hex0x(value) -> str:
+    """A hash as a 0x-prefixed hex string. HexBytes.hex() dropped the prefix in
+    hexbytes 1.0, so the same call gave two formats depending on the install."""
+    text = value.hex() if hasattr(value, "hex") else str(value)
+    return text if text.startswith("0x") else "0x" + text
+
+
 class BlockchainClient:
     """
     GraphSentinel — Forensic Blockchain Client (Dual-Mode Signer, Thread-Safe Nonce & Dynamic Gas)
@@ -134,7 +141,12 @@ class BlockchainClient:
             msg = msg.replace(private_key, "[REDACTED]")
         return msg
 
-    def log_incident(self, source_ip: str, attack_type: str, severity: int, is_blocked: bool, sqlite_incident_id: int) -> dict:
+    def log_incident(self, source_ip: str, attack_type: str, severity: int, is_blocked: bool, sqlite_incident_id: int,
+                     on_broadcast=None) -> dict:
+        """``on_broadcast(tx_hash)`` is called as soon as the transaction has been
+        sent and before any wait for its receipt (audit B05): a caller that stops
+        waiting then still knows what was submitted, and looks the hash up instead
+        of submitting the incident again."""
         forensics_uri = f"local://incident/{sqlite_incident_id}"
         severity = max(1, min(int(severity), 10))
 
@@ -149,6 +161,12 @@ class BlockchainClient:
                 tx_hash_hex = "0x" + tx_hash_hex
         except Exception as e:
             return {"tx_hash": None, "incident_id": None, "status": "error", "error": self._sanitize_error(e)}
+
+        if on_broadcast is not None:
+            try:
+                on_broadcast(tx_hash_hex)
+            except Exception:  # the write has happened; a failing observer must not undo that
+                pass
 
         # 2. Receipt Waiting with N05-SEC-01 Timeout Protection
         try:
@@ -166,7 +184,7 @@ class BlockchainClient:
 
         if receipt.status != 1:
             return {
-                "tx_hash": receipt.transactionHash.hex(),
+                "tx_hash": hex0x(receipt.transactionHash),
                 "block_number": receipt.blockNumber,
                 "incident_id": None,
                 "status": "failed",
@@ -177,7 +195,7 @@ class BlockchainClient:
         processed_logs = self.contract.events.IncidentLogged().process_receipt(receipt)
         if not processed_logs:
             return {
-                "tx_hash": receipt.transactionHash.hex(),
+                "tx_hash": hex0x(receipt.transactionHash),
                 "block_number": receipt.blockNumber,
                 "incident_id": None,
                 "status": "error",
@@ -189,7 +207,7 @@ class BlockchainClient:
         incident_hash = "0x" + event_args["incidentHash"].hex() if "incidentHash" in event_args and hasattr(event_args["incidentHash"], "hex") else None
 
         return {
-            "tx_hash": receipt.transactionHash.hex(),
+            "tx_hash": hex0x(receipt.transactionHash),
             "block_number": receipt.blockNumber,
             "incident_id": exact_on_chain_id,
             "incident_hash": incident_hash,
@@ -219,14 +237,14 @@ class BlockchainClient:
 
         if receipt.status != 1:
             return {
-                "tx_hash": receipt.transactionHash.hex(),
+                "tx_hash": hex0x(receipt.transactionHash),
                 "block_number": receipt.blockNumber,
                 "status": "failed",
                 "error": "releaseNode transaction reverted on-chain",
             }
 
         return {
-            "tx_hash": receipt.transactionHash.hex(),
+            "tx_hash": hex0x(receipt.transactionHash),
             "block_number": receipt.blockNumber,
             "status": "confirmed",
         }
@@ -238,14 +256,17 @@ class BlockchainClient:
             events = event_filter.get_all_entries()
             
             for event in events:
-                tx_hash = event.transactionHash.hex()
+                tx_hash = hex0x(event.transactionHash)
                 block_number = event.blockNumber
                 
                 try:
                     receipt = self.w3.eth.get_transaction_receipt(event.transactionHash)
                     gas_used = receipt.get("gasUsed", 0)
+                    # FIX 1: Extract real transaction status from receipt
+                    tx_status = "confirmed" if receipt.get("status", 1) == 1 else "failed"
                 except Exception:
                     gas_used = 0
+                    tx_status = "confirmed" # If it's in the event log, it's mined
 
                 args = event.args
                 incident_id = args.get("id")
@@ -256,9 +277,12 @@ class BlockchainClient:
                     raw = self.contract.functions.getIncident(incident_id).call()
                     severity = raw[5]
                     is_blocked = raw[6]
+                    # FIX 2: Extract the forensicsURI at index 7
+                    forensics_uri = raw[7] 
                 except Exception:
                     severity = 0
                     is_blocked = False
+                    forensics_uri = f"local://incident/{incident_id}"
 
                 incidents.append({
                     "id": incident_id,
@@ -271,6 +295,8 @@ class BlockchainClient:
                     "severity": severity,
                     "is_blocked": is_blocked,
                     "gas_used": gas_used,
+                    "status": tx_status,           # Added to API contract
+                    "forensics_uri": forensics_uri # Added to API contract
                 })
         except Exception as e:
             # Fallback if filters are not supported
@@ -289,6 +315,8 @@ class BlockchainClient:
                         "severity": raw[5],
                         "is_blocked": raw[6],
                         "gas_used": None,
+                        "status": "confirmed", # Historical fallback
+                        "forensics_uri": raw[7] # Historical fallback URI
                     })
                 except Exception:
                     pass
@@ -300,4 +328,4 @@ class BlockchainClient:
     def verify_incident(self, incident_id: int, source_ip: str, attack_type: str, severity: int, timestamp: int) -> bool:
         return self.contract.functions.verifyIncident(
             incident_id, source_ip, attack_type, severity, timestamp
-        ).call()
+        ).call()

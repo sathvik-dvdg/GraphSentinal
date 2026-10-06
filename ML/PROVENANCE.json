@@ -1,7 +1,7 @@
 {
   "what": "retrain under the fixed 12-hour timestamp parse (ML/TIMESTAMP_FIX.md)",
-  "packaged_at_utc": "2026-10-04T04:40:32Z",
-  "packaged_in_session": "20261004T043634Z-73f4bd",
+  "packaged_at_utc": "2026-10-05T14:25:41Z",
+  "packaged_in_session": "20261005T142527Z-95474c",
   "weights_sha256": "3db34022bcbab0501ceec50f4050319d997fd5abbb66430f4a75508e65054709",
   "preprocessing_sha256": "ce1041215ed4e5c14166180f66047cbccea9b0ee06a2b967b9b68cd69d9a475b",
   "preprocessing_settings": {
@@ -122,8 +122,8 @@
   "stages": {
     "audit_gate": {
       "stage": "audit_gate",
-      "session": "20261004T043634Z-73f4bd",
-      "finished_at_utc": "2026-10-04T04:36:39Z",
+      "session": "20261005T142527Z-95474c",
+      "finished_at_utc": "2026-10-05T14:25:31Z",
       "outputs": {},
       "verdict": {
         "clean": true,
@@ -211,7 +211,7 @@
             "is_training_file": true
           }
         ],
-        "audited_at_utc": "2026-10-04T04:35:59Z",
+        "audited_at_utc": "2026-10-05T14:24:55Z",
         "basis": {
           "parse_code_sha256": "60da7b0ddcbb0437ba3f60fbd9ecdc3bf2f7246a5074ac60cda8c3862112a3a5",
           "dataset_files": {
@@ -378,13 +378,51 @@
       "phase2b_live_path_cost.py": {
         "exit_code": 0
       }
+    },
+    "package": {
+      "stage": "package",
+      "session": "20261004T043634Z-73f4bd",
+      "finished_at_utc": "2026-10-04T04:40:34Z",
+      "outputs": {
+        "graphsentinel_retrain_result.zip": {
+          "path": "/content/drive/MyDrive/GraphsentinalV2/retrain_fix12h/graphsentinel_retrain_result.zip",
+          "bytes": 9509179
+        }
+      },
+      "files": [
+        "ML/MANIFEST.json",
+        "ML/PROVENANCE.json",
+        "ML/model.ts",
+        "ML/model_card.json",
+        "ML/phase2b_results.json",
+        "ML/phase2b_sensitivity.json",
+        "ML/probes.json",
+        "ML/retrain_logs/phase2b_live_path_cost_output.txt",
+        "ML/retrain_logs/phase2b_sensitivity_check_output.txt",
+        "ML/retrain_logs/probes_confirm_output.txt",
+        "ML/retrain_logs/probes_information_output.txt",
+        "ML/retrain_logs/sample_output.txt",
+        "ML/retrain_logs/split_composition_output.txt",
+        "ML/retrain_logs/threshold_study_output.txt",
+        "ML/retrain_logs/train_output.txt",
+        "ML/retrain_logs/training_log.csv",
+        "ML/split_composition.json",
+        "ML/test_report.json",
+        "ML/testdata/cicids2017_sample.csv",
+        "ML/threshold_flow_level.csv",
+        "ML/threshold_study.json",
+        "ML/threshold_window_level.csv",
+        "ML/timestamp_audit.json",
+        "ML/weights.pt"
+      ],
+      "zip_sha256": "9975efea489425448d0621cf9bd04a1d2671757f983b1392d661609087c125e9"
     }
   },
   "sample_mixed_windows": 52,
   "sample_mixed_windows_sufficient": true,
   "preflight": {
-    "session": "20261004T043500Z-9eb89d",
-    "at_utc": "2026-10-04T04:36:24Z",
+    "session": "20261005T142403Z-27e22d",
+    "at_utc": "2026-10-05T14:25:18Z",
     "checks": [
       {
         "status": "PASS",
@@ -438,7 +476,7 @@
     "ML/threshold_window_level.csv": "ffc05b5bd16e3575d19f15520123a0378dc3b7344aa9a4a331b5421b899529e6",
     "ML/probes.json": "3a24be8b0b29ea5523999ddcb1feeb27689e79a101e6e322e11f9d6262652749",
     "ML/split_composition.json": "eaace8e57e34145aa4e2f03fe468fc60a2baafa26a744b63ae51593adfe57d90",
-    "ML/timestamp_audit.json": "82deec78836b90a4fb02b336444d732c7ccf0becf8030912ccf0f85bf2112b35",
+    "ML/timestamp_audit.json": "33ac172abdaa44099c7daa900f660c0f505cc12e79c80c7ea897f4932d762f12",
     "ML/phase2b_sensitivity.json": "d856f2ce556a7eed7c777db3142c2221cdc570a56481b893d29ff9760ba216df",
     "ML/phase2b_results.json": "37967f9a7d7613ed43d660acb2236d2dbcc13d324add25676d4eeb15e968c6d9",
     "ML/testdata/cicids2017_sample.csv": "2655e288b9b3e2ed81fa21c6110819c3b77121a5e2830ee524e1caea0124e6c3",

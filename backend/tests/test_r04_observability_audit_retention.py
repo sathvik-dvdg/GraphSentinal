@@ -260,10 +260,14 @@ def test_threat_analyzer_degraded_mode_detection_attribution():
             "data_source": "manual",
         }
     ]
-    # Prediction payload indicating degraded mode
+    # Prediction payload indicating degraded mode. The key is "mode": that is
+    # what InferenceService.predict sets. This test used to hand-build
+    # "ml_mode", a key no producer emits, and so passed while every real
+    # degraded-mode block was recorded as GNN_DETECTED (audit B03). The path
+    # through InferenceService.predict is covered in test_audit_p0_p1.py.
     prediction = {
         "predictions": {"10.0.0.177": 0.88},
-        "ml_mode": "degraded",
+        "mode": "degraded",
         "ip_scores": {"10.0.0.177": 0.88},
     }
 

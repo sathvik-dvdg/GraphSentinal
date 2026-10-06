@@ -87,6 +87,20 @@ def require_session_or_api_key(
     return identity
 
 
+def require_write_privilege(
+    identity: dict = Depends(get_current_identity),
+) -> dict:
+    """Any authenticated identity except the 'readonly' role. For routes that
+    change state but are not admin-only: /analyze blocks hosts and writes to
+    the chain, so a read-only session must not reach it."""
+    if identity.get("role") == "readonly":
+        raise HTTPException(
+            status_code=status.HTTP_403_FORBIDDEN,
+            detail="Read-only role cannot perform this action",
+        )
+    return identity
+
+
 def require_admin_privilege(
     identity: dict = Depends(get_current_identity),
 ) -> dict:

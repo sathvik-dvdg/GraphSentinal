@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import concurrent.futures
+import inspect
 import sys
 from pathlib import Path
 from typing import Any
@@ -93,6 +94,20 @@ class BlockchainAdapter:
         if not self._connected or self.client is None:
             return {'tx_hash': None, 'status': 'offline', 'error': self.error or 'blockchain offline'}
 
+        # Audit B05. This timeout is shorter than the client's own receipt wait,
+        # and the worker thread cannot be stopped: a write that outlives the
+        # timeout is still mined. Returning no hash sent the incident to "retry"
+        # and it was submitted a second time. So the client reports the hash the
+        # moment it has broadcast, and a timeout after that returns it as
+        # pending; the reconciler then looks that hash up and resubmits nothing.
+        broadcast: dict[str, str] = {}
+        kwargs: dict[str, Any] = {}
+        try:
+            if 'on_broadcast' in inspect.signature(self.client.log_incident).parameters:
+                kwargs['on_broadcast'] = lambda tx_hash: broadcast.setdefault('tx_hash', tx_hash)
+        except (TypeError, ValueError):
+            pass
+
         def call_client():
             return self.client.log_incident(
                 source_ip=source_ip,
@@ -100,6 +115,7 @@ class BlockchainAdapter:
                 severity=min(max(int(severity), 1), 10),
                 is_blocked=bool(is_blocked),
                 sqlite_incident_id=int(incident_id),
+                **kwargs,
             )
 
         executor = concurrent.futures.ThreadPoolExecutor(max_workers=1)
@@ -108,6 +124,15 @@ class BlockchainAdapter:
             result = future.result(timeout=settings.blockchain_tx_timeout_seconds)
         except concurrent.futures.TimeoutError:
             future.cancel()
+            if broadcast.get('tx_hash'):
+                return {
+                    'tx_hash': broadcast['tx_hash'],
+                    'status': 'pending',
+                    'error': 'blockchain timeout after broadcast; receipt not yet seen',
+                    'contract_address': settings.contract_address,
+                }
+            # Not broadcast when the timeout fired. The thread may still send
+            # it afterwards; that window is not closed here (OPEN_ITEMS.md).
             return {'tx_hash': None, 'status': 'pending', 'error': 'blockchain timeout'}
         except Exception as exc:
             return {'tx_hash': None, 'status': 'error', 'error': str(exc)}

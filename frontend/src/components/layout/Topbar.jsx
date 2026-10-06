@@ -11,6 +11,7 @@ import EnforcementModeBadge from '../ui/EnforcementModeBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
 import DemoModeBadge from '../ui/DemoModeBadge'
+import DetectionPathBadge from '../ui/DetectionPathBadge'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
@@ -34,6 +35,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
     connectionMode,
     dataErrors,
     mlHealth,
+    mlV2Health,
   } = useGraphStore()
 
   const [time, setTime] = useState(new Date().toLocaleTimeString())
@@ -93,6 +95,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
         <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />
+        <DetectionPathBadge mlV2={mlV2Health} />
 
 
         {isSimulating && (
