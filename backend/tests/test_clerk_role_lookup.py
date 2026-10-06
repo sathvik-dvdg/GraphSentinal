@@ -11,6 +11,7 @@ import inspect
 from types import SimpleNamespace
 
 import pytest
+from cachetools import TTLCache
 from clerk_backend_api import Clerk
 
 from app.services import auth_service
@@ -27,7 +28,18 @@ class _FakeUsers:
 
 
 @pytest.fixture
-def fake_clerk(monkeypatch):
+def clock(monkeypatch):
+    """A controllable clock for the no-role cache's 30s TTL."""
+    now = [0.0]
+    monkeypatch.setattr(
+        auth_service, "_clerk_no_role_cache",
+        TTLCache(maxsize=1000, ttl=auth_service._clerk_no_role_cache.ttl, timer=lambda: now[0]),
+    )
+    return now
+
+
+@pytest.fixture
+def fake_clerk(monkeypatch, clock):
     auth_service._clerk_role_cache.clear()
     users = _FakeUsers({"role": "admin"})
     monkeypatch.setattr(auth_service, "Clerk", lambda bearer_auth: SimpleNamespace(users=users))
@@ -50,11 +62,14 @@ def test_role_is_cached(fake_clerk):
     assert fake_clerk.calls == 1
 
 
-def test_missing_role_is_not_cached(fake_clerk):
+def test_missing_role_is_cached_briefly(fake_clerk, clock):
     fake_clerk._metadata = {}
-    assert auth_service.get_role_from_clerk("user_1", "sk_test_x") is None
+    for _ in range(5):  # repeated requests from a user with no role
+        assert auth_service.get_role_from_clerk("user_1", "sk_test_x") is None
+    assert fake_clerk.calls == 1  # one Clerk call, not one per request
 
     fake_clerk._metadata = {"role": "operator"}  # role added in the Clerk dashboard
+    clock[0] += auth_service._clerk_no_role_cache.ttl + 1
     assert auth_service.get_role_from_clerk("user_1", "sk_test_x") == "operator"
 
 
