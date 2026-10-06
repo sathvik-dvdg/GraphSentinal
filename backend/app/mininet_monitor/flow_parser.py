@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -31,6 +32,45 @@ class PollResult:
     #: Set by the MONITOR when it replaced a failed poll's (empty) flows with
     #: demo_flows(). The parser itself never sets it.
     demo_substituted: bool = False
+
+
+# The last failure message printed, so a daemon that stays down is reported
+# once (and again when the reason changes or it recovers) instead of on every
+# poll. The poll RESULT still carries the error every time; only the console
+# line is deduplicated.
+_last_reported_error: str | None = None
+# Only the monitor thread polls today; the lock keeps the check-and-set atomic
+# if a second caller is ever added.
+_report_lock = threading.Lock()
+
+
+def _report_failure(message: str) -> None:
+    global _last_reported_error
+    hint = ""
+    if message.startswith(("ConnectionRefusedError", "TimeoutError")):
+        hint = (
+            f"\n[FlowParser] No enforcement daemon at {settings.daemon_host}:{settings.daemon_port}. "
+            "Live OVS capture is unavailable until it runs (start "
+            "backend/scripts/enforcement_daemon.py in WSL2 with the backend's "
+            "DAEMON_TOKEN). The API keeps "
+            "serving; set DEMO_FALLBACK_FLOWS=true for synthetic traffic. "
+            "Repeats of this error are not printed."
+        )
+    # Print under the lock so the console order matches the state transitions.
+    with _report_lock:
+        if message == _last_reported_error:
+            return
+        _last_reported_error = message
+        print(f"[FlowParser] OVS poll failed via daemon: {message}{hint}")
+
+
+def _report_recovery() -> None:
+    global _last_reported_error
+    with _report_lock:
+        if _last_reported_error is None:
+            return
+        _last_reported_error = None
+        print("[FlowParser] OVS poll via daemon recovered")
 
 
 def result_from_output(raw: str) -> PollResult:
@@ -71,10 +111,12 @@ def poll_ovs_flows(switch: str = "s1") -> PollResult:
             if result.get("status") != "success":
                 raise RuntimeError(result.get("error", "Unknown error from daemon"))
 
-            return result_from_output(result.get("output", ""))
+            parsed = result_from_output(result.get("output", ""))
+            _report_recovery()
+            return parsed
     except Exception as exc:  # noqa: BLE001 - a poll must report, never raise
         message = f"{type(exc).__name__}: {exc}"
-        print(f"[FlowParser] OVS poll failed via daemon: {message}")
+        _report_failure(message)
         return PollResult(status=POLL_FAILED, error=message)
 
 

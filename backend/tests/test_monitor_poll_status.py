@@ -21,6 +21,7 @@ import socket
 import pytest
 
 from app.config import settings
+from app.mininet_monitor import flow_parser
 from app.mininet_monitor.flow_parser import POLL_FAILED, poll_ovs_flows
 from app.mininet_monitor.monitor import V2_REFUSED_NON_OVS, MininetMonitor
 
@@ -98,3 +99,21 @@ def test_substituted_flows_are_refused_by_the_v2_gate(daemon_down, monkeypatch):
     m._score_v2(m._poll().flows, observed_at=0.0)
 
     assert m.health()["v2_provenance"]["last_poll_state"] == V2_REFUSED_NON_OVS
+
+
+def test_unreachable_daemon_is_reported_once_until_it_recovers(daemon_down, monkeypatch, capsys):
+    """Every poll still returns the failure; only the console line is deduplicated."""
+    monkeypatch.setattr(flow_parser, "_last_reported_error", None)
+
+    first = poll_ovs_flows("s1")
+    second = poll_ovs_flows("s1")
+    assert first.status == second.status == POLL_FAILED
+    assert first.error and second.error
+    out = capsys.readouterr().out
+    assert out.count("OVS poll failed via daemon") == 1
+    assert "No enforcement daemon at 127.0.0.1:" in out
+
+    flow_parser._report_recovery()
+    assert "recovered" in capsys.readouterr().out
+    poll_ovs_flows("s1")
+    assert "OVS poll failed via daemon" in capsys.readouterr().out
