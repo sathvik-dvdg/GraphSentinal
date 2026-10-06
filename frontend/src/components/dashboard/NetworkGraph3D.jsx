@@ -6,6 +6,7 @@ import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
 import { STATUS_COLORS, ATTACK_COLORS } from '../../constants/theme'
 import { GS } from '../../constants/colors'
+import { escapeHtml } from '../../utils/escapeHtml'
 
 export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }) {
   const fgRef = useRef()
@@ -290,6 +291,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
             1000
           )
         }}
+        // The label is rendered as HTML: every server value is escaped.
         nodeLabel={(node) => {
           // Error.md U3/N7 — the scaffold switch/controller aren't hosts, so
           // don't show them a threat score / connection count / host status.
@@ -297,17 +299,17 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
             const role = node.kind === 'switch' ? 'OpenvSwitch bridge' : 'OpenFlow controller'
             return `<div style="background:${GS.surface};border:1px solid ${GS.border};padding:6px 10px;
                          font-family:'DM Mono',monospace;font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
-              <b style="color:${GS.primary}">${node.label || node.id}</b><br/>
+              <b style="color:${GS.primary}">${escapeHtml(node.label || node.id)}</b><br/>
               ${role}<br/>
               <span style="color:${GS.textSubtle}">Infrastructure · configured topology</span>
             </div>`
           }
           return `<div style="background:${GS.surface};border:1px solid ${GS.border};padding:6px 10px;
                        font-family:'DM Mono',monospace;font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
-            <b style="color:${GS.primary}">${node.label}</b> (${node.id})<br/>
-            Status: <span style="color:${STATUS_COLORS[node.status]}">${node.status?.toUpperCase()}</span>
+            <b style="color:${GS.primary}">${escapeHtml(node.label)}</b> (${escapeHtml(node.id)})<br/>
+            Status: <span style="color:${STATUS_COLORS[node.status]}">${escapeHtml(node.status?.toUpperCase())}</span>
             ${node.status === 'malicious' ? ' ▲' : node.status === 'blocked' ? ' ⬡' : node.status === 'suspicious' ? ' ◆' : ' ●'}<br/>
-            Threat: ${(node.threat_score * 100).toFixed(1)}% | Conns: ${node.connections}
+            Threat: ${(Number(node.threat_score) * 100).toFixed(1)}% | Conns: ${escapeHtml(node.connections)}
             ${node.source ? `<br/><span style="color:${node.source === 'observed' ? GS.success : GS.textSubtle}">${node.source === 'observed' ? '◆ Observed traffic' : '○ Configured, no traffic yet'}</span>` : ''}
           </div>`
         }}
