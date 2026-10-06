@@ -70,10 +70,44 @@ export function simulationHiddenOn(pathname) {
 export const SIMULATION_BLOCKED_REASON =
   'Simulation is disabled on a live backend: it would add synthetic flows to the real incident record.'
 
-/** null when a simulation may be started, otherwise why not. */
-export function simulationBlockedReason(useMock, mode) {
+// The backend's POST /api/v1/analyze refuses a read-only role
+// (require_write_privilege), whatever the build.
+export const SIMULATION_ROLE_REASON = 'Your role is read-only: it cannot send a simulated attack.'
+
+/** null when a simulation may be started, otherwise why not. `role` is the
+ *  signed-in user's role; leave it out to check only the build and backend. */
+export function simulationBlockedReason(useMock, mode, role) {
+  if (role !== undefined && (!role || role === 'readonly')) return SIMULATION_ROLE_REASON
   if (useMock) return null
   return mode === 'live' ? SIMULATION_BLOCKED_REASON : null
+}
+
+// ── What the stale-data badge says ───────────────────────────────────────────
+export const STALE_RESOURCE_LABELS = {
+  graph: 'graph',
+  alerts: 'alerts',
+  blocked: 'blocked IPs',
+  forensics: 'forensics',
+  stats: 'stats',
+  timeline: 'timeline',
+  health: 'health',
+  enforcement: 'enforcement log',
+  healing: 'healing events',
+}
+
+/** The badge text for a set of per-resource fetch errors, or null when none is
+ *  stale. Up to three are named with their reason. When the backend is down
+ *  all nine fail together, and naming each one made a ~200-character badge in
+ *  a 48 px header (FE-03): every slot stale reads "all (<reason>)", more than
+ *  three reads "<n> of <total> feeds (<reasons>)". */
+export function staleBadgeText(dataErrors) {
+  const entries = Object.entries(dataErrors || {})
+  const stale = entries.filter(([, err]) => err)
+  if (stale.length === 0) return null
+  const reasons = [...new Set(stale.map(([, err]) => err))].join(', ')
+  if (stale.length === entries.length && entries.length > 3) return `all (${reasons})`
+  if (stale.length > 3) return `${stale.length} of ${entries.length} feeds (${reasons})`
+  return stale.map(([name, err]) => `${STALE_RESOURCE_LABELS[name] || name} (${err})`).join(', ')
 }
 
 // ── Why a fetch failed, for the stale-data badge ─────────────────────────────

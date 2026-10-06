@@ -5,6 +5,8 @@ import { useRef, useCallback, useEffect, useState, useMemo } from 'react'
 import ForceGraph3D from 'react-force-graph-3d'
 import * as THREE from 'three'
 import { STATUS_COLORS, ATTACK_COLORS } from '../../constants/theme'
+import { GS } from '../../constants/colors'
+import { escapeHtml } from '../../utils/escapeHtml'
 
 export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }) {
   const fgRef = useRef()
@@ -41,13 +43,13 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
       // white canvas (a faint wireframe washed out against it).
       const geo = new THREE.IcosahedronGeometry(radius, 0)
       const mat = new THREE.MeshBasicMaterial({
-        color: new THREE.Color(STATUS_COLORS[status] || '#9AA1AD'),
+        color: new THREE.Color(STATUS_COLORS[status] || GS.textFaint),
         wireframe: false,
         transparent: true,
         opacity: status === 'malicious' ? 1 : status === 'normal' ? 0.9 : 0.95,
       })
       const edgeMat = new THREE.LineBasicMaterial({
-        color: new THREE.Color(status === 'normal' ? '#5A616E' : STATUS_COLORS[status] || '#5A616E'),
+        color: new THREE.Color(status === 'normal' ? GS.textMuted : STATUS_COLORS[status] || GS.textMuted),
         transparent: true,
         opacity: 0.55,
       })
@@ -57,14 +59,14 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
       let ringGeo = null, ringMat = null
       if (status === 'suspicious') {
         ringGeo = new THREE.TorusGeometry(8, 0.2, 4, 16)
-        ringMat = new THREE.MeshBasicMaterial({ color: '#b7791f', wireframe: true, transparent: true, opacity: 0.5 })
+        ringMat = new THREE.MeshBasicMaterial({ color: GS.warn, wireframe: true, transparent: true, opacity: 0.5 })
       }
 
       // Cage geometry for blocked
       let cageGeo = null, cageMat = null
       if (status === 'blocked') {
         cageGeo = new THREE.BoxGeometry(14, 14, 14)
-        cageMat = new THREE.LineBasicMaterial({ color: '#5E5CE6', transparent: true, opacity: 0.4 })
+        cageMat = new THREE.LineBasicMaterial({ color: GS.heal, transparent: true, opacity: 0.4 })
       }
 
       objects[status] = { geo, mat, radius, ringGeo, ringMat, cageGeo, cageMat, edgeGeo, edgeMat }
@@ -86,7 +88,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
     canvas.height = 48
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, 256, 48)
-    ctx.fillStyle = '#1b1f27' // updated color from E8EDF5
+    ctx.fillStyle = GS.text // updated color from E8EDF5
     ctx.font = '600 18px "DM Mono", monospace'
     ctx.fillText(label, 8, 30)
 
@@ -126,12 +128,12 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
       // distinct solid shapes so the star reads as a real network fabric.
       if (node.kind === 'switch' || node.kind === 'controller') {
         const isSwitch = node.kind === 'switch'
-        const infraColor = isSwitch ? '#3b56d9' : '#5A616E'
+        const infraColor = isSwitch ? GS.primary : GS.textMuted
         const geo = isSwitch
           ? new THREE.BoxGeometry(12, 5, 12)
           : new THREE.OctahedronGeometry(5, 0)
         const mat = new THREE.MeshBasicMaterial({
-          color: new THREE.Color(status === 'suspicious' ? '#E8922A' : infraColor),
+          color: new THREE.Color(status === 'suspicious' ? GS.statusSuspicious : infraColor),
           wireframe: false,
           transparent: true,
           opacity: 0.9,
@@ -139,7 +141,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
         group.add(new THREE.Mesh(geo, mat))
         const edges = new THREE.LineSegments(
           new THREE.EdgesGeometry(geo),
-          new THREE.LineBasicMaterial({ color: '#1b1f27', transparent: true, opacity: 0.35 })
+          new THREE.LineBasicMaterial({ color: GS.text, transparent: true, opacity: 0.35 })
         )
         group.add(edges)
         const { sprite } = getLabelSprite(node.label || node.id, 8)
@@ -175,7 +177,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
 
       // Malicious point light (kept, not decorative — indicates active threat)
       if (status === 'malicious') {
-        const light = new THREE.PointLight('#E03C3C', 0.6, 25)
+        const light = new THREE.PointLight(GS.danger, 0.6, 25)
         group.add(light)
       }
 
@@ -183,7 +185,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
       if (isHealing) {
         const pulseGeo = new THREE.SphereGeometry(15, 16, 16)
         const pulseMat = new THREE.MeshBasicMaterial({
-          color: '#3b56d9',
+          color: GS.primary,
           transparent: true,
           opacity: 0.25,
           wireframe: true,
@@ -211,9 +213,9 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
           const bc = document.createElement('canvas')
           bc.width = 128; bc.height = 32
           const bctx = bc.getContext('2d')
-          bctx.fillStyle = node.threat_score >= 0.75 ? '#E03C3C' : '#b7791f'
+          bctx.fillStyle = node.threat_score >= 0.75 ? GS.danger : GS.warn
           bctx.fillRect(0, 0, 128, 32)
-          bctx.fillStyle = '#ffffff'
+          bctx.fillStyle = GS.surface
           bctx.font = 'bold 18px "DM Mono", monospace'
           bctx.fillText(`${pct}%`, 10, 22)
           const bt = new THREE.CanvasTexture(bc)
@@ -289,25 +291,26 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
             1000
           )
         }}
+        // The label is rendered as HTML: every server value is escaped.
         nodeLabel={(node) => {
           // Error.md U3/N7 — the scaffold switch/controller aren't hosts, so
           // don't show them a threat score / connection count / host status.
           if (node.kind === 'switch' || node.kind === 'controller') {
             const role = node.kind === 'switch' ? 'OpenvSwitch bridge' : 'OpenFlow controller'
-            return `<div style="background:#ffffff;border:1px solid #e2e5ea;padding:6px 10px;
-                         font-family:'DM Mono',monospace;font-size:11px;color:#1b1f27;border-radius:6px;line-height:1.6">
-              <b style="color:#3b56d9">${node.label || node.id}</b><br/>
+            return `<div style="background:${GS.surface};border:1px solid ${GS.border};padding:6px 10px;
+                         font-family:'DM Mono',monospace;font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
+              <b style="color:${GS.primary}">${escapeHtml(node.label || node.id)}</b><br/>
               ${role}<br/>
-              <span style="color:#727a86">Infrastructure · configured topology</span>
+              <span style="color:${GS.textSubtle}">Infrastructure · configured topology</span>
             </div>`
           }
-          return `<div style="background:#ffffff;border:1px solid #e2e5ea;padding:6px 10px;
-                       font-family:'DM Mono',monospace;font-size:11px;color:#1b1f27;border-radius:6px;line-height:1.6">
-            <b style="color:#3b56d9">${node.label}</b> (${node.id})<br/>
-            Status: <span style="color:${STATUS_COLORS[node.status]}">${node.status?.toUpperCase()}</span>
+          return `<div style="background:${GS.surface};border:1px solid ${GS.border};padding:6px 10px;
+                       font-family:'DM Mono',monospace;font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
+            <b style="color:${GS.primary}">${escapeHtml(node.label)}</b> (${escapeHtml(node.id)})<br/>
+            Status: <span style="color:${STATUS_COLORS[node.status]}">${escapeHtml(node.status?.toUpperCase())}</span>
             ${node.status === 'malicious' ? ' ▲' : node.status === 'blocked' ? ' ⬡' : node.status === 'suspicious' ? ' ◆' : ' ●'}<br/>
-            Threat: ${(node.threat_score * 100).toFixed(1)}% | Conns: ${node.connections}
-            ${node.source ? `<br/><span style="color:${node.source === 'observed' ? '#12a672' : '#727a86'}">${node.source === 'observed' ? '◆ Observed traffic' : '○ Configured, no traffic yet'}</span>` : ''}
+            Threat: ${(Number(node.threat_score) * 100).toFixed(1)}% | Conns: ${escapeHtml(node.connections)}
+            ${node.source ? `<br/><span style="color:${node.source === 'observed' ? GS.success : GS.textSubtle}">${node.source === 'observed' ? '◆ Observed traffic' : '○ Configured, no traffic yet'}</span>` : ''}
           </div>`
         }}
       />

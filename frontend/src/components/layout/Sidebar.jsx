@@ -5,38 +5,33 @@ import {
   LayoutDashboard, Network, ShieldAlert, Search,
   Link2, TrendingUp, Zap, Bell, Settings, ChevronRight, Pin, ScrollText,
 } from 'lucide-react'
-import useGraphStore from '../../store/useGraphStore'
-import useAuthStore from '../../store/useAuthStore'
-import { loadAlertStatuses } from '../../utils/alertStatus'
+import { useAlerts } from '../../hooks/useAlerts'
+import useSessionUser from '../../hooks/useSessionUser'
+import { GS } from '../../constants/colors'
 
 const NAV_ITEMS = [
-  { path: '/dashboard',  Icon: LayoutDashboard, label: 'Dashboard',         color: '#5a616e' },
-  { path: '/network',    Icon: Network,          label: 'Network Topology',  color: '#1D9E75' },
-  { path: '/threats',    Icon: ShieldAlert,      label: 'Threat Feed',       color: '#E03C3C' },
-  { path: '/forensics',  Icon: Search,           label: 'Forensics',         color: '#3b56d9' },
-  { path: '/blockchain', Icon: Link2,            label: 'Audit & Ledger',    color: '#7c3aed' },
-  { path: '/timeline',   Icon: TrendingUp,       label: 'Timeline',          color: '#1D9E75' },
-  { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: '#12a672' },
-  { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: '#b7791f' },
-  { path: '/audit',      Icon: ScrollText,       label: 'Audit Log',         color: '#5a616e' },
+  { path: '/dashboard',  Icon: LayoutDashboard, label: 'Dashboard',         color: GS.textMuted },
+  { path: '/network',    Icon: Network,          label: 'Network Topology',  color: GS.successDeep },
+  { path: '/threats',    Icon: ShieldAlert,      label: 'Threat Feed',       color: GS.danger },
+  { path: '/forensics',  Icon: Search,           label: 'Forensics',         color: GS.primary },
+  { path: '/blockchain', Icon: Link2,            label: 'Audit & Ledger',    color: GS.chain },
+  { path: '/timeline',   Icon: TrendingUp,       label: 'Timeline',          color: GS.successDeep },
+  { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: GS.success },
+  { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: GS.warn },
+  { path: '/audit',      Icon: ScrollText,       label: 'Audit Log',         color: GS.textMuted },
 ]
 
 export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }) {
-  // Error.md N5 / H5 — count alerts that aren't blocked and haven't been
-  // acknowledged/resolved. Server `alert_status` (from /api/v1/alerts) is the
-  // source of truth; the localStorage layer only covers un-synced optimism.
-  const alerts = useGraphStore((s) => s.alerts)
-  const statuses = loadAlertStatuses()
-  const unread = alerts.filter((a) => {
-    if (a.is_blocked) return false
-    const local = (statuses[`alert-${a.id}`] || statuses[a.id])?.status
-    const st = local || a.alert_status || 'open'
-    return st !== 'acknowledged' && st !== 'resolved'
-  }).length
+  // The Alert Centre badge is Alert Centre's own "Open" count (useAlerts), so
+  // the two can never disagree. It used to skip every blocked alert -- but
+  // blocking is enforcement, not triage (audit B17), and v1 blocks every source
+  // it raises an incident for, so the badge stayed empty while Alert Centre said
+  // "Open: 3" -- and looked up local statuses under keys Alert Centre never wrote.
+  const unread = useAlerts().stats.open
 
   // Error.md N6 — subscribe to the username so the strip re-renders when it
   // loads, and use one consistent fallback everywhere.
-  const username = useAuthStore((s) => s.user?.username)
+  const { username } = useSessionUser()
   const initials = username ? username.substring(0, 2).toUpperCase() : 'OP'
 
   return (
@@ -82,7 +77,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             flexShrink: 0,
           }}
         >
-          <svg viewBox="0 0 24 24" fill="none" style={{ width: 14, height: 14, color: '#3b56d9' }} stroke="currentColor" strokeWidth={2}>
+          <svg viewBox="0 0 24 24" fill="none" style={{ width: 14, height: 14, color: GS.primary }} stroke="currentColor" strokeWidth={2}>
             <path strokeLinecap="round" strokeLinejoin="round" d="M12 2L3 7v5c0 5.25 3.75 10.15 9 11.25C17.25 22.15 21 17.25 21 12V7L12 2z" />
           </svg>
         </div>
@@ -90,7 +85,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
         {expanded && (
           <span
             style={{
-              color: '#1b1f27',
+              color: GS.text,
               fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
               fontWeight: 600,
               fontSize: 13,
@@ -111,7 +106,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             marginLeft: expanded ? 0 : 'auto',
             background: pinned ? 'rgba(79,110,247,0.12)' : 'none',
             border: 'none',
-            color: pinned ? '#3b56d9' : 'rgba(27,31,39,0.32)',
+            color: pinned ? GS.primary : 'rgba(27,31,39,0.32)',
             cursor: 'pointer',
             padding: 4,
             borderRadius: 6,
@@ -169,8 +164,8 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               <span
                 style={{
                   marginLeft: 'auto',
-                  background: '#b7791f',
-                  color: '#fff',
+                  background: GS.warn,
+                  color: GS.surface,
                   borderRadius: 999,
                   fontSize: 9,
                   fontWeight: 700,
@@ -198,12 +193,12 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             gap: 12,
             padding: '9px 16px',
             textDecoration: 'none',
-            borderLeft: isActive ? '3px solid #5a616e' : '3px solid transparent',
+            borderLeft: isActive ? `3px solid ${GS.textMuted}` : '3px solid transparent',
             background: isActive ? 'rgba(17,20,26,0.08)' : 'transparent',
             transition: 'background 150ms',
           })}
         >
-          <Settings size={18} style={{ color: '#5a616e', flexShrink: 0 }} />
+          <Settings size={18} style={{ color: GS.textMuted, flexShrink: 0 }} />
           {expanded && (
             <span style={{ color: 'rgba(27,31,39,0.80)', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
               Settings
@@ -230,13 +225,13 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1D9E75, #3b56d9)',
+                background: `linear-gradient(135deg, ${GS.successDeep}, ${GS.primary})`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 11,
                 fontWeight: 700,
-                color: '#fff',
+                color: GS.surface,
                 fontFamily: "'Plus Jakarta Sans', sans-serif",
                 flexShrink: 0,
               }}
@@ -244,7 +239,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               {initials}
             </div>
             <div>
-              <div style={{ color: '#1b1f27', fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <div style={{ color: GS.text, fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
                 {username || 'operator'}
               </div>
               <div style={{ color: 'rgba(27,31,39,0.45)', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
@@ -262,13 +257,13 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 width: 28,
                 height: 28,
                 borderRadius: '50%',
-                background: 'linear-gradient(135deg, #1D9E75, #3b56d9)',
+                background: `linear-gradient(135deg, ${GS.successDeep}, ${GS.primary})`,
                 display: 'flex',
                 alignItems: 'center',
                 justifyContent: 'center',
                 fontSize: 10,
                 fontWeight: 700,
-                color: '#fff',
+                color: GS.surface,
               }}
             >
               {initials}

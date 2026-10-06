@@ -3,6 +3,11 @@ import { useWebSocket } from '../hooks/useWebSocket'
 import { useGraphData } from '../hooks/useGraphData'
 import useGraphStore from '../store/useGraphStore'
 
+// A mock build talks to no backend over the socket. If one is running, its
+// graph_update pushes used to set the mode back to 'live' between mock ticks,
+// so the badge and the graph flipped between live data and blank (FE-21).
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
+
 export default function SimulationProvider({ children }) {
   const {
     setGraphData,
@@ -11,6 +16,7 @@ export default function SimulationProvider({ children }) {
     addHealingEvent,
     addTimelinePoint,
     setConnected,
+    setSocketStatus,
   } = useGraphStore()
 
   const { refresh: refreshData } = useGraphData()
@@ -47,9 +53,14 @@ export default function SimulationProvider({ children }) {
     onGraphUpdate: handleGraphUpdate,
     onAlert: handleAlert,
     onHealingTriggered: handleHealingTriggered,
-    onConnect: () => setConnected(true),
-    onDisconnect: () => setConnected(false),
-    onReconnect: () => refreshData(),
+    // The socket no longer decides the connection mode (audit B21): on either
+    // edge, poll at once and let the answer say whether the backend is there.
+    // (onConnect covers a reconnect too, so onReconnect is not passed: it would
+    // fetch everything twice.)
+    onConnect: () => { setConnected(true); refreshData() },
+    onDisconnect: () => { setConnected(false); refreshData() },
+    onStatus: setSocketStatus,
+    enabled: !USE_MOCK,
   })
 
   return children

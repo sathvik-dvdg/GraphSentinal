@@ -4,6 +4,7 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react'
 import cytoscape from 'cytoscape'
 import { STATUS_COLORS } from '../../constants/theme'
+import { GS } from '../../constants/colors'
 
 const LAYOUT = {
   name: 'concentric',
@@ -59,9 +60,9 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
         {
           selector: 'node',
           style: {
-            'background-color': (ele) => STATUS_COLORS[ele.data('status')] || '#3b56d9',
+            'background-color': (ele) => STATUS_COLORS[ele.data('status')] || GS.primary,
             label: 'data(label)',
-            color: '#5a616e',
+            color: GS.textMuted,
             'font-size': '9px',
             'font-family': '"DM Mono", monospace',
             'text-valign': 'bottom',
@@ -71,24 +72,24 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             height: 24,
             shape: 'ellipse', // default: circle = normal
             'border-width': 1.5,
-            'border-color': (ele) => STATUS_COLORS[ele.data('status')] || '#e2e5ea',
+            'border-color': (ele) => STATUS_COLORS[ele.data('status')] || GS.border,
             'border-opacity': 0.25,
           },
         },
         // Suspicious — diamond shape
         {
           selector: 'node[status="suspicious"]',
-          style: { shape: 'diamond', width: 28, height: 28, 'border-color': '#b7791f', 'border-width': 2 },
+          style: { shape: 'diamond', width: 28, height: 28, 'border-color': GS.warn, 'border-width': 2 },
         },
         // Malicious — triangle (warning shape)
         {
           selector: 'node[status="malicious"]',
-          style: { shape: 'triangle', width: 36, height: 36, 'border-color': '#E03C3C', 'border-width': 2.5 },
+          style: { shape: 'triangle', width: 36, height: 36, 'border-color': GS.danger, 'border-width': 2.5 },
         },
         // Blocked — hexagon (containment shape) with dashed border
         {
           selector: 'node[status="blocked"]',
-          style: { shape: 'hexagon', width: 30, height: 30, 'border-color': '#3b56d9', 'border-width': 2, 'border-style': 'dashed', opacity: 0.8 },
+          style: { shape: 'hexagon', width: 30, height: 30, 'border-color': GS.primary, 'border-width': 2, 'border-style': 'dashed', opacity: 0.8 },
         },
         // Configured baseline host — dimmed (no traffic seen yet)
         {
@@ -105,13 +106,13 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             },
             'line-color': (ele) => {
               const v = ele.data('value') || 0.5
-              return v > 0.75 ? '#E03C3C' : v > 0.5 ? '#b7791f' : '#c7cbd2'
+              return v > 0.75 ? GS.danger : v > 0.5 ? GS.warn : GS.borderStrong
             },
             'line-opacity': (ele) => {
               const v = ele.data('value') || 0.5
               return v > 0.75 ? 0.5 : v > 0.5 ? 0.4 : 0.9
             },
-            'target-arrow-color': '#9aa1ad',
+            'target-arrow-color': GS.textFaint,
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
           },
@@ -122,10 +123,10 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
           selector: 'node[kind="switch"]',
           style: {
             shape: 'round-rectangle', width: 46, height: 30,
-            'background-color': '#3b56d9', 'background-opacity': 1,
-            'border-color': '#2c40a8', 'border-width': 1.5, 'border-opacity': 1,
+            'background-color': GS.primary, 'background-opacity': 1,
+            'border-color': GS.primaryDeep, 'border-width': 1.5, 'border-opacity': 1,
             'border-style': 'solid', opacity: 1,
-            color: '#3b56d9', 'font-size': '10px', 'font-weight': 'bold',
+            color: GS.primary, 'font-size': '10px', 'font-weight': 'bold',
           },
         },
         // OpenFlow controller c0 — small neutral diamond above the switch
@@ -133,17 +134,17 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
           selector: 'node[kind="controller"]',
           style: {
             shape: 'diamond', width: 22, height: 22,
-            'background-color': '#5a616e', 'background-opacity': 1,
-            'border-color': '#41474f', 'border-width': 1.5, 'border-opacity': 1,
+            'background-color': GS.textMuted, 'background-opacity': 1,
+            'border-color': GS.inkSoft, 'border-width': 1.5, 'border-opacity': 1,
             'border-style': 'solid', opacity: 1,
-            color: '#5a616e', 'font-size': '9px',
+            color: GS.textMuted, 'font-size': '9px',
           },
         },
         // Infra links — thin, quiet, no arrowhead
         {
           selector: 'edge[kind="infra"]',
           style: {
-            width: 1.5, 'line-color': '#c7cbd2', 'line-opacity': 0.9,
+            width: 1.5, 'line-color': GS.borderStrong, 'line-opacity': 0.9,
             'target-arrow-shape': 'none', 'curve-style': 'straight',
           },
         },
@@ -237,10 +238,10 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
 
     // Override style temporarily
     node.style({
-      'border-color': '#3b56d9',
+      'border-color': GS.primary,
       'border-width': 4,
       'border-style': 'solid',
-      'background-color': '#3b56d9',
+      'background-color': GS.primary,
       'background-opacity': 0.5,
     })
 

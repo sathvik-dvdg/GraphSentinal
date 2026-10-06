@@ -12,14 +12,21 @@ import DataFreshnessBadge from '../components/ui/DataFreshnessBadge'
 import { formatTimelineTick } from '../utils/formatTimestamp'
 import { GS } from '../constants/colors'
 
-const TIME_RANGES = ['1h', '6h', '24h', '7d', '14d', '30d', 'All']
+// No "All": the backend serves at most 30 days and reads `all` as `30d`, so the
+// pill duplicated 30d under a name that claimed more (FE-26).
+const TIME_RANGES = ['1h', '6h', '24h', '7d', '14d', '30d']
+const RANGE_MS = { '1h': 3.6e6, '6h': 2.16e7, '24h': 8.64e7, '7d': 6.048e8, '14d': 1.2096e9, '30d': 2.592e9 }
+// One colour per label the backend can send (utils/attackTypes); DoSHulk and
+// Unknown had none, so those incidents were not drawn (FE-26).
 const ATTACK_COLORS_MAP = {
-  Manual: '#12a672',
-  DDoS: '#E03C3C',
-  SSHBrute: '#b7791f',
-  PortScan: '#3b56d9',
-  Botnet: '#7c3aed',
-  Heuristic: '#E8922A',
+  Manual: GS.success,
+  DoSHulk: GS.attackDosHulk,
+  Unknown: GS.textSubtle,
+  DDoS: GS.danger,
+  SSHBrute: GS.warn,
+  PortScan: GS.primary,
+  Botnet: GS.chain,
+  Heuristic: GS.statusSuspicious,
 }
 
 export default function TimelineAnalytics() {
@@ -28,16 +35,19 @@ export default function TimelineAnalytics() {
   const [timelineData, setTimelineData] = useState([])
   const [paused, setPaused] = useState(false)
   const [threshold, setThreshold] = useState(3)
+  // "Now" for the range cut-off, refreshed with each timeline fetch: reading
+  // the clock during render is impure (react-hooks/purity).
+  const [now, setNow] = useState(() => Date.now())
 
   // Fetch timeline data whenever timeRange changes
   useEffect(() => {
     let active = true
     const fetchTimeline = async () => {
       try {
-        const param = timeRange === 'All' ? '30d' : timeRange
-        const res = await getTimeline(param)
+        const res = await getTimeline(timeRange)
         if (active && res?.data_points) {
           setTimelineData(res.data_points)
+          setNow(Date.now())
         }
       } catch (err) {
         console.error('[TimelineAnalytics] Failed to fetch timeline for', timeRange, err)
@@ -59,12 +69,20 @@ export default function TimelineAnalytics() {
   if (!paused) frozenRef.current = activeData
   const chartData = paused ? frozenRef.current : activeData
 
-  const isMultiDay = timeRange === '7d' || timeRange === '14d' || timeRange === '30d' || timeRange === 'All'
+  const isMultiDay = timeRange === '7d' || timeRange === '14d' || timeRange === '30d'
+
+  // FE-26 — the breakdown and the type chart follow the selected range too. They
+  // are built from the store's alerts, which hold the newest 50, so a long range
+  // can show fewer than happened; the table heading says so.
+  const alertsInRange = useMemo(() => {
+    const cutoff = now - (RANGE_MS[timeRange] ?? RANGE_MS['7d'])
+    return alerts.filter((a) => new Date(a.timestamp).getTime() >= cutoff)
+  }, [alerts, timeRange, now])
 
   // Time breakdown from alerts (hourly for <=24h, daily for multi-day)
   const timeBreakdown = useMemo(() => {
     const buckets = {}
-    alerts.forEach((a) => {
+    alertsInRange.forEach((a) => {
       const d = new Date(a.timestamp)
       const key = isMultiDay
         ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -74,12 +92,12 @@ export default function TimelineAnalytics() {
       if (a.is_blocked) buckets[key].blocked += 1
     })
     return Object.values(buckets)
-  }, [alerts, isMultiDay])
+  }, [alertsInRange, isMultiDay])
 
   // Attack type over time (stacked bar — grouped by hour or day + type)
   const typeOverTime = useMemo(() => {
     const buckets = {}
-    alerts.forEach((a) => {
+    alertsInRange.forEach((a) => {
       const d = new Date(a.timestamp)
       const key = isMultiDay
         ? d.toLocaleDateString(undefined, { month: 'short', day: 'numeric' })
@@ -88,11 +106,11 @@ export default function TimelineAnalytics() {
         buckets[key] = { time: key }
         Object.keys(ATTACK_COLORS_MAP).forEach((k) => { buckets[key][k] = 0 })
       }
-      const t = a.attack_type || 'Manual'
+      const t = ATTACK_COLORS_MAP[a.attack_type] ? a.attack_type : 'Unknown'
       buckets[key][t] = (buckets[key][t] || 0) + 1
     })
     return Object.values(buckets)
-  }, [alerts, isMultiDay])
+  }, [alertsInRange, isMultiDay])
 
   // Find anomaly spikes (>= threshold)
   const anomalyPeaks = chartData.filter((d) => d.threats >= threshold)
@@ -154,8 +172,8 @@ export default function TimelineAnalytics() {
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={14} style={{ color: '#3b56d9' }} />
-            <span style={{ color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <TrendingUp size={14} style={{ color: GS.primary }} />
+            <span style={{ color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               Threat Activity ({timeRange})
             </span>
           </div>
@@ -217,8 +235,8 @@ export default function TimelineAnalytics() {
         {/* Breakdown table */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
-            <span style={{ color: '#5a616e', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
-              {isMultiDay ? 'Daily Breakdown' : 'Hourly Breakdown'}
+            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              {isMultiDay ? 'Daily Breakdown' : 'Hourly Breakdown'} · newest 50 alerts
             </span>
           </div>
           <div style={{ maxHeight: 300, overflowY: 'auto' }}>
@@ -234,15 +252,15 @@ export default function TimelineAnalytics() {
                 <tbody>
                   {timeBreakdown.map((row) => (
                     <tr key={row.time}>
-                      <td style={{ color: '#727a86', fontFamily: "'DM Mono', monospace" }}>{row.time}</td>
-                      <td style={{ color: '#E03C3C', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{row.threats}</td>
-                      <td style={{ color: '#12a672', fontFamily: "'DM Mono', monospace" }}>{row.blocked}</td>
+                      <td style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace" }}>{row.time}</td>
+                      <td style={{ color: GS.danger, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{row.threats}</td>
+                      <td style={{ color: GS.success, fontFamily: "'DM Mono', monospace" }}>{row.blocked}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No breakdown data yet
               </div>
             )}
@@ -261,10 +279,10 @@ export default function TimelineAnalytics() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={typeOverTime} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.8)" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#1b1f27' }} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#727a86' }} />
+                  <XAxis dataKey="time" tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: GS.text }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textSubtle }} />
                   {Object.entries(ATTACK_COLORS_MAP).map(([type, color]) => (
                     <Bar key={type} dataKey={type} stackId="a" fill={color} fillOpacity={0.8} />
                   ))}
