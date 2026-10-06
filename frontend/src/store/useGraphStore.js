@@ -5,6 +5,7 @@
 import { create } from 'zustand'
 import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealingEvents } from '../services/api'
 import { loadResolvedIncidentIds, saveResolvedIncidentIds } from '../utils/alertStatus'
+import { mergeGraph } from '../utils/graphMerge'
 import { overlayAfterFetch } from '../utils/triage'
 
 // connectionMode values:
@@ -153,26 +154,12 @@ const useGraphStore = create((set, get) => ({
   // ── Data setters ──────────────────────────────────────────
   setGraphData: (newData) =>
     set((state) => {
-      // FE-10 — a socket push the server capped (truncated: true) must not
-      // replace a fuller graph already on screen: the REST poll brings the
-      // whole graph every 10 s, so the two used to alternate. Keep the fuller
-      // one and just record that pushes are being capped.
-      if (newData.truncated && state.graphData.nodes.length >= (newData.nodes?.length ?? 0)) {
-        return { graphTruncated: true }
-      }
-      // Preserve node object references so react-force-graph-3d doesn't lose
-      // their x, y, z physics coordinates on every 10s polling tick.
-      const existingNodes = new Map(state.graphData.nodes.map(n => [n.id, n]))
-      const mergedNodes = newData.nodes.map(newNode => {
-        const existing = existingNodes.get(newNode.id)
-        if (existing) {
-          // Update properties in place, preserving physics coords & object ref
-          return Object.assign(existing, newNode)
-        }
-        return newNode
-      })
+      // FE-10 — a full graph replaces the one on screen; a socket push the
+      // server capped (truncated: true) is merged into it, so the newest scores
+      // show at once and nothing the cap left out disappears (utils/graphMerge).
+      // Node objects are kept so react-force-graph keeps their coordinates.
       return {
-        graphData: { nodes: mergedNodes, links: newData.links },
+        graphData: mergeGraph(state.graphData, newData),
         // Only a payload that says so changes the flag: the REST graph has no
         // `truncated` field, and resetting it on every poll made the banner
         // vanish and come back (with its dismissal forgotten) every 10 s.
