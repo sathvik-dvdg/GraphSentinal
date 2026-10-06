@@ -214,3 +214,12 @@ def test_find_incident_reads_only_switch_traffic_since_the_attack():
         assert sim.find_incident("10.0.0.9", datetime.now(timezone.utc) + timedelta(minutes=1)) is None
     finally:
         db.close()
+
+
+def test_preflight_explains_a_missing_switch():
+    health = {"status": "running", "last_poll_status": "failed", "last_flow_count": 2,
+              "last_error": "RuntimeError: Command failed: ovs-ofctl: s1 is not a bridge or a socket"}
+    poll = next(c for c in sim.preflight(health) if c["key"] == "switch_poll")
+    assert poll["ok"] is False
+    assert "topology is not running" in poll["detail"]
+    assert "-WithMininet" in poll["detail"]

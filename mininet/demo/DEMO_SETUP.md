@@ -8,7 +8,11 @@ normally do.
 
 1. Free WSL memory, as root in WSL: `sync; echo 3 > /proc/sys/vm/drop_caches`
 2. Start Open vSwitch if it is not running: `sudo service openvswitch-switch start`
-   (and `sudo systemctl stop openvswitch-testcontroller`: Mininet starts its own)
+   (and `sudo systemctl stop openvswitch-testcontroller`: Mininet starts its own).
+   Mininet needs that controller installed: `sudo apt-get install -y openvswitch-testcontroller`.
+   Without it the topology stops at "Cannot find required executable ovs-controller"
+   and switch `s1` never exists.
+   `./run_dev.ps1 -WithMininet` does steps 2 to 5 for you and checks the controller and `s1`.
 3. Start the long-lived topology and keep its terminal open:
    `sudo python3 mininet/topologies/base_topology_headless.py`
 4. Start the enforcement daemon, as root in WSL, with the backend's token:

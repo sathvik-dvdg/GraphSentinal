@@ -130,6 +130,9 @@ def preflight(monitor_health: dict | None) -> list[dict]:
     poll_detail = f"{poll} ({health.get('last_flow_count')} flows)" if poll else "no poll yet"
     if health.get("last_error"):
         poll_detail += f": {health['last_error']}"
+        if "not a bridge" in str(health["last_error"]):
+            poll_detail += (" -- switch s1 does not exist, so the Mininet topology is not running. "
+                            "Start it with ./run_dev.ps1 -WithMininet (or base_topology_headless.py in WSL)")
     folder = scripts_dir()
     missing = [a.script for a in ATTACKS.values() if not (folder / a.script).is_file()]
     return [
