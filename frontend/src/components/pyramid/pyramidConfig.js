@@ -4,6 +4,8 @@
 // ORG_HIERARCHY has been moved to api.js as a mock backend response.
 
 // Level badge labels
+import { GS } from '../../constants/colors'
+
 export const LEVEL_LABELS = {
   0: 'L0 · Root',
   1: 'L1 · Admin',
@@ -20,10 +22,10 @@ export const LEVEL_LABELS = {
 // built from live graph data (Error.md #2, #24) instead of a hardcoded tree.
 export const STATUS_COLORS = {
   normal:     { border: 'rgba(17,20,26,0.12)', bg: 'transparent',          text: 'rgba(27,31,39,0.80)', badgeBg: 'transparent' },
-  suspicious: { border: '#b7791f',                bg: 'rgba(232,146,42,0.10)', text: '#b7791f',               badgeBg: '#b7791f' },
-  infected:   { border: '#b7791f',                bg: 'rgba(232,146,42,0.10)', text: '#b7791f',               badgeBg: '#b7791f' },
-  malicious:  { border: '#E03C3C',                bg: 'rgba(224,60,60,0.10)',  text: '#c2410c',               badgeBg: '#E03C3C' },
-  attacking:  { border: '#E03C3C',                bg: 'rgba(224,60,60,0.10)',  text: '#c2410c',               badgeBg: '#E03C3C' },
-  isolated:   { border: '#A32D2D',                bg: 'rgba(163,45,45,0.15)', text: '#E03C3C',               badgeBg: '#A32D2D' },
-  blocked:    { border: '#A32D2D',                bg: 'rgba(163,45,45,0.10)', text: '#E03C3C',               badgeBg: '#A32D2D' },
+  suspicious: { border: GS.warn,                bg: 'rgba(232,146,42,0.10)', text: GS.warn,               badgeBg: GS.warn },
+  infected:   { border: GS.warn,                bg: 'rgba(232,146,42,0.10)', text: GS.warn,               badgeBg: GS.warn },
+  malicious:  { border: GS.danger,                bg: 'rgba(224,60,60,0.10)',  text: GS.dangerOrange,               badgeBg: GS.danger },
+  attacking:  { border: GS.danger,                bg: 'rgba(224,60,60,0.10)',  text: GS.dangerOrange,               badgeBg: GS.danger },
+  isolated:   { border: GS.dangerDeep,                bg: 'rgba(163,45,45,0.15)', text: GS.danger,               badgeBg: GS.dangerDeep },
+  blocked:    { border: GS.dangerDeep,                bg: 'rgba(163,45,45,0.10)', text: GS.danger,               badgeBg: GS.dangerDeep },
 }

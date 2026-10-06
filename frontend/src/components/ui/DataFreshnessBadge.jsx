@@ -11,13 +11,15 @@ const LABELS = {
   timeline: 'timeline',
   health: 'health',
   enforcement: 'enforcement log',
+  healing: 'healing events',
 }
 
 export default function DataFreshnessBadge({ dataErrors, className = '' }) {
   const staleResources = Object.entries(dataErrors || {}).filter(([, err]) => err)
   if (staleResources.length === 0) return null
 
-  const label = staleResources.map(([name]) => LABELS[name] || name).join(', ')
+  // The reason is in the text, not only the tooltip: "ALERTS (HTTP 500)".
+  const label = staleResources.map(([name, err]) => `${LABELS[name] || name} (${err})`).join(', ')
 
   return (
     <span

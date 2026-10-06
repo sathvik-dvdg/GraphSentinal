@@ -3,20 +3,27 @@
 // WebSocket, simulateAttack, and NodeDetailPanel all live here so they
 // survive navigation between routes without resetting.
 import { useState, useEffect } from 'react'
-import { Outlet } from 'react-router-dom'
+import { Outlet, useLocation } from 'react-router-dom'
 import { AnimatePresence } from 'framer-motion'
 import Sidebar from './Sidebar'
 import Topbar from './Topbar'
 import NodeDetailPanel from '../dashboard/NodeDetailPanel'
 import ForensicsModal from '../dashboard/ForensicsModal'
 import LoadingScreen from '../shared/LoadingScreen'
+import ShellNotices from '../shared/ShellNotices'
 import { blockIP, getGraph, getBlocked, getStats, getHealingEvents } from '../../services/api'
 import useGraphStore from '../../store/useGraphStore'
+import useSessionUser from '../../hooks/useSessionUser'
+import { canEnforce, enforceFailureMessage } from '../../utils/triage'
 
 export default function AppShell() {
   const [sidebarPinned, setSidebarPinned] = useState(false)
   const [sidebarHovered, setSidebarHovered] = useState(false)
   const [showLoading, setShowLoading] = useState(true)
+  const { pathname } = useLocation()
+  // Audit B20 — why the last block/unblock did not take effect, shown in the panel.
+  const [blockError, setBlockError] = useState(null)
+  const { role } = useSessionUser()
   const sidebarOpen = sidebarPinned || sidebarHovered
 
   // ── Zustand store ──────────────────────────────────────────────────
@@ -44,6 +51,7 @@ export default function AppShell() {
   // for the next poll, and surface real failures instead of silently
   // pretending the action succeeded (the panel used to close either way).
   const handleBlock = async (ip, action) => {
+    setBlockError(null)
     try {
       const blockRes = await blockIP(ip, action)
       if (blockRes?.healing_event) {
@@ -62,6 +70,7 @@ export default function AppShell() {
       setSelectedNode(null)
     } catch (err) {
       console.error(`[AppShell] Failed to ${action} ${ip} — backend rejected or is unreachable:`, err)
+      setBlockError(enforceFailureMessage(err))
       // Keep the panel open: the action did not take effect, so closing it
       // as if it succeeded would misrepresent the node's real state.
     }
@@ -122,6 +131,7 @@ export default function AppShell() {
         </div>
 
         <div style={{ position: 'relative', zIndex: 1 }}>
+          <ShellNotices pathname={pathname} />
           <Outlet />
         </div>
       </main>
@@ -131,8 +141,10 @@ export default function AppShell() {
         {selectedNode && (
           <NodeDetailPanel
             node={selectedNode}
-            onClose={() => setSelectedNode(null)}
+            onClose={() => { setBlockError(null); setSelectedNode(null) }}
             onBlock={handleBlock}
+            canEnforce={canEnforce(role)}
+            actionError={blockError}
           />
         )}
       </AnimatePresence>

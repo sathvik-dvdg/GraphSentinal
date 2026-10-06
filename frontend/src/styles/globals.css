@@ -147,8 +147,6 @@ body {
 ::-webkit-scrollbar-thumb:hover { background: rgba(17,20,26,0.30); }
 
 .font-heading { font-family: 'Plus Jakarta Sans', Inter, sans-serif; }
-.font-mono-gs  { font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace; }
-.font-orbitron { font-family: 'Plus Jakarta Sans', Inter, sans-serif; }
 
 .gs-panel {
   background: rgba(255, 255, 255, 0.5);
@@ -212,37 +210,6 @@ body {
   background-size: 32px 32px;
 }
 
-.cyber-grid {
-  background-color: #f4f6f8;
-  background-image:
-    linear-gradient(rgba(59,86,217,0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59,86,217,0.06) 1px, transparent 1px);
-  background-size: 20px 20px;
-}
-
-.hex-bg {
-  background-image: radial-gradient(circle, rgba(59,86,217,0.08) 1px, transparent 1px);
-  background-size: 28px 28px;
-}
-
-.status-normal     { color: #12a672; }
-.status-suspicious { color: #b7791f; }
-.status-malicious  { color: #d92d2d; }
-.status-blocked    { color: #3b56d9; }
-
-/* Decorative text glows removed for the clean white theme — kept as no-ops
-   so existing className references don't break. */
-.text-glow-threat,
-.text-glow-heal,
-.text-glow-accent,
-.text-glow,
-.text-glow-error,
-.glow-accent,
-.glow-cyan,
-.glow-emerald,
-.glow-rose,
-.glow-amber { text-shadow: none; box-shadow: none; }
-
 .badge-live {
   background: rgba(18,166,114,0.10);
   border: 1px solid rgba(18,166,114,0.30);
@@ -276,11 +243,6 @@ body {
 }
 .spin-slow { animation: spin-slow 2s linear infinite; }
 
-@keyframes fade-in-up {
-  from { opacity: 0; transform: translateY(12px); }
-  to   { opacity: 1; transform: translateY(0); }
-}
-.fade-in-up { animation: fade-in-up 0.4s ease-out forwards; }
 
 @keyframes blink-cursor {
   0%, 100% { opacity: 1; }
@@ -294,19 +256,13 @@ body {
 }
 .heal-ring { animation: heal-ring 1.2s ease-out infinite; }
 
-@keyframes float {
-  0%, 100% { transform: translateY(0px); }
-  50% { transform: translateY(-8px); }
-}
-.float-animation { animation: float 4s ease-in-out infinite; }
 
 @media (prefers-reduced-motion: reduce) {
-  .float-animation,
   .spin-slow,
-  .pulse-threat,
-  .heal-ring,
-  .blink-cursor,
-  [class*="animate-"] {
+.pulse-threat,
+.heal-ring,
+.blink-cursor,
+[class*="animate-"] {
     animation: none !important;
     transition: none !important;
   }
@@ -316,30 +272,9 @@ body {
   }
 }
 
-.hero-bg-image {
-  mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
-  -webkit-mask-image: radial-gradient(circle at center, black 30%, transparent 80%);
-}
-
-.font-mono, .font-mono-gs, [class*="font-mono"] {
+.font-mono,
+[class*="font-mono"] {
   font-variant-numeric: tabular-nums;
-}
-
-.corner-tl::before,
-.corner-br::after {
-  content: '';
-  position: absolute;
-  width: 10px;
-  height: 10px;
-  border-color: rgba(59,86,217,0.35);
-  border-style: solid;
-}
-.corner-tl::before { top: 0; left: 0; border-width: 1px 0 0 1px; }
-.corner-br::after  { bottom: 0; right: 0; border-width: 0 1px 1px 0; }
-
-.separator-h {
-  height: 1px;
-  background: linear-gradient(90deg, transparent, #e2e5ea 30%, #e2e5ea 70%, transparent);
 }
 
 .gs-table { width: 100%; font-family: 'DM Mono', monospace; }
@@ -360,17 +295,6 @@ body {
 }
 .gs-table tr:hover td { background: rgba(59,86,217,0.04); }
 
-.void-vignette::before {
-  content: '';
-  position: fixed;
-  inset: 0;
-  background: none;
-  pointer-events: none;
-  z-index: 0;
-}
-
-.malicious-pulse { animation: pulse-threat 1.2s ease-in-out infinite; }
-
 /* ── Pyramid hierarchy animations ── */
 @keyframes dashMove {
   to { stroke-dashoffset: -20; }
@@ -379,22 +303,6 @@ body {
 @keyframes slideInRight {
   from { transform: translateX(100%); opacity: 0; }
   to   { transform: translateX(0);    opacity: 1; }
-}
-
-/* ── Sidebar / layout transitions ── */
-.sidebar-label-enter {
-  opacity: 0;
-  transform: translateX(-8px);
-}
-.sidebar-label-visible {
-  opacity: 1;
-  transform: translateX(0);
-  transition: opacity 150ms 60ms, transform 150ms 60ms;
-}
-
-.neon-cta {
-  box-shadow: 0 1px 2px rgba(17,20,26,0.10);
-  border-color: rgba(59,86,217,0.5);
 }
 
 /* ═══════════════════════════════════════════════════

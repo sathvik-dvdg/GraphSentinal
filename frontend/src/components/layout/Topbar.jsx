@@ -1,17 +1,21 @@
 // [Windows] GraphSentinel — Susheep
-// Topbar — page title + telemetry stats + health + clock + simulate + logout
+// Topbar — page title + telemetry stats + health + clock + simulate + account
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, Zap, Activity, Database } from 'lucide-react'
+import { Zap, Activity, Database } from 'lucide-react'
 import { motion } from 'framer-motion'
 import { UserButton } from '@clerk/react'
 import useGraphStore from '../../store/useGraphStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
 import EnforcementModeBadge from '../ui/EnforcementModeBadge'
+import DetectionPathBadge from '../ui/DetectionPathBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
 import DemoModeBadge from '../ui/DemoModeBadge'
-import DetectionPathBadge from '../ui/DetectionPathBadge'
+import { simulationHiddenOn, simulationBlockedReason } from '../../utils/connection'
+import { GS } from '../../constants/colors'
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
@@ -33,6 +37,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
   const {
     stats,
     connectionMode,
+    socketStatus,
     dataErrors,
     mlHealth,
     mlV2Health,
@@ -47,10 +52,13 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
 
   const healthClamped = Math.max(0, Math.min(100, stats.system_health ?? 0))
   const healthColor =
-    healthClamped >= 80 ? '#12a672' :
-    healthClamped >= 50 ? '#b7791f' : '#E03C3C'
+    healthClamped >= 80 ? GS.success :
+    healthClamped >= 50 ? GS.warn : GS.danger
 
   const isSimulating = connectionMode === 'simulating'
+  // Where the simulate control exists and when it may be used: utils/connection.
+  const simulateHidden = simulationHiddenOn(pathname)
+  const simulateBlocked = isSimulating ? null : simulationBlockedReason(USE_MOCK, connectionMode)
 
   return (
     <header
@@ -78,7 +86,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
       >
         <span
           style={{
-            color: '#1b1f27',
+            color: GS.text,
             fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
             fontWeight: 600,
             fontSize: 13,
@@ -90,12 +98,12 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           {ROUTE_TITLES[pathname] || 'GraphSentinel'}
         </span>
 
-        <ConnectionModeBadge mode={connectionMode} />
+        <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
         <EnforcementModeBadge mode={stats.enforcement_mode} />
+        <DetectionPathBadge mlV2={mlV2Health} />
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
         <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />
-        <DetectionPathBadge mlV2={mlV2Health} />
 
 
         {isSimulating && (
@@ -103,7 +111,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
             style={{
               background: 'rgba(232,146,42,0.15)',
               border: '1px solid rgba(232,146,42,0.4)',
-              color: '#b7791f',
+              color: GS.warn,
               fontSize: 9,
               fontWeight: 700,
               padding: '2px 6px',
@@ -132,15 +140,15 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           overflow: 'hidden',
         }}
       >
-        <TelemetryBadge label="Nodes"   value={stats.total_nodes}                icon="●" color="#5a616e" />
+        <TelemetryBadge label="Nodes"   value={stats.total_nodes}                icon="●" color={GS.textMuted} />
         <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Threats" value={stats.active_threats}             icon="▲" color="#E03C3C" pulse={stats.active_threats > 0} />
+        <TelemetryBadge label="Threats" value={stats.active_threats}             icon="▲" color={GS.danger} pulse={stats.active_threats > 0} />
         <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Blocked" value={stats.blocked_ips}                icon="⬡" color="#3b56d9" />
+        <TelemetryBadge label="Blocked" value={stats.blocked_ips}                icon="⬡" color={GS.primary} />
         <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} icon="~" color="#727a86" />
+        <TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} icon="~" color={GS.textSubtle} />
         <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   icon="↕" color="#727a86" />
+        <TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   icon="↕" color={GS.textSubtle} />
       </div>
 
       {/* ── Right: health + clock + actions ── */}
@@ -158,7 +166,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           }}
         >
           <Activity size={10} style={{ color: healthColor }} />
-          <span style={{ color: '#727a86', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <span style={{ color: GS.textSubtle, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Health
           </span>
           <motion.span
@@ -178,7 +186,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
             border: '1px solid rgba(17,20,26,0.10)',
           }}
         >
-          <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+          <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
             {time}
           </span>
         </div>
@@ -195,7 +203,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
             borderRadius: 6,
             border: '1px solid rgba(139,92,246,0.25)',
             background: 'rgba(139,92,246,0.08)',
-            color: '#7c3aed',
+            color: GS.chain,
             fontSize: 10,
             fontFamily: "'DM Mono', monospace",
             fontWeight: 500,
@@ -210,10 +218,11 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
         </button>
 
         {/* Simulate toggle */}
-        {onSimulate && (
+        {onSimulate && !simulateHidden && (
           <button
             id="topbar-simulate"
             onClick={isSimulating ? onStopSimulate : onSimulate}
+            disabled={Boolean(simulateBlocked)}
             style={{
               display: 'flex',
               alignItems: 'center',
@@ -222,19 +231,21 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
               borderRadius: 6,
               border: `1px solid ${isSimulating ? 'rgba(232,146,42,0.5)' : 'rgba(17,20,26,0.12)'}`,
               background: isSimulating ? 'rgba(232,146,42,0.12)' : 'rgba(17,20,26,0.06)',
-              color: isSimulating ? '#b7791f' : '#5a616e',
+              color: isSimulating ? GS.warn : GS.textMuted,
               fontSize: 10,
               fontFamily: "'DM Mono', monospace",
               fontWeight: 500,
-              cursor: 'pointer',
+              cursor: simulateBlocked ? 'not-allowed' : 'pointer',
+              opacity: simulateBlocked ? 0.5 : 1,
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               transition: 'all 200ms',
+              whiteSpace: 'nowrap',
             }}
-            title="Simulate an attack sequence"
+            title={simulateBlocked || 'Send a synthetic attack to the backend. What it records is real.'}
           >
             <Zap size={10} />
-            <span>{isSimulating ? 'Stop Sim' : 'Simulate'}</span>
+            <span>{isSimulating ? 'Stop Simulation' : 'Simulate Attack'}</span>
           </button>
         )}
 
@@ -259,7 +270,7 @@ function TelemetryBadge({ label, value, icon, color, pulse = false }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 1 }}>
+      <span style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 1 }}>
         {icon} {label}
       </span>
       <span

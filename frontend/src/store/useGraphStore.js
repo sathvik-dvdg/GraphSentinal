@@ -5,6 +5,7 @@
 import { create } from 'zustand'
 import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealingEvents } from '../services/api'
 import { loadResolvedIncidentIds, saveResolvedIncidentIds } from '../utils/alertStatus'
+import { overlayAfterFetch } from '../utils/triage'
 
 // connectionMode values:
 //   'connecting'  — app just started, trying to reach backend
@@ -23,6 +24,10 @@ const EMPTY_STATE = {
   stats: { total_nodes: 0, active_threats: 0, blocked_ips: 0, system_health: 100, total_packets: 0, total_bytes: 0, enforcement_mode: 'simulated', demo_fallback_flows: true },
   dataErrors: { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null },
 }
+
+// The pending "clear the healing highlight" timer (audit B34). Module scope: a
+// timer id is not state anything renders from.
+let healingTimer = null
 
 const useGraphStore = create((set, get) => ({
   // ── Data ──────────────────────────────────────────────────
@@ -52,6 +57,8 @@ const useGraphStore = create((set, get) => ({
   // Error.md H7 — persisted so incidents marked resolved in Forensics stay
   // resolved across a refresh (still per-device until there's a backend).
   resolvedIncidentIds: loadResolvedIncidentIds(),
+  // Audit B19 — ids whose PATCH has not come back yet. Not persisted.
+  resolveInFlight: [],
 
   // Per-resource freshness (Error.md #22/#26): Promise.allSettled in
   // useGraphData.js updates each panel's data independently, so a panel can
@@ -63,7 +70,26 @@ const useGraphStore = create((set, get) => ({
     set((state) => ({ dataErrors: { ...state.dataErrors, [resource]: error } })),
 
   // ── Connection state machine ───────────────────────────────
-  connectionMode: 'connecting', // 'connecting' | 'live' | 'mock' | 'simulating'
+  // 'connecting' | 'live' | 'offline' | 'mock' | 'simulating'
+  //   mock    — the backend was never reached: panels are blanked, never faked
+  //   offline — it was answering and has stopped (audit B21): the last data
+  //             stays on screen, marked stale per panel by dataErrors
+  // The mode follows whether REST polls are ANSWERED (useGraphData), not
+  // whether the socket once connected.
+  connectionMode: 'connecting',
+  // What the socket is doing, separately: 'idle' | 'connected' | 'reconnecting' | 'lost'
+  socketStatus: 'idle',
+  // False until the first poll of the nine resources has come back, whatever
+  // it brought: the pages show a skeleton until then, not an empty state that
+  // would read as "nothing happened".
+  initialLoadDone: false,
+  setInitialLoadDone: () => set({ initialLoadDone: true }),
+  // The server caps what it broadcasts and says when it did (`truncated` on the
+  // graph_update payload). Kept so the graph pages can say so too.
+  graphTruncated: false,
+  setSocketStatus: (socketStatus) => set({ socketStatus }),
+  // The mode a simulation interrupted, restored when it ends.
+  modeBeforeSimulation: null,
 
   // ── UI state ──────────────────────────────────────────────
   use3D: true,
@@ -86,6 +112,8 @@ const useGraphStore = create((set, get) => ({
   // state (ConnectionModeBadge already renders this as "OFFLINE"), never
   // fabricated numbers. See Error.md #1.
   setConnectionMode: (mode) => {
+    const current = get().connectionMode
+    if (mode === 'simulating' && current !== 'simulating') set({ modeBeforeSimulation: current })
     set({ connectionMode: mode })
     if (mode === 'mock') {
       set(EMPTY_STATE)
@@ -97,11 +125,16 @@ const useGraphStore = create((set, get) => ({
     get().setConnectionMode(isMock ? 'mock' : get().connectionMode === 'mock' ? 'live' : get().connectionMode),
   
   setSimulating: (isSimulating) =>
-    get().setConnectionMode(isSimulating
-      ? 'simulating'
-      : get().connectionMode === 'simulating'
-        ? (get().isConnected ? 'live' : 'mock')
-        : get().connectionMode),
+    isSimulating ? get().setConnectionMode('simulating') : get().endSimulation(),
+
+  // Leave the simulating state for the mode it interrupted. It used to guess
+  // from the socket ('live' if connected, else 'mock'), which blanked every
+  // panel after a simulation run with the socket down and REST answering.
+  endSimulation: () => {
+    if (get().connectionMode !== 'simulating') return
+    const before = get().modeBeforeSimulation
+    set({ connectionMode: before && before !== 'simulating' ? before : 'connecting', modeBeforeSimulation: null })
+  },
 
   // ── Data setters ──────────────────────────────────────────
   setGraphData: (newData) =>
@@ -117,18 +150,43 @@ const useGraphStore = create((set, get) => ({
         }
         return newNode
       })
-      return { graphData: { nodes: mergedNodes, links: newData.links }, lastDataAt: Date.now() }
+      return {
+        graphData: { nodes: mergedNodes, links: newData.links },
+        graphTruncated: Boolean(newData.truncated),
+        lastDataAt: Date.now(),
+      }
     }),
 
+  // Audit B34 — a socket alert whose id is already in the list (the REST poll
+  // delivered it first, or the server re-emitted it) is not inserted again.
   addAlert: (alert) =>
+    set((state) => {
+      if (alert?.id != null && state.alerts.some((a) => a.id === alert.id)) return {}
+      return { alerts: [alert, ...state.alerts].slice(0, 50) }
+    }),
+
+  // Audit B18 — after a triage PATCH succeeds, the alert in the store takes the
+  // new status at once. Without this the row fell back to the server's OLD
+  // status when the optimistic entry was cleared, until the next poll.
+  applyAlertStatus: (rawAlertId, status, acknowledgedAt) =>
     set((state) => ({
-      alerts: [alert, ...state.alerts].slice(0, 50),
+      alerts: state.alerts.map((a) =>
+        a.id === rawAlertId
+          ? { ...a, alert_status: status, acknowledged_at: acknowledgedAt ?? a.acknowledged_at ?? null }
+          : a),
     })),
 
+  // Audit B34 — one highlight timer. A second healing event used to leave the
+  // first event's timer running, so it cleared the second highlight early.
   setHealingNode: (ip) => {
+    clearTimeout(healingTimer)
+    healingTimer = null
     set({ healingNodeId: ip })
     if (ip) {
-      setTimeout(() => set({ healingNodeId: null }), 3500)
+      healingTimer = setTimeout(() => {
+        healingTimer = null
+        set({ healingNodeId: null })
+      }, 3500)
     }
   },
 
@@ -266,11 +324,7 @@ const useGraphStore = create((set, get) => ({
     } catch (err) {
       console.error('[simulateAttack] POST /api/v1/analyze failed — backend may be unreachable:', err)
     } finally {
-      setTimeout(() => {
-        if (get().connectionMode === 'simulating') {
-          get().setConnectionMode(get().isConnected ? 'live' : 'mock')
-        }
-      }, 8000)
+      setTimeout(() => get().endSimulation(), 8000)
     }
   },
 
@@ -282,9 +336,7 @@ const useGraphStore = create((set, get) => ({
   // (if any) still completes server-side since it's a real backend action,
   // it just won't hold the UI in "simulating" waiting for it.
   stopSimulation: () => {
-    const state = get()
-    if (state.connectionMode !== 'simulating') return
-    state.setConnectionMode(state.isConnected ? 'live' : 'mock')
+    get().endSimulation()
   },
 
   resolveIncident: (incidentId) =>
@@ -293,22 +345,34 @@ const useGraphStore = create((set, get) => ({
         ? state.resolvedIncidentIds
         : [...state.resolvedIncidentIds, incidentId]
       saveResolvedIncidentIds(next)
+      const inFlight = state.resolveInFlight.includes(incidentId)
+        ? state.resolveInFlight
+        : [...state.resolveInFlight, incidentId]
+      return { resolvedIncidentIds: next, resolveInFlight: inFlight }
+    }),
+  // The PATCH for this incident came back, either way.
+  settleResolve: (incidentId) =>
+    set((state) => ({ resolveInFlight: state.resolveInFlight.filter((id) => id !== incidentId) })),
+  // Audit B19 — the server wins. Called after every successful fetch of
+  // incidents or alerts: the server's status is now known, so the local
+  // overlay keeps only what is still in flight. It used to be permanent, and
+  // hid an incident the server had reopened.
+  reconcileResolvedWithServer: () =>
+    set((state) => {
+      const next = overlayAfterFetch(state.resolvedIncidentIds, state.resolveInFlight)
+      if (next.length === state.resolvedIncidentIds.length) return {}
+      saveResolvedIncidentIds(next)
       return { resolvedIncidentIds: next }
     }),
 
   // ── UI setters ────────────────────────────────────────────
   toggleView: () => set((state) => ({ use3D: !state.use3D })),
   setSelectedNode: (node) => set({ selectedNode: node }),
+  // Audit B21 — the socket connecting or dropping no longer sets the mode. A
+  // handshake said "live" while REST was failing, and a drop said "mock" and
+  // blanked the panels while REST was answering. The caller re-polls instead.
   setConnected: (connected) =>
-    set((state) => ({
-      isConnected: connected,
-      connectionMode:
-        state.connectionMode === 'simulating'
-          ? 'simulating' // don't interrupt simulation
-          : connected
-            ? 'live'
-            : 'mock',
-    })),
+    set({ isConnected: connected, socketStatus: connected ? 'connected' : 'reconnecting' }),
   setForensicsOpen: (open) => set({ forensicsOpen: open }),
 
   setAlerts: (alerts) => set({ alerts }),

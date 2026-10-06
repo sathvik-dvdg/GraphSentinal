@@ -14,12 +14,12 @@ import { GS } from '../constants/colors'
 
 const TIME_RANGES = ['1h', '6h', '24h', '7d', '14d', '30d', 'All']
 const ATTACK_COLORS_MAP = {
-  Manual: '#12a672',
-  DDoS: '#E03C3C',
-  SSHBrute: '#b7791f',
-  PortScan: '#3b56d9',
-  Botnet: '#7c3aed',
-  Heuristic: '#E8922A',
+  Manual: GS.success,
+  DDoS: GS.danger,
+  SSHBrute: GS.warn,
+  PortScan: GS.primary,
+  Botnet: GS.chain,
+  Heuristic: GS.statusSuspicious,
 }
 
 export default function TimelineAnalytics() {
@@ -154,8 +154,8 @@ export default function TimelineAnalytics() {
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <TrendingUp size={14} style={{ color: '#3b56d9' }} />
-            <span style={{ color: '#3b56d9', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <TrendingUp size={14} style={{ color: GS.primary }} />
+            <span style={{ color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               Threat Activity ({timeRange})
             </span>
           </div>
@@ -217,7 +217,7 @@ export default function TimelineAnalytics() {
         {/* Breakdown table */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
-            <span style={{ color: '#5a616e', fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               {isMultiDay ? 'Daily Breakdown' : 'Hourly Breakdown'}
             </span>
           </div>
@@ -234,15 +234,15 @@ export default function TimelineAnalytics() {
                 <tbody>
                   {timeBreakdown.map((row) => (
                     <tr key={row.time}>
-                      <td style={{ color: '#727a86', fontFamily: "'DM Mono', monospace" }}>{row.time}</td>
-                      <td style={{ color: '#E03C3C', fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{row.threats}</td>
-                      <td style={{ color: '#12a672', fontFamily: "'DM Mono', monospace" }}>{row.blocked}</td>
+                      <td style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace" }}>{row.time}</td>
+                      <td style={{ color: GS.danger, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{row.threats}</td>
+                      <td style={{ color: GS.success, fontFamily: "'DM Mono', monospace" }}>{row.blocked}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: '#9aa1ad', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
                 No breakdown data yet
               </div>
             )}
@@ -261,10 +261,10 @@ export default function TimelineAnalytics() {
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={typeOverTime} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
                   <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.8)" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: '#f0f2f5', border: '1px solid #e2e5ea', borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: '#1b1f27' }} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: '#727a86' }} />
+                  <XAxis dataKey="time" tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: GS.text }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textSubtle }} />
                   {Object.entries(ATTACK_COLORS_MAP).map(([type, color]) => (
                     <Bar key={type} dataKey={type} stackId="a" fill={color} fillOpacity={0.8} />
                   ))}

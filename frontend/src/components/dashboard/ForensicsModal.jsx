@@ -7,6 +7,7 @@ import { X, RefreshCw, Database, Link2 } from 'lucide-react'
 import { useForensicsData } from '../../hooks/useForensicsData'
 import { formatEventTimestamp } from '../../utils/formatTimestamp'
 import BlockchainRecordsTable from '../forensics/BlockchainRecordsTable'
+import { GS } from '../../constants/colors'
 
 export default function ForensicsModal({ isOpen, onClose }) {
   const [tab, setTab] = useState('incidents')
@@ -40,13 +41,13 @@ export default function ForensicsModal({ isOpen, onClose }) {
           transition={{ type: 'spring', damping: 24, stiffness: 200 }}
           className="w-full max-w-2xl h-screen flex flex-col border-l border-gs-border"
           style={{
-            background: '#ffffff',
+            background: GS.surface,
             boxShadow: '-10px 0 30px rgba(17,20,26,0.10)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
           {/* Top accent line */}
-          <div className="h-px w-full shrink-0" style={{ background: 'linear-gradient(90deg, transparent, #8B5CF660, transparent)' }} />
+          <div className="h-px w-full shrink-0" style={{ background: `linear-gradient(90deg, transparent, ${GS.chainGlow}, transparent)` }} />
 
           {/* Header */}
           <div className="flex items-center justify-between px-5 py-3.5 border-b border-gs-border shrink-0">
@@ -139,7 +140,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
           <div className="flex-1 overflow-auto">
             {tab === 'incidents' ? (
               <table className="gs-table w-full">
-                <thead className="sticky top-0" style={{ background: '#eef1f5' }}>
+                <thead className="sticky top-0" style={{ background: GS.surfaceHeader }}>
                   <tr>
                     {['ID', 'Source IP', 'Attack', 'Threat %', 'Severity', 'Time', 'TX Hash'].map((h) => (
                       <th key={h}>{h}</th>
@@ -187,7 +188,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
           </div>
 
           {/* Footer explainer */}
-          <div className="px-5 py-3 border-t border-gs-border shrink-0" style={{ background: '#ffffff' }}>
+          <div className="px-5 py-3 border-t border-gs-border shrink-0" style={{ background: GS.surface }}>
             <p className="text-[10px] text-gs-faint font-mono leading-relaxed">
               <span className="text-gs-accent/60">ℹ</span>{' '}
               Each <span className="text-gs-chain">keccak256</span> hash fingerprints the incident.

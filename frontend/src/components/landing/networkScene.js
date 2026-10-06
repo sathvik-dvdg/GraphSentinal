@@ -3,11 +3,12 @@
 // function of scroll progress: nothing here reads a clock.
 import * as THREE from 'three'
 import { heroSwing } from './framing'
+import { GS } from '../../constants/colors'
 
 export const PALETTE = {
-  bone: '#EBE7DF',
-  charcoal: '#2B2A28',
-  crimson: '#B4132E',
+  bone: GS.landingBone,
+  charcoal: GS.landingCharcoal,
+  crimson: GS.landingCrimson,
 }
 
 export const HOST_COUNT = 10
@@ -124,8 +125,8 @@ export function createNetworkScene() {
   const group = new THREE.Group()
   const C = PALETTE
 
-  group.add(new THREE.AmbientLight('#ffffff', Math.PI * 0.82))
-  const sun = new THREE.DirectionalLight('#ffffff', Math.PI * 0.5)
+  group.add(new THREE.AmbientLight(GS.surface, Math.PI * 0.82))
+  const sun = new THREE.DirectionalLight(GS.surface, Math.PI * 0.5)
   sun.position.set(4, 9, 6)
   group.add(sun)
 
@@ -202,7 +203,7 @@ export function createNetworkScene() {
   const packetCount = HOST_COUNT * 2 + ATTACK_PACKETS
   const packets = new THREE.InstancedMesh(
     new THREE.OctahedronGeometry(0.055, 0),
-    new THREE.MeshBasicMaterial({ color: '#ffffff' }),
+    new THREE.MeshBasicMaterial({ color: GS.surface }),
     packetCount,
   )
   packets.frustumCulled = false
