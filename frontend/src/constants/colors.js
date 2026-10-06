@@ -53,6 +53,11 @@ export const GS = {
   attackSshBrute: '#a16207',
   attackDosHulk: '#db2777',
   attackDosHulkLight: '#ec4899',
+
+  // Landing page: its own warm palette (pages/LandingPage, components/landing)
+  landingBone: '#ebe7df',
+  landingCharcoal: '#2b2a28',
+  landingCrimson: '#b4132e',
 }
 
 export default GS

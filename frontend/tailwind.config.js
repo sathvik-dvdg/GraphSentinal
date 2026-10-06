@@ -1,3 +1,8 @@
+// The palette lives in src/constants/colors.js. Components that cannot use a
+// class (canvas, three.js, Recharts, inline styles with an alpha suffix) import
+// it directly; the `gs-*` utilities added from it below are the same values.
+import { GS } from './src/constants/colors.js'
+
 /** @type {import('tailwindcss').Config} */
 export default {
   content: ['./index.html', './src/**/*.{js,jsx}'],
@@ -45,6 +50,17 @@ export default {
         'gs-chain':       '#7C3AED',
         'gs-chain-dim':   '#D9C7F5',
         'gs-chain-soft':  'rgba(124,58,237,0.10)',
+
+        // ── In-use colours that had no token (2026-10-05) ─────────
+        // These are what the pages actually draw with. `gs-danger` sits
+        // beside `gs-threat` and `gs-subtle` beside `gs-muted`: two palettes,
+        // not yet merged (see src/constants/colors.js).
+        'gs-danger':         GS.danger,
+        'gs-success':        GS.success,
+        'gs-primary':        GS.primary,
+        'gs-subtle':         GS.textSubtle,
+        'gs-surface-header': GS.surfaceHeader,
+        'gs-border-strong':  GS.borderStrong,
 
         // ── Legacy tokens — remapped to the light palette ─────────
         background: '#F4F6F8',

@@ -6,6 +6,7 @@
 // under #26) — pulling both onto one hook means a fix here covers both.
 import { useState, useEffect, useRef, useCallback } from 'react'
 import { getForensics } from '../services/api'
+import useGraphStore from '../store/useGraphStore'
 
 const EMPTY_DATA = {
   incidents: [],
@@ -29,6 +30,8 @@ export function useForensicsData(active = true, pollMs = 5000) {
       .then((res) => {
         setData(res)
         setFetchError(null)
+        // Audit B19 — the server's incident states are now known.
+        useGraphStore.getState().reconcileResolvedWithServer()
       })
       .catch((err) => setFetchError(err.message || 'Failed to reach the backend'))
       .finally(() => setLoading(false))

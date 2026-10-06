@@ -30,6 +30,10 @@ def _normalize_chain_record(raw: dict) -> dict:
         "severity": raw.get("severity"),
         "is_blocked": raw.get("is_blocked"),
         "gas_used": raw.get("gas_used"),
+        # Written by the contract with every record; it was dropped here, so
+        # the ledger page always showed an empty "Forensics URI:" line.
+        "forensics_uri": raw.get("forensics_uri"),
+        # Records are read back from the chain, so each one is mined.
         "status": "confirmed",
     }
 

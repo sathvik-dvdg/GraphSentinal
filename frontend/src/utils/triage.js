@@ -37,3 +37,23 @@ export function enforceFailureMessage(err) {
   if (status) return `The backend refused the request (HTTP ${status}). Nothing was changed.`
   return 'The backend did not answer. Nothing was changed.'
 }
+
+// Triage (acknowledge / resolve) is allowed for every signed-in role except
+// readonly (backend: require_write_privilege). A missing role is refused by
+// the backend too ("Role could not be determined"), so it is refused here.
+export const TRIAGE_DENIED_REASON = 'Your role is read-only: you can view alerts but not change their status.'
+
+export function canTriage(role) {
+  return Boolean(role) && role !== 'readonly'
+}
+
+// Why a triage change did not save. The change is then dropped on screen, so
+// the row shows the server's status again instead of a local one that would
+// otherwise win for ever (handover FE-24).
+export function triageFailureMessage(err) {
+  const status = err?.response?.status
+  if (status === 403) return `Not saved: ${TRIAGE_DENIED_REASON}`
+  if (status === 401) return 'Not saved: your session has ended. Sign in again.'
+  if (status) return `Not saved: the backend refused the change (HTTP ${status}).`
+  return 'Not saved: the backend did not answer. Try again when it is back.'
+}

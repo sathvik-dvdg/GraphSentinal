@@ -1,8 +1,9 @@
 import { useEffect, useRef } from 'react'
 import { FRAME_COUNT, frameUrl } from './content'
+import { GS } from '../../constants/colors'
 
 const CONCURRENCY = 6
-const BONE = '#EBE7DF'
+const BONE = GS.landingBone
 
 // Coarse-to-fine load order: a fast scrub always has a nearby frame to hold on.
 function loadOrder(count, first) {

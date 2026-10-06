@@ -26,6 +26,8 @@ async def get_settings_endpoint(req: Request = None, _: None = Depends(require_s
         "demo_fallback_flows": settings.demo_fallback_flows,
         "ganache_url": settings.ganache_url,
         "contract_address": settings.contract_address or None,
+        # Gas is estimated per call and capped at this (BLOCKCHAIN_MAX_GAS).
+        "blockchain_max_gas": settings.blockchain_max_gas,
         # Read-only: reported so the UI can distinguish the operator-tunable
         # heuristic threshold from the model's fitted gate. None here means no
         # fitted operating point exists yet and the v2 path raises no alerts.

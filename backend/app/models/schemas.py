@@ -132,6 +132,9 @@ class AlertRecord(BaseModel):
     description: str
     is_blocked: bool
     blockchain_tx: Optional[str] = None
+    # The incident's ledger state (confirmed / pending / retry / failed / ...):
+    # a hash alone does not mean the transaction is on-chain.
+    blockchain_status: Optional[str] = None
     data_source: str = "manual"
     # Error.md H5 — server-authoritative triage state
     alert_status: str = "open"
@@ -308,6 +311,8 @@ class ChainRecord(BaseModel):
     severity: Optional[int] = None
     is_blocked: Optional[bool] = None
     gas_used: Optional[int] = None
+    # The contract's pointer back to the incident ("local://incident/42").
+    forensics_uri: Optional[str] = None
     status: Optional[str] = "confirmed"
 
 
@@ -330,6 +335,8 @@ class SettingsResponse(BaseModel):
     demo_fallback_flows: bool
     ganache_url: str
     contract_address: Optional[str] = None
+    # Cap on the gas estimated per ledger transaction (BLOCKCHAIN_MAX_GAS).
+    blockchain_max_gas: Optional[int] = None
     # READ-ONLY. The v2 model's binary gate is an operating point fitted against
     # measured precision/recall; it is not an operator preference and PATCH
     # /settings cannot move it. Surfaced so the UI can show the two thresholds

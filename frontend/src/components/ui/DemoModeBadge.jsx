@@ -11,7 +11,7 @@ export default function DemoModeBadge({ demoFallbackFlows, className = '' }) {
 
   return (
     <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider badge-sim ${className}`}
+      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider whitespace-nowrap badge-sim ${className}`}
       role="status"
       title="This backend is configured to fall back to synthetic demo traffic if the OVS daemon is unreachable (DEMO_FALLBACK_FLOWS=true)"
     >

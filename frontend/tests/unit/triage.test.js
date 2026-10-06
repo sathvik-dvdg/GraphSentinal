@@ -4,6 +4,7 @@ import assert from 'node:assert/strict'
 
 import {
   alertStatusOf, overlayAfterFetch, canEnforce, enforceFailureMessage, ENFORCE_DENIED_REASON,
+  canTriage, triageFailureMessage, TRIAGE_DENIED_REASON,
 } from '../../src/utils/triage.js'
 
 test('B17: a blocked alert with no triage is open, not resolved', () => {
@@ -39,3 +40,19 @@ test('B20: a refused block says why, and that nothing changed', () => {
   assert.match(enforceFailureMessage({ response: { status: 500 } }), /HTTP 500.*Nothing was changed/)
   assert.match(enforceFailureMessage(new Error('Network Error')), /did not answer.*Nothing was changed/)
 })
+
+test('FE-24: triage is allowed for every role the backend accepts, not readonly', () => {
+  assert.equal(canTriage('admin'), true)
+  assert.equal(canTriage('operator'), true)
+  assert.equal(canTriage('readonly'), false)
+  assert.equal(canTriage(null), false)       // backend: "Role could not be determined"
+  assert.equal(canTriage(undefined), false)
+})
+
+test('FE-24: a failed triage says why, in words', () => {
+  assert.ok(triageFailureMessage({ response: { status: 403 } }).includes(TRIAGE_DENIED_REASON))
+  assert.match(triageFailureMessage({ response: { status: 401 } }), /session has ended/)
+  assert.match(triageFailureMessage({ response: { status: 500 } }), /HTTP 500/)
+  assert.match(triageFailureMessage(new Error('Network Error')), /did not answer/)
+})
+
