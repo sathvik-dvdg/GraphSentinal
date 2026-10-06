@@ -8,6 +8,8 @@ user, whatever role their Clerk metadata held.
 from __future__ import annotations
 
 import inspect
+import threading
+import time
 from types import SimpleNamespace
 
 import pytest
@@ -25,6 +27,19 @@ class _FakeUsers:
     def get(self, *, user_id):  # keyword-only, like the real SDK (checked below)
         self.calls += 1
         return SimpleNamespace(id=user_id, public_metadata=self._metadata)
+
+
+@pytest.fixture(autouse=True)
+def _empty_caches():
+    """Every cache starts and ends empty, so one test's lookups cannot leak into
+    the next (the failure cache would otherwise hold "user_1 failed" for 5 s)."""
+    caches = (auth_service._clerk_role_cache, auth_service._clerk_no_role_cache,
+              auth_service._clerk_failure_cache, auth_service._fetch_locks)
+    for c in caches:
+        c.clear()
+    yield
+    for c in caches:
+        c.clear()
 
 
 @pytest.fixture
@@ -100,3 +115,42 @@ def test_request_without_metadata_claim_gets_role_from_clerk(fake_clerk, monkeyp
     identity = deps.get_current_identity(request=None, authorization="Bearer t", x_api_key=None)
 
     assert identity == {"type": "session", "role": "admin", "identity": "user_1"}
+
+
+def test_concurrent_requests_for_one_user_make_one_clerk_call(fake_clerk):
+    """The dashboard sends ~9 requests at once; on a cold cache each used to call Clerk."""
+    real_get = fake_clerk.get
+
+    def slow_get(*, user_id):
+        time.sleep(0.2)  # a Clerk round trip
+        return real_get(user_id=user_id)
+
+    fake_clerk.get = slow_get
+    roles = []
+    threads = [threading.Thread(target=lambda: roles.append(auth_service.get_role_from_clerk("user_1", "sk_test_x")))
+               for _ in range(9)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+
+    assert roles == ["admin"] * 9
+    assert fake_clerk.calls == 1
+
+
+def test_a_failed_lookup_is_remembered_briefly(monkeypatch):
+    """During a Clerk outage, one call per user per 5 s -- not one per request."""
+    attempts = []
+
+    def broken(bearer_auth):
+        attempts.append(1)
+        raise RuntimeError("clerk unreachable")
+
+    monkeypatch.setattr(auth_service, "Clerk", broken)
+    for _ in range(5):
+        assert auth_service.get_role_from_clerk("user_1", "sk_test_x") is None   # fails closed
+    assert len(attempts) == 1
+
+    auth_service._clerk_failure_cache.clear()  # the 5 s have passed
+    assert auth_service.get_role_from_clerk("user_1", "sk_test_x") is None
+    assert len(attempts) == 2
