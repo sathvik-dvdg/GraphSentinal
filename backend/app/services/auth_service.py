@@ -9,16 +9,51 @@ from clerk_backend_api import Clerk
 from app.config import settings
 
 _clerk_role_cache = TTLCache(maxsize=1000, ttl=300)
+# Users with no role are cached too, briefly: long enough that a signed-in user
+# without a role can't turn every request into a Clerk API call (rate limits),
+# short enough that a role added in the Clerk dashboard works within 30s.
+_clerk_no_role_cache = TTLCache(maxsize=1000, ttl=30)
+# A lookup that FAILED (Clerk down, timing out, rate-limiting) is remembered for
+# a few seconds, so an outage costs one Clerk call per user per 5 s instead of
+# one per request. Requests fail closed (403) either way.
+_clerk_failure_cache = TTLCache(maxsize=1000, ttl=5)
+# One lookup per user at a time: the dashboard sends ~9 requests at once, and
+# on a cold cache each used to call Clerk. Later arrivals wait for the first
+# and read its answer from the cache.
+_fetch_locks: TTLCache = TTLCache(maxsize=1000, ttl=60)
 _cache_lock = Lock()
 _log = logging.getLogger("graphsentinel.auth")
+
+
+def _cached_role(user_id: str) -> tuple[bool, str | None]:
+    """(hit, role) from the caches. Call with _cache_lock held."""
+    if user_id in _clerk_role_cache:
+        return True, _clerk_role_cache[user_id]
+    if user_id in _clerk_no_role_cache or user_id in _clerk_failure_cache:
+        return True, None
+    return False, None
 
 
 def get_role_from_clerk(user_id: str, clerk_secret: str) -> str | None:
     """Fetch role securely from Clerk API with a thread-safe TTLCache. Fails closed."""
     with _cache_lock:
-        if user_id in _clerk_role_cache:
-            return _clerk_role_cache[user_id]
-            
+        hit, role = _cached_role(user_id)
+        if hit:
+            return role
+        user_lock = _fetch_locks.get(user_id)
+        if user_lock is None:
+            user_lock = _fetch_locks[user_id] = Lock()
+
+    with user_lock:
+        # Another request for this user may have fetched while we waited.
+        with _cache_lock:
+            hit, role = _cached_role(user_id)
+            if hit:
+                return role
+        return _fetch_role(user_id, clerk_secret)
+
+
+def _fetch_role(user_id: str, clerk_secret: str) -> str | None:
     try:
         clerk = Clerk(bearer_auth=clerk_secret)
         # user_id is keyword-only in clerk-backend-api; passing it positionally
@@ -30,12 +65,14 @@ def get_role_from_clerk(user_id: str, clerk_secret: str) -> str | None:
         # Fails closed on any Clerk API error (rate limits, timeouts), but says so:
         # a silent None is indistinguishable from a user who has no role.
         _log.warning("Clerk role lookup failed for %s: %s: %s", user_id, type(exc).__name__, exc)
+        with _cache_lock:
+            _clerk_failure_cache[user_id] = True
         return None
 
     if role is None:
-        # Not cached: a role added in the Clerk dashboard should work on the
-        # next request, not after the 5-minute TTL.
         _log.warning("Clerk user %s has no public_metadata.role -- requests will get 403", user_id)
+        with _cache_lock:
+            _clerk_no_role_cache[user_id] = True
         return None
     with _cache_lock:
         _clerk_role_cache[user_id] = role
