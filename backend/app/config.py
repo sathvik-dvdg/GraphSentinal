@@ -58,6 +58,11 @@ class Settings(BaseSettings):
 
     backend_api_token: str = "change-me-for-demo"
     admin_api_token: str = "admin-secret-key-for-demo"
+    # Verifies the browser's Clerk session tokens. Read through settings so
+    # CLERK_SECRET_KEY works from backend/.env as well as the environment:
+    # os.environ never sees backend/.env, so a key placed there was ignored and
+    # every /api/v1 route answered 500.
+    clerk_secret_key: str = ""
     max_analyze_flows: int = 5000
     analyze_rate_limit_per_minute: int = 30
 

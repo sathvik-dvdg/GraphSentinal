@@ -103,6 +103,11 @@ async def lifespan(app: FastAPI):
         print(f"[ML-v2] Disabled: {gs2.disabled_reason}")
     print(f"[Blockchain] Connected: {blockchain._connected} {'[OK]' if blockchain._connected else '[ERROR]'}")
     print(f"[Reconcile] Active: {app.state.reconciler is not None} [OK]")
+    if settings.clerk_secret_key:
+        print("[Auth] Clerk secret key configured [OK]")
+    else:
+        print("[Auth] CLERK_SECRET_KEY not set [ERROR] -- browser sessions cannot be verified; "
+              "every /api/v1 request without X-API-Key returns 500. Set it in backend/.env.")
     yield
     if app.state.reconciler is not None:
         app.state.reconciler.stop()
