@@ -81,8 +81,10 @@ while ((Get-Date) -lt $deadline -and -not (Test-NetConnection 127.0.0.1 -Port 85
 
 # With real Mininet traffic the backend must never fill in for a failed switch
 # poll with made-up flows (DEMO_FALLBACK_FLOWS). The variable overrides backend\.env.
+# GS_WSL_DISTRO tells the Simulate button's attack scripts which distribution to
+# enter: it must be the one running the topology (-WslDistro), not the default.
 $envPrefix = ""
-if ($WithMininet) { $envPrefix = '$env:DEMO_FALLBACK_FLOWS = ''false''; ' }
+if ($WithMininet) { $envPrefix = '$env:DEMO_FALLBACK_FLOWS = ''false''; $env:GS_WSL_DISTRO = ' + (Quote $WslDistro) + '; ' }
 $backendCmd = $envPrefix + "& " + (Quote $py) + " -m uvicorn app.main:socket_app --host 127.0.0.1 --port $BackendPort"
 Start-Window "GS backend :$BackendPort" (Join-Path $root "backend") $backendCmd
 
