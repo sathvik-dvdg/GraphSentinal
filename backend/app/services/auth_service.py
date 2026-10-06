@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import logging
 from threading import Lock
 
 from cachetools import TTLCache
@@ -9,6 +10,7 @@ from app.config import settings
 
 _clerk_role_cache = TTLCache(maxsize=1000, ttl=300)
 _cache_lock = Lock()
+_log = logging.getLogger("graphsentinel.auth")
 
 
 def get_role_from_clerk(user_id: str, clerk_secret: str) -> str | None:
@@ -19,15 +21,25 @@ def get_role_from_clerk(user_id: str, clerk_secret: str) -> str | None:
             
     try:
         clerk = Clerk(bearer_auth=clerk_secret)
-        user = clerk.users.get(user_id)
+        # user_id is keyword-only in clerk-backend-api; passing it positionally
+        # raised TypeError, which the except below turned into "no role" -- a
+        # 403 on every request for every user, whatever their metadata said.
+        user = clerk.users.get(user_id=user_id)
         role = user.public_metadata.get("role") if user.public_metadata else None
-        
-        with _cache_lock:
-            _clerk_role_cache[user_id] = role
-        return role
-    except Exception:
-        # Fails closed on any Clerk API error (rate limits, timeouts)
+    except Exception as exc:
+        # Fails closed on any Clerk API error (rate limits, timeouts), but says so:
+        # a silent None is indistinguishable from a user who has no role.
+        _log.warning("Clerk role lookup failed for %s: %s: %s", user_id, type(exc).__name__, exc)
         return None
+
+    if role is None:
+        # Not cached: a role added in the Clerk dashboard should work on the
+        # next request, not after the 5-minute TTL.
+        _log.warning("Clerk user %s has no public_metadata.role -- requests will get 403", user_id)
+        return None
+    with _cache_lock:
+        _clerk_role_cache[user_id] = role
+    return role
 
 
 def validate_session_for_socketio(token: str | None) -> dict[str, any] | None:
