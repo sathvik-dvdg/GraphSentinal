@@ -9,6 +9,10 @@ from clerk_backend_api import Clerk
 from app.config import settings
 
 _clerk_role_cache = TTLCache(maxsize=1000, ttl=300)
+# Users with no role are cached too, briefly: long enough that a signed-in user
+# without a role can't turn every request into a Clerk API call (rate limits),
+# short enough that a role added in the Clerk dashboard works within 30s.
+_clerk_no_role_cache = TTLCache(maxsize=1000, ttl=30)
 _cache_lock = Lock()
 _log = logging.getLogger("graphsentinel.auth")
 
@@ -18,6 +22,8 @@ def get_role_from_clerk(user_id: str, clerk_secret: str) -> str | None:
     with _cache_lock:
         if user_id in _clerk_role_cache:
             return _clerk_role_cache[user_id]
+        if user_id in _clerk_no_role_cache:
+            return None
             
     try:
         clerk = Clerk(bearer_auth=clerk_secret)
@@ -33,9 +39,9 @@ def get_role_from_clerk(user_id: str, clerk_secret: str) -> str | None:
         return None
 
     if role is None:
-        # Not cached: a role added in the Clerk dashboard should work on the
-        # next request, not after the 5-minute TTL.
         _log.warning("Clerk user %s has no public_metadata.role -- requests will get 403", user_id)
+        with _cache_lock:
+            _clerk_no_role_cache[user_id] = True
         return None
     with _cache_lock:
         _clerk_role_cache[user_id] = role
