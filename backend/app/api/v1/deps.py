@@ -1,7 +1,6 @@
 # [WSL2]
 from __future__ import annotations
 
-import os
 import secrets
 from collections import deque
 from time import monotonic
@@ -34,9 +33,9 @@ def get_current_identity(
         raise HTTPException(status_code=status.HTTP_401_UNAUTHORIZED, detail="Invalid API key")
 
     # 2. Session Bearer Token Authentication (Clerk natively)
-    clerk_secret = os.environ.get("CLERK_SECRET_KEY")
+    clerk_secret = settings.clerk_secret_key
     if not clerk_secret:
-        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="Clerk secret key not configured")
+        raise HTTPException(status_code=status.HTTP_500_INTERNAL_SERVER_ERROR, detail="CLERK_SECRET_KEY is not configured on the backend")
 
     try:
         # Proper dependency injection: pass real FastAPI Request to Clerk SDK

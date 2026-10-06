@@ -1,6 +1,5 @@
 from __future__ import annotations
 
-import os
 from threading import Lock
 
 from cachetools import TTLCache
@@ -36,7 +35,7 @@ def validate_session_for_socketio(token: str | None) -> dict[str, any] | None:
     if not token:
         return None
         
-    clerk_secret = os.environ.get("CLERK_SECRET_KEY")
+    clerk_secret = settings.clerk_secret_key
     if not clerk_secret:
         return None
         
