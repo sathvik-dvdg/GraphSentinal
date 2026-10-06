@@ -46,6 +46,3 @@ ML/threshold_study.json
 ML/timestamp_audit.json
 ML/threshold_flow_level.csv
 ML/threshold_window_level.csv
-
-# Misc
-run_dev.ps1
