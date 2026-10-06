@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import re
+import threading
 from dataclasses import dataclass, field
 from typing import Any
 
@@ -38,13 +39,17 @@ class PollResult:
 # poll. The poll RESULT still carries the error every time; only the console
 # line is deduplicated.
 _last_reported_error: str | None = None
+# Only the monitor thread polls today; the lock keeps the check-and-set atomic
+# if a second caller is ever added.
+_report_lock = threading.Lock()
 
 
 def _report_failure(message: str) -> None:
     global _last_reported_error
-    if message == _last_reported_error:
-        return
-    _last_reported_error = message
+    with _report_lock:
+        if message == _last_reported_error:
+            return
+        _last_reported_error = message
     hint = ""
     if message.startswith(("ConnectionRefusedError", "TimeoutError")):
         hint = (
@@ -60,9 +65,11 @@ def _report_failure(message: str) -> None:
 
 def _report_recovery() -> None:
     global _last_reported_error
-    if _last_reported_error is not None:
-        print("[FlowParser] OVS poll via daemon recovered")
+    with _report_lock:
+        if _last_reported_error is None:
+            return
         _last_reported_error = None
+    print("[FlowParser] OVS poll via daemon recovered")
 
 
 def result_from_output(raw: str) -> PollResult:
