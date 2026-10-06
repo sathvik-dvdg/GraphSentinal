@@ -46,10 +46,6 @@ _report_lock = threading.Lock()
 
 def _report_failure(message: str) -> None:
     global _last_reported_error
-    with _report_lock:
-        if message == _last_reported_error:
-            return
-        _last_reported_error = message
     hint = ""
     if message.startswith(("ConnectionRefusedError", "TimeoutError")):
         hint = (
@@ -60,7 +56,12 @@ def _report_failure(message: str) -> None:
             "serving; set DEMO_FALLBACK_FLOWS=true for synthetic traffic. "
             "Repeats of this error are not printed."
         )
-    print(f"[FlowParser] OVS poll failed via daemon: {message}{hint}")
+    # Print under the lock so the console order matches the state transitions.
+    with _report_lock:
+        if message == _last_reported_error:
+            return
+        _last_reported_error = message
+        print(f"[FlowParser] OVS poll failed via daemon: {message}{hint}")
 
 
 def _report_recovery() -> None:
@@ -69,7 +70,7 @@ def _report_recovery() -> None:
         if _last_reported_error is None:
             return
         _last_reported_error = None
-    print("[FlowParser] OVS poll via daemon recovered")
+        print("[FlowParser] OVS poll via daemon recovered")
 
 
 def result_from_output(raw: str) -> PollResult:
