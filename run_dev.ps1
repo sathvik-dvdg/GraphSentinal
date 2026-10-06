@@ -14,13 +14,17 @@ $root = $PSScriptRoot
 $py = Join-Path $root "backend\.venv\Scripts\python.exe"
 if (-not (Test-Path $py)) { throw "backend\.venv not found at $py" }
 
+# Single-quote a value for the child PowerShell's -Command string. Doubling any
+# ' keeps a clone path like C:\Users\O'Brien\GraphSentinal from ending the quote.
+function Quote([string]$s) { "'" + ($s -replace "'", "''") + "'" }
+
 function Start-Window($title, $dir, $command) {
-    $wrapped = "`$Host.UI.RawUI.WindowTitle = '$title'; Set-Location '$dir'; $command"
+    $wrapped = "`$Host.UI.RawUI.WindowTitle = $(Quote $title); Set-Location -LiteralPath $(Quote $dir); $command"
     Start-Process powershell -ArgumentList "-NoExit", "-Command", $wrapped
 }
 
 Start-Window "GS inference :8081" (Join-Path $root "ML\graphsentinel_v2") `
-    "`$env:GRAPHSENTINEL_MODEL_DIR = '$root\ML'; & '$py' -m uvicorn graphsentinel.inference.service:app --host 127.0.0.1 --port 8081"
+    "`$env:GRAPHSENTINEL_MODEL_DIR = $(Quote "$root\ML"); & $(Quote $py) -m uvicorn graphsentinel.inference.service:app --host 127.0.0.1 --port 8081"
 
 Start-Window "Ganache :8545" (Join-Path $root "blockchain") `
     "npx ganache --host 127.0.0.1 --port 8545 --deterministic --accounts 5 --db ./ganache-data"
@@ -34,7 +38,7 @@ while ((Get-Date) -lt $deadline -and -not (Test-NetConnection 127.0.0.1 -Port 85
 if ((Get-Date) -ge $deadline) { Write-Warning "Ganache did not answer within 90s; starting the backend anyway (blockchain will be disconnected)." }
 
 Start-Window "GS backend :$BackendPort" (Join-Path $root "backend") `
-    "& '$py' -m uvicorn app.main:socket_app --host 127.0.0.1 --port $BackendPort"
+    "& $(Quote $py) -m uvicorn app.main:socket_app --host 127.0.0.1 --port $BackendPort"
 
 # The frontend calls the backend at VITE_BACKEND_URL, and frontend\.env sets it
 # to :8000. A VITE_* variable already in the environment takes priority over
