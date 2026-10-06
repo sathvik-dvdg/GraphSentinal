@@ -1,6 +1,6 @@
 // [Windows] GraphSentinel — Susheep
 // AppShell — persistent layout: sidebar + topbar + page outlet
-// WebSocket, simulateAttack, and NodeDetailPanel all live here so they
+// WebSocket and NodeDetailPanel live here so they
 // survive navigation between routes without resetting.
 import { useState, useEffect } from 'react'
 import { Outlet, useLocation } from 'react-router-dom'
@@ -32,8 +32,6 @@ export default function AppShell() {
     forensicsOpen,
     setSelectedNode,
     setForensicsOpen,
-    simulateAttack,
-    stopSimulation,
     setGraphData,
     setBlockedIPs,
     updateStats,
@@ -107,8 +105,6 @@ export default function AppShell() {
       {/* Topbar */}
       <div style={{ gridColumn: 2, gridRow: 1 }}>
         <Topbar
-          onSimulate={simulateAttack}
-          onStopSimulate={stopSimulation}
           onForensicsClick={() => setForensicsOpen(true)}
         />
       </div>

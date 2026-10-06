@@ -85,6 +85,11 @@ async def lifespan(app: FastAPI):
     except Exception as exc:
         print(f"[Monitor] Disabled: {exc}")
 
+    # The Simulate button's runs push their progress over the socket.
+    from app.api.v1.simulations import attach_socket
+
+    attach_socket(sio, asyncio.get_running_loop())
+
     # N-05: start ReconciliationWorker for continuous blockchain outbox & OVS reconciliation
     try:
         app.state.reconciler = ReconciliationWorker(interval=settings.blockchain_retry_interval_seconds)
@@ -147,7 +152,7 @@ class RequestSizeLimitMiddleware(BaseHTTPMiddleware):
 app.add_middleware(RequestSizeLimitMiddleware)
 app.add_middleware(RequestCorrelationMiddleware)
 
-from app.api.v1 import alerts, analyze, audit, blocked, blockchain, enforcement_actions, forensics, graph, healing, incidents, settings_route, stats, timeline  # noqa: E402
+from app.api.v1 import alerts, analyze, audit, blocked, blockchain, enforcement_actions, forensics, graph, healing, incidents, settings_route, simulations, stats, timeline  # noqa: E402
 
 app.include_router(analyze.router, prefix="/api/v1", tags=["analyze"])
 app.include_router(graph.router, prefix="/api/v1", tags=["graph"])
@@ -162,6 +167,7 @@ app.include_router(blockchain.router, prefix="/api/v1", tags=["blockchain"])
 app.include_router(settings_route.router, prefix="/api/v1", tags=["settings"])
 app.include_router(enforcement_actions.router, prefix="/api/v1", tags=["enforcement-actions"])
 app.include_router(audit.router, prefix="/api/v1", tags=["audit"])
+app.include_router(simulations.router, prefix="/api/v1", tags=["simulations"])
 
 
 

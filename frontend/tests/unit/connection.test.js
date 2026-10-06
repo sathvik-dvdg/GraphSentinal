@@ -4,7 +4,8 @@ import assert from 'node:assert/strict'
 
 import {
   reconnectDelay, socketStatusFor, modeAfterPoll, connectionDisplay,
-  simulationBlockedReason, SIMULATION_BLOCKED_REASON, SIMULATION_ROLE_REASON, staleBadgeText,
+  simulationBlockedReason, SIMULATION_ROLE_REASON, SIMULATION_MOCK_REASON, SIMULATION_OFFLINE_REASON,
+  staleBadgeText,
 } from '../../src/utils/connection.js'
 
 test('reconnection: five fast retries, then 5 s doubling to a 30 s ceiling, forever', () => {
@@ -52,14 +53,16 @@ test('badge: REST answering with the socket down is polling, not lost', () => {
   assert.equal(connectionDisplay('simulating', 'lost').label, 'SIMULATION')
 })
 
-test('FE-24: a read-only role may not simulate, in any build', () => {
-  assert.equal(simulationBlockedReason(true, 'mock', 'readonly'), SIMULATION_ROLE_REASON)
+test('Simulate runs real attacks: admin only, and only on a backend that answers', () => {
   assert.equal(simulationBlockedReason(false, 'live', 'readonly'), SIMULATION_ROLE_REASON)
-  assert.equal(simulationBlockedReason(true, 'mock', null), SIMULATION_ROLE_REASON)
-  assert.equal(simulationBlockedReason(true, 'mock', 'admin'), null)
-  assert.equal(simulationBlockedReason(false, 'live', 'admin'), SIMULATION_BLOCKED_REASON)
-  // Without a role argument the build/backend rule is unchanged.
-  assert.equal(simulationBlockedReason(true, 'live'), null)
+  assert.equal(simulationBlockedReason(false, 'live', 'operator'), SIMULATION_ROLE_REASON)
+  assert.equal(simulationBlockedReason(false, 'live', null), SIMULATION_ROLE_REASON)
+  assert.equal(simulationBlockedReason(false, 'live', 'admin'), null)
+  assert.equal(simulationBlockedReason(true, 'mock', 'admin'), SIMULATION_MOCK_REASON)
+  assert.equal(simulationBlockedReason(false, 'offline', 'admin'), SIMULATION_OFFLINE_REASON)
+  assert.equal(simulationBlockedReason(false, 'connecting', 'admin'), SIMULATION_OFFLINE_REASON)
+  // Without a role argument only the build and backend are checked.
+  assert.equal(simulationBlockedReason(false, 'live'), null)
 })
 
 const NINE = { graph: null, alerts: null, blocked: null, forensics: null, stats: null, timeline: null, health: null, enforcement: null, healing: null }

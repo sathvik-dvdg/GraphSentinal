@@ -19,6 +19,7 @@ import SelfHealing from './pages/SelfHealing'
 import AlertCentre from './pages/AlertCentre'
 import AuditLog from './pages/AuditLog'
 import Settings from './pages/Settings'
+import AttackSimulation from './pages/AttackSimulation'
 
 function AxiosInterceptorSetter({ children }) {
   const { getToken } = useAuth()
@@ -100,6 +101,7 @@ export default function App() {
             <Route path="alerts"      element={<AlertCentre />} />
             <Route path="audit"       element={<AuditLog />} />
             <Route path="settings"    element={<Settings />} />
+            <Route path="simulation"  element={<AttackSimulation />} />
           </Route>
 
           {/* Catch-all → landing */}

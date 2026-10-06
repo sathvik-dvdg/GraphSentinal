@@ -19,6 +19,7 @@ export function useWebSocket({
   onGraphUpdate,
   onAlert,
   onHealingTriggered,
+  onSimulationUpdate, // Optional: progress of a run started with the Simulate button
   onConnect,
   onDisconnect,
   onReconnect, // Optional: called after reconnect so caller can re-fetch via REST
@@ -44,7 +45,7 @@ export function useWebSocket({
   // (e.g. connectionMode-dependent behavior in SimulationProvider) while the
   // socket connection itself stays stable.
   const callbacksRef = useRef({})
-  callbacksRef.current = { onGraphUpdate, onAlert, onHealingTriggered, onConnect, onDisconnect, onReconnect, onStatus }
+  callbacksRef.current = { onGraphUpdate, onAlert, onHealingTriggered, onSimulationUpdate, onConnect, onDisconnect, onReconnect, onStatus }
 
   useEffect(() => {
     if (!enabled) return undefined
@@ -117,6 +118,10 @@ export function useWebSocket({
 
     socket.on('healing_triggered', (data) => {
       callbacksRef.current.onHealingTriggered?.(data)
+    })
+
+    socket.on('simulation_update', (data) => {
+      callbacksRef.current.onSimulationUpdate?.(data)
     })
 
     socket.on('disconnect', () => {
