@@ -83,6 +83,14 @@ class Settings(BaseSettings):
     daemon_port: int = 50051
     daemon_token: str = "test-token"
 
+    # The Simulate button runs mininet/demo/attacks (services/simulation_runner).
+    # Empty = the repository's own folder / this interpreter.
+    simulation_scripts_dir: str = ""
+    simulation_python: str = ""
+    # How long to watch for the incident after an attack: v1's score for a
+    # source rises over the first polls after it (run_demo.py --wait).
+    simulation_score_wait_seconds: float = 20.0
+
     flow_snapshot_retention_hours: int = 24
 
     # Comma-separated list — see cors_origins_list below (Error.md #28)

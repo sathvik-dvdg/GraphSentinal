@@ -3,9 +3,9 @@
 // § 4.5 Fix: connectionMode state machine replaces isMockMode + isSimulating booleans
 // MOCK data is untangled from initial state.
 import { create } from 'zustand'
-import { analyzeFlows, getGraph, getAlerts, getBlocked, getForensics, getStats, getTimeline, getHealingEvents } from '../services/api'
 import { loadResolvedIncidentIds, saveResolvedIncidentIds } from '../utils/alertStatus'
 import { mergeGraph } from '../utils/graphMerge'
+import { mergeRun } from '../utils/simulation'
 import { overlayAfterFetch } from '../utils/triage'
 
 // connectionMode values:
@@ -242,113 +242,12 @@ const useGraphStore = create((set, get) => ({
       }
     })),
 
-  // Sends a real DDoS-shaped flow burst through the actual backend pipeline
-  // (POST /api/v1/analyze — the same code path real OVS flows go through:
-  // real GNN scoring, real incident creation, real self-healing/blocking,
-  // real blockchain write). No fabricated hashes or optimistic local state —
-  // see Error.md #3. `targetIp` is the attacker source; `victimIp` is who
-  // it's attacking.
-  simulateAttack: async ({ attackType, targetIp, victimIp, speedMultiplier = 1 } = {}) => {
-    // Randomize defaults so each Simulate click hits different hosts/attacks
-    const allHosts = Array.from({ length: 10 }, (_, i) => `10.0.0.${i + 1}`)
-    const attackTypes = ['DDoS', 'PortScan', 'SSHBrute', 'Botnet']
-    if (!attackType) attackType = attackTypes[Math.floor(Math.random() * attackTypes.length)]
-    if (!targetIp) targetIp = allHosts[Math.floor(Math.random() * allHosts.length)]
-    if (!victimIp) {
-      const others = allHosts.filter((h) => h !== targetIp)
-      victimIp = others[Math.floor(Math.random() * others.length)]
-    }
-    // Error.md H2/H3 — the Settings "Simulation Speed" (1x/5x/10x) is now a
-    // real intensity multiplier on the synthetic flow volume, not dead state.
-    const mult = Math.max(1, Number(speedMultiplier) || 1)
-    const state = get()
-    if (state.connectionMode === 'simulating') return
-
-    state.setConnectionMode('simulating')
-
-    const attackFlows = {
-      // SYN flood: huge packet count, small packets, NON-HTTP ports. The old
-      // template hit ports 80/443 with ~9 MB, which the backend's
-      // infer_attack_type() correctly reads as an HTTP flood (DoSHulk, since
-      // `http_bytes > 1_000_000` is checked before the DDoS rule) — so every
-      // "DDoS" simulation came back labelled DoSHulk. High-numbered ports keep
-      // http_bytes at 0, so `total_packets > 5000` classifies it as DDoS.
-      DDoS: [
-        { src_ip: targetIp, dst_ip: victimIp, src_port: 54321, dst_port: 8443, protocol: 'TCP', packet_count: 20000, byte_count: 1200000, duration_sec: 3.0, tcp_flags: 2 },
-        { src_ip: targetIp, dst_ip: victimIp, src_port: 54322, dst_port: 9090, protocol: 'TCP', packet_count: 16000, byte_count: 960000, duration_sec: 3.0, tcp_flags: 2 },
-      ],
-      PortScan: Array.from({ length: 12 }, (_, i) => ({
-        src_ip: targetIp, dst_ip: victimIp, src_port: 40000 + i, dst_port: 20 + i * 5,
-        protocol: 'TCP', packet_count: 3, byte_count: 180, duration_sec: 0.05, tcp_flags: 2,
-      })),
-      SSHBrute: Array.from({ length: 8 }, (_, i) => ({
-        src_ip: targetIp, dst_ip: victimIp, src_port: 50000 + i, dst_port: 22,
-        protocol: 'TCP', packet_count: 40, byte_count: 6400, duration_sec: 1.2, tcp_flags: 2,
-      })),
-      Botnet: [
-        { src_ip: targetIp, dst_ip: victimIp, src_port: 51234, dst_port: 6667, protocol: 'TCP', packet_count: 500, byte_count: 64000, duration_sec: 8.0, tcp_flags: 2 },
-      ],
-    }
-    // Error.md #34 — tag every synthetic flow as simulation-sourced so it's
-    // distinguishable from real OVS traffic everywhere downstream (graph
-    // nodes, incidents, alerts, forensics) instead of blending in silently.
-    // Error.md H2 — scale packet/byte volume by the chosen speed multiplier.
-    const flows = (attackFlows[attackType] || attackFlows.DDoS).map((f) => ({
-      ...f,
-      packet_count: Math.round((f.packet_count || 0) * mult),
-      byte_count: Math.round((f.byte_count || 0) * mult),
-      data_source: 'simulation',
-    }))
-
-    try {
-      const analyzeResult = await analyzeFlows(flows)
-      if (analyzeResult?.ml_mode) {
-        state.setMlHealth({ mode: analyzeResult.ml_mode, degraded_reason: analyzeResult.degraded_reason ?? null })
-      }
-
-      // Pull the real resulting state back via REST — same normalization
-      // path as normal polling (useGraphData.js), just triggered immediately
-      // instead of waiting for the next 10s tick.
-      const [graphRes, alertsRes, blockedRes, forensicsRes, statsRes, timelineRes, healingRes] =
-        await Promise.allSettled([
-          getGraph(), getAlerts(), getBlocked(), getForensics(), getStats(), getTimeline(), getHealingEvents(),
-        ])
-
-      if (graphRes.status === 'fulfilled') state.setGraphData(graphRes.value)
-      if (alertsRes.status === 'fulfilled') state.setAlerts(alertsRes.value.alerts)
-      if (blockedRes.status === 'fulfilled') state.setBlockedIPs(blockedRes.value.blocked_ips)
-      if (forensicsRes.status === 'fulfilled') {
-        state.setChainTxs(forensicsRes.value.blockchain_records ?? [])
-        state.setChainId(forensicsRes.value.chain_id ?? null)
-      }
-      if (statsRes.status === 'fulfilled') state.updateStats(statsRes.value)
-      if (timelineRes.status === 'fulfilled') state.setTimeline(timelineRes.value.data_points)
-      if (healingRes.status === 'fulfilled') {
-        state.setHealingEvents(healingRes.value.events)
-      } else if (analyzeResult?.healing_events?.length) {
-        analyzeResult.healing_events.forEach((e) => state.addHealingEvent(e))
-      }
-
-      if (blockedRes.status === 'fulfilled' && blockedRes.value.blocked_ips?.some((b) => b.ip === targetIp)) {
-        state.setHealingNode(targetIp)
-      }
-    } catch (err) {
-      console.error('[simulateAttack] POST /api/v1/analyze failed — backend may be unreachable:', err)
-    } finally {
-      setTimeout(() => get().endSimulation(), 8000)
-    }
-  },
-
-  // The Topbar's "Stop Sim" button previously called simulateAttack() again
-  // while already simulating, which just hit simulateAttack's own re-entrancy
-  // guard (`if connectionMode === 'simulating') return`) and did nothing —
-  // clicking it looked like it should cancel, but was inert. This ends the
-  // simulating UI state immediately; the in-flight /api/v1/analyze request
-  // (if any) still completes server-side since it's a real backend action,
-  // it just won't hold the UI in "simulating" waiting for it.
-  stopSimulation: () => {
-    get().endSimulation()
-  },
+  // The run started with the Simulate button (pages/AttackSimulation): the
+  // real scripts in mininet/demo/attacks on the live topology, followed over
+  // the socket (`simulation_update`) and GET /api/v1/simulations. Nothing here
+  // builds a flow: what the run produces arrives the usual way, from the switch.
+  simulationRun: null,
+  setSimulationRun: (run) => set((state) => ({ simulationRun: mergeRun(state.simulationRun, run) })),
 
   resolveIncident: (incidentId) =>
     set((state) => {

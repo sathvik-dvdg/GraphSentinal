@@ -105,6 +105,12 @@ export const getForensicsPage = (limit = 500, offset = 0) =>
 
 export const analyzeFlows = (flows) => api.post('/api/v1/analyze', { flows })
 
+// The Simulate button: runs mininet/demo/attacks on the live topology (admin).
+export const getSimulations = () => api.get('/api/v1/simulations')
+export const startSimulation = (attack, control = false) =>
+  api.post('/api/v1/simulations', { attack, control })
+export const stopSimulation = () => api.post('/api/v1/simulations/stop')
+
 export const getSettings = () => api.get('/api/v1/settings')
 export const updateThreatThreshold = (threat_threshold) =>
   api.patch('/api/v1/settings', { threat_threshold })

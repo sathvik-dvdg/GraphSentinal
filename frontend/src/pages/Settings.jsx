@@ -1,14 +1,13 @@
 // [Windows] GraphSentinel — Susheep
 // Settings — tabbed configuration page: Simulation / Detection / Network / Blockchain
 import { useState, useEffect } from 'react'
+import { Link as RouterLink } from 'react-router-dom'
 import { Zap, Shield, Network, Link2, Lock, RefreshCw } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import { getSettings, updateThreatThreshold, reloadMlModel } from '../services/api'
 import useSessionUser from '../hooks/useSessionUser'
-import { simulationBlockedReason } from '../utils/connection'
 import { GS } from '../constants/colors'
 
-const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 const ADMIN_REQUIRED = 'An admin is required to change this.'
 
 const TABS = [
@@ -18,23 +17,12 @@ const TABS = [
   { id: 'blockchain',  label: 'Blockchain',            icon: <Link2 size={14} /> },
 ]
 
-const ATTACK_TYPES = ['DDoS', 'SSHBrute', 'PortScan', 'Botnet']
-
 export default function Settings() {
   const [activeTab, setActiveTab] = useState('simulation')
-  const { connectionMode, endSimulation, simulateAttack } = useGraphStore()
-
-  // Simulation
-  const isSimulating = connectionMode === 'simulating'
   // Audit B20 — changing the threshold and reloading the model are admin-only on
   // the backend. Shown disabled with the reason, never enabled-and-refused.
   const { role } = useSessionUser()
   const isAdmin = role === 'admin'
-  const simulateBlocked = simulationBlockedReason(USE_MOCK, connectionMode, role)
-  const [simSpeed, setSimSpeed] = useState('1x')
-  const [injectType, setInjectType] = useState('DDoS')
-  const [injectTarget, setInjectTarget] = useState('10.0.0.2')
-  const [injectVictim, setInjectVictim] = useState('')  // '' = random
 
   // Detection
   const [anomalyThreshold, setAnomalyThreshold] = useState(70)
@@ -73,15 +61,6 @@ export default function Settings() {
         setTimeout(() => setThresholdStatus('idle'), 2000)
       })
       .catch(() => setThresholdStatus('error'))
-  }
-
-  // FE-22 — the switch only ends a running simulation. Turning it on used to
-  // set the mode to 'simulating' without sending any attack, which stops the
-  // polling and drops socket pushes: the whole dashboard froze until someone
-  // switched it off, and it bypassed the gate on the Simulate Attack button.
-  // Starting a simulation is that button's job, gate included.
-  const toggleSimulation = () => {
-    if (isSimulating) endSimulation()
   }
 
   return (
@@ -128,83 +107,17 @@ export default function Settings() {
       <div style={{ maxWidth: 640 }}>
         {activeTab === 'simulation' && (
           <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
-            <Section title="Simulation Mode">
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <div>
-                  <div style={{ color: GS.text, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 500, marginBottom: 3 }}>
-                    Enable Simulation
-                  </div>
-                  <div style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-                    {isSimulating ? 'Demo attack sequence is running · switch off to end it' : 'Off · start one with Simulate Attack below'}
-                  </div>
-                </div>
-                <Toggle active={isSimulating} onClick={toggleSimulation} disabled={!isSimulating} />
-              </div>
-            </Section>
-
-            <Section title="Simulation Intensity">
-              <div style={{ display: 'flex', gap: 8 }}>
-                {['1x', '5x', '10x'].map((s) => (
-                  <button
-                    key={s}
-                    onClick={() => setSimSpeed(s)}
-                    style={optionBtnStyle(simSpeed === s, GS.warn)}
-                  >
-                    {s}
-                  </button>
-                ))}
-              </div>
-              <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
-                Multiplies the synthetic flow volume (packets / bytes) sent by "Inject Attack" below — higher values push scores harder toward the isolation threshold.
-              </div>
-            </Section>
-
-            <Section title="Simulate Attack">
+            <Section title="Attack Simulation">
               <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
-                <div>
-                  <Label>Attack Type</Label>
-                  <div style={{ display: 'flex', gap: 8, flexWrap: 'wrap' }}>
-                    {ATTACK_TYPES.map((t) => (
-                      <button key={t} onClick={() => setInjectType(t)} style={optionBtnStyle(injectType === t, GS.danger)}>
-                        {t}
-                      </button>
-                    ))}
-                  </div>
+                <div style={{ color: GS.textMuted, fontSize: 12, lineHeight: 1.6 }}>
+                  Simulations run the real attack scripts in <code>mininet/demo/attacks</code> on the live
+                  Mininet topology: an HTTP flood, a port scan and an SSH brute-force pattern, each with a
+                  negative control. Nothing synthetic is sent to the backend; what appears is what the
+                  switch saw and v1 scored.
                 </div>
-                <div style={{ display: 'flex', gap: 12 }}>
-                  <div style={{ flex: 1 }}>
-                    <Label>Attacker IP (source)</Label>
-                    <input
-                      value={injectTarget}
-                      onChange={(e) => setInjectTarget(e.target.value)}
-                      style={inputStyle}
-                      placeholder="10.0.0.x"
-                    />
-                  </div>
-                  <div style={{ flex: 1 }}>
-                    <Label>Victim IP (blank = random)</Label>
-                    <input
-                      value={injectVictim}
-                      onChange={(e) => setInjectVictim(e.target.value)}
-                      style={inputStyle}
-                      placeholder="auto"
-                    />
-                  </div>
-                </div>
-                <button style={{ ...primaryBtnStyle(GS.danger), alignSelf: 'flex-start', opacity: simulateBlocked ? 0.5 : 1, cursor: simulateBlocked ? 'not-allowed' : 'pointer' }}
-                  disabled={isSimulating || Boolean(simulateBlocked)}
-                  title={simulateBlocked || undefined}
-                  onClick={() => simulateAttack({
-                    attackType: injectType,
-                    targetIp: injectTarget,
-                    victimIp: injectVictim.trim() || undefined,
-                    speedMultiplier: parseInt(simSpeed, 10) || 1,
-                  })}>
-                  {isSimulating ? 'Simulating…' : 'Simulate Attack'}
-                </button>
-                {simulateBlocked && (
-                  <div role="note" style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{simulateBlocked}</div>
-                )}
+                <RouterLink to="/simulation" style={{ ...primaryBtnStyle(GS.danger), alignSelf: 'flex-start', textDecoration: 'none', display: 'inline-flex', alignItems: 'center', gap: 6 }}>
+                  <Zap size={12} /> Open the attack console
+                </RouterLink>
               </div>
             </Section>
           </div>
@@ -354,28 +267,6 @@ function Label({ children }) {
   )
 }
 
-function Toggle({ active, onClick, disabled = false }) {
-  return (
-    <button
-      onClick={onClick}
-      disabled={disabled}
-      aria-pressed={active}
-      style={{
-        width: 44, height: 24, borderRadius: 12, border: 'none',
-        cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
-        background: active ? GS.success : 'rgba(17,20,26,0.12)',
-        position: 'relative', transition: 'background 200ms', flexShrink: 0,
-      }}
-    >
-      <div style={{
-        width: 18, height: 18, borderRadius: '50%', background: GS.surface,
-        position: 'absolute', top: 3, left: active ? 23 : 3,
-        transition: 'left 200ms', boxShadow: '0 1px 3px rgba(0,0,0,0.3)',
-      }} />
-    </button>
-  )
-}
-
 function SliderSetting({ label, value, onChange, color, disabled = false, readOnly = false }) {
   // Error.md U1 — a display-only slider must look non-interactive: dimmed,
   // not-allowed cursor, a lock icon, and a real `disabled` on the input so
@@ -406,18 +297,6 @@ const inputStyle = {
   width: '100%', background: GS.surfaceRaised, border: '1px solid rgba(17,20,26,0.12)',
   borderRadius: 6, padding: '8px 12px', color: GS.text,
   fontSize: 12, fontFamily: "'DM Mono', monospace", outline: 'none',
-}
-
-function optionBtnStyle(active, color) {
-  return {
-    padding: '6px 16px', borderRadius: 6, cursor: 'pointer',
-    border: `1px solid ${active ? color : 'rgba(17,20,26,0.12)'}`,
-    background: active ? `${color}18` : 'transparent',
-    color: active ? color : GS.textSubtle,
-    fontSize: 12, fontFamily: "'DM Mono', monospace",
-    fontWeight: active ? 600 : 400, transition: 'all 150ms',
-    textTransform: 'capitalize',
-  }
 }
 
 function primaryBtnStyle(color) {

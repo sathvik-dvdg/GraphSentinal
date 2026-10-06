@@ -12,7 +12,7 @@ import DetectionPathBadge from '../ui/DetectionPathBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
 import DemoModeBadge from '../ui/DemoModeBadge'
-import { simulationHiddenOn, simulationBlockedReason } from '../../utils/connection'
+import { simulationBlockedReason } from '../../utils/connection'
 import useSessionUser from '../../hooks/useSessionUser'
 import { GS } from '../../constants/colors'
 
@@ -29,9 +29,10 @@ const ROUTE_TITLES = {
   '/alerts':     'Alert Centre',
   '/audit':      'Audit Log',
   '/settings':   'Settings',
+  '/simulation': 'Attack Simulation',
 }
 
-export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick }) {
+export default function Topbar({ onForensicsClick }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
@@ -42,6 +43,7 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
     dataErrors,
     mlHealth,
     mlV2Health,
+    simulationRun,
   } = useGraphStore()
 
   const [time, setTime] = useState(new Date().toLocaleTimeString())
@@ -57,10 +59,12 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
     healthClamped >= 50 ? GS.warn : GS.danger
 
   const isSimulating = connectionMode === 'simulating'
-  // Where the simulate control exists and when it may be used: utils/connection.
-  const simulateHidden = simulationHiddenOn(pathname)
+  // Simulate opens the attack console (pages/AttackSimulation), which runs the
+  // real scripts in mininet/demo/attacks. The button always opens it; the
+  // console says why a run cannot start (utils/connection).
+  const runActive = Boolean(simulationRun?.active)
   const { role } = useSessionUser()
-  const simulateBlocked = isSimulating ? null : simulationBlockedReason(USE_MOCK, connectionMode, role)
+  const simulateBlocked = simulationBlockedReason(USE_MOCK, connectionMode, role)
 
   return (
     <header
@@ -219,35 +223,35 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           <span>Forensics</span>
         </button>
 
-        {/* Simulate toggle */}
-        {onSimulate && !simulateHidden && (
+        {/* Simulate: opens the attack console */}
+        {pathname !== '/simulation' && (
           <button
             id="topbar-simulate"
-            onClick={isSimulating ? onStopSimulate : onSimulate}
-            disabled={Boolean(simulateBlocked)}
+            onClick={() => navigate('/simulation')}
             style={{
               display: 'flex',
               alignItems: 'center',
               gap: 5,
               padding: '4px 10px',
               borderRadius: 6,
-              border: `1px solid ${isSimulating ? 'rgba(232,146,42,0.5)' : 'rgba(17,20,26,0.12)'}`,
-              background: isSimulating ? 'rgba(232,146,42,0.12)' : 'rgba(17,20,26,0.06)',
-              color: isSimulating ? GS.warn : GS.textMuted,
+              border: `1px solid ${runActive ? 'rgba(232,146,42,0.5)' : 'rgba(17,20,26,0.12)'}`,
+              background: runActive ? 'rgba(232,146,42,0.12)' : 'rgba(17,20,26,0.06)',
+              color: runActive ? GS.warn : GS.textMuted,
               fontSize: 10,
               fontFamily: "'DM Mono', monospace",
               fontWeight: 500,
-              cursor: simulateBlocked ? 'not-allowed' : 'pointer',
-              opacity: simulateBlocked ? 0.5 : 1,
+              cursor: 'pointer',
               letterSpacing: '0.08em',
               textTransform: 'uppercase',
               transition: 'all 200ms',
               whiteSpace: 'nowrap',
             }}
-            title={simulateBlocked || 'Send a synthetic attack to the backend. What it records is real.'}
+            title={runActive
+              ? 'An attack is running on the topology: open the console to follow it'
+              : simulateBlocked || 'Run a real attack script on the Mininet topology'}
           >
             <Zap size={10} />
-            <span>{isSimulating ? 'Stop Simulation' : 'Simulate Attack'}</span>
+            <span>{runActive ? 'Simulation running' : 'Simulate Attack'}</span>
           </button>
         )}
 

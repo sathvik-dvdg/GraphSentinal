@@ -79,6 +79,27 @@ stay in the switch's table for up to a minute, and v1 blocks it again on the nex
 poll. The sequence does not depend on it, because every attack uses a different
 host.
 
+## From the dashboard
+
+**Simulate Attack** in the header opens the attack console (`/simulation`). It runs
+the same scripts as above, through the backend: pick flood, port scan, brute-force
+shape or the full sequence, optionally its negative control (`--mode icmp` /
+`--closed`), and press Simulate. Admins only.
+
+- It refuses to start, and says why, unless the backend's last poll of the switch
+  succeeded, `ENFORCEMENT_MODE=simulated`, and the scripts are where it expects
+  them. One run at a time.
+- The script's output streams into the page, then it watches for the incident for
+  up to `SIMULATION_SCORE_WAIT_SECONDS` (default 20) and shows what v1 recorded,
+  or that nothing was recorded.
+- On Windows the scripts send their commands into WSL as root themselves
+  (`GS_WSL_DISTRO`). A backend running on Linux/WSL as a normal user runs them with
+  `sudo -n`, so it needs a passwordless sudo rule for its Python, or run it as root.
+- `SIMULATION_SCRIPTS_DIR` and `SIMULATION_PYTHON` override where the scripts are
+  and which interpreter runs them.
+
+Nothing is posted to `/analyze`: the old synthetic Simulate button is gone.
+
 ## What to say about the labels
 
 - The model that acts is binary. **The attack type on the dashboard is a

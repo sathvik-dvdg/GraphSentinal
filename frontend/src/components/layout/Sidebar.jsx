@@ -3,7 +3,7 @@
 import { NavLink } from 'react-router-dom'
 import {
   LayoutDashboard, Network, ShieldAlert, Search,
-  Link2, TrendingUp, Zap, Bell, Settings, ChevronRight, Pin, ScrollText,
+  Link2, TrendingUp, Zap, Bell, Settings, ChevronRight, Pin, ScrollText, Crosshair,
 } from 'lucide-react'
 import { useAlerts } from '../../hooks/useAlerts'
 import useSessionUser from '../../hooks/useSessionUser'
@@ -19,6 +19,7 @@ const NAV_ITEMS = [
   { path: '/healing',    Icon: Zap,              label: 'Self-Healing',      color: GS.success },
   { path: '/alerts',     Icon: Bell,             label: 'Alert Centre',      color: GS.warn },
   { path: '/audit',      Icon: ScrollText,       label: 'Audit Log',         color: GS.textMuted },
+  { path: '/simulation', Icon: Crosshair,        label: 'Attack Simulation', color: GS.danger },
 ]
 
 export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }) {

@@ -55,31 +55,23 @@ export function connectionDisplay(mode, socketStatus = 'idle') {
 }
 
 // ── The simulate control ─────────────────────────────────────────────────────
-// A simulation posts SYNTHETIC flows to the real backend, which scores them and
-// records what follows as real incidents. So:
-//   * it is absent from the pages that show the historical record, which must
-//     never be read alongside a button that adds synthetic events to it;
-//   * on a live backend it is disabled unless the build was started for demo
-//     use (VITE_USE_MOCK=true), with the reason said, not hidden.
-export const SIMULATION_FREE_ROUTES = ['/forensics', '/blockchain', '/timeline']
-
-export function simulationHiddenOn(pathname) {
-  return SIMULATION_FREE_ROUTES.some((r) => pathname === r || pathname.startsWith(`${r}/`))
-}
-
-export const SIMULATION_BLOCKED_REASON =
-  'Simulation is disabled on a live backend: it would add synthetic flows to the real incident record.'
-
-// The backend's POST /api/v1/analyze refuses a read-only role
-// (require_write_privilege), whatever the build.
-export const SIMULATION_ROLE_REASON = 'Your role is read-only: it cannot send a simulated attack.'
+// Simulate runs the real attack scripts (mininet/demo/attacks) on the live
+// topology, through the backend: no synthetic flows are sent from here. So:
+//   * only an admin may start one (the backend enforces it as well);
+//   * it needs a backend that is answering: a build with no backend
+//     (VITE_USE_MOCK=true) or one that has gone quiet has nothing to run on.
+export const SIMULATION_ROLE_REASON =
+  'Only an admin can start an attack simulation: it sends real traffic through the switch.'
+export const SIMULATION_MOCK_REASON =
+  'This build talks to no backend (VITE_USE_MOCK=true): simulations run on the live topology.'
+export const SIMULATION_OFFLINE_REASON = 'The backend is not answering: there is nothing to run the attack on.'
 
 /** null when a simulation may be started, otherwise why not. `role` is the
  *  signed-in user's role; leave it out to check only the build and backend. */
 export function simulationBlockedReason(useMock, mode, role) {
-  if (role !== undefined && (!role || role === 'readonly')) return SIMULATION_ROLE_REASON
-  if (useMock) return null
-  return mode === 'live' ? SIMULATION_BLOCKED_REASON : null
+  if (role !== undefined && role !== 'admin') return SIMULATION_ROLE_REASON
+  if (useMock) return SIMULATION_MOCK_REASON
+  return mode === 'live' ? null : SIMULATION_OFFLINE_REASON
 }
 
 // ── What the stale-data badge says ───────────────────────────────────────────
