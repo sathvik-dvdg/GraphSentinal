@@ -26,8 +26,14 @@ config.set_main_option("sqlalchemy.url", settings.sqlite_url)
 
 # Interpret the config file for Python logging.
 # This line sets up loggers basically.
+# disable_existing_loggers=False: init_db() runs these migrations inside the
+# backend's lifespan, after uvicorn has configured its own loggers. The default
+# (True) silenced `uvicorn.error`, so "Uvicorn running on ...", "Application
+# startup complete" and -- worst -- a failed port bind ("address already in
+# use") never printed: the server exited without a word and the browser just
+# saw ERR_CONNECTION_REFUSED.
 if config.config_file_name is not None:
-    fileConfig(config.config_file_name)
+    fileConfig(config.config_file_name, disable_existing_loggers=False)
 
 target_metadata = Base.metadata
 

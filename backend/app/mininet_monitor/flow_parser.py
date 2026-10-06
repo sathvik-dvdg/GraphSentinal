@@ -33,6 +33,38 @@ class PollResult:
     demo_substituted: bool = False
 
 
+# The last failure message printed, so a daemon that stays down is reported
+# once (and again when the reason changes or it recovers) instead of on every
+# poll. The poll RESULT still carries the error every time; only the console
+# line is deduplicated.
+_last_reported_error: str | None = None
+
+
+def _report_failure(message: str) -> None:
+    global _last_reported_error
+    if message == _last_reported_error:
+        return
+    _last_reported_error = message
+    hint = ""
+    if message.startswith(("ConnectionRefusedError", "TimeoutError")):
+        hint = (
+            f"\n[FlowParser] No enforcement daemon at {settings.daemon_host}:{settings.daemon_port}. "
+            "Live OVS capture is unavailable until it runs (start "
+            "backend/scripts/enforcement_daemon.py in WSL2 with the backend's "
+            "DAEMON_TOKEN). The API keeps "
+            "serving; set DEMO_FALLBACK_FLOWS=true for synthetic traffic. "
+            "Repeats of this error are not printed."
+        )
+    print(f"[FlowParser] OVS poll failed via daemon: {message}{hint}")
+
+
+def _report_recovery() -> None:
+    global _last_reported_error
+    if _last_reported_error is not None:
+        print("[FlowParser] OVS poll via daemon recovered")
+        _last_reported_error = None
+
+
 def result_from_output(raw: str) -> PollResult:
     """Classify a successful daemon answer: `ok` or `ok_empty`."""
     flows = _parse_output(raw)
@@ -71,10 +103,12 @@ def poll_ovs_flows(switch: str = "s1") -> PollResult:
             if result.get("status") != "success":
                 raise RuntimeError(result.get("error", "Unknown error from daemon"))
 
-            return result_from_output(result.get("output", ""))
+            parsed = result_from_output(result.get("output", ""))
+            _report_recovery()
+            return parsed
     except Exception as exc:  # noqa: BLE001 - a poll must report, never raise
         message = f"{type(exc).__name__}: {exc}"
-        print(f"[FlowParser] OVS poll failed via daemon: {message}")
+        _report_failure(message)
         return PollResult(status=POLL_FAILED, error=message)
 
 
