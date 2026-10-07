@@ -1,7 +1,7 @@
 // [Windows] GraphSentinel — Susheep
-// Theme constants — clean white design system
+// Theme constants — the landing page's palette (bone, ink, crimson); see colors.js
 
-// Node status colors — tuned for filled shapes on a white canvas
+// Node status colors — tuned for filled shapes on the bone ground
 import { GS } from './colors'
 
 export const STATUS_COLORS = {
@@ -26,7 +26,7 @@ export const STATUS_LABELS = {
   blocked:    'Blocked',
 }
 
-// Attack type colors — 'null' is the no-attack baseline link color (light gray on white)
+// Attack type colors — 'null' is the no-attack baseline link color (light grey on bone)
 export const ATTACK_COLORS = {
   DDoS:     GS.statusMalicious,
   SSHBrute: GS.statusSuspicious,

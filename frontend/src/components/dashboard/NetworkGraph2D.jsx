@@ -112,7 +112,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             label: 'data(label)',
             color: GS.textMuted,
             'font-size': '9px',
-            'font-family': '"DM Mono", monospace',
+            'font-family': '"JetBrains Mono", monospace',
             'text-valign': 'bottom',
             'text-margin-y': 5,
             'text-outline-width': 0,

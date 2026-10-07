@@ -2,27 +2,8 @@
    html.ld-active flag the page sets while mounted); the app shell's gs-* tokens
    and globals.css are untouched. Three colours, plus tints of them. */
 
-@font-face {
-  font-family: 'Newsreader';
-  src: url('/fonts/landing/newsreader-var.woff2') format('woff2');
-  font-weight: 200 800;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'Hanken Grotesk';
-  src: url('/fonts/landing/hanken-grotesk-var.woff2') format('woff2');
-  font-weight: 300 700;
-  font-style: normal;
-  font-display: swap;
-}
-@font-face {
-  font-family: 'JetBrains Mono';
-  src: url('/fonts/landing/jetbrains-mono-var.woff2') format('woff2');
-  font-weight: 400 600;
-  font-style: normal;
-  font-display: swap;
-}
+/* The three faces (Newsreader, Hanken Grotesk, JetBrains Mono) are declared once, in
+   styles/globals.css, because the dashboard wears them too. */
 
 html.ld-active,
 html.ld-active body {

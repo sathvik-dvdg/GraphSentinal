@@ -48,11 +48,11 @@ export default function SelfHealing() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Header */}
       <div>
-        <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Self-Healing
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
             Autonomous threat response · Network stability monitoring
           </p>
           <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, healing: dataErrors.healing }} />
@@ -88,12 +88,12 @@ export default function SelfHealing() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 340px', gap: 16 }}>
         {/* Live event feed (60%) */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
-          <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
+          <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <Cpu size={14} style={{ color: GS.success }} />
-            <span style={{ color: GS.success, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ color: GS.success, fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Live Response Events
             </span>
-            <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
+            <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)", marginLeft: 'auto' }}>
               {healingEvents.length} event{healingEvents.length !== 1 ? 's' : ''}
             </span>
           </div>
@@ -110,8 +110,8 @@ export default function SelfHealing() {
                   style={{
                     borderRadius: 10,
                     background: GS.surfaceRaised,
-                    border: '1px solid rgba(46,204,138,0.12)',
-                    borderLeft: '2px solid rgba(46,204,138,0.5)',
+                    border: '1px solid rgba(52,99,72,0.12)',
+                    borderLeft: '2px solid rgba(52,99,72,0.5)',
                     padding: '12px 14px',
                   }}
                 >
@@ -122,26 +122,26 @@ export default function SelfHealing() {
                       animate={{ backgroundColor: [GS.danger, GS.primary, GS.success] }}
                       transition={{ duration: 2, repeat: Infinity }}
                     />
-                    <span style={{ color: GS.text, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                    <span style={{ color: GS.text, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                       {event.ip}
                     </span>
-                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: GS.success, border: '1px solid rgba(46,204,138,0.2)', fontFamily: "'DM Mono', monospace" }}>
+                    <span style={{ fontSize: 10, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.2)', fontFamily: "var(--font-mono)" }}>
                       {event.action}
                     </span>
-                    <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto' }}>
+                    <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)", marginLeft: 'auto' }}>
                       {formatEventTimestamp(event.timestamp)}
                     </span>
                   </div>
 
                   {/* Row 2: detail chips */}
                   <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 10, flexWrap: 'wrap' }}>
-                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(224,60,60,0.1)', color: GS.danger, border: '1px solid rgba(224,60,60,0.2)', fontFamily: "'DM Mono', monospace" }}>
+                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(180,19,46,0.1)', color: GS.danger, border: '1px solid rgba(180,19,46,0.2)', fontFamily: "var(--font-mono)" }}>
                       {event.attack_type}
                     </span>
-                    <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                    <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                       {event.edges_severed || 0} edges cut
                     </span>
-                    <span style={{ color: GS.primary, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                    <span style={{ color: GS.primary, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                       {event.duration_ms != null ? `${event.duration_ms}ms` : (event.responseTimeMs != null ? `${event.responseTimeMs}ms` : '—')}
                     </span>
                   </div>
@@ -150,15 +150,15 @@ export default function SelfHealing() {
                   {event.network_stability_before != null && event.network_stability_after != null && (
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        <span style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
                           Network Stability
                         </span>
-                        <span style={{ color: GS.success, fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                        <span style={{ color: GS.success, fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                           {event.network_stability_before}% → {event.network_stability_after}%
                         </span>
                       </div>
-                      <div style={{ height: 4, background: 'rgba(17,20,26,0.08)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
-                        <div style={{ position: 'absolute', top: 0, height: '100%', width: `${event.network_stability_before}%`, background: 'rgba(232,146,42,0.3)', borderRadius: 99 }} />
+                      <div style={{ height: 4, background: 'rgba(43,42,40,0.08)', borderRadius: 99, overflow: 'hidden', position: 'relative' }}>
+                        <div style={{ position: 'absolute', top: 0, height: '100%', width: `${event.network_stability_before}%`, background: 'rgba(133,88,8,0.3)', borderRadius: 99 }} />
                         <motion.div
                           style={{ position: 'absolute', top: 0, height: '100%', background: `linear-gradient(90deg, ${GS.primary}, ${GS.success})`, borderRadius: 99 }}
                           initial={{ width: `${event.network_stability_before}%` }}
@@ -176,8 +176,8 @@ export default function SelfHealing() {
             {healingEvents.length === 0 && (
               <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', flex: 1, padding: '60px 0', color: GS.textFaint, textAlign: 'center' }}>
                 <ShieldCheck size={32} style={{ marginBottom: 12, opacity: 0.3 }} />
-                <div style={{ fontSize: 12, fontFamily: "'DM Mono', monospace" }}>No healing events.</div>
-                <div style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 4, opacity: 0.6 }}>
+                <div style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}>No healing events.</div>
+                <div style={{ fontSize: 11, fontFamily: "var(--font-mono)", marginTop: 4, opacity: 0.6 }}>
                   Malicious nodes are auto-isolated here.
                 </div>
               </div>
@@ -187,7 +187,7 @@ export default function SelfHealing() {
 
         {/* Stability gauge (40%) */}
         <div className="gs-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+          <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.12em' }}>
             Network Stability
           </div>
 
@@ -195,7 +195,7 @@ export default function SelfHealing() {
           <div style={{ position: 'relative', width: 180, height: 180 }}>
             <svg width={180} height={180} viewBox="0 0 180 180">
               {/* Background track */}
-              <circle cx={90} cy={90} r={R} fill="none" stroke="rgba(17,20,26,0.08)" strokeWidth={12} />
+              <circle cx={90} cy={90} r={R} fill="none" stroke="rgba(43,42,40,0.08)" strokeWidth={12} />
               {/* Colored arc */}
               <circle
                 cx={90} cy={90} r={R}
@@ -217,14 +217,14 @@ export default function SelfHealing() {
             }}>
               <div style={{
                 color: stabilityColor,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontFamily: "var(--font-display)",
                 fontWeight: 700,
                 fontSize: 32,
                 lineHeight: 1,
               }}>
                 {stability}%
               </div>
-              <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", marginTop: 4 }}>
+              <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", marginTop: 4 }}>
                 {stabilityTrend}
               </div>
             </div>
@@ -241,8 +241,8 @@ export default function SelfHealing() {
 
       {/* Full response log table */}
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
-          <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+        <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)' }}>
+          <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
             Full Response Log
           </span>
         </div>
@@ -258,32 +258,32 @@ export default function SelfHealing() {
             <tbody>
               {healingEvents.map((ev, i) => (
                 <tr key={ev.id || i}>
-                  <td style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
+                  <td style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 10 }}>
                     {formatEventTimestamp(ev.timestamp)}
                   </td>
-                  <td style={{ color: GS.text, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{ev.ip}</td>
+                  <td style={{ color: GS.text, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{ev.ip}</td>
                   <td>
-                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: GS.success, border: '1px solid rgba(46,204,138,0.2)', fontFamily: "'DM Mono', monospace" }}>
+                    <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.2)', fontFamily: "var(--font-mono)" }}>
                       {ev.action}
                     </span>
                   </td>
-                  <td style={{ color: GS.textMuted, fontFamily: "'DM Mono', monospace" }}>{ev.edges_severed || 0}</td>
-                  <td style={{ color: GS.primary, fontFamily: "'DM Mono', monospace" }}>
+                  <td style={{ color: GS.textMuted, fontFamily: "var(--font-mono)" }}>{ev.edges_severed || 0}</td>
+                  <td style={{ color: GS.primary, fontFamily: "var(--font-mono)" }}>
                     {ev.duration_ms != null ? `${ev.duration_ms}ms` : (ev.responseTimeMs != null ? `${ev.responseTimeMs}ms` : '—')}
                   </td>
-                  <td style={{ color: GS.success, fontFamily: "'DM Mono', monospace" }}>
+                  <td style={{ color: GS.success, fontFamily: "var(--font-mono)" }}>
                     {ev.network_stability_before != null && ev.network_stability_after != null
                       ? `${ev.network_stability_before}% → ${ev.network_stability_after}%`
                       : '—'}
                   </td>
-                  <td style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
+                  <td style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 10 }}>
                     {ev.attack_type || ev.triggeredBy || '—'}
                   </td>
                 </tr>
               ))}
               {healingEvents.length === 0 && (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+                  <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontFamily: "var(--font-mono)", fontSize: 12 }}>
                     No healing events recorded
                   </td>
                 </tr>
@@ -308,9 +308,9 @@ function LegendRow({ label, value, color, active }) {
     }}>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
         <div style={{ width: 8, height: 8, borderRadius: '50%', background: color, opacity: active ? 1 : 0.3 }} />
-        <span style={{ color: active ? color : GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
+        <span style={{ color: active ? color : GS.textFaint, fontSize: 11, fontFamily: "var(--font-mono)" }}>{label}</span>
       </div>
-      <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>{value}</span>
+      <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)" }}>{value}</span>
     </div>
   )
 }

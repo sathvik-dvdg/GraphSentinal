@@ -12,7 +12,7 @@ export default function LoadingScreen() {
       <div
         className="absolute inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse at 50% 50%, rgba(79,110,247,0.04) 0%, transparent 65%)',
+          background: 'radial-gradient(ellipse at 50% 50%, rgba(43,42,40,0.04) 0%, transparent 65%)',
         }}
       />
 
@@ -43,7 +43,7 @@ export default function LoadingScreen() {
 
         {/* Wordmark */}
         <div className="text-center">
-          <h1 className="font-heading font-bold text-xl text-gs-text tracking-wide mb-1">
+          <h1 className="font-heading font-normal text-3xl text-gs-text mb-1" style={{ letterSpacing: '-0.02em' }}>
             GraphSentinel
           </h1>
           <p className="text-[11px] text-gs-muted font-mono tracking-widest uppercase">
@@ -57,7 +57,7 @@ export default function LoadingScreen() {
             <motion.div
               key={i}
               className="w-1.5 h-1.5 rounded-full"
-              style={{ backgroundColor: i % 2 === 0 ? GS.primary : GS.success }}
+              style={{ backgroundColor: i % 2 === 0 ? GS.primary : GS.danger }}
               animate={{ opacity: [0.2, 1, 0.2], scale: [0.8, 1.2, 0.8] }}
               transition={{ duration: 1, repeat: Infinity, delay: i * 0.15 }}
             />

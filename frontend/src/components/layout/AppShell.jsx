@@ -126,7 +126,7 @@ export default function AppShell() {
         >
           <div
             className="absolute top-0 left-1/2 -translate-x-1/2 w-[800px] h-[300px] rounded-full blur-[120px]"
-            style={{ background: 'rgba(79,110,247,0.04)' }}
+            style={{ background: 'rgba(43,42,40,0.04)' }}
           />
         </div>
 

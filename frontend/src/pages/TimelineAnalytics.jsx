@@ -120,11 +120,11 @@ export default function TimelineAnalytics() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+          <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Timeline
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
               Threat patterns over time · Anomaly detection
             </p>
             <DataFreshnessBadge dataErrors={{ timeline: dataErrors.timeline, alerts: dataErrors.alerts }} />
@@ -137,10 +137,10 @@ export default function TimelineAnalytics() {
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
               padding: '6px 14px', borderRadius: 6,
-              border: `1px solid ${paused ? 'rgba(232,146,42,0.4)' : 'rgba(46,204,138,0.3)'}`,
-              background: paused ? 'rgba(232,146,42,0.1)' : 'rgba(46,204,138,0.08)',
+              border: `1px solid ${paused ? 'rgba(133,88,8,0.4)' : 'rgba(52,99,72,0.3)'}`,
+              background: paused ? 'rgba(133,88,8,0.1)' : 'rgba(52,99,72,0.08)',
               color: paused ? GS.warn : GS.success,
-              fontSize: 11, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
+              fontSize: 11, fontFamily: "var(--font-mono)", cursor: 'pointer',
             }}
           >
             {paused ? <Play size={12} /> : <Pause size={12} />}
@@ -148,16 +148,16 @@ export default function TimelineAnalytics() {
           </button>
 
           {/* Time range pills */}
-          <div style={{ display: 'flex', gap: 4, background: GS.surfaceRaised, border: '1px solid rgba(17,20,26,0.10)', borderRadius: 8, padding: 3 }}>
+          <div style={{ display: 'flex', gap: 4, background: GS.surfaceRaised, border: '1px solid rgba(43,42,40,0.10)', borderRadius: 8, padding: 3 }}>
             {TIME_RANGES.map((t) => (
               <button
                 key={t}
                 onClick={() => setTimeRange(t)}
                 style={{
                   padding: '4px 12px', borderRadius: 6, border: 'none',
-                  background: timeRange === t ? 'rgba(79,110,247,0.2)' : 'transparent',
+                  background: timeRange === t ? 'rgba(43,42,40,0.2)' : 'transparent',
                   color: timeRange === t ? GS.primary : GS.textSubtle,
-                  fontSize: 11, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
+                  fontSize: 11, fontFamily: "var(--font-mono)", cursor: 'pointer',
                   fontWeight: timeRange === t ? 700 : 400,
                 }}
               >
@@ -170,22 +170,22 @@ export default function TimelineAnalytics() {
 
       {/* Main chart */}
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
+        <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <TrendingUp size={14} style={{ color: GS.primary }} />
-            <span style={{ color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <span style={{ color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               Threat Activity ({timeRange})
             </span>
           </div>
           {/* Threshold control */}
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-            <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>Anomaly threshold:</span>
+            <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "var(--font-mono)" }}>Anomaly threshold:</span>
             <input
               type="range" min={1} max={10} value={threshold}
               onChange={(e) => setThreshold(Number(e.target.value))}
               style={{ accentColor: GS.warn, width: 80 }}
             />
-            <span style={{ color: GS.warn, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700, minWidth: 16 }}>
+            <span style={{ color: GS.warn, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700, minWidth: 16 }}>
               {threshold}
             </span>
           </div>
@@ -204,19 +204,19 @@ export default function TimelineAnalytics() {
                   <stop offset="95%" stopColor={GS.success} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.9)" vertical={false} />
-              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(211,206,195,0.9)" vertical={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false} />
               <Tooltip
                 labelFormatter={formatTimelineTick}
-                contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: GS.text }}
+                contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: GS.text }}
                 itemStyle={{ color: GS.textMuted }}
               />
-              <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textSubtle, paddingTop: 8 }} />
+              <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "var(--font-mono)", color: GS.textSubtle, paddingTop: 8 }} />
 
               {/* Threshold reference line */}
               <ReferenceLine y={threshold} stroke={GS.warn} strokeDasharray="6 3" strokeOpacity={0.7}
-                label={{ value: `Threshold: ${threshold}`, fill: GS.warn, fontSize: 10, fontFamily: "'DM Mono', monospace", position: 'insideTopRight' }} />
+                label={{ value: `Threshold: ${threshold}`, fill: GS.warn, fontSize: 10, fontFamily: "var(--font-mono)", position: 'insideTopRight' }} />
 
               {/* Anomaly spike markers */}
               {anomalyPeaks.map((peak) => (
@@ -234,8 +234,8 @@ export default function TimelineAnalytics() {
       <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 16 }}>
         {/* Breakdown table */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
-            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)' }}>
+            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               {isMultiDay ? 'Daily Breakdown' : 'Hourly Breakdown'} · newest 50 alerts
             </span>
           </div>
@@ -252,15 +252,15 @@ export default function TimelineAnalytics() {
                 <tbody>
                   {timeBreakdown.map((row) => (
                     <tr key={row.time}>
-                      <td style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace" }}>{row.time}</td>
-                      <td style={{ color: GS.danger, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{row.threats}</td>
-                      <td style={{ color: GS.success, fontFamily: "'DM Mono', monospace" }}>{row.blocked}</td>
+                      <td style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)" }}>{row.time}</td>
+                      <td style={{ color: GS.danger, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{row.threats}</td>
+                      <td style={{ color: GS.success, fontFamily: "var(--font-mono)" }}>{row.blocked}</td>
                     </tr>
                   ))}
                 </tbody>
               </table>
             ) : (
-              <div style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-mono)" }}>
                 No breakdown data yet
               </div>
             )}
@@ -269,8 +269,8 @@ export default function TimelineAnalytics() {
 
         {/* Attack type over time */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(17,20,26,0.08)' }}>
-            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)' }}>
+            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
               Attack Types Over Time
             </span>
           </div>
@@ -278,18 +278,18 @@ export default function TimelineAnalytics() {
             {typeOverTime.length > 0 ? (
               <ResponsiveContainer width="100%" height="100%">
                 <BarChart data={typeOverTime} margin={{ top: 4, right: 8, left: -20, bottom: 0 }}>
-                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.8)" vertical={false} />
-                  <XAxis dataKey="time" tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-                  <Tooltip contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: GS.text }} />
-                  <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textSubtle }} />
+                  <CartesianGrid strokeDasharray="3 3" stroke="rgba(211,206,195,0.8)" vertical={false} />
+                  <XAxis dataKey="time" tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false} />
+                  <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false} />
+                  <Tooltip contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: GS.text }} />
+                  <Legend iconType="circle" wrapperStyle={{ fontSize: 10, fontFamily: "var(--font-mono)", color: GS.textSubtle }} />
                   {Object.entries(ATTACK_COLORS_MAP).map(([type, color]) => (
                     <Bar key={type} dataKey={type} stackId="a" fill={color} fillOpacity={0.8} />
                   ))}
                 </BarChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', height: '100%', color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-mono)" }}>
                 No attack type data yet
               </div>
             )}

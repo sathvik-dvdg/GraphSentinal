@@ -89,7 +89,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
     const ctx = canvas.getContext('2d')
     ctx.clearRect(0, 0, 256, 48)
     ctx.fillStyle = GS.text // updated color from E8EDF5
-    ctx.font = '600 18px "DM Mono", monospace'
+    ctx.font = '600 18px "JetBrains Mono", monospace'
     ctx.fillText(label, 8, 30)
 
     const tex = new THREE.CanvasTexture(canvas)
@@ -216,7 +216,7 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
           bctx.fillStyle = node.threat_score >= 0.75 ? GS.danger : GS.warn
           bctx.fillRect(0, 0, 128, 32)
           bctx.fillStyle = GS.surface
-          bctx.font = 'bold 18px "DM Mono", monospace'
+          bctx.font = 'bold 18px "JetBrains Mono", monospace'
           bctx.fillText(`${pct}%`, 10, 22)
           const bt = new THREE.CanvasTexture(bc)
           const bm = new THREE.SpriteMaterial({ map: bt, depthWrite: false })
@@ -298,14 +298,14 @@ export default function NetworkGraph3D({ graphData, healingNodeId, onNodeClick }
           if (node.kind === 'switch' || node.kind === 'controller') {
             const role = node.kind === 'switch' ? 'OpenvSwitch bridge' : 'OpenFlow controller'
             return `<div style="background:${GS.surface};border:1px solid ${GS.border};padding:6px 10px;
-                         font-family:'DM Mono',monospace;font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
+                         font-family:var(--font-mono);font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
               <b style="color:${GS.primary}">${escapeHtml(node.label || node.id)}</b><br/>
               ${role}<br/>
               <span style="color:${GS.textSubtle}">Infrastructure · configured topology</span>
             </div>`
           }
           return `<div style="background:${GS.surface};border:1px solid ${GS.border};padding:6px 10px;
-                       font-family:'DM Mono',monospace;font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
+                       font-family:var(--font-mono);font-size:11px;color:${GS.text};border-radius:6px;line-height:1.6">
             <b style="color:${GS.primary}">${escapeHtml(node.label)}</b> (${escapeHtml(node.id)})<br/>
             Status: <span style="color:${STATUS_COLORS[node.status]}">${escapeHtml(node.status?.toUpperCase())}</span>
             ${node.status === 'malicious' ? ' ▲' : node.status === 'blocked' ? ' ⬡' : node.status === 'suspicious' ? ' ◆' : ' ●'}<br/>

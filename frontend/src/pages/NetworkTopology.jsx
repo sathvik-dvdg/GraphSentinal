@@ -46,11 +46,11 @@ export default function NetworkTopology() {
       {/* Header + controls */}
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', flexShrink: 0 }}>
         <div>
-          <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+          <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Network Topology
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+            <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
               Live network graph · Org hierarchy · Threat vectors
             </p>
             <DataFreshnessBadge dataErrors={{ graph: dataErrors.graph }} />
@@ -64,7 +64,7 @@ export default function NetworkTopology() {
             alignItems: 'center',
             gap: 2,
             background: GS.surfaceRaised,
-            border: '1px solid rgba(17,20,26,0.10)',
+            border: '1px solid rgba(43,42,40,0.10)',
             borderRadius: 8,
             padding: 3,
           }}
@@ -77,10 +77,10 @@ export default function NetworkTopology() {
                 padding: '5px 14px',
                 borderRadius: 6,
                 border: 'none',
-                background: viewMode === m.id ? 'rgba(79,110,247,0.2)' : 'transparent',
+                background: viewMode === m.id ? 'rgba(43,42,40,0.2)' : 'transparent',
                 color: viewMode === m.id ? GS.primary : GS.textSubtle,
                 fontSize: 11,
-                fontFamily: "'DM Mono', monospace",
+                fontFamily: "var(--font-mono)",
                 cursor: 'pointer',
                 transition: 'all 150ms',
                 fontWeight: viewMode === m.id ? 600 : 400,
@@ -123,13 +123,13 @@ export default function NetworkTopology() {
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
-                background: 'rgba(255,255,255,0.88)',
-                border: '1px solid rgba(17,20,26,0.10)',
+                background: 'rgba(247,244,238,0.88)',
+                border: '1px solid rgba(43,42,40,0.10)',
                 borderRadius: 8,
                 padding: '4px 10px',
               }}
             >
-              <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+              <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                 {show2D ? '2D Network Graph' : '3D Network Graph'}
               </span>
               <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
@@ -176,14 +176,14 @@ export default function NetworkTopology() {
                 right: 0,
                 zIndex: 5,
                 padding: '10px 14px',
-                background: 'rgba(255,255,255,0.92)',
-                borderBottom: '1px solid rgba(17,20,26,0.08)',
+                background: 'rgba(247,244,238,0.92)',
+                borderBottom: '1px solid rgba(43,42,40,0.08)',
                 display: 'flex',
                 alignItems: 'center',
                 gap: 8,
               }}
             >
-              <span style={{ color: GS.successDeep, fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <span style={{ color: GS.successDeep, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
                 Org Hierarchy
               </span>
             </div>
@@ -224,17 +224,17 @@ function TopologyEmptyState({ connectionMode, compact = false }) {
           alignItems: 'center',
           justifyContent: 'center',
           color: GS.textFaint,
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "var(--font-mono)",
           fontSize: 18,
         }}
       >
         ⬡
       </div>
-      <div style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 600, fontSize: 14 }}>
+      <div style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 600, fontSize: 14 }}>
         {offline ? 'Backend offline — no live topology' : 'Waiting for the first graph snapshot…'}
       </div>
       {!compact && (
-        <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 11, lineHeight: 1.7, maxWidth: 320 }}>
+        <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 11, lineHeight: 1.7, maxWidth: 320 }}>
           {offline
             ? 'No hosts to show: the backend is not answering.'
             : 'No hosts detected yet — start the monitor to populate the graph.'}

@@ -71,11 +71,11 @@ export default function ThreatFeed() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 108px)' }}>
       {/* Page header */}
       <div style={{ flexShrink: 0 }}>
-        <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Threat Feed
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
             {filtered.length} event{filtered.length !== 1 ? 's' : ''} · Real-time threat intelligence
           </p>
           <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts }} />
@@ -97,7 +97,7 @@ export default function ThreatFeed() {
           ))}
         </div>
 
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)' }} />
+        <div style={{ width: 1, height: 20, background: 'rgba(43,42,40,0.10)' }} />
 
         {/* Type pills */}
         <div style={{ display: 'flex', gap: 4 }}>
@@ -106,16 +106,16 @@ export default function ThreatFeed() {
           ))}
         </div>
 
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)' }} />
+        <div style={{ width: 1, height: 20, background: 'rgba(43,42,40,0.10)' }} />
 
         {/* IP search */}
-        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: GS.surfaceRaised, border: '1px solid rgba(17,20,26,0.10)', borderRadius: 6, padding: '4px 10px' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 6, background: GS.surfaceRaised, border: '1px solid rgba(43,42,40,0.10)', borderRadius: 6, padding: '4px 10px' }}>
           <Search size={12} style={{ color: GS.textSubtle }} />
           <input
             value={ipSearch}
             onChange={(e) => setIpSearch(e.target.value)}
             placeholder="Search IP..."
-            style={{ background: 'none', border: 'none', outline: 'none', color: GS.text, fontSize: 12, fontFamily: "'DM Mono', monospace", width: 120 }}
+            style={{ background: 'none', border: 'none', outline: 'none', color: GS.text, fontSize: 12, fontFamily: "var(--font-mono)", width: 120 }}
           />
         </div>
 
@@ -159,22 +159,22 @@ export default function ThreatFeed() {
                     {/* Row 1 */}
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, flexWrap: 'wrap' }}>
                       <SeverityBadge severity={alert.severity} />
-                      <span style={{ fontSize: 11, fontFamily: "'DM Mono', monospace", color: GS.textMuted, background: 'rgba(17,20,26,0.08)', padding: '2px 8px', borderRadius: 4 }}>
+                      <span style={{ fontSize: 11, fontFamily: "var(--font-mono)", color: GS.textMuted, background: 'rgba(43,42,40,0.08)', padding: '2px 8px', borderRadius: 4 }}>
                         {alert.attack_type}
                       </span>
-                      <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace", marginLeft: 'auto', whiteSpace: 'nowrap' }}>
+                      <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)", marginLeft: 'auto', whiteSpace: 'nowrap' }}>
                         {formatAlertTimestamp(alert.timestamp)}
                       </span>
                     </div>
                     {/* Source IP */}
-                    <div style={{ color: GS.text, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700, marginBottom: 8 }}>
+                    <div style={{ color: GS.text, fontSize: 13, fontFamily: "var(--font-mono)", fontWeight: 700, marginBottom: 8 }}>
                       {alert.source_ip}
                     </div>
                     {/* Threat score bar */}
                     <ThreatBar score={alert.threat_score} delay={i * 0.03} />
                     {/* TX hash */}
                     {alert.blockchain_tx && (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 8, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                         <span style={{ color: GS.chain }}>⛓</span>
                         <CopyableHash value={alert.blockchain_tx} style={{ color: GS.chain }} iconSize={9} />
                         {/* The transaction's real state (FE-25): it used to read
@@ -187,15 +187,15 @@ export default function ThreatFeed() {
                   <div style={{ flexShrink: 0 }}>
                     <span style={{
                       fontSize: 9,
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: "var(--font-mono)",
                       fontWeight: 700,
                       padding: '3px 8px',
                       borderRadius: 4,
                       letterSpacing: '0.08em',
                       textTransform: 'uppercase',
-                      background: alert.is_blocked ? 'rgba(46,204,138,0.12)' : 'rgba(224,60,60,0.12)',
+                      background: alert.is_blocked ? 'rgba(52,99,72,0.12)' : 'rgba(180,19,46,0.12)',
                       color: alert.is_blocked ? GS.success : GS.danger,
-                      border: `1px solid ${alert.is_blocked ? 'rgba(46,204,138,0.25)' : 'rgba(224,60,60,0.25)'}`,
+                      border: `1px solid ${alert.is_blocked ? 'rgba(52,99,72,0.25)' : 'rgba(180,19,46,0.25)'}`,
                     }}>
                       {alert.is_blocked ? 'ISOLATED' : 'ACTIVE'}
                     </span>
@@ -206,7 +206,7 @@ export default function ThreatFeed() {
           </AnimatePresence>
 
           {filtered.length === 0 && (
-            <div style={{ textAlign: 'center', padding: '60px 0', color: GS.textFaint, fontSize: 13, fontFamily: "'DM Mono', monospace" }}>
+            <div style={{ textAlign: 'center', padding: '60px 0', color: GS.textFaint, fontSize: 13, fontFamily: "var(--font-mono)" }}>
               <ShieldAlert size={32} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
               <div>No threats matching current filters</div>
             </div>
@@ -217,7 +217,7 @@ export default function ThreatFeed() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
           {/* Mini stat cards */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Live Stats
             </div>
             <StatTile layout="row" panel={false} label="Total alerts" value={alerts.length} color={GS.textMuted} />
@@ -227,23 +227,23 @@ export default function ThreatFeed() {
 
           {/* Top attacking IPs */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Top Attacking IPs
             </div>
             {topIPs.map(([ip, count]) => (
               <div key={ip} style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-                <span style={{ color: GS.text, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{ip}</span>
-                <span style={{ color: GS.danger, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>{count}</span>
+                <span style={{ color: GS.text, fontSize: 11, fontFamily: "var(--font-mono)" }}>{ip}</span>
+                <span style={{ color: GS.danger, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 700 }}>{count}</span>
               </div>
             ))}
             {topIPs.length === 0 && (
-              <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>No data</div>
+              <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "var(--font-mono)" }}>No data</div>
             )}
           </div>
 
           {/* Attack type distribution */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Attack Types
             </div>
             {TYPES.filter((t) => t !== 'All').map((type) => {
@@ -252,10 +252,10 @@ export default function ThreatFeed() {
               return (
                 <div key={type} style={{ marginBottom: 10 }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 3 }}>
-                    <span style={{ color: GS.textMuted, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>{type}</span>
-                    <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>{count}</span>
+                    <span style={{ color: GS.textMuted, fontSize: 10, fontFamily: "var(--font-mono)" }}>{type}</span>
+                    <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)" }}>{count}</span>
                   </div>
-                  <div style={{ height: 3, background: 'rgba(17,20,26,0.08)', borderRadius: 99, overflow: 'hidden' }}>
+                  <div style={{ height: 3, background: 'rgba(43,42,40,0.08)', borderRadius: 99, overflow: 'hidden' }}>
                     <div style={{ height: '100%', width: `${pct}%`, background: GS.danger, borderRadius: 99 }} />
                   </div>
                 </div>

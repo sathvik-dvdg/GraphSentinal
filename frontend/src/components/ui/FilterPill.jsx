@@ -12,11 +12,11 @@ export default function FilterPill({ label, active, onClick, color = GS.primary 
       style={{
         padding: '4px 10px',
         borderRadius: 6,
-        border: `1px solid ${active ? color : 'rgba(17,20,26,0.10)'}`,
+        border: `1px solid ${active ? color : 'rgba(43,42,40,0.10)'}`,
         background: active ? `${color}18` : 'transparent',
         color: active ? color : GS.textSubtle,
         fontSize: 10,
-        fontFamily: "'DM Mono', monospace",
+        fontFamily: "var(--font-mono)",
         fontWeight: active ? 600 : 400,
         cursor: 'pointer',
         transition: 'all 150ms',

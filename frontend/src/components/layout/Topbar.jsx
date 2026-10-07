@@ -67,10 +67,12 @@ export default function Topbar({ onForensicsClick }) {
   return (
     <header
       style={{
-        background: 'rgba(255, 255, 255, 0.5)',
-        backdropFilter: 'blur(24px) saturate(150%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.8)',
+        // The landing nav: a bone tint over a blur, a hairline and a soft shadow.
+        background: 'color-mix(in srgb, var(--bone) 78%, transparent)',
+        backdropFilter: 'var(--glass-filter)',
+        WebkitBackdropFilter: 'var(--glass-filter)',
+        borderBottom: '1px solid var(--border-panel)',
+        boxShadow: '0 10px 24px -18px color-mix(in srgb, var(--ink) 34%, transparent)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 16px',
@@ -91,10 +93,10 @@ export default function Topbar({ onForensicsClick }) {
         <span
           style={{
             color: GS.text,
-            fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-            fontWeight: 600,
-            fontSize: 13,
-            letterSpacing: '0.02em',
+            fontFamily: "var(--font-display)",
+            fontWeight: 500,
+            fontSize: 18,
+            letterSpacing: '-0.01em',
             whiteSpace: 'nowrap',
             flexShrink: 0,
           }}
@@ -122,17 +124,16 @@ export default function Topbar({ onForensicsClick }) {
           gap: 0,
           justifyContent: 'center',
           overflow: 'hidden',
+          minWidth: 0,
         }}
       >
-        <TelemetryBadge label="Nodes"   value={stats.total_nodes}                icon="●" color={GS.textMuted} />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Threats" value={stats.active_threats}             icon="▲" color={GS.danger} pulse={stats.active_threats > 0} />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Blocked" value={stats.blocked_ips}                icon="⬡" color={GS.primary} />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} icon="~" color={GS.textSubtle} />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   icon="↕" color={GS.textSubtle} />
+        {/* Each figure carries its own divider and drops out whole, last first, when the
+            space runs short (container queries in globals.css), so none is ever clipped. */}
+        <span className="gs-tel gs-tel-1"><TelemetryBadge label="Threats" value={stats.active_threats}             icon="▲" color={GS.danger} pulse={stats.active_threats > 0} /></span>
+        <span className="gs-tel gs-tel-2"><TelemetryDivider /><TelemetryBadge label="Blocked" value={stats.blocked_ips}                icon="⬡" color={GS.primary} /></span>
+        <span className="gs-tel gs-tel-3"><TelemetryDivider /><TelemetryBadge label="Nodes"   value={stats.total_nodes}                icon="●" color={GS.textMuted} /></span>
+        <span className="gs-tel gs-tel-4"><TelemetryDivider /><TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} icon="~" color={GS.textSubtle} /></span>
+        <span className="gs-tel gs-tel-5"><TelemetryDivider /><TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   icon="↕" color={GS.textSubtle} /></span>
       </div>
 
       {/* ── Right: health + clock + actions ── */}
@@ -150,11 +151,11 @@ export default function Topbar({ onForensicsClick }) {
           }}
         >
           <Activity size={10} style={{ color: healthColor }} />
-          <span style={{ color: GS.textSubtle, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+          <span style={{ color: GS.textSubtle, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
             Health
           </span>
           <motion.span
-            style={{ color: healthColor, fontFamily: "'DM Mono', monospace", fontWeight: 700, fontSize: 11 }}
+            style={{ color: healthColor, fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 11 }}
             animate={{ opacity: [1, 0.6, 1] }}
             transition={{ duration: 2.5, repeat: Infinity }}
           >
@@ -167,10 +168,10 @@ export default function Topbar({ onForensicsClick }) {
           style={{
             padding: '4px 8px',
             borderRadius: 6,
-            border: '1px solid rgba(17,20,26,0.10)',
+            border: '1px solid rgba(43,42,40,0.10)',
           }}
         >
-          <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+          <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "var(--font-mono)" }}>
             {time}
           </span>
         </div>
@@ -183,13 +184,13 @@ export default function Topbar({ onForensicsClick }) {
             display: 'flex',
             alignItems: 'center',
             gap: 5,
-            padding: '4px 10px',
-            borderRadius: 6,
-            border: '1px solid rgba(139,92,246,0.25)',
-            background: 'rgba(139,92,246,0.08)',
-            color: GS.chain,
+            padding: '5px 12px',
+            borderRadius: 999,
+            border: '1px solid color-mix(in srgb, var(--ink) 24%, transparent)',
+            background: 'transparent',
+            color: GS.text,
             fontSize: 10,
-            fontFamily: "'DM Mono', monospace",
+            fontFamily: "var(--font-mono)",
             fontWeight: 500,
             cursor: 'pointer',
             letterSpacing: '0.08em',
@@ -209,14 +210,16 @@ export default function Topbar({ onForensicsClick }) {
             style={{
               display: 'flex',
               alignItems: 'center',
-              gap: 5,
-              padding: '4px 10px',
-              borderRadius: 6,
-              border: `1px solid ${runActive ? 'rgba(232,146,42,0.5)' : 'rgba(17,20,26,0.12)'}`,
-              background: runActive ? 'rgba(232,146,42,0.12)' : 'rgba(17,20,26,0.06)',
-              color: runActive ? GS.warn : GS.textMuted,
+              gap: 6,
+              padding: '6px 14px',
+              // The landing page's one call to action: crimson glass, a pill.
+              borderRadius: 999,
+              border: 'none',
+              background: runActive ? GS.dangerDeep : 'color-mix(in srgb, var(--crimson) 90%, transparent)',
+              boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--bone) 44%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--ink) 26%, transparent)',
+              color: GS.surface,
               fontSize: 10,
-              fontFamily: "'DM Mono', monospace",
+              fontFamily: "var(--font-mono)",
               fontWeight: 500,
               cursor: 'pointer',
               letterSpacing: '0.08em',
@@ -242,6 +245,10 @@ export default function Topbar({ onForensicsClick }) {
   )
 }
 
+function TelemetryDivider() {
+  return <div style={{ width: 1, height: 20, background: 'color-mix(in srgb, var(--ink) 12%, transparent)', margin: '0 4px', flexShrink: 0 }} />
+}
+
 function TelemetryBadge({ label, value, icon, color, pulse = false }) {
   return (
     <div
@@ -254,13 +261,13 @@ function TelemetryBadge({ label, value, icon, color, pulse = false }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 1 }}>
+      <span style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 1 }}>
         {icon} {label}
       </span>
       <span
         style={{
           color,
-          fontFamily: "'DM Mono', monospace",
+          fontFamily: "var(--font-mono)",
           fontWeight: 700,
           fontSize: 13,
         }}

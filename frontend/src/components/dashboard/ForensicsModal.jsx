@@ -27,7 +27,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex justify-end"
-        style={{ background: 'rgba(17,20,26,0.12)', backdropFilter: 'blur(2px)' }}
+        style={{ background: 'rgba(43,42,40,0.12)', backdropFilter: 'blur(2px)' }}
         onClick={onClose}
         role="dialog"
         aria-label="Forensics Report"
@@ -42,7 +42,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
           className="w-full max-w-2xl h-screen flex flex-col border-l border-gs-border"
           style={{
             background: GS.surface,
-            boxShadow: '-10px 0 30px rgba(17,20,26,0.10)',
+            boxShadow: '-10px 0 30px rgba(43,42,40,0.10)',
           }}
           onClick={(e) => e.stopPropagation()}
         >

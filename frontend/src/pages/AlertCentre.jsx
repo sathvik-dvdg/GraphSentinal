@@ -121,17 +121,17 @@ export default function AlertCentre() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 16, height: 'calc(100vh - 108px)' }}>
       {/* Header */}
       <div>
-        <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Alert Centre
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
             Unified incident hub · Acknowledge / resolve state is saved on the server
           </p>
           <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
         </div>
         {!mayTriage && (
-          <p role="note" style={{ color: GS.textMuted, fontFamily: "'DM Mono', monospace", fontSize: 11, marginTop: 6 }}>
+          <p role="note" style={{ color: GS.textMuted, fontFamily: "var(--font-mono)", fontSize: 11, marginTop: 6 }}>
             {TRIAGE_DENIED_REASON}
           </p>
         )}
@@ -140,14 +140,14 @@ export default function AlertCentre() {
             role="alert"
             style={{
               marginTop: 8, padding: '8px 12px', borderRadius: 6, display: 'flex', alignItems: 'center', gap: 10,
-              border: '1px solid rgba(224,60,60,0.3)', background: 'rgba(224,60,60,0.08)',
-              color: GS.danger, fontFamily: "'DM Mono', monospace", fontSize: 11,
+              border: '1px solid rgba(180,19,46,0.3)', background: 'rgba(180,19,46,0.08)',
+              color: GS.danger, fontFamily: "var(--font-mono)", fontSize: 11,
             }}
           >
             <span style={{ flex: 1 }}>{triageError}</span>
             <button
               onClick={() => setTriageError(null)}
-              style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+              style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "var(--font-mono)" }}
               aria-label="Dismiss"
             >
               Dismiss
@@ -208,13 +208,13 @@ export default function AlertCentre() {
                       {/* Row 1: source badge + title */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                         <span style={{
-                          fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700,
+                          fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
                           padding: '2px 6px', borderRadius: 4, letterSpacing: '0.06em',
                           background: `${srcColor}15`, color: srcColor, border: `1px solid ${srcColor}30`,
                         }}>
                           {SOURCE_LABELS[alert.source] || alert.source}
                         </span>
-                        <span style={{ color: GS.text, fontFamily: "'DM Mono', monospace", fontSize: 12, fontWeight: 600 }}>
+                        <span style={{ color: GS.text, fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600 }}>
                           {alert.title}
                         </span>
                       </div>
@@ -222,11 +222,11 @@ export default function AlertCentre() {
                       {/* Row 2: IP + relative time */}
                       <div style={{ display: 'flex', alignItems: 'center', gap: 12 }}>
                         {alert.nodeIp && (
-                          <span style={{ color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                          <span style={{ color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)" }}>
                             {alert.nodeIp}
                           </span>
                         )}
-                        <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                        <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                           {relativeTime(alert.createdAt)}
                         </span>
                       </div>
@@ -239,10 +239,10 @@ export default function AlertCentre() {
                         <span
                           title="The source host is blocked. That is an enforcement state; this alert stays open until someone acknowledges or resolves it."
                           style={{
-                            fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700,
+                            fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
                             padding: '3px 8px', borderRadius: 4, letterSpacing: '0.06em',
-                            textTransform: 'uppercase', border: '1px solid rgba(59,86,217,0.3)',
-                            background: 'rgba(59,86,217,0.08)', color: GS.primary,
+                            textTransform: 'uppercase', border: '1px solid rgba(43,42,40,0.3)',
+                            background: 'rgba(43,42,40,0.08)', color: GS.primary,
                           }}
                         >
                           Host blocked
@@ -254,16 +254,16 @@ export default function AlertCentre() {
                         onClick={() => cycleStatus(alert.id)}
                         disabled={!mayTriage || alert.incidentId == null}
                         style={{
-                          fontSize: 9, fontFamily: "'DM Mono', monospace", fontWeight: 700,
+                          fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
                           padding: '3px 8px', borderRadius: 4,
                           cursor: !mayTriage || alert.incidentId == null ? 'not-allowed' : 'pointer',
                           opacity: !mayTriage || alert.incidentId == null ? 0.6 : 1,
                           letterSpacing: '0.06em', textTransform: 'uppercase', border: '1px solid',
                           ...(status === 'open'
-                            ? { background: 'rgba(224,60,60,0.1)', color: GS.danger, borderColor: 'rgba(224,60,60,0.3)' }
+                            ? { background: 'rgba(180,19,46,0.1)', color: GS.danger, borderColor: 'rgba(180,19,46,0.3)' }
                             : status === 'acknowledged'
-                            ? { background: 'rgba(232,146,42,0.1)', color: GS.warn, borderColor: 'rgba(232,146,42,0.3)' }
-                            : { background: 'rgba(46,204,138,0.1)', color: GS.success, borderColor: 'rgba(46,204,138,0.3)' }),
+                            ? { background: 'rgba(133,88,8,0.1)', color: GS.warn, borderColor: 'rgba(133,88,8,0.3)' }
+                            : { background: 'rgba(52,99,72,0.1)', color: GS.success, borderColor: 'rgba(52,99,72,0.3)' }),
                         }}
                         title={alert.incidentId == null
                           ? 'A self-healing notice is a record, not an incident: it has no status to change.'
@@ -278,7 +278,7 @@ export default function AlertCentre() {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 4,
                           background: 'none', border: 'none',
-                          color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace",
+                          color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)",
                           cursor: 'pointer',
                         }}
                       >
@@ -294,7 +294,7 @@ export default function AlertCentre() {
           {filtered.length === 0 && (
             <div style={{ textAlign: 'center', padding: '60px 0', color: GS.textFaint }}>
               <Bell size={32} style={{ margin: '0 auto 12px', opacity: 0.3 }} />
-              <div style={{ fontSize: 12, fontFamily: "'DM Mono', monospace" }}>No alerts match the current filter</div>
+              <div style={{ fontSize: 12, fontFamily: "var(--font-mono)" }}>No alerts match the current filter</div>
             </div>
           )}
         </div>
@@ -303,7 +303,7 @@ export default function AlertCentre() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
           {/* Donut chart */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Alerts by Status
             </div>
             {donutData.length > 0 ? (
@@ -315,12 +315,12 @@ export default function AlertCentre() {
                     ))}
                   </Pie>
                   <Tooltip
-                    contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                    contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "var(--font-mono)", fontSize: 10 }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             ) : (
-              <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ height: 140, display: 'flex', alignItems: 'center', justifyContent: 'center', color: GS.textFaint, fontSize: 11, fontFamily: "var(--font-mono)" }}>
                 All clear
               </div>
             )}
@@ -328,7 +328,7 @@ export default function AlertCentre() {
 
           {/* Sparkline: alerts per hour */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
               Threats per 5 min (last hour)
             </div>
             <ResponsiveContainer width="100%" height={80}>
@@ -339,14 +339,14 @@ export default function AlertCentre() {
                   dataKey="time"
                   tickFormatter={formatTimelineTick}
                   minTickGap={32}
-                  tick={{ fill: GS.textFaint, fontSize: 8, fontFamily: "'DM Mono', monospace" }}
+                  tick={{ fill: GS.textFaint, fontSize: 8, fontFamily: "var(--font-mono)" }}
                   axisLine={false}
                   tickLine={false}
                 />
                 <YAxis tick={false} axisLine={false} />
                 <Tooltip
                   labelFormatter={formatTimelineTick}
-                  contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10 }}
+                  contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "var(--font-mono)", fontSize: 10 }}
                 />
                 <Line type="monotone" dataKey="threats" stroke={GS.danger} strokeWidth={1.5} dot={false} />
               </LineChart>
@@ -355,13 +355,13 @@ export default function AlertCentre() {
 
           {/* MTTA card */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
               Mean Time To Acknowledge
             </div>
-            <div style={{ color: GS.primary, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 28 }}>
+            <div style={{ color: GS.primary, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 28 }}>
               {stats.mttaSamples > 0 ? `${stats.mttaMin}m` : '—'}
             </div>
-            <div style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace", marginTop: 4 }}>
+            <div style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)", marginTop: 4 }}>
               {stats.mttaSamples > 0
                 ? `Based on ${stats.mttaSamples} acknowledged alert${stats.mttaSamples === 1 ? '' : 's'} (this device)`
                 : 'No alerts acknowledged yet'}
@@ -375,5 +375,5 @@ export default function AlertCentre() {
 
 
 function Sep() {
-  return <div style={{ width: 1, height: 18, background: 'rgba(17,20,26,0.10)', flexShrink: 0 }} />
+  return <div style={{ width: 1, height: 18, background: 'rgba(43,42,40,0.10)', flexShrink: 0 }} />
 }

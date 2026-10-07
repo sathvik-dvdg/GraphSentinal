@@ -51,22 +51,22 @@ export default function Forensics() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+          <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Forensics
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <span style={{ color: GS.chain, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+            <span style={{ color: GS.chain, fontSize: 12, fontFamily: "var(--font-mono)" }}>
               Chain ID: {data.chain_id ?? '—'}
             </span>
             {data.contract_address && (
-              <span style={{ fontSize: 11, color: GS.chain, fontFamily: "'DM Mono', monospace", background: 'rgba(139,92,246,0.1)', border: '1px solid rgba(139,92,246,0.2)', padding: '2px 8px', borderRadius: 4 }}>
+              <span style={{ fontSize: 11, color: GS.chain, fontFamily: "var(--font-mono)", background: 'rgba(107,74,130,0.1)', border: '1px solid rgba(107,74,130,0.2)', padding: '2px 8px', borderRadius: 4 }}>
                 {data.contract_address.slice(0, 14)}…
               </span>
             )}
             {loading && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5 }}>
                 <RefreshCw size={11} style={{ color: GS.primary }} className="spin-slow" />
-                <span style={{ color: GS.primary, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>SYNCING</span>
+                <span style={{ color: GS.primary, fontSize: 10, fontFamily: "var(--font-mono)" }}>SYNCING</span>
               </div>
             )}
           </div>
@@ -77,8 +77,8 @@ export default function Forensics() {
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
             padding: '6px 14px', borderRadius: 6,
-            border: '1px solid rgba(17,20,26,0.12)', background: 'rgba(17,20,26,0.05)',
-            color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace",
+            border: '1px solid rgba(43,42,40,0.12)', background: 'rgba(43,42,40,0.05)',
+            color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)",
             cursor: 'pointer', transition: 'all 150ms',
           }}
         >
@@ -97,8 +97,8 @@ export default function Forensics() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '10px 14px', borderRadius: 8,
-            border: '1px solid rgba(224,60,60,0.3)', background: 'rgba(224,60,60,0.08)',
-            color: GS.danger, fontSize: 12, fontFamily: "'DM Mono', monospace",
+            border: '1px solid rgba(180,19,46,0.3)', background: 'rgba(180,19,46,0.08)',
+            color: GS.danger, fontSize: 12, fontFamily: "var(--font-mono)",
           }}
         >
           <ShieldAlert size={14} style={{ flexShrink: 0 }} />
@@ -111,15 +111,15 @@ export default function Forensics() {
           style={{
             display: 'flex', alignItems: 'center', gap: 8,
             padding: '10px 14px', borderRadius: 8,
-            border: '1px solid rgba(224,60,60,0.3)', background: 'rgba(224,60,60,0.08)',
-            color: GS.danger, fontSize: 12, fontFamily: "'DM Mono', monospace",
+            border: '1px solid rgba(180,19,46,0.3)', background: 'rgba(180,19,46,0.08)',
+            color: GS.danger, fontSize: 12, fontFamily: "var(--font-mono)",
           }}
         >
           <ShieldAlert size={14} style={{ flexShrink: 0 }} />
           <span style={{ flex: 1 }}>{resolveError}</span>
           <button
             onClick={() => setResolveError(null)}
-            style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "'DM Mono', monospace" }}
+            style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "var(--font-mono)" }}
           >
             Dismiss
           </button>
@@ -138,9 +138,9 @@ export default function Forensics() {
       <div style={{ display: 'grid', gridTemplateColumns: '280px 1fr', gap: 16 }}>
         {/* Left: Case list */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden', height: 'fit-content', maxHeight: 600 }}>
-          <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
+          <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <ShieldAlert size={13} style={{ color: GS.danger }} />
-            <span style={{ color: GS.danger, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ color: GS.danger, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
               Incidents ({activeIncidents.length})
             </span>
           </div>
@@ -151,40 +151,40 @@ export default function Forensics() {
                 onClick={() => setSelectedIncident(inc)}
                 style={{
                   padding: '10px 14px',
-                  borderBottom: '1px solid rgba(17,20,26,0.05)',
+                  borderBottom: '1px solid rgba(43,42,40,0.05)',
                   cursor: 'pointer',
-                  background: selectedIncident?.id === inc.id ? 'rgba(79,110,247,0.08)' : 'transparent',
+                  background: selectedIncident?.id === inc.id ? 'rgba(43,42,40,0.08)' : 'transparent',
                   borderLeft: selectedIncident?.id === inc.id ? `2px solid ${GS.primary}` : '2px solid transparent',
                   transition: 'all 150ms',
                 }}
               >
                 <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginBottom: 4 }}>
                   <span style={{
-                    fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em',
+                    fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: '0.08em',
                     color: inc.severity >= 8 ? GS.danger : inc.severity >= 5 ? GS.warn : GS.primary,
                     textTransform: 'uppercase',
                   }}>
                     {inc.severity >= 8 ? 'CRITICAL' : inc.severity >= 5 ? 'WARNING' : 'INFO'}
                   </span>
-                  <span style={{ color: GS.textMuted, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                  <span style={{ color: GS.textMuted, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                     {inc.attack_type}
                   </span>
                   {inc.is_blocked && (
-                    <span style={{ marginLeft: 'auto', fontSize: 9, color: GS.danger, fontFamily: "'DM Mono', monospace", background: 'rgba(224,60,60,0.1)', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(224,60,60,0.2)' }}>
+                    <span style={{ marginLeft: 'auto', fontSize: 9, color: GS.danger, fontFamily: "var(--font-mono)", background: 'rgba(180,19,46,0.1)', padding: '1px 5px', borderRadius: 3, border: '1px solid rgba(180,19,46,0.2)' }}>
                       ISOLATED
                     </span>
                   )}
                 </div>
-                <div style={{ color: GS.text, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, marginBottom: 2 }}>
+                <div style={{ color: GS.text, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, marginBottom: 2 }}>
                   {inc.source_ip}
                 </div>
-                <div style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                <div style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                   {formatEventTimestamp(inc.created_at)}
                 </div>
               </div>
             ))}
             {activeIncidents.length === 0 && (
-              <div style={{ padding: '32px 16px', textAlign: 'center', color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ padding: '32px 16px', textAlign: 'center', color: GS.textFaint, fontSize: 11, fontFamily: "var(--font-mono)" }}>
                 <div style={{ marginBottom: 4 }}>No incidents logged</div>
                 <div style={{ fontSize: 10, color: GS.border }}>
                   {fetchError
@@ -211,12 +211,12 @@ export default function Forensics() {
                 <div className="gs-panel" style={{ padding: '16px 18px', borderLeft: `3px solid ${GS.primary}` }}>
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 12 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
-                      <span style={{ color: GS.text, fontSize: 13, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+                      <span style={{ color: GS.text, fontSize: 13, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
                         Incident #{selectedIncident.id}
                       </span>
                       <IsolationBadge isBlocked={selectedIncident.is_blocked} />
                     </div>
-                    <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+                    <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)" }}>
                       {formatEventTimestamp(selectedIncident.created_at)}
                     </div>
                   </div>
@@ -226,11 +226,11 @@ export default function Forensics() {
                     <DetailRow label="Threat Score" value={selectedIncident.threat_score !== null && selectedIncident.threat_score !== undefined ? `${(selectedIncident.threat_score * 100).toFixed(0)}%` : '—'} />
                     <DetailRow label="Severity" value={selectedIncident.severity !== null && selectedIncident.severity !== undefined ? `${selectedIncident.severity}/10` : '—'} color={selectedIncident.severity >= 8 ? GS.danger : selectedIncident.severity >= 5 ? GS.warn : GS.primary} />
                     <div>
-                      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Enforcement</div>
+                      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Enforcement</div>
                       <EnforcementPill status={selectedIncident.enforcement_status} />
                     </div>
                     <div>
-                      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Data Source</div>
+                      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Data Source</div>
                       <ProvenancePill source={selectedIncident.data_source} />
                     </div>
                   </div>
@@ -238,7 +238,7 @@ export default function Forensics() {
 
                 {/* Attack timeline */}
                 <div className="gs-panel" style={{ padding: '14px 18px' }}>
-                  <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+                  <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
                     Attack Timeline
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -248,12 +248,12 @@ export default function Forensics() {
                         <div key={i} style={{ display: 'flex', gap: 12, position: 'relative', paddingBottom: 14 }}>
                           {/* Line */}
                           {i < steps.length - 1 && (
-                            <div style={{ position: 'absolute', left: 7, top: 16, width: 1, height: 'calc(100% - 4px)', background: 'rgba(17,20,26,0.08)' }} />
+                            <div style={{ position: 'absolute', left: 7, top: 16, width: 1, height: 'calc(100% - 4px)', background: 'rgba(43,42,40,0.08)' }} />
                           )}
                           <div style={{ width: 15, height: 15, borderRadius: '50%', background: `${item.color}20`, border: `1.5px solid ${item.color}`, flexShrink: 0, marginTop: 2 }} />
                           <div>
-                            <div style={{ color: GS.text, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600, marginBottom: 2 }}>{item.step}</div>
-                            <div style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{item.detail}</div>
+                            <div style={{ color: GS.text, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600, marginBottom: 2 }}>{item.step}</div>
+                            <div style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "var(--font-mono)" }}>{item.detail}</div>
                           </div>
                         </div>
                       ))
@@ -266,7 +266,7 @@ export default function Forensics() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Link2 size={13} style={{ color: GS.chain }} />
-                      <span style={{ color: GS.chain, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
+                      <span style={{ color: GS.chain, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
                         Blockchain Evidence
                       </span>
                     </div>
@@ -275,37 +275,37 @@ export default function Forensics() {
 
                   {selectedIncident.blockchain_tx ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
-                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(139,92,246,0.08)', border: '1px solid rgba(139,92,246,0.15)' }}>
-                        <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase' }}>Transaction</span>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(107,74,130,0.08)', border: '1px solid rgba(107,74,130,0.15)' }}>
+                        <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase' }}>Transaction</span>
                         {/* FE-12 — the full 66-character hash wraps instead of overflowing the card */}
-                        <span style={{ color: GS.chain, fontSize: 11, fontFamily: "'DM Mono', monospace", marginLeft: 'auto', minWidth: 0, overflowWrap: 'anywhere', textAlign: 'right' }}>
+                        <span style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", marginLeft: 'auto', minWidth: 0, overflowWrap: 'anywhere', textAlign: 'right' }}>
                           <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={selectedIncident.blockchain_tx.length} />
                         </span>
                       </div>
 
                       {/* Blockchain Metadata Grid */}
-                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '8px 10px', background: 'rgba(17,20,26,0.04)', borderRadius: 6, border: '1px solid rgba(17,20,26,0.05)' }}>
+                      <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '8px 10px', background: 'rgba(43,42,40,0.04)', borderRadius: 6, border: '1px solid rgba(43,42,40,0.05)' }}>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Chain ID</div>
-                          <div style={{ color: GS.text, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Chain ID</div>
+                          <div style={{ color: GS.text, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                             {selectedIncident.blockchain_chain_id ?? data.chain_id ?? '—'}
                           </div>
                         </div>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Contract</div>
-                          <div style={{ color: GS.text, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }} title={selectedIncident.blockchain_contract_address || data.contract_address || undefined}>
+                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Contract</div>
+                          <div style={{ color: GS.text, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }} title={selectedIncident.blockchain_contract_address || data.contract_address || undefined}>
                             {selectedIncident.blockchain_contract_address ? `${selectedIncident.blockchain_contract_address.slice(0, 8)}…` : (data.contract_address ? `${data.contract_address.slice(0, 8)}…` : '—')}
                           </div>
                         </div>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Block #</div>
-                          <div style={{ color: GS.chain, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Block #</div>
+                          <div style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                             {selectedIncident.blockchain_block_number !== null && selectedIncident.blockchain_block_number !== undefined ? `#${selectedIncident.blockchain_block_number}` : 'Block —'}
                           </div>
                         </div>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>On-Chain Log ID</div>
-                          <div style={{ color: GS.chain, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>On-Chain Log ID</div>
+                          <div style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                             {selectedIncident.blockchain_incident_id !== null && selectedIncident.blockchain_incident_id !== undefined ? `#${selectedIncident.blockchain_incident_id}` : 'Log ID —'}
                           </div>
                         </div>
@@ -313,7 +313,7 @@ export default function Forensics() {
 
                     </div>
                   ) : (
-                    <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace", padding: '4px 0' }}>
+                    <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "var(--font-mono)", padding: '4px 0' }}>
                       No transaction recorded
                     </div>
                   )}
@@ -324,12 +324,12 @@ export default function Forensics() {
                       where the reason matters -- the card said only "No transaction
                       recorded". */}
                   {(selectedIncident.blockchain_retry_count > 0 || selectedIncident.blockchain_status === 'retry') && (
-                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 10px', borderRadius: 4, background: 'rgba(232,146,42,0.08)', border: '1px solid rgba(232,146,42,0.2)', color: GS.warn, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+                    <div style={{ display: 'flex', alignItems: 'center', gap: 6, marginTop: 10, padding: '6px 10px', borderRadius: 4, background: 'rgba(133,88,8,0.08)', border: '1px solid rgba(133,88,8,0.2)', color: GS.warn, fontSize: 11, fontFamily: "var(--font-mono)" }}>
                       <span>Retry attempts: {selectedIncident.blockchain_retry_count || 1}</span>
                     </div>
                   )}
                   {selectedIncident.blockchain_last_error && (
-                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 4, background: 'rgba(224,60,60,0.08)', border: '1px solid rgba(224,60,60,0.2)', color: GS.danger, fontSize: 11, fontFamily: "'DM Mono', monospace", overflowWrap: 'anywhere' }}>
+                    <div style={{ marginTop: 10, padding: '8px 10px', borderRadius: 4, background: 'rgba(180,19,46,0.08)', border: '1px solid rgba(180,19,46,0.2)', color: GS.danger, fontSize: 11, fontFamily: "var(--font-mono)", overflowWrap: 'anywhere' }}>
                       <span style={{ fontWeight: 600 }}>Last error:</span> {selectedIncident.blockchain_last_error}
                     </div>
                   )}
@@ -350,7 +350,7 @@ export default function Forensics() {
                   />
                 </div>
                 {!mayTriage && (
-                  <p role="note" style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", marginTop: 8 }}>
+                  <p role="note" style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", marginTop: 8 }}>
                     {TRIAGE_DENIED_REASON}
                   </p>
                 )}
@@ -359,7 +359,7 @@ export default function Forensics() {
           ) : (
             <div className="gs-panel" style={{ padding: '60px 0', textAlign: 'center' }}>
               <Database size={32} style={{ color: GS.textFaint, margin: '0 auto 12px', display: 'block' }} />
-              <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-mono)" }}>
                 Select an incident from the left panel to view details
               </div>
             </div>
@@ -369,9 +369,9 @@ export default function Forensics() {
 
       {/* Blockchain records table */}
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-        <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
+        <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link2 size={13} style={{ color: GS.chain }} />
-          <span style={{ color: GS.chain, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
             Blockchain Records
           </span>
         </div>
@@ -386,8 +386,8 @@ export default function Forensics() {
 function DetailRow({ label, value, color = GS.textMuted }) {
   return (
     <div>
-      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>{label}</div>
-      <div style={{ color, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{value}</div>
+      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>{label}</div>
+      <div style={{ color, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600 }}>{value}</div>
     </div>
   )
 }
@@ -395,14 +395,14 @@ function DetailRow({ label, value, color = GS.textMuted }) {
 function IsolationBadge({ isBlocked }) {
   if (isBlocked === true) {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, background: 'rgba(224,60,60,0.1)', color: GS.danger, border: '1px solid rgba(224,60,60,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, background: 'rgba(180,19,46,0.1)', color: GS.danger, border: '1px solid rgba(180,19,46,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
         <span style={{ width: 5, height: 5, borderRadius: '50%', background: GS.danger }} />
         ISOLATED
       </span>
     )
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: GS.success, border: '1px solid rgba(46,204,138,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 700 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 5, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
       <span style={{ width: 5, height: 5, borderRadius: '50%', background: GS.success }} />
       ACTIVE
     </span>
@@ -413,48 +413,48 @@ function EnforcementPill({ status }) {
   const norm = typeof status === 'string' ? status.trim().toLowerCase() : ''
   if (norm === 'enforced') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: GS.success, border: '1px solid rgba(46,204,138,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
         ENFORCED
       </span>
     )
   }
   if (norm === 'simulated') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(79,110,247,0.1)', color: GS.primary, border: '1px solid rgba(79,110,247,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.1)', color: GS.primary, border: '1px solid rgba(43,42,40,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
         SIMULATED
       </span>
     )
   }
   if (norm === 'pending_enforcement' || norm === 'pending_unblock') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(232,146,42,0.1)', color: GS.warn, border: '1px solid rgba(232,146,42,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(133,88,8,0.1)', color: GS.warn, border: '1px solid rgba(133,88,8,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
         PENDING
       </span>
     )
   }
   if (norm === 'failed') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(224,60,60,0.1)', color: GS.danger, border: '1px solid rgba(224,60,60,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(180,19,46,0.1)', color: GS.danger, border: '1px solid rgba(180,19,46,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
         FAILED
       </span>
     )
   }
   if (norm === 'removed') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: GS.success, border: '1px solid rgba(46,204,138,0.25)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
         REMOVED
       </span>
     )
   }
   if (norm === 'not_requested') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(17,20,26,0.06)', color: GS.textSubtle, border: '1px solid rgba(17,20,26,0.12)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 500 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textSubtle, border: '1px solid rgba(43,42,40,0.12)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 500 }}>
         NOT REQUESTED
       </span>
     )
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(17,20,26,0.06)', color: GS.textMuted, border: '1px solid rgba(17,20,26,0.12)', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', fontWeight: 500 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textMuted, border: '1px solid rgba(43,42,40,0.12)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 500 }}>
       {status || 'Unknown'}
     </span>
   )
@@ -464,34 +464,34 @@ function ProvenancePill({ source }) {
   const norm = typeof source === 'string' ? source.trim().toLowerCase() : ''
   if (norm === 'ovs') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(46,204,138,0.1)', color: GS.success, border: '1px solid rgba(46,204,138,0.2)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.2)', fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
         OVS LIVE
       </span>
     )
   }
   if (norm === 'demo') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(232,146,42,0.1)', color: GS.warn, border: '1px solid rgba(232,146,42,0.2)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(133,88,8,0.1)', color: GS.warn, border: '1px solid rgba(133,88,8,0.2)', fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
         DEMO FLOW
       </span>
     )
   }
   if (norm === 'simulation') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(79,110,247,0.1)', color: GS.primary, border: '1px solid rgba(79,110,247,0.2)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.1)', color: GS.primary, border: '1px solid rgba(43,42,40,0.2)', fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
         SIMULATION
       </span>
     )
   }
   if (norm === 'manual') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(17,20,26,0.06)', color: GS.textMuted, border: '1px solid rgba(17,20,26,0.12)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 500 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textMuted, border: '1px solid rgba(43,42,40,0.12)', fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 500 }}>
         MANUAL
       </span>
     )
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(17,20,26,0.06)', color: GS.textSubtle, border: '1px solid rgba(17,20,26,0.12)', fontSize: 10, fontFamily: "'DM Mono', monospace", fontWeight: 500 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textSubtle, border: '1px solid rgba(43,42,40,0.12)', fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 500 }}>
       {source || 'Unknown source'}
     </span>
   )
@@ -506,7 +506,7 @@ function ActionBtn({ label, color, onClick, disabled = false, title }) {
       style={{
         padding: '8px 16px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
         border: `1px solid ${color}30`, background: `${color}10`, color,
-        fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 500, transition: 'all 150ms',
+        fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 500, transition: 'all 150ms',
       }}
     >
       {label}

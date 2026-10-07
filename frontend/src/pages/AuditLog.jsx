@@ -44,10 +44,10 @@ export default function AuditLog() {
       {/* Header */}
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between' }}>
         <div>
-          <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+          <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Audit Log
           </h1>
-          <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
             Control-plane actions · operator identity · request correlation
           </p>
         </div>
@@ -55,8 +55,8 @@ export default function AuditLog() {
           onClick={() => load(0, false)}
           style={{
             display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6,
-            border: '1px solid rgba(17,20,26,0.12)', background: 'rgba(17,20,26,0.05)',
-            color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
+            border: '1px solid rgba(43,42,40,0.12)', background: 'rgba(43,42,40,0.05)',
+            color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", cursor: 'pointer',
           }}
         >
           <RefreshCw size={12} className={status === 'loading' ? 'spin-slow' : undefined} /> Refresh
@@ -64,14 +64,14 @@ export default function AuditLog() {
       </div>
 
       {status === 'forbidden' && (
-        <div className="gs-panel" style={{ padding: '32px', textAlign: 'center', color: GS.warn, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+        <div className="gs-panel" style={{ padding: '32px', textAlign: 'center', color: GS.warn, fontFamily: "var(--font-mono)", fontSize: 12 }}>
           <ShieldAlert size={28} style={{ margin: '0 auto 10px' }} />
           Administrative privilege is required to view the audit log.
         </div>
       )}
 
       {status === 'error' && (
-        <div role="alert" className="gs-panel" style={{ padding: '16px', color: GS.danger, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+        <div role="alert" className="gs-panel" style={{ padding: '16px', color: GS.danger, fontFamily: "var(--font-mono)", fontSize: 12 }}>
           Failed to load the audit log — the backend may be unreachable.
         </div>
       )}
@@ -80,7 +80,7 @@ export default function AuditLog() {
         <>
           <div className="gs-panel" style={{ padding: '10px 14px', display: 'flex', alignItems: 'center', gap: 8 }}>
             <ScrollText size={13} style={{ color: GS.textMuted }} />
-            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)" }}>
               {rows.length} of {total} entries
             </span>
           </div>
@@ -98,24 +98,24 @@ export default function AuditLog() {
                 <tbody>
                   {rows.map((r, i) => (
                     <motion.tr key={r.id} initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: Math.min(i, 20) * 0.02 }}>
-                      <td style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 10 }}>
+                      <td style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 10 }}>
                         {formatEventTimestamp(r.timestamp)}
                       </td>
-                      <td style={{ color: GS.text, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>{r.actor_identity}</td>
-                      <td style={{ color: GS.textMuted, fontFamily: "'DM Mono', monospace", fontSize: 10, textTransform: 'uppercase' }}>{r.actor_role}</td>
+                      <td style={{ color: GS.text, fontFamily: "var(--font-mono)", fontWeight: 600 }}>{r.actor_identity}</td>
+                      <td style={{ color: GS.textMuted, fontFamily: "var(--font-mono)", fontSize: 10, textTransform: 'uppercase' }}>{r.actor_role}</td>
                       <td>
-                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(79,110,247,0.1)', color: GS.primary, border: '1px solid rgba(79,110,247,0.2)', fontFamily: "'DM Mono', monospace" }}>
+                        <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(43,42,40,0.1)', color: GS.primary, border: '1px solid rgba(43,42,40,0.2)', fontFamily: "var(--font-mono)" }}>
                           {r.action}
                         </span>
                       </td>
-                      <td style={{ color: GS.textMuted, fontFamily: "'DM Mono', monospace", fontSize: 10 }}>{r.target_resource}</td>
-                      <td style={{ color: r.status === 'success' ? GS.success : GS.danger, fontFamily: "'DM Mono', monospace", fontSize: 10, textTransform: 'uppercase' }}>{r.status}</td>
-                      <td style={{ color: GS.textFaint, fontFamily: "'DM Mono', monospace", fontSize: 10 }}>{r.request_id || '—'}</td>
+                      <td style={{ color: GS.textMuted, fontFamily: "var(--font-mono)", fontSize: 10 }}>{r.target_resource}</td>
+                      <td style={{ color: r.status === 'success' ? GS.success : GS.danger, fontFamily: "var(--font-mono)", fontSize: 10, textTransform: 'uppercase' }}>{r.status}</td>
+                      <td style={{ color: GS.textFaint, fontFamily: "var(--font-mono)", fontSize: 10 }}>{r.request_id || '—'}</td>
                     </motion.tr>
                   ))}
                   {rows.length === 0 && (
                     <tr>
-                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+                      <td colSpan={7} style={{ textAlign: 'center', padding: '32px 0', color: GS.textFaint, fontFamily: "var(--font-mono)", fontSize: 12 }}>
                         No audit entries recorded yet.
                       </td>
                     </tr>
@@ -131,8 +131,8 @@ export default function AuditLog() {
               disabled={loadingMore}
               style={{
                 alignSelf: 'center', padding: '8px 20px', borderRadius: 6,
-                border: '1px solid rgba(79,110,247,0.3)', background: 'rgba(79,110,247,0.08)',
-                color: GS.primary, fontSize: 12, fontFamily: "'DM Mono', monospace", cursor: 'pointer',
+                border: '1px solid rgba(43,42,40,0.3)', background: 'rgba(43,42,40,0.08)',
+                color: GS.primary, fontSize: 12, fontFamily: "var(--font-mono)", cursor: 'pointer',
               }}
             >
               {loadingMore ? 'Loading…' : `Load ${Math.min(PAGE, total - rows.length)} more`}

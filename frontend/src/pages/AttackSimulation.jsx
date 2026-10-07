@@ -14,7 +14,7 @@ import { stepStates, describeResult, scoringSecondsLeft, PHASE_LABELS } from '..
 import { GS } from '../constants/colors'
 
 const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
-const MONO = "'DM Mono', monospace"
+const MONO = "var(--font-mono)"
 
 const LOG_COLORS = { cmd: GS.textFaint, info: GS.textSubtle, result: GS.primary, error: GS.danger, out: GS.text }
 
@@ -98,7 +98,7 @@ export default function AttackSimulation() {
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       <div>
-        <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Attack Simulation
         </h1>
         <p style={{ color: GS.textSubtle, fontFamily: MONO, fontSize: 12, maxWidth: 820, lineHeight: 1.6 }}>
@@ -249,7 +249,7 @@ export default function AttackSimulation() {
           </section>
 
           <section className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
-            <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(17,20,26,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
+            <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Crosshair size={13} style={{ color: GS.textMuted }} />
               <span style={{ color: GS.textMuted, fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
                 Script output
