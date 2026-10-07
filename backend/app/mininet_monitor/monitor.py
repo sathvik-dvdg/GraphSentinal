@@ -70,6 +70,7 @@ class MininetMonitor:
         # just silently showing whatever graph state happened to be last.
         self.last_poll_at: str | None = None
         self.last_flow_count: int = 0
+        self._cap_warned = False
         self.last_error: str | None = None
         # Poll status: whether the switch actually answered. Reported, never
         # turned into an overall "degraded" status -- "degraded after N
@@ -315,16 +316,29 @@ class MininetMonitor:
             future.cancel()
             print(f"[Monitor] Socket emit failed: {exc!r}")
 
+    def _cap_flows(self, flows: list) -> list:
+        """Keep the flows with the most packets when the table outgrows
+        MONITOR_MAX_FLOWS, and say so (once per episode, not every poll)."""
+        limit = settings.monitor_max_flows
+        if len(flows) <= limit:
+            self._cap_warned = False
+            return flows
+        if not self._cap_warned:
+            self._cap_warned = True
+            print(f"[Monitor] Switch table holds {len(flows)} flows, over MONITOR_MAX_FLOWS={limit}: "
+                  "scoring the busiest ones only until it shrinks.")
+        return sorted(flows, key=lambda f: f.get("packet_count", 0), reverse=True)[:limit]
+
     def _run(self) -> None:
         print(f"[Monitor] Polling OVS every {self.interval}s")
         while not self._stop_event.is_set():
             try:
                 observed_at = time.time()
-                flows = self._poll().flows
+                flows = self._cap_flows(self._poll().flows)
                 # Always analyze — even an empty batch — so graph state
                 # reflects "no current traffic" instead of leaving stale
                 # threats/nodes on screen after traffic actually stops.
-                result = analyze_flows(flows)
+                result = analyze_flows(flows, cap=settings.monitor_max_flows)
                 self._emit(result)
                 # v2 sees this poll's flows ONLY if they came from OVS: with
                 # DEMO_FALLBACK_FLOWS on, `flows` can be randomised output of

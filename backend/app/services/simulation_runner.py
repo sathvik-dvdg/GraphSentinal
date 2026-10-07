@@ -84,7 +84,7 @@ RUNNABLE = (*ATTACKS.keys(), "sequence")
 
 
 class SimulationRefused(Exception):
-    """A run was not started. `code` is busy | preflight_failed | invalid."""
+    """A run was not started. `code` is busy | preflight_failed | source_blocked | invalid."""
 
     def __init__(self, code: str, message: str, checks: list[dict] | None = None):
         super().__init__(message)
@@ -95,6 +95,51 @@ class SimulationRefused(Exception):
 
 def _utc_now() -> datetime:
     return datetime.now(timezone.utc)
+
+
+def wait_seconds(control: bool) -> float:
+    """How long to watch for the incident after the traffic. v1's score keeps
+    rising for most of a minute (OVS counts a rule's duration from its install),
+    so an attack gets the full setting; a control, which expects nothing, a
+    shorter look."""
+    wait = float(settings.simulation_score_wait_seconds)
+    return min(wait, 20.0) if control else wait
+
+
+def blocked_among(ips: list[str]) -> set[str]:
+    """Which of these sources are already in the blocked list."""
+    from app.database import SessionLocal
+    from app.models.incident import BlockedIP
+
+    db = SessionLocal()
+    try:
+        rows = db.query(BlockedIP.ip_address).filter(BlockedIP.ip_address.in_(ips)).all()
+        return {r[0] for r in rows}
+    finally:
+        db.close()
+
+
+def blockers(attack: str, control: bool, blocked_lookup: Callable[[list[str]], set[str]] = blocked_among) -> list[str]:
+    """Why this run could not produce its incident, found before any traffic is
+    sent. ThreatAnalyzer skips a source that is already blocked ("already_blocked"):
+    a second flood from h2 scores high and records nothing, which the console
+    would otherwise report as "v1 did not score it". A control expects no
+    incident, so it is never held up by this."""
+    if control or attack not in RUNNABLE:
+        return []
+    keys = SEQUENCE if attack == "sequence" else (attack,)
+    held = blocked_lookup([ATTACKS[k].source_ip for k in keys])
+    return [
+        f"{ATTACKS[k].source_ip} ({ATTACKS[k].source_host}) is already blocked from an earlier run, so no new "
+        "incident can be recorded for it. Unblock it first (select the node on the Dashboard and press Unblock)."
+        for k in keys if ATTACKS[k].source_ip in held
+    ]
+
+
+def _live_score(ip: str) -> float | None:
+    from app.services.graph_state import graph_state
+
+    return graph_state.ip_score(ip)
 
 
 def scripts_dir() -> Path:
@@ -181,6 +226,7 @@ class Run:
     results: list[dict] = field(default_factory=list)
     log: deque = field(default_factory=lambda: deque(maxlen=_LOG_LINES))
     phase_started_at: datetime = field(default_factory=_utc_now)
+    wait_seconds: float = 20.0       # the scoring wait for this run (see wait_seconds())
 
     @property
     def active(self) -> bool:
@@ -205,7 +251,7 @@ class Run:
             "finished_at": self.finished_at.isoformat() if self.finished_at else None,
             "error": self.error,
             "results": list(self.results),
-            "score_wait_seconds": settings.simulation_score_wait_seconds,
+            "score_wait_seconds": self.wait_seconds,
             "log": lines,
         }
 
@@ -241,9 +287,13 @@ class SimulationRunner:
 
     def __init__(self, popen: Callable[..., subprocess.Popen] = subprocess.Popen,
                  incident_lookup: Callable[[str, datetime], dict | None] = find_incident,
-                 sleep: Callable[[float], None] = time.sleep):
+                 sleep: Callable[[float], None] = time.sleep,
+                 score_lookup: Callable[[str], float | None] = _live_score,
+                 blocked_lookup: Callable[[list[str]], set[str]] = blocked_among):
         self._popen = popen
         self._incident_lookup = incident_lookup
+        self._score_lookup = score_lookup
+        self._blocked_lookup = blocked_lookup
         self._sleep = sleep
         self._lock = threading.Lock()
         self._ids = itertools.count(1)
@@ -301,7 +351,11 @@ class SimulationRunner:
                     "; ".join(f"{c['label']}: {c['detail']}" for c in failed),
                     checks,
                 )
-            run = Run(id=next(self._ids), attack=attack, control=control, started_by=started_by)
+            held = blockers(attack, control, self._blocked_lookup)
+            if held:
+                raise SimulationRefused("source_blocked", " ".join(held), checks)
+            run = Run(id=next(self._ids), attack=attack, control=control, started_by=started_by,
+                      wait_seconds=wait_seconds(control))
             self._current = run
             self._stop.clear()
         for c in checks:
@@ -353,7 +407,7 @@ class SimulationRunner:
         result = {
             "attack": attack.key, "source_ip": attack.source_ip, "control": run.control,
             "expected_label": None if run.control else attack.expected_label,
-            "exit_code": None, "incident": None,
+            "exit_code": None, "incident": None, "score": None,
         }
         run.results.append(result)
         self._phase(run, "traffic", attack.key)
@@ -370,30 +424,52 @@ class SimulationRunner:
             self._log(run, run.error, "error")
             return False
 
-        # v1's score for a source rises over the first polls after an attack.
-        # Watch for the incident, and stop waiting as soon as it is recorded.
-        wait = float(settings.simulation_score_wait_seconds)
+        # v1's score for a source keeps rising after the traffic stops: OVS counts a
+        # rule's duration from when it was installed, so an idle rule only gets
+        # older. Watch for the incident, say how the score is moving, and stop
+        # waiting as soon as the incident is recorded.
+        wait = run.wait_seconds
+        threshold = settings.threat_threshold
         self._phase(run, "scoring", attack.key)
         self._log(run, f"waiting up to {wait:.0f} s for the monitor to poll s1 and v1 to score {attack.source_ip}", "info")
         deadline = time.monotonic() + wait
+        logged: float | None = None
+        previous: float | None = None
+        rising = False
         while not self._stop.is_set():
             incident = self._incident_lookup(attack.source_ip, sent_at)
             if incident is not None:
                 result["incident"] = incident
+                result["score"] = round(float(incident["threat_score"]), 4)
                 self._log(run, f"incident #{incident['id']}: {attack.source_ip} scored "
                                f"{incident['threat_score']:.2f}, label {incident['attack_type']} (heuristic), "
                                f"enforcement {incident['enforcement_status']}", "result")
                 return True
+            score = self._score_lookup(attack.source_ip)
+            if score is not None:
+                result["score"] = round(score, 4)
+                rising = previous is not None and score > previous + 0.005
+                previous = score
+                if logged is None or abs(score - logged) >= 0.05:
+                    logged = score
+                    self._log(run, f"v1 score for {attack.source_ip}: {score:.2f} (threshold {threshold})", "info")
             if time.monotonic() >= deadline:
                 break
             self._sleep(2.0)
         if self._stop.is_set():
             return False
+        score = result["score"]
         if run.control:
-            self._log(run, f"no incident for {attack.source_ip}: as expected for this control.", "result")
+            seen = f" Latest v1 score {score:.2f}." if score is not None else ""
+            self._log(run, f"no incident for {attack.source_ip}: as expected for this control.{seen}", "result")
+        elif score is None:
+            self._log(run, f"no incident for {attack.source_ip} after {wait:.0f} s, and it never appeared in a scored "
+                           "batch: the switch did not show this traffic. Is the monitor polling s1, and is the "
+                           "topology the one the scripts entered?", "result")
         else:
-            self._log(run, f"no incident for {attack.source_ip} after {wait:.0f} s. v1 did not score it over "
-                           f"the threshold ({settings.threat_threshold}).", "result")
+            tail = " and still rising: it may cross a little later, watch the Alert Centre." if rising else "."
+            self._log(run, f"no incident for {attack.source_ip} after {wait:.0f} s. Latest v1 score {score:.2f}, "
+                           f"threshold {threshold}{tail}", "result")
         return True
 
     def _spawn(self, run: Run, argv: list[str]) -> int:

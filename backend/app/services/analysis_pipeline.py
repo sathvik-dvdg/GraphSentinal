@@ -10,9 +10,15 @@ from app.services.inference_service import InferenceService
 from app.services.threat_analyzer import ThreatAnalyzer
 
 
-def analyze_flows(flows: list[Any]) -> dict[str, Any]:
-    if len(flows) > settings.max_analyze_flows:
-        raise ValueError(f"Too many flows; max is {settings.max_analyze_flows}")
+def analyze_flows(flows: list[Any], cap: int | None = None) -> dict[str, Any]:
+    """`cap` replaces MAX_ANALYZE_FLOWS for callers that are not the HTTP API.
+    The API keeps the small cap (it bounds what a client can make the server
+    compute); the switch monitor passes MONITOR_MAX_FLOWS, because a flood of
+    2000 connections leaves 4000 entries in the switch's table for up to a minute,
+    and refusing the whole poll blinded detection and froze the dashboard."""
+    limit = settings.max_analyze_flows if cap is None else cap
+    if len(flows) > limit:
+        raise ValueError(f"Too many flows; max is {limit}")
 
     flow_records = [flow if isinstance(flow, FlowRecord) else FlowRecord(**dict(flow)) for flow in flows]
     inference = InferenceService.get_instance()
