@@ -33,8 +33,10 @@ normally do.
 - Run `pingall` in the Mininet CLI. Replaying its flows (one echo for each of the
   90 host pairs) through v1 scored all ten hosts 0.89 and blocked every one of them
   as "Botnet": many hosts, many peers, one tiny flow each is what v1 reads as a
-  threat. A single `h1 ping h7` is fine (h1 0.11, h7 0.03, no incident; a finished
-  `ping -c 4` creeps toward 0.6 over a minute as its rule ages, still under 0.75).
+  threat. The same replay suggests a single `h1 ping h7` should stay below the
+  threshold (h1 0.11, h7 0.03, no incident; a finished `ping -c 4` creeps toward 0.6
+  over a minute as its rule ages, still under 0.75). Both are replay results, not
+  observed on a live topology: verify with `h1 ping -c 10 h7` and watch the dashboard.
 
 ## Running the attacks
 

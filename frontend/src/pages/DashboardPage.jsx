@@ -1,6 +1,6 @@
 // [Windows] GraphSentinel — Susheep
 // DashboardPage — stripped to overview only (stat cards + summaries + mini timeline)
-// WebSocket / simulation logic has moved to AppShell
+// The WebSocket lives in SimulationProvider (live data); attack runs are the /simulation page
 import { useState, useEffect } from 'react'
 import { Link } from 'react-router-dom'
 import { motion } from 'framer-motion'

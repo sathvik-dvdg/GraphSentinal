@@ -51,7 +51,7 @@ const MODES = {
 /**
  * ConnectionModeBadge — renders the current connection state with unambiguous visual cues.
  * Read directly from connectionMode store field — never inferred.
- * Safety-critical: operators must distinguish LIVE from SIMULATION at a glance.
+ * Safety-critical: operators must distinguish LIVE from OFFLINE, CONNECTING and a lost socket at a glance.
  */
 export default function ConnectionModeBadge({ mode, socketStatus = 'idle', className = '' }) {
   const display = connectionDisplay(mode, socketStatus)
