@@ -6,14 +6,57 @@ import cytoscape from 'cytoscape'
 import { STATUS_COLORS } from '../../constants/theme'
 import { GS } from '../../constants/colors'
 
+const SWITCH_ID = 's1'
+const CONTROLLER_ID = 'c0'
+const HOST_LABEL_RE = /^h(\d+)$/i
+const IPV4_HOST_RE = /^10\.0\.0\.(\d+)$/
+const HOST_RING_RADIUS = 170
+const CONTROLLER_OFFSET = 86
+
 const LAYOUT = {
-  name: 'concentric',
-  minNodeSpacing: 46,
-  fit: true,
-  padding: 40,
-  // Infrastructure (switch / controller) in the centre, hosts on the outer ring.
-  concentric: (node) => (node.data('kind') && node.data('kind') !== 'host' ? 10 : 1),
-  levelWidth: () => 1,
+  name: 'preset',
+  fit: false,
+  animate: false,
+}
+
+function hostOrder(node) {
+  const label = String(node.label || node.id || '')
+  const hostMatch = label.match(HOST_LABEL_RE)
+  if (hostMatch) return Number(hostMatch[1])
+
+  const ipMatch = String(node.id || '').match(IPV4_HOST_RE)
+  if (ipMatch) return Number(ipMatch[1])
+
+  return Number.MAX_SAFE_INTEGER
+}
+
+function buildTopologyPositions(nodes) {
+  const positions = new Map([
+    [SWITCH_ID, { x: 0, y: 0 }],
+    [CONTROLLER_ID, { x: 0, y: -CONTROLLER_OFFSET }],
+  ])
+
+  const hosts = nodes
+    .filter((n) => (n.kind || 'host') === 'host')
+    .sort((a, b) => hostOrder(a) - hostOrder(b) || String(a.id).localeCompare(String(b.id)))
+
+  const count = Math.max(hosts.length, 1)
+  hosts.forEach((host, index) => {
+    // h1 starts at the right edge, then hosts proceed clockwise around s1.
+    // c0 stays inside the ring, so it no longer competes with a top host label.
+    const angle = (index / count) * Math.PI * 2
+    positions.set(host.id, {
+      x: Math.cos(angle) * HOST_RING_RADIUS,
+      y: Math.sin(angle) * HOST_RING_RADIUS,
+    })
+  })
+
+  return positions
+}
+
+function graphPaddingFor(el) {
+  if (!el) return 56
+  return Math.max(42, Math.min(84, Math.floor(Math.min(el.clientWidth, el.clientHeight) * 0.12)))
 }
 
 export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }) {
@@ -27,6 +70,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
   }, [onNodeClick, graphData])
 
   const elements = useMemo(() => {
+    const positions = buildTopologyPositions(graphData.nodes)
     const nodes = graphData.nodes.map((n) => ({
       data: {
         id: n.id,
@@ -37,6 +81,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
         source: n.source,
         kind: n.kind || 'host',
       },
+      position: positions.get(n.id),
     }))
     const edges = graphData.links.map((l) => ({
       data: {
@@ -55,6 +100,9 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
 
     const cy = cytoscape({
       container: containerRef.current,
+      autoungrabify: true,
+      boxSelectionEnabled: false,
+      wheelSensitivity: 0.18,
       style: [
         // Base node style — shape encodes status (accessibility: not color alone)
         {
@@ -149,7 +197,7 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
           },
         },
       ],
-      layout: { ...LAYOUT, animate: false },
+      layout: LAYOUT,
       elements: [] // start empty, updated by next effect
     })
 
@@ -165,9 +213,9 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
     }
   }, []) // initialize once
 
-  const nodeCountRef = useRef(0)
+  const layoutKeyRef = useRef('')
 
-  const relayout = useCallback((animate) => {
+  const relayout = useCallback(() => {
     const cy = cyRef.current
     if (!cy || cy.destroyed()) return
     const el = containerRef.current
@@ -176,7 +224,9 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
     // origin. Re-sync the size before laying out.
     if (el && el.clientWidth > 0 && el.clientHeight > 0) cy.resize()
     if (cy.nodes().length === 0) return
-    cy.layout({ ...LAYOUT, animate, animationDuration: 300 }).run()
+    cy.layout(LAYOUT).run()
+    cy.fit(cy.elements(), graphPaddingFor(el))
+    cy.center(cy.elements())
   }, [])
 
   // Keep the canvas sized to its panel and re-run the layout on resize —
@@ -184,10 +234,8 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    let first = true
     const obs = new ResizeObserver(() => {
-      relayout(!first)
-      first = false
+      relayout()
     })
     obs.observe(el)
     return () => obs.disconnect()
@@ -209,20 +257,20 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
         const existing = cy.getElementById(ele.data.id)
         if (existing.length > 0) {
           existing.data(ele.data)
+          if (ele.position) existing.position(ele.position)
         } else {
           cy.add(ele)
         }
       })
     })
 
-    // Count real nodes: edges always carry data.target, nodes never do.
-    // (The previous check keyed on data.source, which every node now sets to
-    // 'observed'/'configured' — so it was always 0 and the concentric layout
-    // never ran, leaving every node stacked at the origin.)
-    const newCount = elements.filter(e => e.data.target === undefined).length
-    if (newCount !== nodeCountRef.current) {
-      relayout(nodeCountRef.current !== 0)
-      nodeCountRef.current = newCount
+    const layoutKey = elements
+      .filter(e => e.data.target === undefined)
+      .map(e => `${e.data.id}:${Math.round(e.position?.x || 0)}:${Math.round(e.position?.y || 0)}`)
+      .join('|')
+    if (layoutKey !== layoutKeyRef.current) {
+      relayout()
+      layoutKeyRef.current = layoutKey
     }
   }, [elements, relayout])
 

@@ -7,7 +7,6 @@ import { motion } from 'framer-motion'
 import { UserButton } from '@clerk/react'
 import useGraphStore from '../../store/useGraphStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
-import EnforcementModeBadge from '../ui/EnforcementModeBadge'
 import DetectionPathBadge from '../ui/DetectionPathBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
@@ -104,7 +103,6 @@ export default function Topbar({ onForensicsClick }) {
         </span>
 
         <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
-        <EnforcementModeBadge mode={stats.enforcement_mode} />
         <DetectionPathBadge mlV2={mlV2Health} />
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
