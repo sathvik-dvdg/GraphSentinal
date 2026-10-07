@@ -20,19 +20,29 @@ function Start-Window([string]$title, [string]$dir, [string]$command) {
 }
 
 if ($WithMininet) {
-    $daemonToken = ""
+    # The daemon must be given exactly the token the backend uses. The backend
+    # reads the DAEMON_TOKEN environment variable first, then backend\.env (with
+    # any quotes around the value removed), then its built-in default.
+    $daemonToken = $env:DAEMON_TOKEN
     $envFile = Join-Path $root "backend\.env"
-    if (Test-Path $envFile) {
+    if (-not $daemonToken -and (Test-Path $envFile)) {
         foreach ($line in Get-Content $envFile) {
-            if ($line -match "^DAEMON_TOKEN=(.*)") {
-                $daemonToken = $Matches[1]
+            if ($line -match '^\s*DAEMON_TOKEN\s*=\s*(.*)$') {
+                $daemonToken = $Matches[1].Trim().Trim('"').Trim("'")
                 break
             }
         }
     }
 
     if (-not $daemonToken) {
-        Write-Warning "DAEMON_TOKEN not found in backend\.env"
+        # The daemon exits at startup without a token, and the backend falls back to
+        # this one, so using it on both sides keeps them matching.
+        $daemonToken = "test-token"
+        Write-Warning "DAEMON_TOKEN is not set (environment or backend\.env): using the backend's built-in default for the daemon too."
+    }
+    if ($daemonToken.Contains("'")) {
+        Write-Error "DAEMON_TOKEN contains a single quote, which this script cannot pass to WSL safely. Use a token without one."
+        exit 1
     }
 
     $driveLetter = $root.Substring(0, 1).ToLower()
@@ -40,13 +50,33 @@ if ($WithMininet) {
 
     $distroQ = Quote $WslDistro
 
-    # Mininet's OVSController needs one of these binaries. Without it the
-    # topology dies at "*** Starting controller", switch s1 is never created,
-    # and every poll of the switch fails with "s1 is not a bridge or a socket".
-    $controller = & wsl.exe -d $WslDistro -u root -- bash -c "which ovs-controller ovs-testcontroller test-controller 2>/dev/null | head -1"
-    if (-not $controller) {
-        Write-Error ("No OpenFlow controller binary in WSL ($WslDistro), so Mininet cannot start. Install it once with:`n" +
-                     "  wsl -d $WslDistro -u root -- apt-get install -y openvswitch-testcontroller`n" +
+    # The distribution must exist and start. A wrong -WslDistro name makes
+    # wsl.exe print an error and exit non-zero; without this check the three
+    # WSL windows below would each fail on their own.
+    & wsl.exe -d $WslDistro -u root -- true 2>$null | Out-Null
+    if ($LASTEXITCODE -ne 0) {
+        Write-Error "WSL distribution '$WslDistro' was not found or would not start. Run 'wsl -l -v' to see the names, then pass one with -WslDistro."
+        exit 1
+    }
+
+    # Mininet, Open vSwitch and an OpenFlow controller must be installed in it.
+    # Without a controller binary the topology dies at "*** Starting controller",
+    # switch s1 is never created, and every poll of the switch fails with
+    # "s1 is not a bridge or a socket".
+    $missing = @()
+    foreach ($tool in @("mn", "ovs-vsctl", "ovs-ofctl")) {
+        & wsl.exe -d $WslDistro -u root -- which $tool 2>$null | Out-Null
+        if ($LASTEXITCODE -ne 0) { $missing += $tool }
+    }
+    $hasController = $false
+    foreach ($tool in @("ovs-controller", "ovs-testcontroller", "test-controller")) {
+        & wsl.exe -d $WslDistro -u root -- which $tool 2>$null | Out-Null
+        if ($LASTEXITCODE -eq 0) { $hasController = $true; break }
+    }
+    if (-not $hasController) { $missing += "an OpenFlow controller (openvswitch-testcontroller)" }
+    if ($missing.Count -gt 0) {
+        Write-Error ("Missing in WSL ($WslDistro): " + ($missing -join ", ") + ". Install them once with:`n" +
+                     "  wsl -d $WslDistro -u root -- apt-get install -y mininet openvswitch-switch openvswitch-testcontroller`n" +
                      "then run this script again.")
         exit 1
     }
@@ -83,8 +113,10 @@ while ((Get-Date) -lt $deadline -and -not (Test-NetConnection 127.0.0.1 -Port 85
 # poll with made-up flows (DEMO_FALLBACK_FLOWS). The variable overrides backend\.env.
 # GS_WSL_DISTRO tells the Simulate button's attack scripts which distribution to
 # enter: it must be the one running the topology (-WslDistro), not the default.
+# It is also set when -WslDistro is given without -WithMininet (Mininet started by hand).
 $envPrefix = ""
-if ($WithMininet) { $envPrefix = '$env:DEMO_FALLBACK_FLOWS = ''false''; $env:GS_WSL_DISTRO = ' + (Quote $WslDistro) + '; ' }
+if ($WithMininet) { $envPrefix += '$env:DEMO_FALLBACK_FLOWS = ''false''; ' }
+if ($WithMininet -or $PSBoundParameters.ContainsKey('WslDistro')) { $envPrefix += '$env:GS_WSL_DISTRO = ' + (Quote $WslDistro) + '; ' }
 $backendCmd = $envPrefix + "& " + (Quote $py) + " -m uvicorn app.main:socket_app --host 127.0.0.1 --port $BackendPort"
 Start-Window "GS backend :$BackendPort" (Join-Path $root "backend") $backendCmd
 
