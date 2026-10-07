@@ -192,7 +192,6 @@ export default function ThreatFeed() {
                       padding: '3px 8px',
                       borderRadius: 4,
                       letterSpacing: '0.08em',
-                      textTransform: 'uppercase',
                       background: alert.is_blocked ? 'rgba(52,99,72,0.12)' : 'rgba(180,19,46,0.12)',
                       color: alert.is_blocked ? GS.success : GS.danger,
                       border: `1px solid ${alert.is_blocked ? 'rgba(52,99,72,0.25)' : 'rgba(180,19,46,0.25)'}`,
@@ -217,7 +216,7 @@ export default function ThreatFeed() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
           {/* Mini stat cards */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 12 }}>
               Live Stats
             </div>
             <StatTile layout="row" panel={false} label="Total alerts" value={alerts.length} color={GS.textMuted} />
@@ -227,7 +226,7 @@ export default function ThreatFeed() {
 
           {/* Top attacking IPs */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 12 }}>
               Top Attacking IPs
             </div>
             {topIPs.map(([ip, count]) => (
@@ -243,7 +242,7 @@ export default function ThreatFeed() {
 
           {/* Attack type distribution */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 12 }}>
               Attack Types
             </div>
             {TYPES.filter((t) => t !== 'All').map((type) => {

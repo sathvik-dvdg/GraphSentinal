@@ -80,7 +80,7 @@ function record(issue, name, pass, detail) {
   record('1', 'no forced MOCK MODE banner on a live backend', !bodyText1.includes('MOCK MODE'));
 
   // ── #5 — EnforcementModeBadge reflects the REAL live config ────────────
-  const expectedEnforcementBadge = liveStats.enforcement_mode === 'ovs' ? 'OVS ENFORCEMENT' : 'SIMULATED ENFORCEMENT';
+  const expectedEnforcementBadge = liveStats.enforcement_mode === 'ovs' ? 'OVS enforcement' : 'Simulated enforcement';
   record('5', 'EnforcementModeBadge matches live enforcement_mode', bodyText1.includes(expectedEnforcementBadge), `expected "${expectedEnforcementBadge}"`);
 
   // ── #12 — DemoModeBadge matches the REAL live config ────────────────────

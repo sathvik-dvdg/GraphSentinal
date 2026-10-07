@@ -22,10 +22,10 @@ import { GS } from '../constants/colors'
 
 const SEVERITY_COLORS = { critical: GS.danger, warning: GS.warn, info: GS.primary }
 const SOURCE_LABELS = {
-  threat_feed: 'THREAT FEED',
-  self_healing: 'SELF-HEALING',
-  blockchain: 'BLOCKCHAIN',
-  system: 'SYSTEM',
+  threat_feed: 'Threat feed',
+  self_healing: 'Self-healing',
+  blockchain: 'Blockchain',
+  system: 'System',
 }
 const SOURCE_COLORS = {
   threat_feed: GS.danger,
@@ -125,7 +125,7 @@ export default function AlertCentre() {
           Alert Centre
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
             Unified incident hub · Acknowledge / resolve state is saved on the server
           </p>
           <DataFreshnessBadge dataErrors={{ alerts: dataErrors.alerts, timeline: dataErrors.timeline }} />
@@ -147,7 +147,7 @@ export default function AlertCentre() {
             <span style={{ flex: 1 }}>{triageError}</span>
             <button
               onClick={() => setTriageError(null)}
-              style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "var(--font-mono)" }}
+              style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 12, fontFamily: "var(--font-sans)" }}
               aria-label="Dismiss"
             >
               Dismiss
@@ -209,8 +209,7 @@ export default function AlertCentre() {
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 6, flexWrap: 'wrap' }}>
                         <span style={{
                           fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
-                          padding: '2px 6px', borderRadius: 4, letterSpacing: '0.06em',
-                          background: `${srcColor}15`, color: srcColor, border: `1px solid ${srcColor}30`,
+                          padding: '2px 6px', borderRadius: 4, background: `${srcColor}15`, color: srcColor, border: `1px solid ${srcColor}30`,
                         }}>
                           {SOURCE_LABELS[alert.source] || alert.source}
                         </span>
@@ -240,9 +239,7 @@ export default function AlertCentre() {
                           title="The source host is blocked. That is an enforcement state; this alert stays open until someone acknowledges or resolves it."
                           style={{
                             fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
-                            padding: '3px 8px', borderRadius: 4, letterSpacing: '0.06em',
-                            textTransform: 'uppercase', border: '1px solid rgba(43,42,40,0.3)',
-                            background: 'rgba(43,42,40,0.08)', color: GS.primary,
+                            padding: '3px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.08)', color: GS.primary,
                           }}
                         >
                           Host blocked
@@ -254,11 +251,11 @@ export default function AlertCentre() {
                         onClick={() => cycleStatus(alert.id)}
                         disabled={!mayTriage || alert.incidentId == null}
                         style={{
-                          fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700,
-                          padding: '3px 8px', borderRadius: 4,
+                          fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600,
+                          padding: '3px 8px', borderRadius: 999,
                           cursor: !mayTriage || alert.incidentId == null ? 'not-allowed' : 'pointer',
                           opacity: !mayTriage || alert.incidentId == null ? 0.6 : 1,
-                          letterSpacing: '0.06em', textTransform: 'uppercase', border: '1px solid',
+                          border: '1px solid',
                           ...(status === 'open'
                             ? { background: 'rgba(180,19,46,0.1)', color: GS.danger, borderColor: 'rgba(180,19,46,0.3)' }
                             : status === 'acknowledged'
@@ -278,7 +275,7 @@ export default function AlertCentre() {
                         style={{
                           display: 'flex', alignItems: 'center', gap: 4,
                           background: 'none', border: 'none',
-                          color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)",
+                          color: GS.primary, fontSize: 12, fontFamily: "var(--font-sans)",
                           cursor: 'pointer',
                         }}
                       >
@@ -303,7 +300,7 @@ export default function AlertCentre() {
         <div style={{ display: 'flex', flexDirection: 'column', gap: 12, overflowY: 'auto' }}>
           {/* Donut chart */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 12 }}>
               Alerts by Status
             </div>
             {donutData.length > 0 ? (
@@ -328,7 +325,7 @@ export default function AlertCentre() {
 
           {/* Sparkline: alerts per hour */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 12 }}>
               Threats per 5 min (last hour)
             </div>
             <ResponsiveContainer width="100%" height={80}>
@@ -355,7 +352,7 @@ export default function AlertCentre() {
 
           {/* MTTA card */}
           <div className="gs-panel" style={{ padding: '14px 16px' }}>
-            <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 8 }}>
+            <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 8 }}>
               Mean Time To Acknowledge
             </div>
             <div style={{ color: GS.primary, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 28 }}>

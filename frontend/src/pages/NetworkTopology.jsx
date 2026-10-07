@@ -50,7 +50,7 @@ export default function NetworkTopology() {
             Network Topology
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+            <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
               Live network graph · Org hierarchy · Threat vectors
             </p>
             <DataFreshnessBadge dataErrors={{ graph: dataErrors.graph }} />
@@ -75,12 +75,12 @@ export default function NetworkTopology() {
               onClick={() => setViewMode(m.id)}
               style={{
                 padding: '5px 14px',
-                borderRadius: 6,
+                borderRadius: 999,
                 border: 'none',
                 background: viewMode === m.id ? 'rgba(43,42,40,0.2)' : 'transparent',
                 color: viewMode === m.id ? GS.primary : GS.textSubtle,
-                fontSize: 11,
-                fontFamily: "var(--font-mono)",
+                fontSize: 12,
+                fontFamily: "var(--font-sans)",
                 cursor: 'pointer',
                 transition: 'all 150ms',
                 fontWeight: viewMode === m.id ? 600 : 400,
@@ -183,7 +183,7 @@ export default function NetworkTopology() {
                 gap: 8,
               }}
             >
-              <span style={{ color: GS.successDeep, fontSize: 10, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+              <span style={{ color: GS.successDeep, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
                 Org Hierarchy
               </span>
             </div>

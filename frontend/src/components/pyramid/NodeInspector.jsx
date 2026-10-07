@@ -129,7 +129,6 @@ export default function NodeInspector({ node, onClose }) {
                   borderRadius: 4,
                   fontFamily: "var(--font-mono)",
                   letterSpacing: '0.08em',
-                  textTransform: 'uppercase',
                 }}
               >
                 {displayStatus}
@@ -188,7 +187,7 @@ export default function NodeInspector({ node, onClose }) {
         {/* Status */}
         <div style={{ marginBottom: 16 }}>
           <Label>Status</Label>
-          <span style={{ color: colors.text, fontFamily: "var(--font-mono)", fontSize: 12, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.06em' }}>
+          <span style={{ color: colors.text, fontFamily: "var(--font-sans)", fontSize: 12, fontWeight: 600 }}>
             {displayStatus}
           </span>
         </div>
@@ -318,7 +317,7 @@ export default function NodeInspector({ node, onClose }) {
 
 function Label({ children }) {
   return (
-    <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 4 }}>
+    <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 4 }}>
       {children}
     </div>
   )
@@ -333,20 +332,23 @@ function Value({ children }) {
 }
 
 function actionBtnStyle(color) {
+  // Neutral outline pill; only the text carries the colour.
   return {
     display: 'flex',
     alignItems: 'center',
+    justifyContent: 'center',
     gap: 8,
-    padding: '8px 12px',
-    borderRadius: 6,
-    border: `1px solid ${color}30`,
-    background: `${color}10`,
+    height: 34,
+    padding: '0 14px',
+    borderRadius: 999,
+    border: 'none',
+    boxShadow: `inset 0 0 0 1px ${GS.borderStrong}`,
+    background: 'transparent',
     color,
-    fontSize: 12,
-    fontFamily: "var(--font-mono)",
+    fontSize: 13,
+    fontFamily: "var(--font-sans)",
     fontWeight: 500,
     cursor: 'pointer',
-    transition: 'all 150ms',
-    letterSpacing: '0.04em',
+    transition: 'background-color 150ms',
   }
 }

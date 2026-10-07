@@ -41,15 +41,15 @@ export function modeAfterPoll(mode, graphOk) {
 // socket is doing (socketStatus). With REST answering and the socket down the
 // data is still current, by polling, so the badge says that and not "lost".
 export function connectionDisplay(mode, socketStatus = 'idle') {
-  if (mode === 'connecting') return { key: 'connecting', label: 'CONNECTING' }
-  if (mode === 'mock') return { key: 'mock', label: 'OFFLINE' }
+  if (mode === 'connecting') return { key: 'connecting', label: 'Connecting' }
+  if (mode === 'mock') return { key: 'mock', label: 'Offline' }
   if (mode === 'offline') {
-    if (socketStatus === 'reconnecting') return { key: 'reconnecting', label: 'RECONNECTING…' }
-    return { key: 'lost', label: 'CONNECTION LOST — RETRYING' }
+    if (socketStatus === 'reconnecting') return { key: 'reconnecting', label: 'Reconnecting…' }
+    return { key: 'lost', label: 'Connection lost, retrying' }
   }
-  if (socketStatus === 'reconnecting') return { key: 'reconnecting', label: 'RECONNECTING…' }
-  if (socketStatus === 'lost') return { key: 'polling', label: 'LIVE (POLLING) — SOCKET RETRYING' }
-  return { key: 'live', label: 'LIVE' }
+  if (socketStatus === 'reconnecting') return { key: 'reconnecting', label: 'Reconnecting…' }
+  if (socketStatus === 'lost') return { key: 'polling', label: 'Live (polling), socket retrying' }
+  return { key: 'live', label: 'Live' }
 }
 
 // ── The simulate control ─────────────────────────────────────────────────────

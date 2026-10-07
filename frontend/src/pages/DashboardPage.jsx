@@ -54,7 +54,7 @@ export default function DashboardPage() {
           Dashboard
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
             Network overview · Real-time threat summary
           </p>
           <LastUpdated ts={lastDataAt} />
@@ -116,7 +116,7 @@ export default function DashboardPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ShieldAlert size={14} style={{ color: GS.danger }} />
-              <span style={{ color: GS.danger, fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <span style={{ color: GS.danger, fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600 }}>
                 Recent Threats
               </span>
             </div>
@@ -152,7 +152,7 @@ export default function DashboardPage() {
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono)", color: alert.severity === 'critical' ? GS.danger : GS.warn, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "var(--font-sans)", color: alert.severity === 'critical' ? GS.danger : GS.warn }}>
                         {alert.severity}
                       </span>
                       <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: GS.textMuted }}>
@@ -200,7 +200,7 @@ export default function DashboardPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Cpu size={14} style={{ color: GS.success }} />
-              <span style={{ color: GS.success, fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <span style={{ color: GS.success, fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600 }}>
                 Self-Healing Activity
               </span>
             </div>
@@ -236,7 +236,7 @@ export default function DashboardPage() {
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono)", color: GS.success, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "var(--font-sans)", color: GS.success }}>
                         {ev.action}
                       </span>
                       <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: GS.textSubtle }}>
@@ -277,7 +277,7 @@ export default function DashboardPage() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <TrendingUp size={14} style={{ color: GS.primary }} />
-            <span style={{ color: GS.primary, fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ color: GS.primary, fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600 }}>
               Threat Timeline
             </span>
           </div>
@@ -343,7 +343,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
         }}
       />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "var(--font-mono)", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)" }}>
           {title}
         </span>
         <div

@@ -6,16 +6,18 @@
 // *configured* to allow demo fallback (stats.demo_fallback_flows), not only
 // while it's actively substituting data — the operational risk is running a
 // deployment where it's silently possible, not just where it's active right now.
+import StatusPill from './StatusPill'
 export default function DemoModeBadge({ demoFallbackFlows, className = '' }) {
   if (!demoFallbackFlows) return null
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider whitespace-nowrap badge-sim ${className}`}
+    <StatusPill
+      tone="warn"
+      className={className}
       role="status"
       title="This backend is configured to fall back to synthetic demo traffic if the OVS daemon is unreachable (DEMO_FALLBACK_FLOWS=true)"
     >
-      DEMO MODE — SYNTHETIC TRAFFIC ALLOWED
-    </span>
+      Demo mode: synthetic traffic allowed
+    </StatusPill>
   )
 }

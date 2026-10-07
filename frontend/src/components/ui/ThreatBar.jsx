@@ -20,7 +20,7 @@ export default function ThreatBar({ score, delay = 0, showLabel = true, classNam
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       {showLabel && (
-        <span className="text-[10px] text-gs-muted font-mono uppercase tracking-wider shrink-0 w-10">
+        <span className="text-xs text-gs-muted font-sans shrink-0 w-10">
           Threat
         </span>
       )}

@@ -52,7 +52,7 @@ export default function SelfHealing() {
           Self-Healing
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
             Autonomous threat response · Network stability monitoring
           </p>
           <DataFreshnessBadge dataErrors={{ stats: dataErrors.stats, healing: dataErrors.healing }} />
@@ -90,7 +90,7 @@ export default function SelfHealing() {
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden', display: 'flex', flexDirection: 'column' }}>
           <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
             <Cpu size={14} style={{ color: GS.success }} />
-            <span style={{ color: GS.success, fontFamily: "var(--font-mono)", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ color: GS.success, fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600 }}>
               Live Response Events
             </span>
             <span style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)", marginLeft: 'auto' }}>
@@ -150,7 +150,7 @@ export default function SelfHealing() {
                   {event.network_stability_before != null && event.network_stability_after != null && (
                     <div>
                       <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: 4 }}>
-                        <span style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                        <span style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)" }}>
                           Network Stability
                         </span>
                         <span style={{ color: GS.success, fontSize: 9, fontFamily: "var(--font-mono)", fontWeight: 700 }}>
@@ -187,7 +187,7 @@ export default function SelfHealing() {
 
         {/* Stability gauge (40%) */}
         <div className="gs-panel" style={{ padding: '20px', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 16 }}>
-          <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.12em' }}>
+          <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)" }}>
             Network Stability
           </div>
 
@@ -242,7 +242,7 @@ export default function SelfHealing() {
       {/* Full response log table */}
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)' }}>
-          <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+          <span style={{ color: GS.textMuted, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
             Full Response Log
           </span>
         </div>

@@ -47,16 +47,16 @@ export default function AuditLog() {
           <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
             Audit Log
           </h1>
-          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
             Control-plane actions · operator identity · request correlation
           </p>
         </div>
         <button
           onClick={() => load(0, false)}
           style={{
-            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 6,
+            display: 'flex', alignItems: 'center', gap: 6, padding: '6px 14px', borderRadius: 999,
             border: '1px solid rgba(43,42,40,0.12)', background: 'rgba(43,42,40,0.05)',
-            color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", cursor: 'pointer',
+            color: GS.textMuted, fontSize: 12, fontFamily: "var(--font-sans)", cursor: 'pointer',
           }}
         >
           <RefreshCw size={12} className={status === 'loading' ? 'spin-slow' : undefined} /> Refresh
@@ -102,14 +102,14 @@ export default function AuditLog() {
                         {formatEventTimestamp(r.timestamp)}
                       </td>
                       <td style={{ color: GS.text, fontFamily: "var(--font-mono)", fontWeight: 600 }}>{r.actor_identity}</td>
-                      <td style={{ color: GS.textMuted, fontFamily: "var(--font-mono)", fontSize: 10, textTransform: 'uppercase' }}>{r.actor_role}</td>
+                      <td style={{ color: GS.textMuted, fontFamily: "var(--font-sans)", fontSize: 12 }}>{r.actor_role}</td>
                       <td>
                         <span style={{ fontSize: 10, padding: '2px 7px', borderRadius: 4, background: 'rgba(43,42,40,0.1)', color: GS.primary, border: '1px solid rgba(43,42,40,0.2)', fontFamily: "var(--font-mono)" }}>
                           {r.action}
                         </span>
                       </td>
                       <td style={{ color: GS.textMuted, fontFamily: "var(--font-mono)", fontSize: 10 }}>{r.target_resource}</td>
-                      <td style={{ color: r.status === 'success' ? GS.success : GS.danger, fontFamily: "var(--font-mono)", fontSize: 10, textTransform: 'uppercase' }}>{r.status}</td>
+                      <td style={{ color: r.status === 'success' ? GS.success : GS.danger, fontFamily: "var(--font-sans)", fontSize: 12 }}>{r.status}</td>
                       <td style={{ color: GS.textFaint, fontFamily: "var(--font-mono)", fontSize: 10 }}>{r.request_id || '—'}</td>
                     </motion.tr>
                   ))}
@@ -130,9 +130,9 @@ export default function AuditLog() {
               onClick={() => load(offset + PAGE, true)}
               disabled={loadingMore}
               style={{
-                alignSelf: 'center', padding: '8px 20px', borderRadius: 6,
+                alignSelf: 'center', padding: '8px 20px', borderRadius: 999,
                 border: '1px solid rgba(43,42,40,0.3)', background: 'rgba(43,42,40,0.08)',
-                color: GS.primary, fontSize: 12, fontFamily: "var(--font-mono)", cursor: 'pointer',
+                color: GS.primary, fontSize: 12, fontFamily: "var(--font-sans)", cursor: 'pointer',
               }}
             >
               {loadingMore ? 'Loading…' : `Load ${Math.min(PAGE, total - rows.length)} more`}

@@ -62,7 +62,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
 
           {/* Header */}
           <div className="mb-5 pr-8">
-            <p className="text-[9px] text-gs-faint font-mono uppercase tracking-widest mb-1">
+            <p className="text-[11px] text-gs-faint font-sans mb-1">
               Node Details
             </p>
             <h2 className="text-sm font-heading font-semibold text-gs-text mb-2">
@@ -80,7 +80,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
             <Field label="Total Bytes"  value={formatBytes(node.bytes_total)} mono />
             {node.attack_type && (
               <div>
-                <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1.5">
+                <span className="text-[11px] text-gs-faint font-sans block mb-1.5">
                   Attack Type
                 </span>
                 <span
@@ -92,7 +92,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
               </div>
             )}
             <div>
-              <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1.5">
+              <span className="text-[11px] text-gs-faint font-sans block mb-1.5">
                 Status
               </span>
               <span
@@ -108,7 +108,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
                 appeared in a flow are otherwise indistinguishable in the UI */}
             {node.source && (
               <div>
-                <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1.5">
+                <span className="text-[11px] text-gs-faint font-sans block mb-1.5">
                   Data Source
                 </span>
                 <span
@@ -135,7 +135,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
                 onClick={() => onBlock && onBlock(node.id, 'block')}
                 disabled={!canEnforce}
                 title={canEnforce ? undefined : ENFORCE_DENIED_REASON}
-                className="disabled:opacity-50 disabled:cursor-not-allowed tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-threat-soft text-gs-threat border border-gs-threat/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-threat/15 hover:border-gs-threat/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-threat"
+                className="gs-btn gs-btn-danger w-full"
               >
                 <ShieldOff size={12} aria-hidden="true" />
                 Block Node
@@ -146,7 +146,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
                 onClick={() => onBlock && onBlock(node.id, 'unblock')}
                 disabled={!canEnforce}
                 title={canEnforce ? undefined : ENFORCE_DENIED_REASON}
-                className="disabled:opacity-50 disabled:cursor-not-allowed tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-heal-soft text-gs-heal border border-gs-heal/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-heal/15 hover:border-gs-heal/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-heal"
+                className="gs-btn gs-btn-secondary w-full"
               >
                 <Shield size={12} aria-hidden="true" />
                 Unblock Node
@@ -170,7 +170,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = t
 function Field({ label, value, mono = false }) {
   return (
     <div>
-      <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1">
+      <span className="text-[11px] text-gs-faint font-sans block mb-1">
         {label}
       </span>
       <span className={`text-[12px] text-gs-text ${mono ? 'font-mono tabular-nums' : 'font-body'}`}>

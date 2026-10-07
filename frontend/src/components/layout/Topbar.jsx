@@ -2,7 +2,7 @@
 // Topbar — page title + telemetry stats + health + clock + simulate + account
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { Zap, Activity, Database } from 'lucide-react'
+import Button from '../ui/Button'
 import { motion } from 'framer-motion'
 import { UserButton } from '@clerk/react'
 import useGraphStore from '../../store/useGraphStore'
@@ -129,111 +129,48 @@ export default function Topbar({ onForensicsClick }) {
       >
         {/* Each figure carries its own divider and drops out whole, last first, when the
             space runs short (container queries in globals.css), so none is ever clipped. */}
-        <span className="gs-tel gs-tel-1"><TelemetryBadge label="Threats" value={stats.active_threats}             icon="▲" color={GS.danger} pulse={stats.active_threats > 0} /></span>
-        <span className="gs-tel gs-tel-2"><TelemetryDivider /><TelemetryBadge label="Blocked" value={stats.blocked_ips}                icon="⬡" color={GS.primary} /></span>
-        <span className="gs-tel gs-tel-3"><TelemetryDivider /><TelemetryBadge label="Nodes"   value={stats.total_nodes}                icon="●" color={GS.textMuted} /></span>
-        <span className="gs-tel gs-tel-4"><TelemetryDivider /><TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} icon="~" color={GS.textSubtle} /></span>
-        <span className="gs-tel gs-tel-5"><TelemetryDivider /><TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   icon="↕" color={GS.textSubtle} /></span>
+        <span className="gs-tel gs-tel-1"><TelemetryBadge label="Threats" value={stats.active_threats}             color={GS.danger} pulse={stats.active_threats > 0} /></span>
+        <span className="gs-tel gs-tel-2"><TelemetryDivider /><TelemetryBadge label="Blocked" value={stats.blocked_ips}                color={GS.primary} /></span>
+        <span className="gs-tel gs-tel-3"><TelemetryDivider /><TelemetryBadge label="Nodes"   value={stats.total_nodes}                color={GS.textMuted} /></span>
+        <span className="gs-tel gs-tel-4"><TelemetryDivider /><TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} color={GS.textSubtle} /></span>
+        <span className="gs-tel gs-tel-5"><TelemetryDivider /><TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   color={GS.textSubtle} /></span>
       </div>
 
       {/* ── Right: health + clock + actions ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        {/* Health */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '4px 8px',
-            borderRadius: 6,
-            border: `1px solid ${healthColor}25`,
-            background: `${healthColor}08`,
-          }}
-        >
-          <Activity size={10} style={{ color: healthColor }} />
-          <span style={{ color: GS.textSubtle, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Health
-          </span>
+        {/* Health and clock: plain readings, no chrome */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
+          <span style={{ color: GS.textSubtle, fontSize: 12 }}>Health</span>
           <motion.span
-            style={{ color: healthColor, fontFamily: "var(--font-mono)", fontWeight: 700, fontSize: 11 }}
-            animate={{ opacity: [1, 0.6, 1] }}
+            style={{ color: healthColor, fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 13 }}
+            animate={{ opacity: [1, 0.65, 1] }}
             transition={{ duration: 2.5, repeat: Infinity }}
           >
             {healthClamped}%
           </motion.span>
         </div>
+        <span style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-mono)", fontVariantNumeric: 'tabular-nums' }}>
+          {time}
+        </span>
 
-        {/* Clock */}
-        <div
-          style={{
-            padding: '4px 8px',
-            borderRadius: 6,
-            border: '1px solid rgba(43,42,40,0.10)',
-          }}
-        >
-          <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "var(--font-mono)" }}>
-            {time}
-          </span>
-        </div>
-
-        {/* Forensics button */}
-        <button
-          id="topbar-forensics"
-          onClick={onForensicsClick}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '5px 12px',
-            borderRadius: 999,
-            border: '1px solid color-mix(in srgb, var(--ink) 24%, transparent)',
-            background: 'transparent',
-            color: GS.text,
-            fontSize: 10,
-            fontFamily: "var(--font-mono)",
-            fontWeight: 500,
-            cursor: 'pointer',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-          title="Open forensics report"
-        >
-          <Database size={10} />
-          <span>Forensics</span>
-        </button>
+        <Button id="topbar-forensics" size="sm" variant="secondary" onClick={onForensicsClick} title="Open forensics report">
+          Forensics
+        </Button>
 
         {/* Simulate: opens the attack console */}
         {pathname !== '/simulation' && (
-          <button
+          <Button
             id="topbar-simulate"
+            size="sm"
+            variant="accent"
             onClick={() => navigate('/simulation')}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 6,
-              padding: '6px 14px',
-              // The landing page's one call to action: crimson glass, a pill.
-              borderRadius: 999,
-              border: 'none',
-              background: runActive ? GS.dangerDeep : 'color-mix(in srgb, var(--crimson) 90%, transparent)',
-              boxShadow: 'inset 0 1px 0 color-mix(in srgb, var(--bone) 44%, transparent), inset 0 -1px 0 color-mix(in srgb, var(--ink) 26%, transparent)',
-              color: GS.surface,
-              fontSize: 10,
-              fontFamily: "var(--font-mono)",
-              fontWeight: 500,
-              cursor: 'pointer',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              transition: 'all 200ms',
-              whiteSpace: 'nowrap',
-            }}
+            style={runActive ? { background: GS.dangerDeep } : undefined}
             title={runActive
               ? 'An attack is running on the topology: open the console to follow it'
               : simulateBlocked || 'Run a real attack script on the Mininet topology'}
           >
-            <Zap size={10} />
-            <span>{runActive ? 'Simulation running' : 'Simulate Attack'}</span>
-          </button>
+            {runActive ? 'Simulation running' : 'Simulate attack'}
+          </Button>
         )}
 
         {/* Clerk User Button */}
@@ -249,7 +186,7 @@ function TelemetryDivider() {
   return <div style={{ width: 1, height: 20, background: 'color-mix(in srgb, var(--ink) 12%, transparent)', margin: '0 4px', flexShrink: 0 }} />
 }
 
-function TelemetryBadge({ label, value, icon, color, pulse = false }) {
+function TelemetryBadge({ label, value, color, pulse = false }) {
   return (
     <div
       style={{
@@ -261,15 +198,15 @@ function TelemetryBadge({ label, value, icon, color, pulse = false }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 1 }}>
-        {icon} {label}
+      <span style={{ color: GS.textSubtle, fontSize: 11, marginBottom: 1 }}>
+        {label}
       </span>
       <span
         style={{
           color,
           fontFamily: "var(--font-mono)",
-          fontWeight: 700,
-          fontSize: 13,
+          fontWeight: 600,
+          fontSize: 14,
         }}
         className={pulse ? 'pulse-threat' : ''}
       >

@@ -110,11 +110,11 @@ export default function ForensicsModal({ isOpen, onClose }) {
           <div className="flex items-center border-b border-gs-border shrink-0">
             <div className="flex items-center gap-3 px-5 py-2 border-r border-gs-border">
               <span className="text-sm font-heading font-bold text-gs-text tabular-nums">{data.total_incidents}</span>
-              <span className="text-[10px] text-gs-muted font-mono uppercase tracking-wider">Total Incidents</span>
+              <span className="text-xs text-gs-muted font-sans">Total Incidents</span>
             </div>
             <div className="flex items-center gap-3 px-5 py-2">
               <span className="text-sm font-heading font-bold text-gs-heal tabular-nums">{data.total_on_chain}</span>
-              <span className="text-[10px] text-gs-muted font-mono uppercase tracking-wider">On-Chain Records</span>
+              <span className="text-xs text-gs-muted font-sans">On-Chain Records</span>
             </div>
           </div>
 

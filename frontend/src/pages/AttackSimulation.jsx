@@ -101,7 +101,7 @@ export default function AttackSimulation() {
         <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Attack Simulation
         </h1>
-        <p style={{ color: GS.textSubtle, fontFamily: MONO, fontSize: 12, maxWidth: 820, lineHeight: 1.6 }}>
+        <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14, maxWidth: 820, lineHeight: 1.6 }}>
           Runs a script from <code>mininet/demo/attacks</code> on the live topology. Nothing synthetic is
           posted: an incident appears only if the switch carried the traffic and v1 scored it over the threshold.
         </p>
@@ -251,7 +251,7 @@ export default function AttackSimulation() {
           <section className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
             <div style={{ padding: '10px 14px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
               <Crosshair size={13} style={{ color: GS.textMuted }} />
-              <span style={{ color: GS.textMuted, fontFamily: MONO, fontSize: 11, letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+              <span style={{ color: GS.textMuted, fontFamily: MONO, fontSize: 11 }}>
                 Script output
               </span>
             </div>
@@ -275,7 +275,7 @@ export default function AttackSimulation() {
 
 function PanelTitle({ children }) {
   return (
-    <h2 style={{ margin: 0, color: GS.text, fontFamily: MONO, fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+    <h2 style={{ margin: 0, color: GS.text, fontFamily: "var(--font-sans)", fontSize: 14, fontWeight: 600 }}>
       {children}
     </h2>
   )
@@ -298,16 +298,17 @@ function StepIcon({ state }) {
 
 function primaryBtn(color, disabled) {
   return {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '0 20px', borderRadius: 8,
-    border: `1px solid ${color}60`, background: `${color}18`, color, fontFamily: MONO, fontSize: 12, fontWeight: 600,
-    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+    display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 20px', borderRadius: 999,
+    border: 'none', background: color, color: GS.surface, fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 500,
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
   }
 }
 
 function secondaryBtn(disabled) {
   return {
-    display: 'inline-flex', alignItems: 'center', gap: 6, minHeight: 40, padding: '0 16px', borderRadius: 8,
-    border: `1px solid ${GS.borderStrong}`, background: 'transparent', color: GS.textMuted, fontFamily: MONO, fontSize: 12,
-    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+    display: 'inline-flex', alignItems: 'center', gap: 6, height: 38, padding: '0 18px', borderRadius: 999,
+    border: 'none', boxShadow: `inset 0 0 0 1px ${GS.borderStrong}`, background: 'transparent', color: GS.text,
+    fontFamily: 'var(--font-sans)', fontSize: 14, fontWeight: 500,
+    cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.45 : 1,
   }
 }

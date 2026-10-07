@@ -124,7 +124,7 @@ export default function TimelineAnalytics() {
             Timeline
           </h1>
           <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-            <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+            <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
               Threat patterns over time · Anomaly detection
             </p>
             <DataFreshnessBadge dataErrors={{ timeline: dataErrors.timeline, alerts: dataErrors.alerts }} />
@@ -136,11 +136,11 @@ export default function TimelineAnalytics() {
             onClick={() => setPaused((p) => !p)}
             style={{
               display: 'flex', alignItems: 'center', gap: 6,
-              padding: '6px 14px', borderRadius: 6,
+              padding: '6px 14px', borderRadius: 999,
               border: `1px solid ${paused ? 'rgba(133,88,8,0.4)' : 'rgba(52,99,72,0.3)'}`,
               background: paused ? 'rgba(133,88,8,0.1)' : 'rgba(52,99,72,0.08)',
               color: paused ? GS.warn : GS.success,
-              fontSize: 11, fontFamily: "var(--font-mono)", cursor: 'pointer',
+              fontSize: 12, fontFamily: "var(--font-sans)", cursor: 'pointer',
             }}
           >
             {paused ? <Play size={12} /> : <Pause size={12} />}
@@ -154,10 +154,10 @@ export default function TimelineAnalytics() {
                 key={t}
                 onClick={() => setTimeRange(t)}
                 style={{
-                  padding: '4px 12px', borderRadius: 6, border: 'none',
+                  padding: '4px 12px', borderRadius: 999, border: 'none',
                   background: timeRange === t ? 'rgba(43,42,40,0.2)' : 'transparent',
                   color: timeRange === t ? GS.primary : GS.textSubtle,
-                  fontSize: 11, fontFamily: "var(--font-mono)", cursor: 'pointer',
+                  fontSize: 12, fontFamily: "var(--font-sans)", cursor: 'pointer',
                   fontWeight: timeRange === t ? 700 : 400,
                 }}
               >
@@ -173,7 +173,7 @@ export default function TimelineAnalytics() {
         <div style={{ padding: '14px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', justifyContent: 'space-between' }}>
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <TrendingUp size={14} style={{ color: GS.primary }} />
-            <span style={{ color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <span style={{ color: GS.primary, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
               Threat Activity ({timeRange})
             </span>
           </div>
@@ -235,7 +235,7 @@ export default function TimelineAnalytics() {
         {/* Breakdown table */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)' }}>
-            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <span style={{ color: GS.textMuted, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
               {isMultiDay ? 'Daily Breakdown' : 'Hourly Breakdown'} · newest 50 alerts
             </span>
           </div>
@@ -270,7 +270,7 @@ export default function TimelineAnalytics() {
         {/* Attack type over time */}
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
           <div style={{ padding: '12px 16px', borderBottom: '1px solid rgba(43,42,40,0.08)' }}>
-            <span style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em' }}>
+            <span style={{ color: GS.textMuted, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
               Attack Types Over Time
             </span>
           </div>

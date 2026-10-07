@@ -76,9 +76,9 @@ export default function Forensics() {
           onClick={refresh}
           style={{
             display: 'flex', alignItems: 'center', gap: 6,
-            padding: '6px 14px', borderRadius: 6,
+            padding: '6px 14px', borderRadius: 999,
             border: '1px solid rgba(43,42,40,0.12)', background: 'rgba(43,42,40,0.05)',
-            color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)",
+            color: GS.textMuted, fontSize: 12, fontFamily: "var(--font-sans)",
             cursor: 'pointer', transition: 'all 150ms',
           }}
         >
@@ -119,7 +119,7 @@ export default function Forensics() {
           <span style={{ flex: 1 }}>{resolveError}</span>
           <button
             onClick={() => setResolveError(null)}
-            style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 11, fontFamily: "var(--font-mono)" }}
+            style={{ background: 'none', border: 'none', color: GS.danger, cursor: 'pointer', fontSize: 12, fontFamily: "var(--font-sans)" }}
           >
             Dismiss
           </button>
@@ -140,7 +140,7 @@ export default function Forensics() {
         <div className="gs-panel" style={{ padding: 0, overflow: 'hidden', height: 'fit-content', maxHeight: 600 }}>
           <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
             <ShieldAlert size={13} style={{ color: GS.danger }} />
-            <span style={{ color: GS.danger, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ color: GS.danger, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
               Incidents ({activeIncidents.length})
             </span>
           </div>
@@ -162,7 +162,6 @@ export default function Forensics() {
                   <span style={{
                     fontSize: 9, fontWeight: 700, fontFamily: "var(--font-mono)", letterSpacing: '0.08em',
                     color: inc.severity >= 8 ? GS.danger : inc.severity >= 5 ? GS.warn : GS.primary,
-                    textTransform: 'uppercase',
                   }}>
                     {inc.severity >= 8 ? 'CRITICAL' : inc.severity >= 5 ? 'WARNING' : 'INFO'}
                   </span>
@@ -226,11 +225,11 @@ export default function Forensics() {
                     <DetailRow label="Threat Score" value={selectedIncident.threat_score !== null && selectedIncident.threat_score !== undefined ? `${(selectedIncident.threat_score * 100).toFixed(0)}%` : '—'} />
                     <DetailRow label="Severity" value={selectedIncident.severity !== null && selectedIncident.severity !== undefined ? `${selectedIncident.severity}/10` : '—'} color={selectedIncident.severity >= 8 ? GS.danger : selectedIncident.severity >= 5 ? GS.warn : GS.primary} />
                     <div>
-                      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Enforcement</div>
+                      <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 3 }}>Enforcement</div>
                       <EnforcementPill status={selectedIncident.enforcement_status} />
                     </div>
                     <div>
-                      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 3 }}>Data Source</div>
+                      <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 3 }}>Data Source</div>
                       <ProvenancePill source={selectedIncident.data_source} />
                     </div>
                   </div>
@@ -238,7 +237,7 @@ export default function Forensics() {
 
                 {/* Attack timeline */}
                 <div className="gs-panel" style={{ padding: '14px 18px' }}>
-                  <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 12 }}>
+                  <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 12 }}>
                     Attack Timeline
                   </div>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 0 }}>
@@ -266,7 +265,7 @@ export default function Forensics() {
                   <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 10 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
                       <Link2 size={13} style={{ color: GS.chain }} />
-                      <span style={{ color: GS.chain, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', fontWeight: 600 }}>
+                      <span style={{ color: GS.chain, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
                         Blockchain Evidence
                       </span>
                     </div>
@@ -276,7 +275,7 @@ export default function Forensics() {
                   {selectedIncident.blockchain_tx ? (
                     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
                       <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 12px', borderRadius: 6, background: 'rgba(107,74,130,0.08)', border: '1px solid rgba(107,74,130,0.15)' }}>
-                        <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase' }}>Transaction</span>
+                        <span style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)" }}>Transaction</span>
                         {/* FE-12 — the full 66-character hash wraps instead of overflowing the card */}
                         <span style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", marginLeft: 'auto', minWidth: 0, overflowWrap: 'anywhere', textAlign: 'right' }}>
                           <CopyableHash value={selectedIncident.blockchain_tx} prefixLen={selectedIncident.blockchain_tx.length} />
@@ -286,25 +285,25 @@ export default function Forensics() {
                       {/* Blockchain Metadata Grid */}
                       <div style={{ display: 'grid', gridTemplateColumns: 'repeat(4, 1fr)', gap: 8, padding: '8px 10px', background: 'rgba(43,42,40,0.04)', borderRadius: 6, border: '1px solid rgba(43,42,40,0.05)' }}>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Chain ID</div>
+                          <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 2 }}>Chain ID</div>
                           <div style={{ color: GS.text, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                             {selectedIncident.blockchain_chain_id ?? data.chain_id ?? '—'}
                           </div>
                         </div>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Contract</div>
+                          <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 2 }}>Contract</div>
                           <div style={{ color: GS.text, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }} title={selectedIncident.blockchain_contract_address || data.contract_address || undefined}>
                             {selectedIncident.blockchain_contract_address ? `${selectedIncident.blockchain_contract_address.slice(0, 8)}…` : (data.contract_address ? `${data.contract_address.slice(0, 8)}…` : '—')}
                           </div>
                         </div>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>Block #</div>
+                          <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 2 }}>Block #</div>
                           <div style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                             {selectedIncident.blockchain_block_number !== null && selectedIncident.blockchain_block_number !== undefined ? `#${selectedIncident.blockchain_block_number}` : 'Block —'}
                           </div>
                         </div>
                         <div>
-                          <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 2 }}>On-Chain Log ID</div>
+                          <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 2 }}>On-Chain Log ID</div>
                           <div style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                             {selectedIncident.blockchain_incident_id !== null && selectedIncident.blockchain_incident_id !== undefined ? `#${selectedIncident.blockchain_incident_id}` : 'Log ID —'}
                           </div>
@@ -371,7 +370,7 @@ export default function Forensics() {
       <div className="gs-panel" style={{ padding: 0, overflow: 'hidden' }}>
         <div style={{ padding: '12px 14px', borderBottom: '1px solid rgba(43,42,40,0.08)', display: 'flex', alignItems: 'center', gap: 8 }}>
           <Link2 size={13} style={{ color: GS.chain }} />
-          <span style={{ color: GS.chain, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+          <span style={{ color: GS.chain, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
             Blockchain Records
           </span>
         </div>
@@ -386,7 +385,7 @@ export default function Forensics() {
 function DetailRow({ label, value, color = GS.textMuted }) {
   return (
     <div>
-      <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 2 }}>{label}</div>
+      <div style={{ color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 2 }}>{label}</div>
       <div style={{ color, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600 }}>{value}</div>
     </div>
   )
@@ -413,48 +412,48 @@ function EnforcementPill({ status }) {
   const norm = typeof status === 'string' ? status.trim().toLowerCase() : ''
   if (norm === 'enforced') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.25)', fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
         ENFORCED
       </span>
     )
   }
   if (norm === 'simulated') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.1)', color: GS.primary, border: '1px solid rgba(43,42,40,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.1)', color: GS.primary, border: '1px solid rgba(43,42,40,0.25)', fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
         SIMULATED
       </span>
     )
   }
   if (norm === 'pending_enforcement' || norm === 'pending_unblock') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(133,88,8,0.1)', color: GS.warn, border: '1px solid rgba(133,88,8,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(133,88,8,0.1)', color: GS.warn, border: '1px solid rgba(133,88,8,0.25)', fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
         PENDING
       </span>
     )
   }
   if (norm === 'failed') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(180,19,46,0.1)', color: GS.danger, border: '1px solid rgba(180,19,46,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(180,19,46,0.1)', color: GS.danger, border: '1px solid rgba(180,19,46,0.25)', fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
         FAILED
       </span>
     )
   }
   if (norm === 'removed') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.25)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 600 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(52,99,72,0.1)', color: GS.success, border: '1px solid rgba(52,99,72,0.25)', fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600 }}>
         REMOVED
       </span>
     )
   }
   if (norm === 'not_requested') {
     return (
-      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textSubtle, border: '1px solid rgba(43,42,40,0.12)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 500 }}>
+      <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textSubtle, border: '1px solid rgba(43,42,40,0.12)', fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 500 }}>
         NOT REQUESTED
       </span>
     )
   }
   return (
-    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textMuted, border: '1px solid rgba(43,42,40,0.12)', fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', fontWeight: 500 }}>
+    <span style={{ display: 'inline-flex', alignItems: 'center', gap: 4, padding: '2px 8px', borderRadius: 4, background: 'rgba(43,42,40,0.06)', color: GS.textMuted, border: '1px solid rgba(43,42,40,0.12)', fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 500 }}>
       {status || 'Unknown'}
     </span>
   )
@@ -504,9 +503,9 @@ function ActionBtn({ label, color, onClick, disabled = false, title }) {
       disabled={disabled}
       title={title}
       style={{
-        padding: '8px 16px', borderRadius: 6, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
+        padding: '8px 16px', borderRadius: 999, cursor: disabled ? 'not-allowed' : 'pointer', opacity: disabled ? 0.5 : 1,
         border: `1px solid ${color}30`, background: `${color}10`, color,
-        fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 500, transition: 'all 150ms',
+        fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 500, transition: 'all 150ms',
       }}
     >
       {label}

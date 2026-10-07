@@ -70,7 +70,7 @@ export default function Settings() {
         <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Settings
         </h1>
-        <p style={{ color: GS.textSubtle, fontFamily: "var(--font-mono)", fontSize: 12 }}>
+        <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
           System configuration · Detection tuning · Network management
         </p>
       </div>
@@ -91,7 +91,7 @@ export default function Settings() {
               borderBottom: activeTab === tab.id ? `2px solid ${GS.primary}` : '2px solid transparent',
               color: activeTab === tab.id ? GS.primary : GS.textSubtle,
               fontSize: 12,
-              fontFamily: "var(--font-mono)",
+              fontFamily: "var(--font-sans)",
               cursor: 'pointer',
               transition: 'all 150ms',
               fontWeight: activeTab === tab.id ? 600 : 400,
@@ -251,7 +251,7 @@ export default function Settings() {
 function Section({ title, children }) {
   return (
     <div className="gs-panel" style={{ padding: '16px 18px' }}>
-      <div style={{ color: GS.textMuted, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.1em', marginBottom: 14 }}>
+      <div style={{ color: GS.textMuted, fontSize: 12, fontFamily: "var(--font-sans)", fontWeight: 600, marginBottom: 14 }}>
         {title}
       </div>
       {children}
@@ -261,7 +261,7 @@ function Section({ title, children }) {
 
 function Label({ children }) {
   return (
-    <div style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase', letterSpacing: '0.08em', marginBottom: 6 }}>
+    <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)", marginBottom: 6 }}>
       {children}
     </div>
   )
@@ -339,7 +339,6 @@ function MlReloadControl({ isAdmin }) {
           background: degraded ? 'rgba(133,88,8,0.12)' : 'rgba(52,99,72,0.1)',
           color: degraded ? GS.warn : GS.success,
           border: `1px solid ${degraded ? 'rgba(133,88,8,0.3)' : 'rgba(52,99,72,0.25)'}`,
-          textTransform: 'uppercase', letterSpacing: '0.06em',
         }}>
           {degraded ? 'Heuristic scoring' : 'GraphSAGE model'}
         </span>

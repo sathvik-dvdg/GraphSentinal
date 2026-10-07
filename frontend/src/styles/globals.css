@@ -256,26 +256,48 @@ html:not(.ld-active) h1 {
   background-size: 32px 32px;
 }
 
-.badge-live {
-  background: rgba(52,99,72,0.10);
-  border: 1px solid rgba(52,99,72,0.32);
-  color: #346348;
+/* Status pills: one quiet shape, tone carried by the dot and the text. */
+.gs-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px 3px 8px; border-radius: 999px;
+  font-family: var(--font-sans); font-size: 12px; font-weight: 500; line-height: 16px;
+  white-space: nowrap; color: var(--pill-fg, #2b2a28);
+  background: color-mix(in srgb, var(--pill-fg, #2b2a28) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pill-fg, #2b2a28) 22%, transparent);
 }
-.badge-sim {
-  background: rgba(133,88,8,0.10);
-  border: 1px solid rgba(133,88,8,0.34);
-  color: #855808;
+.gs-pill .gs-pill-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; flex-shrink: 0; }
+.badge-live { --pill-fg: #346348; }
+.badge-sim { --pill-fg: #855808; }
+.badge-mock { --pill-fg: #55524d; }
+.badge-connecting { --pill-fg: #2b2a28; }
+
+/* Buttons: the landing page's two shapes, plus a quiet text button. */
+.gs-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 14px; border-radius: 999px; border: 0;
+  font-family: var(--font-sans); font-size: 13px; font-weight: 500; letter-spacing: 0;
+  white-space: nowrap; cursor: pointer; text-decoration: none;
+  transition: background-color 160ms, box-shadow 160ms, color 160ms, opacity 160ms;
 }
-.badge-mock {
-  background: rgba(102,98,91,0.12);
-  border: 1px solid rgba(102,98,91,0.30);
-  color: #55524d;
+.gs-btn:focus-visible { outline: 2px solid var(--crimson); outline-offset: 2px; }
+.gs-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.gs-btn-sm { height: 28px; padding: 0 11px; font-size: 12px; }
+.gs-btn-primary {
+  background: var(--ink); color: #f6f3ed;
 }
-.badge-connecting {
-  background: rgba(43,42,40,0.07);
-  border: 1px solid rgba(43,42,40,0.22);
-  color: #2b2a28;
+.gs-btn-primary:hover:not(:disabled) { background: #3d3b38; }
+.gs-btn-accent { background: var(--crimson); color: #f6f3ed; }
+.gs-btn-accent:hover:not(:disabled) { background: #9c1027; }
+.gs-btn-secondary {
+  background: transparent; color: var(--ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 28%, transparent);
 }
+.gs-btn-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.gs-btn-ghost { background: transparent; color: #55524d; padding: 0 10px; }
+.gs-btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.gs-btn-danger { background: transparent; color: #b4132e; box-shadow: inset 0 0 0 1px color-mix(in srgb, #b4132e 40%, transparent); }
+.gs-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, #b4132e 8%, transparent); }
+.gs-btn-active { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent); }
 
 @keyframes pulse-threat {
   0%, 100% { opacity: 1; }
@@ -418,10 +440,8 @@ html:not(.ld-active) h1 {
 .login-points li {
   padding: 0.7rem 0;
   border-bottom: 1px solid var(--border-panel);
-  font-family: var(--font-mono);
-  font-size: 12px;
-  letter-spacing: 0.04em;
-  text-transform: uppercase;
+  font-family: var(--font-sans);
+  font-size: 15px;
   color: var(--ink);
 }
 
@@ -642,16 +662,18 @@ html:not(.ld-active) h1 {
 /* Back link */
 .login-back-link-wrapper {
   text-align: center;
+  width: 100%;
   margin-top: 1.5rem;
 }
 
 .login-back-link {
-  font-size: 11px;
+  font-size: 13px;
   color: #55524d;
-  font-family: var(--font-mono);
+  font-family: var(--font-sans);
   text-decoration: none;
   transition: color 0.2s ease;
 }
+.login-back-sep { margin: 0 10px; color: #7d786f; }
 
 .login-back-link:hover {
   color: #4b5578;

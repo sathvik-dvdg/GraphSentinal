@@ -315,8 +315,7 @@ function EnforcementTable({ actions }) {
                 <td style={{ color: GS.text, fontFamily: "var(--font-mono)", fontWeight: 600 }}>{act.ip_address}</td>
                 <td>
                   <span style={{
-                    fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'uppercase',
-                    color: act.action === 'block' ? GS.danger : GS.primary,
+                    fontSize: 10, fontFamily: "var(--font-mono)", color: act.action === 'block' ? GS.danger : GS.primary,
                     background: act.action === 'block' ? 'rgba(180,19,46,0.1)' : 'rgba(43,42,40,0.1)',
                     border: `1px solid ${act.action === 'block' ? 'rgba(180,19,46,0.2)' : 'rgba(43,42,40,0.2)'}`,
                     padding: '2px 7px', borderRadius: 4,
@@ -368,7 +367,6 @@ function EnforcementStatusBadge({ status, error }) {
         display: 'inline-flex', alignItems: 'center', gap: 5,
         color, background: bg, border: `1px solid ${color}30`,
         padding: '2px 6px', borderRadius: 4, fontSize: 10, fontFamily: "var(--font-mono)",
-        textTransform: 'uppercase', cursor: error ? 'help' : 'default'
       }}
     >
       {status === 'failed' && <XCircle size={10} />}
@@ -389,7 +387,7 @@ function TabButton({ label, active, onClick }) {
         border: 'none',
         borderBottom: active ? `2px solid ${GS.primary}` : '2px solid transparent',
         color: active ? GS.primary : GS.textSubtle,
-        fontFamily: "var(--font-mono)",
+        fontFamily: "var(--font-sans)",
         fontSize: 12,
         cursor: 'pointer',
         transition: 'all 150ms',
@@ -414,9 +412,9 @@ function downloadCSV(rows, filename) {
 function exportBtnStyle(color) {
   return {
     display: 'flex', alignItems: 'center', gap: 6,
-    padding: '6px 14px', borderRadius: 6,
+    padding: '6px 14px', borderRadius: 999,
     border: `1px solid ${color}30`, background: `${color}10`, color,
-    fontSize: 12, fontFamily: "var(--font-mono)", cursor: 'pointer',
+    fontSize: 12, fontFamily: "var(--font-sans)", cursor: 'pointer',
     fontWeight: 500, transition: 'all 150ms',
   }
 }

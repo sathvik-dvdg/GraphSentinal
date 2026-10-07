@@ -46,7 +46,7 @@ export default function LoadingScreen() {
           <h1 className="font-heading font-normal text-3xl text-gs-text mb-1" style={{ letterSpacing: '-0.02em' }}>
             GraphSentinel
           </h1>
-          <p className="text-[11px] text-gs-muted font-mono tracking-widest uppercase">
+          <p className="text-[11px] text-gs-muted font-sans">
             Autonomous Cyber Defense
           </p>
         </div>
