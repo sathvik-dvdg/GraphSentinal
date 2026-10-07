@@ -67,9 +67,8 @@ happens without it was run, not reasoned — see "A fresh clone" in §6.
 npm; starting the stack while another start was still running made Ganache miss
 its own 30-second start limit. Build one image at a time and start the stack once.
 
-Storage Sense on this machine is limited to the Recycle Bin — see
-`docs/machine/storage_sense_2026-10-04.md`. Do not turn it back on while a build
-is running.
+Storage Sense on this machine is limited to the Recycle Bin. Do not turn it back
+on while a build is running.
 
 ---
 

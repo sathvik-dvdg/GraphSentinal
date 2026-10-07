@@ -3,9 +3,9 @@
 // The role comes from Clerk's publicMetadata.role -- the same field the
 // backend authorises with (backend/app/api/v1/deps.py), so a control is
 // greyed out here exactly when the backend would refuse it. It used to be
-// read from useAuthStore, which only the old operator login filled; under
-// Clerk it was always empty, so every admin-only control was disabled for
-// everyone, admins included.
+// read from a store that only the old operator login filled; under Clerk it
+// was always empty, so every admin-only control was disabled for everyone,
+// admins included.
 import { useUser } from '@clerk/react'
 
 export default function useSessionUser() {

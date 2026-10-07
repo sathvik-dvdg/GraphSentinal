@@ -798,7 +798,7 @@ Each page reads from the corresponding backend endpoint:
     \item Audit Log, from \texttt{/api/v1/audit-logs}.
     \item Settings, from \texttt{/api/v1/settings}.
 \end{itemize}
-Client state is held in Zustand stores (\texttt{useAuthStore}, \texttt{useGraphStore}).
+Client state is held in a Zustand store (\texttt{useGraphStore}); the signed-in user and role come from the Clerk session (\texttt{useSessionUser}).
 
 \section{Hardware and Software requirements}
 \par \textbf{Hardware.} The model in the repository was trained on a Google Colab runtime with an NVIDIA T4 GPU (recorded in the training notebook's metadata and output). The inference container runs on CPU. The Mininet emulation requires a Linux environment with root privileges; the code is annotated for WSL2 Ubuntu. The team specified the following minimum configuration for development and demonstration: an Intel Core i5/i7 or equivalent multi-core processor, at least 8 GB of RAM, at least 256 GB of SSD storage, and internet connectivity for dataset access and package installation. A GPU is optional and is only needed to accelerate model training.
