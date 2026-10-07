@@ -1,5 +1,5 @@
 // [Windows] GraphSentinel — Susheep
-// ui/ConnectionModeBadge — LIVE / SIMULATION / OFFLINE / CONNECTING, and the
+// ui/ConnectionModeBadge — LIVE / OFFLINE / CONNECTING, and the
 // socket's reconnection states. What it says is decided in utils/connection.
 // Safety-critical: operator must always know which mode they're looking at
 import { motion } from 'framer-motion'
@@ -12,13 +12,6 @@ const MODES = {
     dot: GS.success,
     cls: 'badge-live',
     icon: '●',
-    pulse: true,
-  },
-  simulating: {
-    label: 'SIMULATION',
-    dot: GS.warn,
-    cls: 'badge-sim',
-    icon: '◆',
     pulse: true,
   },
   mock: {

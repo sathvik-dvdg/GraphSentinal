@@ -58,7 +58,6 @@ export default function Topbar({ onForensicsClick }) {
     healthClamped >= 80 ? GS.success :
     healthClamped >= 50 ? GS.warn : GS.danger
 
-  const isSimulating = connectionMode === 'simulating'
   // Simulate opens the attack console (pages/AttackSimulation), which runs the
   // real scripts in mininet/demo/attacks. The button always opens it; the
   // console says why a run cannot start (utils/connection).
@@ -110,25 +109,6 @@ export default function Topbar({ onForensicsClick }) {
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
         <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />
-
-
-        {isSimulating && (
-          <span
-            style={{
-              background: 'rgba(232,146,42,0.15)',
-              border: '1px solid rgba(232,146,42,0.4)',
-              color: GS.warn,
-              fontSize: 9,
-              fontWeight: 700,
-              padding: '2px 6px',
-              borderRadius: 4,
-              fontFamily: "'DM Mono', monospace",
-              letterSpacing: '0.08em',
-            }}
-          >
-            SIMULATION
-          </span>
-        )}
       </div>
 
       {/* ── Centre: Telemetry stats ──

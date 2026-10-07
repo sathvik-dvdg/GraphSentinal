@@ -28,9 +28,8 @@ export function socketStatusFor(attempt) {
 // Audit B21: the mode follows whether the backend ANSWERS, not whether a socket
 // once shook hands. 'mock' is the never-reached state and blanks the panels;
 // 'offline' is "it was answering and has stopped", and keeps the last data on
-// screen marked stale. A running simulation is never interrupted.
+// screen marked stale.
 export function modeAfterPoll(mode, graphOk) {
-  if (mode === 'simulating') return mode
   if (graphOk) return 'live'
   if (mode === 'connecting') return 'mock'
   if (mode === 'live') return 'offline'
@@ -42,7 +41,6 @@ export function modeAfterPoll(mode, graphOk) {
 // socket is doing (socketStatus). With REST answering and the socket down the
 // data is still current, by polling, so the badge says that and not "lost".
 export function connectionDisplay(mode, socketStatus = 'idle') {
-  if (mode === 'simulating') return { key: 'simulating', label: 'SIMULATION' }
   if (mode === 'connecting') return { key: 'connecting', label: 'CONNECTING' }
   if (mode === 'mock') return { key: 'mock', label: 'OFFLINE' }
   if (mode === 'offline') {

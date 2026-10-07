@@ -26,12 +26,10 @@ test('B21: a failed poll after the backend was answering is "offline", not "mock
   assert.equal(modeAfterPoll('offline', true), 'live')
 })
 
-test('B21: a backend never reached is "mock"; any answer makes it live; a simulation is left alone', () => {
+test('B21: a backend never reached is "mock"; any answer makes it live', () => {
   assert.equal(modeAfterPoll('connecting', false), 'mock')
   assert.equal(modeAfterPoll('mock', false), 'mock')
   assert.equal(modeAfterPoll('mock', true), 'live')
-  assert.equal(modeAfterPoll('simulating', false), 'simulating')
-  assert.equal(modeAfterPoll('simulating', true), 'simulating')
 })
 
 test('badge: the two reconnection labels', () => {
@@ -50,7 +48,6 @@ test('badge: never LIVE while the backend is not answering', () => {
 test('badge: REST answering with the socket down is polling, not lost', () => {
   assert.equal(connectionDisplay('live', 'lost').key, 'polling')
   assert.equal(connectionDisplay('live', 'connected').label, 'LIVE')
-  assert.equal(connectionDisplay('simulating', 'lost').label, 'SIMULATION')
 })
 
 test('Simulate runs real attacks: admin only, and only on a backend that answers', () => {
