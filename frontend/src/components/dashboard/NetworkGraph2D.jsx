@@ -13,6 +13,10 @@ const IPV4_HOST_RE = /^10\.0\.0\.(\d+)$/
 const HOST_RING_RADIUS = 170
 const CONTROLLER_OFFSET = 86
 
+// Hosts that are not healthy carry their state in words under the name, so the
+// map reads without a legend.
+const STATE_WORD = { suspicious: 'Watching', malicious: 'Active threat', blocked: 'Isolated' }
+
 const LAYOUT = {
   name: 'preset',
   fit: false,
@@ -59,7 +63,7 @@ function graphPaddingFor(el) {
   return Math.max(42, Math.min(84, Math.floor(Math.min(el.clientWidth, el.clientHeight) * 0.12)))
 }
 
-export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }) {
+export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick, selectedId = null }) {
   const containerRef = useRef(null)
   const cyRef = useRef(null)
   const onNodeClickRef = useRef(onNodeClick)
@@ -71,10 +75,14 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
 
   const elements = useMemo(() => {
     const positions = buildTopologyPositions(graphData.nodes)
+    const blockedIds = new Set(graphData.nodes.filter((n) => n.status === 'blocked').map((n) => n.id))
+    const endpoint = (e) => (typeof e === 'object' ? e.id : e)
     const nodes = graphData.nodes.map((n) => ({
       data: {
         id: n.id,
         label: n.label,
+        display: STATE_WORD[n.status] && (n.kind || 'host') === 'host' ? `${n.label}
+${STATE_WORD[n.status]}` : n.label,
         status: n.status,
         threat: n.threat_score,
         is_blocked: n.is_blocked,
@@ -90,6 +98,8 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
         target: typeof l.target === 'object' ? l.target.id : l.target,
         value: l.value || (l.kind === 'infra' ? 0 : 0.5),
         kind: l.kind || 'traffic',
+        // A link to an isolated host is drawn cut: dashed and crimson.
+        cut: blockedIds.has(endpoint(l.source)) || blockedIds.has(endpoint(l.target)),
       },
     }))
     return [...nodes, ...edges]
@@ -109,15 +119,16 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
           selector: 'node',
           style: {
             'background-color': (ele) => STATUS_COLORS[ele.data('status')] || GS.primary,
-            label: 'data(label)',
-            color: GS.textMuted,
-            'font-size': '9px',
+            label: 'data(display)',
+            color: GS.text,
+            'font-size': '11px',
             'font-family': '"JetBrains Mono", monospace',
+            'text-wrap': 'wrap',
             'text-valign': 'bottom',
-            'text-margin-y': 5,
+            'text-margin-y': 6,
             'text-outline-width': 0,
-            width: 24,
-            height: 24,
+            width: 26,
+            height: 26,
             shape: 'ellipse', // default: circle = normal
             'border-width': 1.5,
             'border-color': (ele) => STATUS_COLORS[ele.data('status')] || GS.border,
@@ -188,6 +199,11 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             color: GS.textMuted, 'font-size': '9px',
           },
         },
+        // The host whose details are open
+        {
+          selector: 'node.picked',
+          style: { 'underlay-color': GS.primary, 'underlay-opacity': 0.16, 'underlay-padding': 7, 'underlay-shape': 'ellipse' },
+        },
         // Infra links — thin, quiet, no arrowhead
         {
           selector: 'edge[kind="infra"]',
@@ -195,6 +211,11 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             width: 1.5, 'line-color': GS.borderStrong, 'line-opacity': 0.9,
             'target-arrow-shape': 'none', 'curve-style': 'straight',
           },
+        },
+        // Isolated host: its link is shown cut, whatever kind of link it is
+        {
+          selector: 'edge[?cut]',
+          style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 5], 'line-color': GS.danger, 'line-opacity': 0.85, width: 2 },
         },
       ],
       layout: LAYOUT,
@@ -273,6 +294,15 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
       layoutKeyRef.current = layoutKey
     }
   }, [elements, relayout])
+
+  // Mark the selected host. Re-runs when the elements change so a data update
+  // never drops the ring.
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
+    cy.nodes().removeClass('picked')
+    if (selectedId) cy.getElementById(selectedId).addClass('picked')
+  }, [selectedId, elements])
 
   // Healing animation: highlight the healing node with a pulsing style
   useEffect(() => {

@@ -298,6 +298,61 @@ html:not(.ld-active) h1 {
 .gs-btn-danger { background: transparent; color: #b4132e; box-shadow: inset 0 0 0 1px color-mix(in srgb, #b4132e 40%, transparent); }
 .gs-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, #b4132e 8%, transparent); }
 .gs-btn-active { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent); }
+.gs-btn:active:not(:disabled) { transform: scale(0.98); }
+
+/* ── Host states: one set of cues shared by the topology and simulation pages.
+   Colour is never the only cue: each state also has its own icon, border style
+   and a word. ── */
+.gs-state {
+  --st-fg: #2b2a28;
+  --st-bg: #f6f3ed;
+  --st-edge: 1px solid color-mix(in srgb, #2b2a28 22%, transparent);
+  --st-fill: var(--st-bg);
+}
+.gs-state[data-state="healthy"]   { --st-fg: #346348; --st-bg: #f6f3ed; }
+.gs-state[data-state="watching"]  { --st-fg: #6b4706; --st-bg: #f1e3bf; --st-edge: 2px solid #855808; }
+.gs-state[data-state="threat"]    { --st-fg: #8f0f24; --st-bg: #f2d9dc; --st-edge: 2px solid #b4132e; }
+.gs-state[data-state="contained"] {
+  --st-fg: #2b2a28; --st-bg: #dedad1; --st-edge: 1.5px dashed #55524d;
+  --st-fill: repeating-linear-gradient(135deg, #e1ddd4 0 6px, #d6d2c8 6px 12px);
+}
+.gs-state-chip {
+  display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px 3px 8px;
+  border-radius: 999px; background: var(--st-fill); border: var(--st-edge); color: var(--st-fg);
+  font-family: var(--font-sans); font-size: 12px; font-weight: 600; line-height: 16px; white-space: nowrap;
+}
+
+/* Segmented view switch (links or buttons). */
+.gs-seg { display: inline-flex; gap: 2px; padding: 3px; border-radius: 10px; background: var(--bg-panel-raised); box-shadow: inset 0 0 0 1px var(--border-subtle); }
+.gs-seg-item {
+  display: inline-flex; align-items: center; min-height: 36px; padding: 0 16px; border-radius: 8px; border: 0;
+  background: transparent; color: #55524d; font-family: var(--font-sans); font-size: 13px; font-weight: 500;
+  cursor: pointer; transition: background-color 160ms, color 160ms;
+}
+.gs-seg-item:hover { background: color-mix(in srgb, var(--ink) 6%, transparent); color: var(--ink); }
+.gs-seg-item[aria-pressed="true"], .gs-seg-item[aria-checked="true"] {
+  background: #f6f3ed; color: var(--ink); font-weight: 600; box-shadow: 0 1px 2px color-mix(in srgb, var(--ink) 18%, transparent);
+}
+
+.gs-kicker { font-family: var(--font-sans); font-size: 12px; font-weight: 600; color: #55524d; }
+
+/* Topology page: map and table on the left, the selected host on the right. */
+.gs-topo-layout { display: grid; grid-template-columns: minmax(0, 1fr) 380px; gap: 24px; align-items: start; }
+@media (max-width: 1180px) { .gs-topo-layout { grid-template-columns: minmax(0, 1fr); } }
+.gs-tiles { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(220px, 100%), 1fr)); gap: 16px; }
+
+/* Rows that select a host. */
+.gs-host-row {
+  display: grid; width: 100%; text-align: left; cursor: pointer; border: 0; background: transparent;
+  font-family: var(--font-sans); color: var(--ink); transition: background-color 160ms;
+}
+.gs-host-row:hover { background: color-mix(in srgb, var(--ink) 5%, transparent); }
+.gs-host-row[aria-pressed="true"] { background: color-mix(in srgb, var(--ink) 8%, transparent); box-shadow: inset 0 0 0 1.5px var(--ink); }
+
+/* A quiet entrance for page sections; staggered with --i. */
+@keyframes gs-rise { from { opacity: 0; transform: translateY(10px); } to { opacity: 1; transform: none; } }
+.gs-rise { animation: gs-rise 520ms cubic-bezier(0.16, 1, 0.3, 1) both; animation-delay: calc(var(--i, 0) * 70ms); }
+@media (prefers-reduced-motion: reduce) { .gs-rise { animation: none; } }
 
 @keyframes pulse-threat {
   0%, 100% { opacity: 1; }
@@ -706,3 +761,7 @@ html:not(.ld-active) h1 {
   .gs-panel { box-shadow: none !important; border: 1px solid #ccc !important; break-inside: avoid; }
   body { background: #fff !important; }
 }
+
+/* Attack Simulation: the steps on the left, the result on the right. */
+.gs-sim-layout { display: grid; grid-template-columns: minmax(340px, 520px) minmax(0, 1fr); gap: 24px; align-items: start; }
+@media (max-width: 1100px) { .gs-sim-layout { grid-template-columns: minmax(0, 1fr); } }

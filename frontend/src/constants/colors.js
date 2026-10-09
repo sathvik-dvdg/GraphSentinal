@@ -24,25 +24,35 @@ export const GS = {
   textSubtle: '#66625b',
   textFaint: '#7d786f',
   inkSoft: '#413f3b',
+  textBody: '#3d3a35',
 
   // ── surfaces and lines ────────────────────────────────────────────────────
   base: '#ebe7df',
   surface: '#f6f3ed',
   surfaceRaised: '#e3ded4',
   surfaceHeader: '#ddd8cd',
+  surfaceLift: '#fbfaf7',     // a card lifted off the panel
+  rail: '#8c867b',            // connector lines in the hierarchy tree
+  containedWash: '#dedad1',   // an isolated host's fill
   border: '#d3cec3',
   borderStrong: '#b4aea1',
 
   // ── semantic ──────────────────────────────────────────────────────────────
   danger: '#b4132e',            // alerts, malicious, destructive actions: the landing crimson
   dangerDeep: '#7f0f20',
+  dangerInk: '#8f0f24',        // text on dangerSolidWash
+  dangerSolidWash: '#f2d9dc',
   dangerOrange: '#9a4a14',
   dangerBorderSoft: '#b4132e25',
   dangerWash: '#b4132e0a',
   threat: '#b4132e',            // the Tailwind `gs-threat` red (same crimson as `danger`)
   warn: '#855808',
+  warnInk: '#6b4706',          // text on warnWash
+  warnWash: '#f1e3bf',
   success: '#346348',
   successDeep: '#2c5640',
+  successInk: '#1f3d2c',       // text on successWash
+  successWash: '#dfe8e0',
   primary: '#2b2a28',           // ink: links, active states, the quiet emphasis
   primaryDeep: '#1a1917',
   primaryGlow: '#2b2a2830',
