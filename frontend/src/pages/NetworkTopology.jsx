@@ -8,9 +8,9 @@ import { useMemo, useState } from 'react'
 import { Network } from 'lucide-react'
 import useGraphStore from '../store/useGraphStore'
 import { useNodeHierarchy } from '../hooks/useNodeHierarchy'
-import NetworkGraph3D from '../components/dashboard/NetworkGraph3D'
 import NetworkGraph2D from '../components/dashboard/NetworkGraph2D'
 import HostHierarchy from '../components/topology/HostHierarchy'
+import HostScene3D from '../components/topology/HostScene3D'
 import StateTiles from '../components/topology/StateTiles'
 import AttentionTable from '../components/topology/AttentionTable'
 import SelectedHostPanel from '../components/topology/SelectedHostPanel'
@@ -31,7 +31,7 @@ const VIEWS = [
 const VIEW_NOTE = {
   map: 'Every host reaches the network through switch s1. The controller c0 tells s1 what to allow.',
   hierarchy: 'The network, its switch, and the hosts grouped by state.',
-  '3d': 'The same network in 3D. Select a host to read about it.',
+  '3d': 'Hosts stand around switch s1. Rotate to see the ones at the back, and select a host to read about it.',
 }
 
 export default function NetworkTopology() {
@@ -102,15 +102,13 @@ export default function NetworkTopology() {
               <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
             </div>
 
-            <div style={{ position: 'relative', height: view === 'hierarchy' ? 'auto' : 'clamp(400px, 56vh, 600px)', minHeight: view === 'hierarchy' ? 360 : undefined }}>
+            <div style={{ position: 'relative', height: view === 'map' ? 'clamp(400px, 56vh, 600px)' : 'auto', minHeight: view === 'hierarchy' ? 360 : undefined }}>
               {!hasTopology ? (
                 <TopologyEmptyState connectionMode={connectionMode} />
               ) : view === 'hierarchy' ? (
                 <HostHierarchy hosts={hosts} selectedId={selectedId} onSelect={setPickedId} />
               ) : view === '3d' ? (
-                <ErrorBoundary label="The 3D network graph">
-                  <NetworkGraph3D graphData={graph} healingNodeId={healingNodeId} onNodeClick={handleNodeClick} />
-                </ErrorBoundary>
+                <HostScene3D hosts={hosts} selectedId={selectedId} onSelect={setPickedId} />
               ) : (
                 <ErrorBoundary label="The network map">
                   <NetworkGraph2D graphData={graph} healingNodeId={healingNodeId} onNodeClick={handleNodeClick} selectedId={selectedId} />
