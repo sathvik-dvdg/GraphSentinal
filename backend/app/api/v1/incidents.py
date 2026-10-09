@@ -12,7 +12,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends, HTTPException, Request
 from sqlalchemy.orm import Session
 
-from app.api.v1.deps import get_current_identity, get_current_request_id
+from app.api.v1.deps import get_current_request_id, require_write_privilege
 from app.database import get_db
 from app.models.incident import Incident
 from app.models.schemas import IncidentStatusResponse, IncidentStatusUpdateRequest
@@ -34,7 +34,7 @@ def _iso(dt: datetime | None) -> str | None:
 async def update_incident_status(
     incident_id: int,
     body: IncidentStatusUpdateRequest,
-    identity: dict = Depends(get_current_identity),
+    identity: dict = Depends(require_write_privilege),
     db: Session = Depends(get_db),
     req: Request = None,
 ):

@@ -1,16 +1,21 @@
 // [Windows] GraphSentinel — Susheep
-// Topbar — page title + telemetry stats + health + clock + simulate + logout
+// Topbar — page title + telemetry stats + health + clock + simulate + account
 import { useState, useEffect } from 'react'
 import { useLocation, useNavigate } from 'react-router-dom'
-import { LogOut, Zap, Activity, Database } from 'lucide-react'
+import Button from '../ui/Button'
 import { motion } from 'framer-motion'
 import { UserButton } from '@clerk/react'
 import useGraphStore from '../../store/useGraphStore'
 import ConnectionModeBadge from '../ui/ConnectionModeBadge'
-import EnforcementModeBadge from '../ui/EnforcementModeBadge'
+import DetectionPathBadge from '../ui/DetectionPathBadge'
 import DataFreshnessBadge from '../ui/DataFreshnessBadge'
 import MlModeBadge from '../ui/MlModeBadge'
 import DemoModeBadge from '../ui/DemoModeBadge'
+import { simulationBlockedReason } from '../../utils/connection'
+import useSessionUser from '../../hooks/useSessionUser'
+import { GS } from '../../constants/colors'
+
+const USE_MOCK = import.meta.env.VITE_USE_MOCK === 'true'
 
 const ROUTE_TITLES = {
   '/dashboard':  'Dashboard',
@@ -23,17 +28,21 @@ const ROUTE_TITLES = {
   '/alerts':     'Alert Centre',
   '/audit':      'Audit Log',
   '/settings':   'Settings',
+  '/simulation': 'Attack Simulation',
 }
 
-export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick }) {
+export default function Topbar({ onForensicsClick }) {
   const { pathname } = useLocation()
   const navigate = useNavigate()
 
   const {
     stats,
     connectionMode,
+    socketStatus,
     dataErrors,
     mlHealth,
+    mlV2Health,
+    simulationRun,
   } = useGraphStore()
 
   const [time, setTime] = useState(new Date().toLocaleTimeString())
@@ -45,18 +54,25 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
 
   const healthClamped = Math.max(0, Math.min(100, stats.system_health ?? 0))
   const healthColor =
-    healthClamped >= 80 ? '#12a672' :
-    healthClamped >= 50 ? '#b7791f' : '#E03C3C'
+    healthClamped >= 80 ? GS.success :
+    healthClamped >= 50 ? GS.warn : GS.danger
 
-  const isSimulating = connectionMode === 'simulating'
+  // Simulate opens the attack console (pages/AttackSimulation), which runs the
+  // real scripts in mininet/demo/attacks. The button always opens it; the
+  // console says why a run cannot start (utils/connection).
+  const runActive = Boolean(simulationRun?.active)
+  const { role } = useSessionUser()
+  const simulateBlocked = simulationBlockedReason(USE_MOCK, connectionMode, role)
 
   return (
     <header
       style={{
-        background: 'rgba(255, 255, 255, 0.5)',
-        backdropFilter: 'blur(24px) saturate(150%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
-        borderBottom: '1px solid rgba(255, 255, 255, 0.8)',
+        // The landing nav: a bone tint over a blur, a hairline and a soft shadow.
+        background: 'color-mix(in srgb, var(--bone) 78%, transparent)',
+        backdropFilter: 'var(--glass-filter)',
+        WebkitBackdropFilter: 'var(--glass-filter)',
+        borderBottom: '1px solid var(--border-panel)',
+        boxShadow: '0 10px 24px -18px color-mix(in srgb, var(--ink) 34%, transparent)',
         display: 'flex',
         alignItems: 'center',
         padding: '0 16px',
@@ -76,11 +92,11 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
       >
         <span
           style={{
-            color: '#1b1f27',
-            fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-            fontWeight: 600,
-            fontSize: 13,
-            letterSpacing: '0.02em',
+            color: GS.text,
+            fontFamily: "var(--font-display)",
+            fontWeight: 500,
+            fontSize: 18,
+            letterSpacing: '-0.01em',
             whiteSpace: 'nowrap',
             flexShrink: 0,
           }}
@@ -88,30 +104,11 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           {ROUTE_TITLES[pathname] || 'GraphSentinel'}
         </span>
 
-        <ConnectionModeBadge mode={connectionMode} />
-        <EnforcementModeBadge mode={stats.enforcement_mode} />
+        <ConnectionModeBadge mode={connectionMode} socketStatus={socketStatus} />
+        <DetectionPathBadge mlV2={mlV2Health} />
         <MlModeBadge mlHealth={mlHealth} />
         <DataFreshnessBadge dataErrors={dataErrors} />
         <DemoModeBadge demoFallbackFlows={stats.demo_fallback_flows} />
-
-
-        {isSimulating && (
-          <span
-            style={{
-              background: 'rgba(232,146,42,0.15)',
-              border: '1px solid rgba(232,146,42,0.4)',
-              color: '#b7791f',
-              fontSize: 9,
-              fontWeight: 700,
-              padding: '2px 6px',
-              borderRadius: 4,
-              fontFamily: "'DM Mono', monospace",
-              letterSpacing: '0.08em',
-            }}
-          >
-            SIMULATION
-          </span>
-        )}
       </div>
 
       {/* ── Centre: Telemetry stats ──
@@ -127,112 +124,53 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
           gap: 0,
           justifyContent: 'center',
           overflow: 'hidden',
+          minWidth: 0,
         }}
       >
-        <TelemetryBadge label="Nodes"   value={stats.total_nodes}                icon="●" color="#5a616e" />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Threats" value={stats.active_threats}             icon="▲" color="#E03C3C" pulse={stats.active_threats > 0} />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Blocked" value={stats.blocked_ips}                icon="⬡" color="#3b56d9" />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} icon="~" color="#727a86" />
-        <div style={{ width: 1, height: 20, background: 'rgba(17,20,26,0.10)', margin: '0 4px', flexShrink: 0 }} />
-        <TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   icon="↕" color="#727a86" />
+        {/* Each figure carries its own divider and drops out whole, last first, when the
+            space runs short (container queries in globals.css), so none is ever clipped. */}
+        <span className="gs-tel gs-tel-1"><TelemetryBadge label="Threats" value={stats.active_threats}             color={GS.danger} pulse={stats.active_threats > 0} /></span>
+        <span className="gs-tel gs-tel-2"><TelemetryDivider /><TelemetryBadge label="Blocked" value={stats.blocked_ips}                color={GS.primary} /></span>
+        <span className="gs-tel gs-tel-3"><TelemetryDivider /><TelemetryBadge label="Nodes"   value={stats.total_nodes}                color={GS.textMuted} /></span>
+        <span className="gs-tel gs-tel-4"><TelemetryDivider /><TelemetryBadge label="Packets" value={formatNumber(stats.total_packets)} color={GS.textSubtle} /></span>
+        <span className="gs-tel gs-tel-5"><TelemetryDivider /><TelemetryBadge label="Bytes"   value={formatBytes(stats.total_bytes)}   color={GS.textSubtle} /></span>
       </div>
 
       {/* ── Right: health + clock + actions ── */}
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexShrink: 0 }}>
-        {/* Health */}
-        <div
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '4px 8px',
-            borderRadius: 6,
-            border: `1px solid ${healthColor}25`,
-            background: `${healthColor}08`,
-          }}
-        >
-          <Activity size={10} style={{ color: healthColor }} />
-          <span style={{ color: '#727a86', fontSize: 9, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
-            Health
-          </span>
+        {/* Health and clock: plain readings, no chrome */}
+        <div style={{ display: 'flex', alignItems: 'baseline', gap: 6, whiteSpace: 'nowrap' }}>
+          <span style={{ color: GS.textSubtle, fontSize: 12 }}>Health</span>
           <motion.span
-            style={{ color: healthColor, fontFamily: "'DM Mono', monospace", fontWeight: 700, fontSize: 11 }}
-            animate={{ opacity: [1, 0.6, 1] }}
+            style={{ color: healthColor, fontFamily: "var(--font-mono)", fontWeight: 600, fontSize: 13 }}
+            animate={{ opacity: [1, 0.65, 1] }}
             transition={{ duration: 2.5, repeat: Infinity }}
           >
             {healthClamped}%
           </motion.span>
         </div>
+        <span style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-mono)", fontVariantNumeric: 'tabular-nums' }}>
+          {time}
+        </span>
 
-        {/* Clock */}
-        <div
-          style={{
-            padding: '4px 8px',
-            borderRadius: 6,
-            border: '1px solid rgba(17,20,26,0.10)',
-          }}
-        >
-          <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
-            {time}
-          </span>
-        </div>
+        <Button id="topbar-forensics" size="sm" variant="secondary" onClick={onForensicsClick} title="Open forensics report">
+          Forensics
+        </Button>
 
-        {/* Forensics button */}
-        <button
-          id="topbar-forensics"
-          onClick={onForensicsClick}
-          style={{
-            display: 'flex',
-            alignItems: 'center',
-            gap: 5,
-            padding: '4px 10px',
-            borderRadius: 6,
-            border: '1px solid rgba(139,92,246,0.25)',
-            background: 'rgba(139,92,246,0.08)',
-            color: '#7c3aed',
-            fontSize: 10,
-            fontFamily: "'DM Mono', monospace",
-            fontWeight: 500,
-            cursor: 'pointer',
-            letterSpacing: '0.08em',
-            textTransform: 'uppercase',
-          }}
-          title="Open forensics report"
-        >
-          <Database size={10} />
-          <span>Forensics</span>
-        </button>
-
-        {/* Simulate toggle */}
-        {onSimulate && (
-          <button
+        {/* Simulate: opens the attack console */}
+        {pathname !== '/simulation' && (
+          <Button
             id="topbar-simulate"
-            onClick={isSimulating ? onStopSimulate : onSimulate}
-            style={{
-              display: 'flex',
-              alignItems: 'center',
-              gap: 5,
-              padding: '4px 10px',
-              borderRadius: 6,
-              border: `1px solid ${isSimulating ? 'rgba(232,146,42,0.5)' : 'rgba(17,20,26,0.12)'}`,
-              background: isSimulating ? 'rgba(232,146,42,0.12)' : 'rgba(17,20,26,0.06)',
-              color: isSimulating ? '#b7791f' : '#5a616e',
-              fontSize: 10,
-              fontFamily: "'DM Mono', monospace",
-              fontWeight: 500,
-              cursor: 'pointer',
-              letterSpacing: '0.08em',
-              textTransform: 'uppercase',
-              transition: 'all 200ms',
-            }}
-            title="Simulate an attack sequence"
+            size="sm"
+            variant="accent"
+            onClick={() => navigate('/simulation')}
+            style={runActive ? { background: GS.dangerDeep } : undefined}
+            title={runActive
+              ? 'An attack is running on the topology: open the console to follow it'
+              : simulateBlocked || 'Run a real attack script on the Mininet topology'}
           >
-            <Zap size={10} />
-            <span>{isSimulating ? 'Stop Sim' : 'Simulate'}</span>
-          </button>
+            {runActive ? 'Simulation running' : 'Simulate attack'}
+          </Button>
         )}
 
         {/* Clerk User Button */}
@@ -244,7 +182,11 @@ export default function Topbar({ onSimulate, onStopSimulate, onForensicsClick })
   )
 }
 
-function TelemetryBadge({ label, value, icon, color, pulse = false }) {
+function TelemetryDivider() {
+  return <div style={{ width: 1, height: 20, background: 'color-mix(in srgb, var(--ink) 12%, transparent)', margin: '0 4px', flexShrink: 0 }} />
+}
+
+function TelemetryBadge({ label, value, color, pulse = false }) {
   return (
     <div
       style={{
@@ -256,15 +198,15 @@ function TelemetryBadge({ label, value, icon, color, pulse = false }) {
         flexShrink: 0,
       }}
     >
-      <span style={{ color: '#9aa1ad', fontSize: 9, fontFamily: "'DM Mono', monospace", letterSpacing: '0.1em', textTransform: 'uppercase', marginBottom: 1 }}>
-        {icon} {label}
+      <span style={{ color: GS.textSubtle, fontSize: 11, marginBottom: 1 }}>
+        {label}
       </span>
       <span
         style={{
           color,
-          fontFamily: "'DM Mono', monospace",
-          fontWeight: 700,
-          fontSize: 13,
+          fontFamily: "var(--font-mono)",
+          fontWeight: 600,
+          fontSize: 14,
         }}
         className={pulse ? 'pulse-threat' : ''}
       >

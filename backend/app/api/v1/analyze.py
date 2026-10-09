@@ -3,7 +3,7 @@ import asyncio
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.api.v1.deps import check_analyze_rate_limit, require_admin_privilege, require_session_or_api_key
+from app.api.v1.deps import check_analyze_rate_limit, require_admin_privilege, require_write_privilege
 from app.models.schemas import AnalyzeRequest, AnalyzeResponse, MLReloadResponse
 from app.services.analysis_pipeline import analyze_flows
 from app.services.inference_service import InferenceService
@@ -16,7 +16,7 @@ router = APIRouter()
 @router.post('/analyze', response_model=AnalyzeResponse)
 async def analyze_traffic(
     request: AnalyzeRequest,
-    _: None = Depends(require_session_or_api_key),
+    _: dict = Depends(require_write_privilege),
     __: None = Depends(check_analyze_rate_limit),
 ):
     try:

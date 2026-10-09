@@ -1,0 +1,208 @@
+{
+  "sample": "ML/testdata/cicids2017_sample.csv",
+  "rows": 18264,
+  "attack_rows": 1674,
+  "window": 500,
+  "weights": "graphsage_weights.pt",
+  "conditions": {
+    "offline": {
+      "threshold_0.40": {
+        "accuracy": 0.9333,
+        "precision": 0.8725,
+        "recall": 0.319,
+        "f1": 0.4672,
+        "tp": 534,
+        "fp": 78,
+        "fn": 1140,
+        "tn": 16512,
+        "sources_over_threshold": 55,
+        "of_which_sent_no_attack_flow": 41
+      },
+      "threshold_0.50": {
+        "accuracy": 0.9325,
+        "precision": 0.8975,
+        "recall": 0.2981,
+        "f1": 0.4475,
+        "tp": 499,
+        "fp": 57,
+        "fn": 1175,
+        "tn": 16533,
+        "sources_over_threshold": 42,
+        "of_which_sent_no_attack_flow": 30
+      },
+      "threshold_0.75": {
+        "accuracy": 0.9198,
+        "precision": 0.9487,
+        "recall": 0.1326,
+        "f1": 0.2327,
+        "tp": 222,
+        "fp": 12,
+        "fn": 1452,
+        "tn": 16578,
+        "sources_over_threshold": 21,
+        "of_which_sent_no_attack_flow": 11,
+        "attack_source_rows_over_threshold_by_source": {
+          "172.16.0.1": 10,
+          "192.168.10.14": 0,
+          "192.168.10.15": 0,
+          "192.168.10.5": 0,
+          "192.168.10.8": 0,
+          "192.168.10.9": 0
+        }
+      },
+      "by_class": {
+        "BENIGN": {
+          "n": 16590,
+          "mean_score": 0.0074,
+          "share_over_0.75": 0.0007
+        },
+        "Bot": {
+          "n": 168,
+          "mean_score": 0.0694,
+          "share_over_0.75": 0.0
+        },
+        "DoS slowloris": {
+          "n": 897,
+          "mean_score": 0.0502,
+          "share_over_0.75": 0.0
+        },
+        "PortScan": {
+          "n": 196,
+          "mean_score": 0.6986,
+          "share_over_0.75": 0.5408
+        },
+        "SSH-Patator": {
+          "n": 413,
+          "mean_score": 0.6847,
+          "share_over_0.75": 0.2809
+        }
+      },
+      "threshold_free": {
+        "flow_average_precision": 0.6292,
+        "flow_base_rate": 0.0917,
+        "source_average_precision": 0.3394,
+        "source_rows": 1900,
+        "source_base_rate": 0.0332,
+        "flow_threshold_matching_offline_precision_0.9487": {
+          "threshold": 0.6159,
+          "precision": 0.9492,
+          "recall": 0.279,
+          "tp": 467,
+          "fp": 25
+        },
+        "source_threshold_matching_offline_precision_0.4762": {
+          "threshold": 0.7798,
+          "precision": 0.5,
+          "recall": 0.1587,
+          "tp": 10,
+          "fp": 10
+        }
+      }
+    },
+    "ovs_constants": {
+      "threshold_0.40": {
+        "accuracy": 0.9274,
+        "precision": 0.6651,
+        "recall": 0.4188,
+        "f1": 0.5139,
+        "tp": 701,
+        "fp": 353,
+        "fn": 973,
+        "tn": 16237,
+        "sources_over_threshold": 99,
+        "of_which_sent_no_attack_flow": 68
+      },
+      "threshold_0.50": {
+        "accuracy": 0.9267,
+        "precision": 0.6855,
+        "recall": 0.3698,
+        "f1": 0.4804,
+        "tp": 619,
+        "fp": 284,
+        "fn": 1055,
+        "tn": 16306,
+        "sources_over_threshold": 83,
+        "of_which_sent_no_attack_flow": 58
+      },
+      "threshold_0.75": {
+        "accuracy": 0.9296,
+        "precision": 0.7994,
+        "recall": 0.3094,
+        "f1": 0.4462,
+        "tp": 518,
+        "fp": 130,
+        "fn": 1156,
+        "tn": 16460,
+        "sources_over_threshold": 45,
+        "of_which_sent_no_attack_flow": 31,
+        "attack_source_rows_over_threshold_by_source": {
+          "172.16.0.1": 6,
+          "192.168.10.14": 3,
+          "192.168.10.15": 1,
+          "192.168.10.5": 2,
+          "192.168.10.8": 2,
+          "192.168.10.9": 0
+        }
+      },
+      "by_class": {
+        "BENIGN": {
+          "n": 16590,
+          "mean_score": 0.0289,
+          "share_over_0.75": 0.0078
+        },
+        "Bot": {
+          "n": 168,
+          "mean_score": 0.1159,
+          "share_over_0.75": 0.006
+        },
+        "DoS slowloris": {
+          "n": 897,
+          "mean_score": 0.3857,
+          "share_over_0.75": 0.2586
+        },
+        "PortScan": {
+          "n": 196,
+          "mean_score": 0.3091,
+          "share_over_0.75": 0.1633
+        },
+        "SSH-Patator": {
+          "n": 413,
+          "mean_score": 0.665,
+          "share_over_0.75": 0.6126
+        }
+      },
+      "threshold_free": {
+        "flow_average_precision": 0.5737,
+        "flow_base_rate": 0.0917,
+        "source_average_precision": 0.2967,
+        "source_rows": 1900,
+        "source_base_rate": 0.0332,
+        "flow_threshold_matching_offline_precision_0.9487": {
+          "threshold": null,
+          "note": "no threshold reaches precision 0.9487"
+        },
+        "source_threshold_matching_offline_precision_0.4762": {
+          "threshold": 0.9815,
+          "precision": 0.5,
+          "recall": 0.0159,
+          "tp": 1,
+          "fp": 1
+        }
+      }
+    }
+  },
+  "source_population": {
+    "distinct_sources": 810,
+    "distinct_sources_with_attack_flow": 6,
+    "source_rows_with_attack_flow": 63,
+    "source_rows_with_attack_flow_by_source": {
+      "172.16.0.1": 13,
+      "192.168.10.14": 10,
+      "192.168.10.15": 10,
+      "192.168.10.5": 10,
+      "192.168.10.8": 10,
+      "192.168.10.9": 10
+    }
+  },
+  "flows_whose_0.75_decision_changes": 794
+}

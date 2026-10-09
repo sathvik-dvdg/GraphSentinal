@@ -1,0 +1,220 @@
+{
+  "what": "one live run of OVS -> enforcement daemon -> flow_parser -> monitor -> provenance gate -> v2 client -> rules logged by the backend; derived from ML/retrain_logs/live_loop_run.txt",
+  "route": "B: local WSL2, Mininet with the OVS kernel datapath, no Docker; live polling, not a replay",
+  "run": 2,
+  "labels": "by construction: the traffic script knows what it sent. Not a dataset.",
+  "polls": {
+    "ok": 45,
+    "ok_empty": 1,
+    "failed": 0
+  },
+  "batches_refused_non_ovs": 0,
+  "last_poll_state": "submitted",
+  "windows_closed": 4,
+  "windows_unscored": 0,
+  "flows_sent": 7368,
+  "flows_dropped_in_mapping": 0,
+  "policy_sha256": "e99290226e2d4ad9b8293ffae19bbf53c2bfc673dde11aae4abd9bcff1c8f717",
+  "dry_run": true,
+  "rules_admitted": 13,
+  "rules_by_what_the_flow_was": {
+    "benign_http_fetch": 10,
+    "reply_to_benign_http_fetch": 1,
+    "bruteforce_shaped_connections": 2,
+    "flood": 0,
+    "other": 0
+  },
+  "rules_by_class": {
+    "Volumetric_Flood": 13
+  },
+  "rules": [
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.7",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.10",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.7",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.10",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.4",
+      "dst_port": "22",
+      "what_it_was": "bruteforce_shaped_connections"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.5",
+      "dst_ip": "10.0.0.4",
+      "dst_port": "22",
+      "what_it_was": "bruteforce_shaped_connections"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.1",
+      "dst_ip": "10.0.0.9",
+      "dst_port": "37996",
+      "what_it_was": "reply_to_benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.8",
+      "dst_ip": "10.0.0.3",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    },
+    {
+      "attack_class": "Volumetric_Flood",
+      "action": "meter",
+      "src_ip": "10.0.0.9",
+      "dst_ip": "10.0.0.1",
+      "dst_port": "80",
+      "what_it_was": "benign_http_fetch"
+    }
+  ],
+  "windows": [
+    {
+      "window_start": 1791144000,
+      "scored_by_backend": 400,
+      "capture_dumps": 9,
+      "capture_flow_lines": 396,
+      "distinct_conversations_in_capture": 76,
+      "resubmission_factor": 5.26,
+      "flood_conversations": 0,
+      "predicted": {
+        "BENIGN": 198,
+        "Botnet": 20,
+        "Volumetric_Flood": 182
+      },
+      "predicted_attack": 202,
+      "volumetric_flood_predicted": 182,
+      "volumetric_flood_below_floor": 2,
+      "volumetric_flood_at_or_above_floor": 180
+    },
+    {
+      "window_start": 1791144060,
+      "scored_by_backend": 4076,
+      "capture_dumps": 12,
+      "capture_flow_lines": 4296,
+      "distinct_conversations_in_capture": 620,
+      "resubmission_factor": 6.57,
+      "flood_conversations": 0,
+      "predicted": {
+        "BENIGN": 1950,
+        "BruteForce": 126,
+        "PortScan": 1584,
+        "Volumetric_Flood": 416
+      },
+      "predicted_attack": 2126,
+      "volumetric_flood_predicted": 416,
+      "volumetric_flood_below_floor": 123,
+      "volumetric_flood_at_or_above_floor": 293
+    },
+    {
+      "window_start": 1791144120,
+      "scored_by_backend": 2358,
+      "capture_dumps": 12,
+      "capture_flow_lines": 2424,
+      "distinct_conversations_in_capture": 562,
+      "resubmission_factor": 4.2,
+      "flood_conversations": 1,
+      "predicted": {
+        "BENIGN": 1141,
+        "Botnet": 7,
+        "PortScan": 597,
+        "Volumetric_Flood": 613
+      },
+      "predicted_attack": 1217,
+      "volumetric_flood_predicted": 613,
+      "volumetric_flood_below_floor": 611,
+      "volumetric_flood_at_or_above_floor": 2
+    },
+    {
+      "window_start": 1791144180,
+      "scored_by_backend": 462,
+      "capture_dumps": 11,
+      "capture_flow_lines": 466,
+      "distinct_conversations_in_capture": 60,
+      "resubmission_factor": 7.7,
+      "flood_conversations": 1,
+      "predicted": {
+        "BENIGN": 218,
+        "Botnet": 22,
+        "Volumetric_Flood": 222
+      },
+      "predicted_attack": 244,
+      "volumetric_flood_predicted": 222,
+      "volumetric_flood_below_floor": 8,
+      "volumetric_flood_at_or_above_floor": 214
+    }
+  ],
+  "totals": {
+    "scored_by_backend": 7296,
+    "predicted_attack": 3789,
+    "volumetric_flood_predicted": 1433,
+    "volumetric_flood_below_floor": 744,
+    "volumetric_flood_at_or_above_floor": 689
+  },
+  "windows_note": "scored_by_backend and predicted are the backend's own log lines. The capture columns come from a second reader of the same table, up to 5 s apart from the daemon's polls, so they are close to what was submitted and not identical. volumetric_flood_at_or_above_floor is predicted minus withheld below floor: no other withholding reason was logged for that class."
+}

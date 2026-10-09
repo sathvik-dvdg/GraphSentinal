@@ -386,8 +386,12 @@ for path in weights_candidates:
 if not weights_found:
     err("graphsage_weights.pt NOT FOUND")
     info("Make sure the ML/ folder was pulled from Git")
-    info("If using Git LFS: run  git lfs pull")
-    info("Or ask your teammate who trained the model to share the .pt file")
+    # This repo has never used Git LFS — `git lfs pull` is a dead end. The v2
+    # weights are deliberately gitignored (72.7 MiB each, un-delta-compressible);
+    # their sha256 digests live in ML/MANIFEST.json so integrity is verifiable
+    # without the blob.
+    info("Model weights are NOT in Git — see INTEGRATION.md for how to fetch them")
+    info("Verify what you fetch against the sha256 digests in ML/MANIFEST.json")
 
 
 # ────────────────────────────────────────────────────────────────────────────

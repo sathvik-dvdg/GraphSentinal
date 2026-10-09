@@ -1,28 +1,19 @@
 // [Windows] GraphSentinel — Susheep
-// ui/FilterPill — Error.md #39: shared filter pill button extracted from
-// AlertCentre.jsx (line 284) and ThreatFeed.jsx (line 239), which had
-// identical implementations that had drifted slightly apart (padding/fontWeight).
-// This is the superset: ThreatFeed's fontWeight active state is preserved.
-export default function FilterPill({ label, active, onClick, color = '#3b56d9' }) {
+// ui/FilterPill — shared filter pill used by AlertCentre and ThreatFeed.
+// `color` is kept for call sites that tint a filter (e.g. a severity); the
+// active state is an ink-filled pill, otherwise a quiet outline.
+import Button from './Button'
+
+export default function FilterPill({ label, active, onClick, color }) {
   return (
-    <button
+    <Button
+      size="sm"
+      variant="secondary"
+      active={active}
       onClick={onClick}
-      style={{
-        padding: '4px 10px',
-        borderRadius: 6,
-        border: `1px solid ${active ? color : 'rgba(17,20,26,0.10)'}`,
-        background: active ? `${color}18` : 'transparent',
-        color: active ? color : '#727a86',
-        fontSize: 10,
-        fontFamily: "'DM Mono', monospace",
-        fontWeight: active ? 600 : 400,
-        cursor: 'pointer',
-        transition: 'all 150ms',
-        textTransform: 'capitalize',
-        whiteSpace: 'nowrap',
-      }}
+      style={active && color ? { color, boxShadow: `inset 0 0 0 1px ${color}` } : { textTransform: 'capitalize' }}
     >
       {label}
-    </button>
+    </Button>
   )
 }

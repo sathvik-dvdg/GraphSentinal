@@ -3,13 +3,20 @@ from __future__ import annotations
 
 from ipaddress import ip_address
 from math import isfinite
-from typing import Literal, Optional
+from typing import Any, Literal, Optional
 
 from pydantic import BaseModel, Field, IPvAnyAddress, field_validator
 
 
 NodeStatus = Literal["normal", "suspicious", "malicious", "blocked"]
+# The v1 heuristic taxonomy, produced by threat_analyzer.infer_attack_type().
+# Still exact for the v1/degraded path, which is the only thing that emits it.
 AttackType = Literal["DDoS", "PortScan", "SSHBrute", "Botnet", "DoSHulk", "Manual", "Heuristic", "Unknown"]
+
+# Labels that do not come from a model: manual operator actions and the v1
+# heuristic fallback. Everything else must be a class the loaded model card
+# declares — validated at the seam that produces the label, not here.
+NON_MODEL_ATTACK_LABELS: frozenset[str] = frozenset({"Manual", "Manual-Unblock", "Heuristic", "Unknown"})
 Severity = Literal["info", "warning", "critical"]
 BlockAction = Literal["block", "unblock"]
 BlockReason = Literal["GNN_DETECTED", "HEURISTIC_DEGRADED", "MANUAL_OVERRIDE"]
@@ -78,7 +85,15 @@ class NodeData(BaseModel):
     threat_score: float = Field(ge=0.0, le=1.0)
     connections: int = Field(ge=0)
     bytes_total: int = Field(ge=0)
-    attack_type: Optional[AttackType] = None
+    # str, not AttackType: the v2 model's class list comes from model_card.json
+    # at runtime and includes Volumetric_Flood and BruteForce, which are not in
+    # the v1 Literal. Leaving the closed Literal here would 500 the whole
+    # /api/v1/graph endpoint on RESPONSE validation the first time the new model
+    # labelled anything — the same failure AlertRecord.attack_type was already
+    # widened to avoid. Validation moved to the seam that produces the label,
+    # where an out-of-contract class fails at its origin instead of at
+    # serialisation, and a new taxonomy needs no schema edit.
+    attack_type: Optional[str] = None
     is_blocked: bool
     source: Literal["configured", "observed"] = "configured"
     # Error.md #34 — provenance of the flow(s) that involved this host this
@@ -90,7 +105,8 @@ class LinkData(BaseModel):
     source: str
     target: str
     value: float = Field(ge=0.0, le=1.0)
-    attack_type: Optional[AttackType] = None
+    # str, not AttackType — see NodeData.attack_type above.
+    attack_type: Optional[str] = None
     packet_count: int = Field(ge=0)
     data_source: Optional[str] = None
 
@@ -116,6 +132,9 @@ class AlertRecord(BaseModel):
     description: str
     is_blocked: bool
     blockchain_tx: Optional[str] = None
+    # The incident's ledger state (confirmed / pending / retry / failed / ...):
+    # a hash alone does not mean the transaction is on-chain.
+    blockchain_status: Optional[str] = None
     data_source: str = "manual"
     # Error.md H5 — server-authoritative triage state
     alert_status: str = "open"
@@ -292,6 +311,8 @@ class ChainRecord(BaseModel):
     severity: Optional[int] = None
     is_blocked: Optional[bool] = None
     gas_used: Optional[int] = None
+    # The contract's pointer back to the incident ("local://incident/42").
+    forensics_uri: Optional[str] = None
     status: Optional[str] = "confirmed"
 
 
@@ -314,6 +335,17 @@ class SettingsResponse(BaseModel):
     demo_fallback_flows: bool
     ganache_url: str
     contract_address: Optional[str] = None
+    # Cap on the gas estimated per ledger transaction (BLOCKCHAIN_MAX_GAS).
+    blockchain_max_gas: Optional[int] = None
+    # READ-ONLY. The v2 model's binary gate is an operating point fitted against
+    # measured precision/recall; it is not an operator preference and PATCH
+    # /settings cannot move it. Surfaced so the UI can show the two thresholds
+    # are different things rather than implying the slider governs the model.
+    # Named ml_* rather than model_*: pydantic v2 reserves the `model_` prefix
+    # and warns on any field using it.
+    ml_binary_gate: Optional[float] = None
+    ml_binary_gate_source: Optional[str] = None
+    ml_gate_mutable: bool = False
 
 
 class SettingsUpdateResponse(BaseModel):
@@ -385,6 +417,9 @@ class AnalyzeResponse(BaseModel):
     graph_snapshot: GraphResponse
     alerts: list[AlertRecord]
     healing_events: list[HealingEvent]
+    # Sources over the threshold that were not acted on: {source_ip, score,
+    # reason}, reason "outside_mininet_range" or "already_blocked".
+    skipped: list[dict[str, Any]] = Field(default_factory=list)
     ml_mode: Optional[str] = None
     degraded_reason: Optional[str] = None
 

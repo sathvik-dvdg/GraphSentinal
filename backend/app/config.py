@@ -25,6 +25,23 @@ class Settings(BaseSettings):
     scaler_path: str = "../ML/GraphSage-model/scaler.pkl"
     use_scaler_for_inference: bool = False
 
+    # ── GraphSentinel v2 (flow/edge-level model, contract 2.0.0) ──────────────
+    # The v2 model runs in its OWN process (graphsentinel.inference.service), not
+    # in this one: InferenceEngine is stateful (flow buffer, 60s window boundary,
+    # persistent host memory) and the MininetMonitor thread plus /analyze request
+    # handlers would interleave into one shared buffer if it were imported here.
+    gs2_enabled: bool = False
+    gs2_service_url: str = "http://127.0.0.1:8080"
+    gs2_request_timeout_seconds: float = 10.0
+    # Directory holding model_card.json (and, when fetched, weights.pt). The
+    # backend reads the CARD to learn the class list, feature names and their
+    # order; it never loads the weights itself.
+    gs2_model_dir: str = "../ML"
+    # Refuse to boot when gs2_enabled and the contract is missing or the wrong
+    # version. Failing loudly beats mislabelling traffic silently. Turning this
+    # off is a deliberate, logged choice for local work without the artefacts.
+    gs2_require_contract: bool = True
+
     ganache_url: str = "http://127.0.0.1:8545"
     contract_address: str = ""
     blockchain_tx_timeout_seconds: int = 5
@@ -41,7 +58,15 @@ class Settings(BaseSettings):
 
     backend_api_token: str = "change-me-for-demo"
     admin_api_token: str = "admin-secret-key-for-demo"
+    # Verifies the browser's Clerk session tokens. Read through settings so
+    # CLERK_SECRET_KEY works from backend/.env as well as the environment:
+    # os.environ never sees backend/.env, so a key placed there was ignored and
+    # every /api/v1 route answered 500.
+    clerk_secret_key: str = ""
     max_analyze_flows: int = 5000
+    # The switch monitor's own ceiling (see analysis_pipeline.analyze_flows). Beyond
+    # it the monitor keeps the flows with the most packets and says so.
+    monitor_max_flows: int = 50000
     analyze_rate_limit_per_minute: int = 30
 
     # Operator & Administrative session auth (R-03: M13-F01, M13-F02, M15-F03)
@@ -60,6 +85,16 @@ class Settings(BaseSettings):
     daemon_host: str = "127.0.0.1"
     daemon_port: int = 50051
     daemon_token: str = "test-token"
+
+    # The Simulate button runs mininet/demo/attacks (services/simulation_runner).
+    # Empty = the repository's own folder / this interpreter.
+    simulation_scripts_dir: str = ""
+    simulation_python: str = ""
+    # How long to watch for the incident after an attack. v1's score for a source
+    # keeps rising for a minute after the traffic stops: OVS counts a flow's
+    # duration from when its rule was installed, so an idle rule just gets older.
+    # A control run (no incident expected) waits at most 20 s of this.
+    simulation_score_wait_seconds: float = 45.0
 
     flow_snapshot_retention_hours: int = 24
 
@@ -121,6 +156,15 @@ class Settings(BaseSettings):
             return [configured]
         backend_dir = Path(__file__).resolve().parent.parent
         return [(backend_dir / configured).resolve()]
+
+    @property
+    def resolved_gs2_model_dir(self) -> Path:
+        """Absolute path to the v2 artefact directory (holds model_card.json)."""
+        configured = Path(self.gs2_model_dir)
+        if configured.is_absolute():
+            return configured
+        backend_dir = Path(__file__).resolve().parent.parent
+        return (backend_dir / configured).resolve()
 
 
 @lru_cache

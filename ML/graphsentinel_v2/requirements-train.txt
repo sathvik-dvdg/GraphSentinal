@@ -1,0 +1,17 @@
+# ---------------------------------------------------------------------------
+#  TRAINING AND EXPORT ONLY. A backend consuming pre-exported artefacts does
+#  NOT need any of this.
+# ---------------------------------------------------------------------------
+
+scikit-learn>=1.3      # metrics, and the RandomForest baseline
+pyarrow>=14.0          # parquet split cache -- training splits only
+matplotlib>=3.7        # training curves
+
+# optional: ONNX export. TorchScript needs nothing extra, and the HTTP service
+# is the supported decoupling path -- ONNX is an optimisation, not a contract.
+onnx>=1.16
+onnxscript>=0.1
+onnxruntime>=1.17
+
+# optional: live packet capture (needs CAP_NET_RAW)
+# scapy>=2.5

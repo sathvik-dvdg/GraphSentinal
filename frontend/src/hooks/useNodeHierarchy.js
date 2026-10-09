@@ -32,6 +32,7 @@ function mergeStatuses(node, statusMap) {
 
 import { useMemo } from 'react'
 import useGraphStore from '../store/useGraphStore'
+import { currentlyBlocked, deriveStatusMap } from '../utils/hierarchyStatus'
 
 // Error.md #2: there is no real org-chart data source (department/role
 // assignments aren't derivable from network flows) — the previous hardcoded
@@ -66,40 +67,16 @@ function buildHierarchyFromGraph(graphData) {
 export function useNodeHierarchy(alerts = [], healingEvents = []) {
   const nodeOverrides = useGraphStore((s) => s.nodeOverrides)
   const graphData = useGraphStore((s) => s.graphData)
+  const blockedIPs = useGraphStore((s) => s.blockedIPs)
   const orgHierarchy = useMemo(() => buildHierarchyFromGraph(graphData), [graphData])
 
-  const statusMap = useMemo(() => {
-    const map = {}
+  // What is blocked NOW, not what was ever blocked: the healing feed is history.
+  const blockedNow = useMemo(() => currentlyBlocked(graphData, blockedIPs), [graphData, blockedIPs])
 
-    // Healing events → isolated
-    healingEvents.forEach((ev) => {
-      if (ev.action === 'ISOLATED') {
-        map[ev.ip] = 'isolated'
-      }
-    })
-
-    // Critical non-isolated alerts → attacking or infected
-    alerts.forEach((alert) => {
-      const ip = alert.source_ip
-      if (map[ip] === 'isolated') return // already isolated
-      if (alert.severity === 'critical' && !alert.is_blocked) {
-        map[ip] = 'attacking'
-      } else if (alert.severity === 'warning' && !map[ip]) {
-        map[ip] = 'infected'
-      }
-    })
-
-    // Apply manual node overrides
-    Object.entries(nodeOverrides).forEach(([ip, status]) => {
-      if (status === 'normal') {
-        delete map[ip] // Fallback to node.status in ORG_HIERARCHY
-      } else if (status) {
-        map[ip] = status
-      }
-    })
-
-    return map
-  }, [alerts, healingEvents, nodeOverrides])
+  const statusMap = useMemo(
+    () => deriveStatusMap({ alerts, healingEvents, nodeOverrides, blockedNow }),
+    [alerts, healingEvents, nodeOverrides, blockedNow],
+  )
 
   const ipMap = useMemo(() => buildIpMap(orgHierarchy), [orgHierarchy])
 

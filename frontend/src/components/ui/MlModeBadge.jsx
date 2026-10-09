@@ -6,16 +6,18 @@
 // unnoticed while the UI kept showing scores as if they were real GNN output.
 // Hidden entirely in the normal case (mode === 'model') — like
 // DataFreshnessBadge, only takes up space when there's something to flag.
+import StatusPill from './StatusPill'
 export default function MlModeBadge({ mlHealth, className = '' }) {
   if (!mlHealth || mlHealth.mode === 'model') return null
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider badge-sim ${className}`}
+    <StatusPill
+      tone="warn"
+      className={className}
       role="status"
       title={mlHealth.degraded_reason || 'GraphSAGE model unavailable — using rule-based heuristic scoring'}
     >
-      HEURISTIC SCORING
-    </span>
+      Heuristic scoring
+    </StatusPill>
   )
 }

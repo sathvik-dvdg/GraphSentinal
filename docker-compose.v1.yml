@@ -1,0 +1,13 @@
+# ── GraphSentinel — v1 path only ──────────────────────────────────────────────
+# docker-compose.yml starts the v2 path (GS2_ENABLED: "true"). Layer this file to
+# turn it off and run the original v1 pipeline alone:
+#
+#   docker compose -f docker-compose.yml -f docker-compose.v1.yml up -d
+#
+# With it off, RUN_GUIDE.md §6 checks 3 and 7-9 cannot pass: the backend
+# publishes no v2 policy. The inference container still starts; nothing calls it.
+# ──────────────────────────────────────────────────────────────────────────────
+services:
+  backend:
+    environment:
+      GS2_ENABLED: "false"

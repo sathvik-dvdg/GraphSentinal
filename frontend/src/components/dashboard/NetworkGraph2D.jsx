@@ -4,18 +4,66 @@
 import { useRef, useEffect, useMemo, useCallback } from 'react'
 import cytoscape from 'cytoscape'
 import { STATUS_COLORS } from '../../constants/theme'
+import { GS } from '../../constants/colors'
+
+const SWITCH_ID = 's1'
+const CONTROLLER_ID = 'c0'
+const HOST_LABEL_RE = /^h(\d+)$/i
+const IPV4_HOST_RE = /^10\.0\.0\.(\d+)$/
+const HOST_RING_RADIUS = 170
+const CONTROLLER_OFFSET = 86
+
+// Hosts that are not healthy carry their state in words under the name, so the
+// map reads without a legend.
+const STATE_WORD = { suspicious: 'Watching', malicious: 'Active threat', blocked: 'Isolated' }
 
 const LAYOUT = {
-  name: 'concentric',
-  minNodeSpacing: 46,
-  fit: true,
-  padding: 40,
-  // Infrastructure (switch / controller) in the centre, hosts on the outer ring.
-  concentric: (node) => (node.data('kind') && node.data('kind') !== 'host' ? 10 : 1),
-  levelWidth: () => 1,
+  name: 'preset',
+  fit: false,
+  animate: false,
 }
 
-export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }) {
+function hostOrder(node) {
+  const label = String(node.label || node.id || '')
+  const hostMatch = label.match(HOST_LABEL_RE)
+  if (hostMatch) return Number(hostMatch[1])
+
+  const ipMatch = String(node.id || '').match(IPV4_HOST_RE)
+  if (ipMatch) return Number(ipMatch[1])
+
+  return Number.MAX_SAFE_INTEGER
+}
+
+function buildTopologyPositions(nodes) {
+  const positions = new Map([
+    [SWITCH_ID, { x: 0, y: 0 }],
+    [CONTROLLER_ID, { x: 0, y: -CONTROLLER_OFFSET }],
+  ])
+
+  const hosts = nodes
+    .filter((n) => (n.kind || 'host') === 'host')
+    .sort((a, b) => hostOrder(a) - hostOrder(b) || String(a.id).localeCompare(String(b.id)))
+
+  const count = Math.max(hosts.length, 1)
+  hosts.forEach((host, index) => {
+    // h1 starts at the right edge, then hosts proceed clockwise around s1.
+    // c0 stays inside the ring, so it no longer competes with a top host label.
+    const angle = (index / count) * Math.PI * 2
+    positions.set(host.id, {
+      x: Math.cos(angle) * HOST_RING_RADIUS,
+      y: Math.sin(angle) * HOST_RING_RADIUS,
+    })
+  })
+
+  return positions
+}
+
+function graphPaddingFor(el) {
+  if (!el) return 56
+  return Math.max(42, Math.min(84, Math.floor(Math.min(el.clientWidth, el.clientHeight) * 0.12)))
+}
+
+export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick, selectedId = null }) {
   const containerRef = useRef(null)
   const cyRef = useRef(null)
   const onNodeClickRef = useRef(onNodeClick)
@@ -26,16 +74,22 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
   }, [onNodeClick, graphData])
 
   const elements = useMemo(() => {
+    const positions = buildTopologyPositions(graphData.nodes)
+    const blockedIds = new Set(graphData.nodes.filter((n) => n.status === 'blocked').map((n) => n.id))
+    const endpoint = (e) => (typeof e === 'object' ? e.id : e)
     const nodes = graphData.nodes.map((n) => ({
       data: {
         id: n.id,
         label: n.label,
+        display: STATE_WORD[n.status] && (n.kind || 'host') === 'host' ? `${n.label}
+${STATE_WORD[n.status]}` : n.label,
         status: n.status,
         threat: n.threat_score,
         is_blocked: n.is_blocked,
         source: n.source,
         kind: n.kind || 'host',
       },
+      position: positions.get(n.id),
     }))
     const edges = graphData.links.map((l) => ({
       data: {
@@ -44,6 +98,8 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
         target: typeof l.target === 'object' ? l.target.id : l.target,
         value: l.value || (l.kind === 'infra' ? 0 : 0.5),
         kind: l.kind || 'traffic',
+        // A link to an isolated host is drawn cut: dashed and crimson.
+        cut: blockedIds.has(endpoint(l.source)) || blockedIds.has(endpoint(l.target)),
       },
     }))
     return [...nodes, ...edges]
@@ -54,41 +110,45 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
 
     const cy = cytoscape({
       container: containerRef.current,
+      autoungrabify: true,
+      boxSelectionEnabled: false,
+      wheelSensitivity: 0.18,
       style: [
         // Base node style — shape encodes status (accessibility: not color alone)
         {
           selector: 'node',
           style: {
-            'background-color': (ele) => STATUS_COLORS[ele.data('status')] || '#3b56d9',
-            label: 'data(label)',
-            color: '#5a616e',
-            'font-size': '9px',
-            'font-family': '"DM Mono", monospace',
+            'background-color': (ele) => STATUS_COLORS[ele.data('status')] || GS.primary,
+            label: 'data(display)',
+            color: GS.text,
+            'font-size': '11px',
+            'font-family': '"JetBrains Mono", monospace',
+            'text-wrap': 'wrap',
             'text-valign': 'bottom',
-            'text-margin-y': 5,
+            'text-margin-y': 6,
             'text-outline-width': 0,
-            width: 24,
-            height: 24,
+            width: 26,
+            height: 26,
             shape: 'ellipse', // default: circle = normal
             'border-width': 1.5,
-            'border-color': (ele) => STATUS_COLORS[ele.data('status')] || '#e2e5ea',
+            'border-color': (ele) => STATUS_COLORS[ele.data('status')] || GS.border,
             'border-opacity': 0.25,
           },
         },
         // Suspicious — diamond shape
         {
           selector: 'node[status="suspicious"]',
-          style: { shape: 'diamond', width: 28, height: 28, 'border-color': '#b7791f', 'border-width': 2 },
+          style: { shape: 'diamond', width: 28, height: 28, 'border-color': GS.warn, 'border-width': 2 },
         },
         // Malicious — triangle (warning shape)
         {
           selector: 'node[status="malicious"]',
-          style: { shape: 'triangle', width: 36, height: 36, 'border-color': '#E03C3C', 'border-width': 2.5 },
+          style: { shape: 'triangle', width: 36, height: 36, 'border-color': GS.danger, 'border-width': 2.5 },
         },
         // Blocked — hexagon (containment shape) with dashed border
         {
           selector: 'node[status="blocked"]',
-          style: { shape: 'hexagon', width: 30, height: 30, 'border-color': '#3b56d9', 'border-width': 2, 'border-style': 'dashed', opacity: 0.8 },
+          style: { shape: 'hexagon', width: 30, height: 30, 'border-color': GS.primary, 'border-width': 2, 'border-style': 'dashed', opacity: 0.8 },
         },
         // Configured baseline host — dimmed (no traffic seen yet)
         {
@@ -105,13 +165,13 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
             },
             'line-color': (ele) => {
               const v = ele.data('value') || 0.5
-              return v > 0.75 ? '#E03C3C' : v > 0.5 ? '#b7791f' : '#c7cbd2'
+              return v > 0.75 ? GS.danger : v > 0.5 ? GS.warn : GS.borderStrong
             },
             'line-opacity': (ele) => {
               const v = ele.data('value') || 0.5
               return v > 0.75 ? 0.5 : v > 0.5 ? 0.4 : 0.9
             },
-            'target-arrow-color': '#9aa1ad',
+            'target-arrow-color': GS.textFaint,
             'target-arrow-shape': 'triangle',
             'curve-style': 'bezier',
           },
@@ -122,10 +182,10 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
           selector: 'node[kind="switch"]',
           style: {
             shape: 'round-rectangle', width: 46, height: 30,
-            'background-color': '#3b56d9', 'background-opacity': 1,
-            'border-color': '#2c40a8', 'border-width': 1.5, 'border-opacity': 1,
+            'background-color': GS.primary, 'background-opacity': 1,
+            'border-color': GS.primaryDeep, 'border-width': 1.5, 'border-opacity': 1,
             'border-style': 'solid', opacity: 1,
-            color: '#3b56d9', 'font-size': '10px', 'font-weight': 'bold',
+            color: GS.primary, 'font-size': '10px', 'font-weight': 'bold',
           },
         },
         // OpenFlow controller c0 — small neutral diamond above the switch
@@ -133,22 +193,32 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
           selector: 'node[kind="controller"]',
           style: {
             shape: 'diamond', width: 22, height: 22,
-            'background-color': '#5a616e', 'background-opacity': 1,
-            'border-color': '#41474f', 'border-width': 1.5, 'border-opacity': 1,
+            'background-color': GS.textMuted, 'background-opacity': 1,
+            'border-color': GS.inkSoft, 'border-width': 1.5, 'border-opacity': 1,
             'border-style': 'solid', opacity: 1,
-            color: '#5a616e', 'font-size': '9px',
+            color: GS.textMuted, 'font-size': '9px',
           },
+        },
+        // The host whose details are open
+        {
+          selector: 'node.picked',
+          style: { 'underlay-color': GS.primary, 'underlay-opacity': 0.16, 'underlay-padding': 7, 'underlay-shape': 'ellipse' },
         },
         // Infra links — thin, quiet, no arrowhead
         {
           selector: 'edge[kind="infra"]',
           style: {
-            width: 1.5, 'line-color': '#c7cbd2', 'line-opacity': 0.9,
+            width: 1.5, 'line-color': GS.borderStrong, 'line-opacity': 0.9,
             'target-arrow-shape': 'none', 'curve-style': 'straight',
           },
         },
+        // Isolated host: its link is shown cut, whatever kind of link it is
+        {
+          selector: 'edge[?cut]',
+          style: { 'line-style': 'dashed', 'line-dash-pattern': [6, 5], 'line-color': GS.danger, 'line-opacity': 0.85, width: 2 },
+        },
       ],
-      layout: { ...LAYOUT, animate: false },
+      layout: LAYOUT,
       elements: [] // start empty, updated by next effect
     })
 
@@ -164,9 +234,9 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
     }
   }, []) // initialize once
 
-  const nodeCountRef = useRef(0)
+  const layoutKeyRef = useRef('')
 
-  const relayout = useCallback((animate) => {
+  const relayout = useCallback(() => {
     const cy = cyRef.current
     if (!cy || cy.destroyed()) return
     const el = containerRef.current
@@ -175,7 +245,9 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
     // origin. Re-sync the size before laying out.
     if (el && el.clientWidth > 0 && el.clientHeight > 0) cy.resize()
     if (cy.nodes().length === 0) return
-    cy.layout({ ...LAYOUT, animate, animationDuration: 300 }).run()
+    cy.layout(LAYOUT).run()
+    cy.fit(cy.elements(), graphPaddingFor(el))
+    cy.center(cy.elements())
   }, [])
 
   // Keep the canvas sized to its panel and re-run the layout on resize —
@@ -183,10 +255,8 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
   useEffect(() => {
     const el = containerRef.current
     if (!el) return
-    let first = true
     const obs = new ResizeObserver(() => {
-      relayout(!first)
-      first = false
+      relayout()
     })
     obs.observe(el)
     return () => obs.disconnect()
@@ -208,22 +278,31 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
         const existing = cy.getElementById(ele.data.id)
         if (existing.length > 0) {
           existing.data(ele.data)
+          if (ele.position) existing.position(ele.position)
         } else {
           cy.add(ele)
         }
       })
     })
 
-    // Count real nodes: edges always carry data.target, nodes never do.
-    // (The previous check keyed on data.source, which every node now sets to
-    // 'observed'/'configured' — so it was always 0 and the concentric layout
-    // never ran, leaving every node stacked at the origin.)
-    const newCount = elements.filter(e => e.data.target === undefined).length
-    if (newCount !== nodeCountRef.current) {
-      relayout(nodeCountRef.current !== 0)
-      nodeCountRef.current = newCount
+    const layoutKey = elements
+      .filter(e => e.data.target === undefined)
+      .map(e => `${e.data.id}:${Math.round(e.position?.x || 0)}:${Math.round(e.position?.y || 0)}`)
+      .join('|')
+    if (layoutKey !== layoutKeyRef.current) {
+      relayout()
+      layoutKeyRef.current = layoutKey
     }
   }, [elements, relayout])
+
+  // Mark the selected host. Re-runs when the elements change so a data update
+  // never drops the ring.
+  useEffect(() => {
+    const cy = cyRef.current
+    if (!cy || cy.destroyed()) return
+    cy.nodes().removeClass('picked')
+    if (selectedId) cy.getElementById(selectedId).addClass('picked')
+  }, [selectedId, elements])
 
   // Healing animation: highlight the healing node with a pulsing style
   useEffect(() => {
@@ -237,10 +316,10 @@ export default function NetworkGraph2D({ graphData, healingNodeId, onNodeClick }
 
     // Override style temporarily
     node.style({
-      'border-color': '#3b56d9',
+      'border-color': GS.primary,
       'border-width': 4,
       'border-style': 'solid',
-      'background-color': '#3b56d9',
+      'background-color': GS.primary,
       'background-opacity': 0.5,
     })
 

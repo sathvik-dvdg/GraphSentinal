@@ -2,16 +2,89 @@
 from __future__ import annotations
 
 import re
+import threading
+from dataclasses import dataclass, field
 from typing import Any
 
 from app.config import settings
 
+# ── Poll status ───────────────────────────────────────────────────────────────
+# The parser REPORTS what the switch said. It never invents traffic: substituting
+# demo flows is policy, and lives in MininetMonitor._poll. Before this split the
+# parser swallowed every failure and returned normally, so an hour-long daemon
+# outage was indistinguishable from an hour of quiet traffic.
+POLL_OK = "ok"              # daemon answered and at least one flow parsed
+POLL_OK_EMPTY = "ok_empty"  # daemon answered, but nothing parseable (quiet network,
+                            # or a dump holding only a table-miss rule)
+POLL_FAILED = "failed"      # no usable answer: unreachable, timeout, error status,
+                            # empty response, invalid JSON
 
-def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
+
+@dataclass
+class PollResult:
+    status: str
+    flows: list[dict[str, Any]] = field(default_factory=list)
+    #: Why the poll failed. None unless status == "failed".
+    error: str | None = None
+    #: Non-empty lines in the dump the daemon returned. Makes a dump holding only
+    #: a table-miss rule visible as such. None when the poll failed.
+    lines_in_dump: int | None = None
+    #: Set by the MONITOR when it replaced a failed poll's (empty) flows with
+    #: demo_flows(). The parser itself never sets it.
+    demo_substituted: bool = False
+
+
+# The last failure message printed, so a daemon that stays down is reported
+# once (and again when the reason changes or it recovers) instead of on every
+# poll. The poll RESULT still carries the error every time; only the console
+# line is deduplicated.
+_last_reported_error: str | None = None
+# Only the monitor thread polls today; the lock keeps the check-and-set atomic
+# if a second caller is ever added.
+_report_lock = threading.Lock()
+
+
+def _report_failure(message: str) -> None:
+    global _last_reported_error
+    hint = ""
+    if message.startswith(("ConnectionRefusedError", "TimeoutError")):
+        hint = (
+            f"\n[FlowParser] No enforcement daemon at {settings.daemon_host}:{settings.daemon_port}. "
+            "Live OVS capture is unavailable until it runs (start "
+            "backend/scripts/enforcement_daemon.py in WSL2 with the backend's "
+            "DAEMON_TOKEN). The API keeps "
+            "serving; set DEMO_FALLBACK_FLOWS=true for synthetic traffic. "
+            "Repeats of this error are not printed."
+        )
+    # Print under the lock so the console order matches the state transitions.
+    with _report_lock:
+        if message == _last_reported_error:
+            return
+        _last_reported_error = message
+        print(f"[FlowParser] OVS poll failed via daemon: {message}{hint}")
+
+
+def _report_recovery() -> None:
+    global _last_reported_error
+    with _report_lock:
+        if _last_reported_error is None:
+            return
+        _last_reported_error = None
+        print("[FlowParser] OVS poll via daemon recovered")
+
+
+def result_from_output(raw: str) -> PollResult:
+    """Classify a successful daemon answer: `ok` or `ok_empty`."""
+    flows = _parse_output(raw)
+    lines = sum(1 for line in raw.splitlines() if line.strip())
+    return PollResult(status=POLL_OK if flows else POLL_OK_EMPTY, flows=flows, lines_in_dump=lines)
+
+
+def poll_ovs_flows(switch: str = "s1") -> PollResult:
+    """One poll of the switch via the enforcement daemon. Never raises."""
     import json
     import socket
-    import time
-    
+
     try:
         payload = {
             "token": settings.daemon_token,
@@ -22,33 +95,36 @@ def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
             sock.settimeout(3.0)
             sock.connect((settings.daemon_host, settings.daemon_port))
             sock.sendall(json.dumps(payload).encode("utf-8"))
-            
+
             response_data = []
             while True:
                 chunk = sock.recv(4096)
                 if not chunk:
                     break
                 response_data.append(chunk)
-                
+
             response = b"".join(response_data).decode("utf-8")
             if not response:
                 raise RuntimeError("Empty response from daemon")
-                
+
             result = json.loads(response)
             if result.get("status") != "success":
                 raise RuntimeError(result.get("error", "Unknown error from daemon"))
-                
-            flows = _parse_output(result.get("output", ""))
-            if flows:
-                return flows
-    except ConnectionError as exc:
-        print(f"[FlowParser] Daemon connection failed (retrying/fallback): {exc}")
-        # The user requested to fallback to demo flows if it crashes or hangs
-        # We also want to give a chance for it to recover.
-    except Exception as exc:
-        print(f"[FlowParser] OVS unavailable via daemon: {exc}")
-        
-    return demo_flows() if settings.demo_fallback_flows else []
+
+            parsed = result_from_output(result.get("output", ""))
+            _report_recovery()
+            return parsed
+    except Exception as exc:  # noqa: BLE001 - a poll must report, never raise
+        message = f"{type(exc).__name__}: {exc}"
+        _report_failure(message)
+        return PollResult(status=POLL_FAILED, error=message)
+
+
+def parse_ovs_flows(switch: str = "s1") -> list[dict[str, Any]]:
+    """The flows from one poll. NO demo substitution -- that is monitor policy
+    now (MininetMonitor._poll). Use poll_ovs_flows() to learn whether the poll
+    actually succeeded."""
+    return poll_ovs_flows(switch).flows
 
 
 def _parse_output(raw: str) -> list[dict[str, Any]]:

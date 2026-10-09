@@ -154,6 +154,11 @@ class InferenceService:
             self.mode = "degraded"
             self.degraded_reason = f"Inference failed; using heuristic fallback: {exc}"
             return self._heuristic_predict(flows)
+        # The model scored this batch. A failure on an earlier batch must not
+        # leave every later model score reported as degraded.
+        if self.mode != "model":
+            self.mode = "model"
+            self.degraded_reason = ""
 
         flow_scores = [
             {

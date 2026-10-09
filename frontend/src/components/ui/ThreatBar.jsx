@@ -1,11 +1,12 @@
 // [Windows] GraphSentinel — Susheep
 // ui/ThreatBar — reusable threat score progress bar
 import { motion } from 'framer-motion'
+import { GS } from '../../constants/colors'
 
 function getThreatColor(score) {
-  if (score >= 0.75) return '#E03C3C' // gs-threat
-  if (score >= 0.5)  return '#b7791f' // gs-warn
-  return '#12a672'                    // gs-heal
+  if (score >= 0.75) return GS.danger // gs-threat
+  if (score >= 0.5)  return GS.warn // gs-warn
+  return GS.success                    // gs-heal
 }
 
 /**
@@ -19,7 +20,7 @@ export default function ThreatBar({ score, delay = 0, showLabel = true, classNam
   return (
     <div className={`flex items-center gap-2 ${className}`}>
       {showLabel && (
-        <span className="text-[10px] text-gs-muted font-mono uppercase tracking-wider shrink-0 w-10">
+        <span className="text-xs text-gs-muted font-sans shrink-0 w-10">
           Threat
         </span>
       )}

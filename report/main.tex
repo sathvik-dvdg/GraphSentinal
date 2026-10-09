@@ -1,0 +1,1848 @@
+\documentclass[12pt,a4paper]{report}
+\usepackage[utf8]{inputenc}
+\usepackage{amsfonts}
+\usepackage{setspace}
+\usepackage{graphicx}
+\usepackage{array}
+\usepackage{fancyhdr}
+\usepackage{geometry}
+\usepackage{ragged2e}
+\usepackage{color}
+\usepackage[sorting=none]{biblatex}
+\usepackage{tabularx}
+
+
+\addbibresource{reference.bib}
+
+% Lets TeX stretch spacing slightly to avoid lines overflowing into the margin.
+\setlength{\emergencystretch}{3em}
+
+\geometry{
+a4paper,
+total={210mm,297mm},
+left=1.15in,
+right=0.85in,
+top=1.0in,
+bottom=1.0in,
+}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%  PROJECT DETAILS  %%%%%%%%%%%%%%%%%%%%%%%%
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\newcommand{\projecttitle}{A Closed-Loop Graph Neural Network Based Cyber Defence System with Self-Healing Mitigation and Blockchain-Based Forensics}
+
+\newcommand{\studentAname}{Skanda Prasad D}
+\newcommand{\studentAid}{4CB23CS152}
+\newcommand{\studentBname}{Sairaj Somashekhar Borkar}
+\newcommand{\studentBid}{4CB23CS131}
+\newcommand{\studentCname}{Sathvik T Devadiga}
+\newcommand{\studentCid}{4CB23CS135}
+\newcommand{\studentDname}{Susheep K S}
+\newcommand{\studentDid}{4CB23CS166}
+
+\newcommand{\guidename}{Mrs. Aruna Kumari G K}
+\newcommand{\coordinatorname}{Dr. Vinay P}
+\newcommand{\hodname}{Dr. Karthik Pai B H}
+
+\newcommand{\institutionheader}{%
+  (An Autonomous Institution, Under VTU Belagavi, Recognized by AICTE, Accredited by NBA(CSE,ISE,ECE) and NAAC 'A' GRADE)}
+\newcommand{\institutionaddress}{Sudhindra Nagar, Benjanapadavu, Mangaluru - 574219, Karnataka.}
+
+% Running header / footer. The PDF showed the unfilled placeholders "PROJ-TITLE" and
+% "DEPT-NAME" here; they are filled in below. The full title is too long for one header
+% line next to "Chapter N", so a short form is used. To restore the PDF exactly, set
+% \headertitle{PROJ-TITLE} and \footerdept{DEPT-NAME}.
+\newcommand{\headertitle}{A Closed-Loop GNN Based Cyber Defence System}
+\newcommand{\footerdept}{CSE}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+
+% Figure helper (from the department template): includes the image if the file
+% exists, otherwise draws a labelled box so the report compiles before images are added.
+\newsavebox{\templategraphicbox}
+\newcommand{\templategraphic}[4]{%
+  \IfFileExists{#2}%
+    {\includegraphics[#1]{#2}}%
+    {\sbox{\templategraphicbox}{\small [INSERT FIGURE: \detokenize{#2}]}%
+     \fbox{\parbox[c][#4][c]{#3}{\centering
+       \ifdim\wd\templategraphicbox>#3\relax
+         \resizebox{#3}{!}{\usebox{\templategraphicbox}}%
+       \else\usebox{\templategraphicbox}\fi}}}%
+}
+
+\begin{document}
+
+\pagestyle{empty}
+
+%%%%%%%%%%%%%%%%%%% Front Page  %%%%%%%%%%%%%%%%%%%%%%%
+\begin{center}
+{\large \textbf{Visvesvaraya Technological University, Belagavi -- 590018.}}
+% University logo (not present in the source PDF). To add it, uncomment:
+% \begin{figure}[hbtp]
+% \centering
+% \includegraphics[width=2cm,height=2.4cm]{./pic/vtu}
+% \end{figure}
+\par
+\vspace{20pt}
+
+\textbf{PROJECT PHASE-I REPORT}
+\par
+\textbf{ON}
+\par
+\vspace{4pt}
+{\Large \textbf{\projecttitle}}
+\par
+\vspace{10pt}
+\par
+\textit{\textbf{Submitted in partial fulfillment for the award of degree of }}
+\par
+\vspace{10pt}
+\large \textbf{BACHELOR OF ENGINEERING}
+\par
+\textbf{in}
+\par
+\large \textbf{COMPUTER SCIENCE AND ENGINEERING}
+\par
+\vspace{10pt}
+\textit{\textbf{Submitted by}}
+
+\begin{center}
+\begin{tabular}{l@{\hspace{2cm}}r}
+\textbf{\large \studentAname} & \textbf{\studentAid} \\
+\textbf{\large \studentBname} & \textbf{\studentBid} \\
+\textbf{\large \studentCname} & \textbf{\studentCid} \\
+\textbf{\large \studentDname} & \textbf{\studentDid} \\
+\end{tabular}
+\end{center}
+
+\vspace{10pt}
+\textit{\textbf{Under the Guidance of}}
+\par
+\vspace{4pt}
+\textbf{\guidename}
+\par
+\vspace{2pt}
+\normalsize { Assistant Professor, Department of CSE }
+\par
+% Institution logo (not present in the source PDF). To add it, uncomment:
+% \begin{figure}[hbtp]
+% \centering
+% \includegraphics[scale=0.5]{./pic/CEC-logo}
+% \end{figure}
+\vspace{30pt}
+\large \textbf{DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}
+\par \Large \textbf{CANARA ENGINEERING COLLEGE}
+
+{\large{\institutionheader}}
+\par
+{\large \textbf{\institutionaddress}}
+\par
+{\Large \textbf{AY 2025-26}}
+\end{center}
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Certificate Page %%%%%%%%%%%%%%%
+
+\begin{center}
+\LARGE \textbf{CANARA ENGINEERING COLLEGE}
+\par
+
+\par \large{\institutionheader}
+\par \vspace{2pt}
+\large \textbf{\institutionaddress}
+\par \vspace{10pt}
+\par
+\large \textbf{DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}
+\par
+% Institution logo (not present in the source PDF). To add it, uncomment:
+% \begin{figure}[hbtp]
+% \centering
+% \includegraphics[scale=0.4]{./pic/CEC-logo}
+% \end{figure}
+\vspace{10pt}
+
+{\Large \textbf{CERTIFICATE}}
+\end{center}
+\justifying
+\par
+\setstretch{1.2}
+Certified that the Project work Phase-I entitled \textbf{``\projecttitle''} carried out by\vspace{2pt}
+\par
+\noindent
+\begin{center}
+\begin{tabular}{l@{\hspace{1.5cm}}r}
+\textbf{\large \studentAname} & \textbf{\studentAid} \\
+\textbf{\large \studentBname} & \textbf{\studentBid} \\
+\textbf{\large \studentCname} & \textbf{\studentCid} \\
+\textbf{\large \studentDname} & \textbf{\studentDid} \\
+\end{tabular}
+\end{center}
+the bonafide students of VI semester COMPUTER SCIENCE AND ENGINEERING in partial fulfillment for the award of Bachelor of Engineering in COMPUTER SCIENCE AND ENGINEERING of the Visvesvaraya Technological University, Belagavi during the year 2025-2026. It is certified that all corrections/suggestions given during internal reviews are included for Internal Assessment. The Project Phase-I report has been approved as it satisfies the academic requirements in respect of Phase-I Project work prescribed for the said degree.
+
+\par
+\vspace{0.42in}
+\setstretch{1.15}
+
+\noindent
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l c r}
+\textbf{\guidename} & \textbf{\coordinatorname} & \textbf{\hodname}\\[0.15cm]
+Project Guide & Project-Coordinator & HoD \\
+\end{tabular*}
+
+\par
+\vspace{0.6in}
+\begin{center}
+\large \textbf{Internal Viva}
+\end{center}
+\vspace{0.1in}
+
+\noindent
+\begin{tabular*}{\textwidth}{@{\extracolsep{\fill}} l r}
+1. \ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots &
+2. \ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots \\[0.4in]
+\hspace{0.4cm}\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots &
+\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots\ldots \\
+\end{tabular*}
+\newpage
+
+%%%%%%%%%%%%%%%%%%%%%% Declaration Page  %%%%%%%%%%%%%%%%%
+\begin{center}
+\LARGE \textbf{CANARA ENGINEERING COLLEGE}
+\par
+
+\par \large{\institutionheader}
+\par \vspace{3pt}
+\large \textbf{\institutionaddress}
+\par \vspace{12pt}
+\par
+\large \textbf{DEPARTMENT OF COMPUTER SCIENCE AND ENGINEERING}
+\par
+% Institution logo (not present in the source PDF). To add it, uncomment:
+% \begin{figure}[hbtp]
+% \centering
+% \includegraphics[scale=0.5]{./pic/CEC-logo}
+% \end{figure}
+\vspace{12pt}
+
+{\Large \textbf{DECLARATION}}
+\end{center}
+\justifying
+\par
+
+
+\setstretch{1.5}
+We hereby declare that the entire work embodied in this Project Phase-I Report titled \textbf{``\projecttitle''} has been carried out by us at CANARA ENGINEERING COLLEGE, Mangaluru under the supervision of \textbf{\guidename}, Assistant Professor, Department of CSE, for the partial fulfillment of Bachelor of Engineering in COMPUTER SCIENCE AND ENGINEERING. This report has not been submitted to this or any other University for the award of any other degree.
+\vspace{0.4in}
+
+\begin{center}
+\begin{tabular}{l@{\hspace{2cm}}r}
+\textbf{\large \studentAname} & \textbf{\studentAid} \\
+\textbf{\large \studentBname} & \textbf{\studentBid} \\
+\textbf{\large \studentCname} & \textbf{\studentCid} \\
+\textbf{\large \studentDname} & \textbf{\studentDid} \\
+\end{tabular}
+\end{center}
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Acknowledgement %%%%%%%%%%%%%%%
+
+\newpage
+\pagestyle{plain}
+\setstretch{1.2}
+\chapter*{\centering Acknowledgement}
+\addcontentsline{toc}{chapter}{\numberline{}Acknowledgement}
+\noindent We dedicate this page to acknowledge and thank those responsible for the successful completion of our Project Phase-I work. Without their continuous guidance and encouragement, this work would not have been completed efficiently.
+\par
+\vspace{0.15in}
+We sincerely thank our Project Guide \textbf{\guidename}, Assistant Professor, Department of Computer Science and Engineering, for her valuable guidance, technical suggestions, and constant motivation throughout the development of this project.
+\par
+\vspace{0.15in}
+We also express our gratitude to our Project Mentor \textbf{Mr. Ashwatha} and Project Coordinator \textbf{\coordinatorname} for their encouragement and timely support during every phase of the project work.
+\par
+\vspace{0.15in}
+We owe our sincere gratitude to \textbf{\hodname}, Head of the Department, Department of Computer Science and Engineering, for providing the necessary facilities and support to carry out this work successfully.
+\par
+\vspace{0.15in}
+We also thank the management, faculty members, and staff of Canara Engineering College for their cooperation and encouragement.
+\par
+\vspace{0.15in}
+Finally, we express our heartfelt gratitude to our parents and friends for their constant support, encouragement, and motivation throughout the project development process.
+\par
+\vspace{0.4in}
+
+\begin{flushright}
+\textbf{\studentAname} \\
+\textbf{\studentBname} \\
+\textbf{\studentCname} \\
+\textbf{\studentDname} \\
+\end{flushright}
+
+
+%%%%%%%%%%%%%%%%%%%%%%%%%% Abstract %%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\chapter*{\centering Abstract}
+\addcontentsline{toc}{chapter}{\numberline{}Abstract}
+\noindent The rapid growth of sophisticated cyberattacks has exposed the limitations of traditional cybersecurity systems that rely heavily on static rule-based analysis and manual intervention. Existing intrusion detection systems often fail to identify relational attack patterns such as lateral movement and coordinated malicious activities across interconnected devices. In addition, centralized logging systems are vulnerable to tampering, allowing attackers to alter or delete forensic evidence.
+
+This project presents GraphSentinel, a closed-loop cyber-defence framework that \emph{detects}, \emph{responds} to and \emph{records} network threats. Flow telemetry is collected from a controlled Mininet network through an Open vSwitch (OVS) switch and processed by a FastAPI backend. The backend builds a graph of the communication between hosts and scores it with a graph neural network (GNN). When a host's threat score reaches the configured threshold, an incident is created. The host is then isolated through a token-authenticated enforcement daemon that installs an OVS drop rule, restricted to the Mininet address range 10.0.0.0/24. Incidents, enforcement actions and audit entries are persisted in SQLite. Each incident is also fingerprinted on a local Ganache blockchain through a Solidity smart contract. A React and Cytoscape.js dashboard presents the network graph, incidents, enforcement history and forensic records in real time.
+
+The detection component was developed in two stages: a GraphSAGE baseline integrated into the pipeline, followed by an upgraded GATv2 graph attention model (GraphSentinel v2). The upgraded model represents each 60-second traffic window as a graph whose nodes are IP addresses and whose edges are individual flows. It classifies both hosts and flows into five classes (BENIGN, Volumetric\_Flood, PortScan, BruteForce and Botnet). An audit of the CICIDS2017 files found that their afternoon records use a 12-hour clock without an AM/PM marker, which had placed 52.1\% of the training rows at the wrong time of day. After correcting the timestamps and retraining, from a single training run, the flow-level head reaches a binary (attack versus benign) F1-score of 0.9961 on the held-out test split, while its five-class macro F1-score is 0.4441: the model reliably separates attacks from benign traffic but does not reliably identify the attack class. These figures measure generalisation within the attack bursts seen in training, not detection of new attacks. The upgraded model currently runs as a separate inference service that reports verdicts; host isolation is still driven by the GraphSAGE baseline. The backend regression suite completed with 233 tests passed and 3 skipped.
+
+Keywords : Graph Neural Networks, GraphSAGE, GATv2, Cybersecurity, Blockchain Forensics, SDN, Intrusion Detection.
+
+% The source PDF has no Table of Contents / List of Figures / List of Tables.
+% To add them (as in the department template), uncomment:
+% \renewcommand{\contentsname}{Table of Contents}
+% \tableofcontents
+% \listoffigures
+% \listoftables
+
+
+%%%%%%%%%%%%%%%%%%%%% Headers and Footers %%%%%%%%%%%%%%%%%%%%%%
+
+\pagestyle{fancy}
+\fancyhf{}
+\lhead{\fontsize{8}{12} \selectfont \headertitle}
+\rhead{\fontsize{10}{12} \selectfont Chapter \thechapter}
+\lfoot{\fontsize{10}{12} \selectfont Department of \footerdept, CEC, Benjanapadavu,Mangaluru}
+\rfoot{\fontsize{10}{12} \selectfont Page \thepage}
+\renewcommand{\headrulewidth}{0.5pt}
+\renewcommand{\footrulewidth}{0.5pt}
+
+
+\setstretch{1.2}
+
+\chapter{Introduction}
+\par
+\section{Background}
+Network intrusion detection systems examine network traffic to decide whether it is benign or part of an attack. Traffic is commonly summarised as \emph{flow records}: one record per conversation between a source and a destination address and port, carrying counters such as packet counts, byte counts, duration, inter-arrival times and TCP flag counts. Many attack families are defined by the \emph{pattern of communication between hosts} rather than by any single flow. A port scan is one host contacting many ports; a flood is many flows converging on one victim; a botnet is several infected hosts talking to one command-and-control server. Graph-based models, which represent devices as nodes and communications as edges, have been proposed to capture such relational behaviour that isolated per-flow analysis misses \cite{paper2}.
+\par
+\par
+Existing work addresses the parts of this problem separately. Graph neural network models such as GraphSAGE and graph attention networks improve the detection and classification of network intrusions \cite{paper2,paper5,paper6,paper9,paper10}, but they stop at raising alerts. Self-healing frameworks automate the response to compromised nodes \cite{paper3,paper7}, but they do not preserve tamper-evident forensic records. Blockchain-based systems protect the integrity of forensic evidence \cite{paper1,paper4}, but they take no part in detection or response. Chapter~2 reviews these works in detail.
+\par
+GraphSentinel models network traffic as a graph and classifies it with a graph neural network. The detection component evolved in two stages.
+\begin{itemize}
+    \item \textbf{Baseline: GraphSAGE.} Integrated into the backend's detection pipeline. Each flow is a node with seven engineered features, and a three-layer GraphSAGE network with mean aggregation produces a malicious-flow probability. This probability is aggregated into a per-host threat score.
+    \item \textbf{Upgraded: GraphSentinel v2, based on GATv2 graph attention.} Every 60-second window of traffic becomes a directed graph in which each IP address is a node and each flow is an edge carrying that flow's features. Attention-based neighbourhood aggregation lets the model weight each neighbour individually instead of averaging them. The model scores both hosts (nodes) and individual flows (edges), so a verdict can be traced back to a concrete source, destination, port and protocol.
+\end{itemize}
+\par
+% \vspace{1cm}   % reference used this gap for its own page layout; re-enable if needed
+\par
+Around the detector, the project implements a closed \emph{detect $\rightarrow$ respond $\rightarrow$ record} loop that runs locally:
+\begin{itemize}
+    \item \textbf{Traffic source.} A 10-host Mininet network attached to one Open vSwitch switch. Scripted attacks (flood, port scan, SSH brute force, botnet burst) can be launched inside it.
+    \item \textbf{Backend.} A FastAPI service polls the switch's flow table every 5 seconds, scores the flows and raises incidents for hosts above a threshold.
+    \item \textbf{Self-healing.} The backend isolates offending hosts by installing OVS drop rules through a privileged enforcement daemon.
+    \item \textbf{Audit trail.} Incidents are stored in SQLite and fingerprinted on a local blockchain through the \texttt{IncidentLogger} Solidity contract.
+    \item \textbf{Dashboard.} A React application shows the live network graph, alerts, forensics, blockchain records, healing events and an administrative audit log.
+\end{itemize}
+\par
+GraphSentinel combines detection, automated response and forensic recording in a single pipeline, which the surveyed works provide only individually.
+
+\section{Motivation and Problem statement }
+  \subsection{Motivation}
+  A detector that labels a whole window, or even a whole host, as malicious cannot be acted on directly: an operator or switch needs to know \emph{which} traffic to stop. A detector whose outputs are never recorded cannot be audited afterwards. The project was motivated by combining three capabilities in one locally runnable system: graph-based detection whose verdicts map onto concrete flows and hosts, an automated containment action on a real (emulated) switch, and a tamper-evident record of what was detected and done.
+  \subsection{Problem Statement}
+  Given flow records observed at an OVS switch in a monitored network, the problem is threefold:
+  \begin{enumerate}
+      \item determine which hosts and flows belong to an attack, and of which family;
+      \item contain detected hosts automatically and reversibly;
+      \item keep a verifiable, operator-accessible record of every detection and enforcement action.
+  \end{enumerate}
+  The detection model must be trained on a public labelled dataset (CICIDS2017, TrafficLabelling export) and evaluated so that minority attack classes are not hidden behind aggregate accuracy.
+% \vspace{3cm}   % reference used this gap for its own page layout; re-enable if needed
+\section{Objectives}
+
+The major objectives of the proposed system are:
+
+\begin{enumerate}
+\item {To integrate a GraphSAGE-based detector as the baseline graph-learning model of the pipeline. Then, as its upgrade, to build IP-as-node, flow-as-edge graphs from CICIDS2017 flow records and train a GATv2 graph attention network that classifies both hosts and individual flows into five traffic classes.}
+\item {To evaluate the detector with per-class metrics (macro F1-score, per-class F1, PR-AUC, recall at a fixed false-positive rate) rather than accuracy alone, and to export the trained model with a machine-readable contract (model card) for use by other services.}
+\item {To implement a backend that ingests flows from an Open vSwitch switch, scores them, raises incidents, and isolates offending hosts by installing OVS drop rules, with manual block/unblock and continuous reconciliation of the switch state.}
+\item {To record every incident in SQLite and on a local blockchain through a smart contract that stores a keccak256 fingerprint of each incident, so that stored records can later be verified.}
+\item {To provide an authenticated, role-based web dashboard that presents the network graph, alerts, forensics, blockchain records, self-healing history and audit logs in real time.}
+\end{enumerate}
+
+\section{Scope and limitations}
+\subsection{Scope}
+The project was carried out in two phases.
+\begin{itemize}
+    \item \textbf{Phase 1} established the closed-loop architecture with the GraphSAGE baseline: Mininet and OVS telemetry, preprocessing, graph construction, inference, incident generation, enforcement, persistence, blockchain logging and the dashboard.
+    \item \textbf{Phase 2} rebuilt, integrated, hardened and validated the system. The repository history records the following stages:
+    \begin{itemize}
+        \item K: enforcement-daemon security hardening;
+        \item N: blockchain validation and hardening;
+        \item O: backend API quality;
+        \item L: reconciliation resilience and daemon authentication;
+        \item M: remediation and validation;
+        \item the development and integration of the upgraded GATv2 model.
+    \end{itemize}
+\end{itemize}
+\par
+The implemented system runs entirely on a local machine or a local Docker Compose stack with four services: a Ganache blockchain, the v2 inference service, the backend and the frontend. The monitored network is a 10-host Mininet emulation (10.0.0.1--10.0.0.10) behind a single OVS switch. Four scripted attacks can be launched in it. The detector is trained offline on five capture files of the CICIDS2017 dataset (Tuesday, Wednesday and three Friday files) in a Google Colab notebook, and is served over HTTP. The Mininet network and enforcement daemon run on Ubuntu under WSL2.
+\par
+Outside the implemented scope:
+\begin{itemize}
+    \item cloud deployment and physical (non-emulated) networks;
+    \item multiple switches or SDN controllers other than the Mininet OVS controller;
+    \item live traffic other than the OVS flow table;
+    \item automated alerting or enforcement driven by the v2 model. In the backend, the v2 path reports per-flow verdicts only; the flag \texttt{V2\_ALERTING\_IMPLEMENTED} is \texttt{False}.
+\end{itemize}
+\subsection{Limitations}
+
+\begin{itemize}
+    \item {The reported model results come from a single training run (seed 42) under the \emph{episode} split protocol. For most attack families of CICIDS2017 this protocol falls back to a chronological cut inside a single attack burst, so the test figures describe within-burst generalisation and not detection of new or unseen attacks.}
+    \item {The model does not separate PortScan from BruteForce: 17{,}909 of 23{,}812 PortScan test flows are predicted BruteForce, and 904 of 918 BruteForce test flows are predicted PortScan. The Botnet class is not detected (0 of 168 Botnet flows correct on the Phase~2b sample; the test split contains no Botnet flows).}
+    \item {On a held-out capture day containing attack families not used in training (Thursday), the binary flow-level false-positive rate is 6.74\%, compared with $2.4\times10^{-3}$ on the test split. Generalisation to new traffic conditions is therefore limited.}
+    \item {The OVS flow table cannot supply several features the model was trained on. 8 of the 20 edge features are zero on the live path and 2 are constant. The effect of this on detection quality has not been measured on an informative sample.}
+    \item {The per-host GRU memory module present in the architecture receives no gradient during training, so its weights remain at their random initial values.}
+    \item {For PortScan the split boundary falls inside a single one-minute timestamp, so the same minute of traffic appears in the training, validation and test splits; PortScan's validation results are therefore not independent of its training data. This affects both the original and the corrected runs.}
+    \item {The episode split cuts each class by row order and builds graphs separately for each split. In the delivered run this leaves the validation split's attack windows almost free of benign traffic (0.52\% of attack flows share a window with benign traffic) while the test split's are almost all mixed (97.73\%), so thresholds fitted on validation do not transfer to test.}
+    \item {The GraphSAGE baseline and the upgraded GATv2 model have not yet been compared under the same task, graph construction and data split. The baseline is a binary flow-as-node model evaluated with per-file splits, while the upgraded model is a five-class host-and-flow model evaluated with the episode protocol. Their published figures are therefore not directly comparable.}
+\end{itemize}
+
+\section{Relevance and Type}
+\subsection{Relevance of the Project}
+The project combines three technical areas that are normally developed separately: learned traffic classification over a host-communication graph, automated containment on a software switch, and a tamper-evident audit record. Every component is implemented and runnable locally, including an emulated network in which attacks can be generated and observed end to end.
+\par
+The machine-learning work also documents its own negative results as part of the deliverable. Examples are the undetected Botnet class, the ablation findings and the held-out-day false-positive rate. This makes the project a useful record of what a graph-based detector does and does not achieve on CICIDS2017 under a leakage-aware evaluation protocol.
+\subsection{Type of the Project}
+
+The proposed system can be categorized as:
+
+\begin{itemize}
+\item {Machine-learning / research project}:
+design, training and evaluation of a graph attention network for multi-class network intrusion detection on CICIDS2017, including ablation and held-out-day studies.
+\item {Full-stack web application}:
+a FastAPI backend with a REST API and Socket.IO events, an SQLite database managed by Alembic migrations, and a React single-page dashboard.
+\item {Network security system}:
+flow collection from Open vSwitch, automated host isolation through OVS drop rules, and reconciliation of enforcement state.
+\item {Blockchain application}:
+a Solidity smart contract deployed on a local Ganache chain through Hardhat and accessed from Python through Web3.py, used as a tamper-evident incident ledger.
+\item {Simulation-based project}:
+a Mininet emulation of a 10-host network with scripted attack generators used to exercise the system.
+\end{itemize}
+
+\section{Organization of the report}
+\begin{itemize}
+    \item \textbf{Chapter 1} introduces the background, motivation, problem statement, objectives, scope and limitations of the project.
+
+    \item \textbf{Chapter 2} surveys ten related works on graph-based intrusion detection, self-healing security and blockchain forensics, compares them, and identifies the research gaps.
+
+    \item \textbf{Chapter 3} specifies the functional and non-functional requirements, the user interface and the hardware and software requirements.
+
+    \item {Chapter 4 presents the system design: the architecture, the database, API and security design, and the functional, control-flow and data-flow views. Chapter 5 describes the implementation, including the machine-learning model and the algorithms used in each module. Chapter 6 reports the verified results and the testing performed. Chapter 7 gives the conclusions and future work}.
+\end{itemize}
+
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%% Chapter 2: Literature Survey %%%%%%%%%%%%%%%%
+
+\chapter{Literature Survey}
+Literature survey plays an important role in understanding the existing research works, methodologies, technologies, and limitations associated with modern cybersecurity systems. Various research papers related to Graph Neural Networks, blockchain-based forensics, intrusion detection systems, self-healing cybersecurity frameworks, and Software Defined Networking were studied in detail to identify research gaps and define the objectives of the proposed system.
+
+The reviewed papers mainly focus on graph-based anomaly detection, AI-driven threat response systems, blockchain forensic security, and adaptive intrusion detection techniques. However, most existing systems focus only on individual functionalities such as detection, classification, or forensic logging and do not provide a complete closed-loop cybersecurity framework.
+
+\section{A Comprehensive Investigation of Blockchain Tech\-nology's Role in Cyber Security \cite{paper1}}
+This research focuses on the role of blockchain technology in improving cybersecurity by providing decentralized and tamper-proof storage mechanisms.
+
+\subsection{Brief Findings of Article 1}
+The study explains how blockchain can enhance data integrity, secure authentication, and forensic logging by eliminating centralized points of failure.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 1}
+The authors used blockchain mechanisms such as SHA-256 hashing, Proof-of-Work, Proof-of-Stake, and Solidity-based smart contracts to secure forensic records and identity management systems.
+
+\subsection{Results Achieved in Article 1}
+The research demonstrated that blockchain improves security and transparency in cybersecurity systems. However, the work mainly focused on secure storage and did not provide real-time threat detection or mitigation capabilities.
+
+\section{GNN-Based Framework for Network Anomaly Detection \cite{paper2}}
+This paper proposes a Graph Neural Network-based framework for identifying anomalies in network traffic by modeling devices and communications as graph structures.
+
+\subsection{Brief Findings of Article 2}
+The study highlights that Graph Neural Networks can effectively detect relational attack behaviors that traditional intrusion detection systems fail to identify.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 2}
+The implementation was carried out using PyTorch and PyTorch Geometric. Network devices were represented as graph nodes while communication flows were modeled as graph edges.
+
+\subsection{Results Achieved in Article 2}
+The proposed model achieved improved anomaly detection accuracy compared to conventional machine learning techniques. However, the system focused only on detection and lacked automatic mitigation mechanisms.
+
+\section{AI Driven Self-Healing Cybersecurity Systems with Agentic AI \cite{paper3}}
+This paper discusses the development of AI-driven autonomous cybersecurity systems capable of self-healing and adaptive threat response.
+
+\subsection{Brief Findings of Article 3}
+The study demonstrates how autonomous AI systems can reduce response time and minimize cyberattack damage through intelligent mitigation strategies.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 3}
+The framework utilized Machine Learning, Deep Reinforcement Learning, TensorFlow, and PyTorch to implement automated detection and recovery systems.
+
+\subsection{Results Achieved in Article 3}
+The proposed framework achieved high detection accuracy and faster recovery rates. However, the system required significant computational resources and did not include secure forensic logging.
+
+\section{Cyber Risks and Blockchain Security for Digital Forensics \cite{paper4}}
+This research explores blockchain-based approaches for maintaining secure and tamper-proof forensic evidence.
+
+\subsection{Brief Findings of Article 4}
+The study emphasizes the importance of immutable logging systems for preserving cyber forensic evidence during attack investigations.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 4}
+Blockchain technology, decentralized ledgers, cryptographic hashing, and Solidity smart contracts were used to secure digital forensic records.
+
+\subsection{Results Achieved in Article 4}
+The framework successfully ensured data integrity and tamper resistance but lacked active intrusion detection and response mechanisms.
+
+\section{Dynamic Residual Graph Attention Network for Network Intrusion Detection System \cite{paper5}}
+This paper presents a Graph Attention Network-based intrusion detection framework for identifying malicious traffic patterns.
+
+\subsection{Brief Findings of Article 5}
+The authors demonstrated that attention-based graph learning models can effectively identify anomalies within noisy network traffic environments.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 5}
+The implementation used Dynamic Residual Graph Attention Networks with PyTorch Geometric and deep learning-based traffic analysis techniques.
+
+\subsection{Results Achieved in Article 5}
+The proposed system achieved higher detection accuracy and reduced false positive rates. However, it focused only on detection and did not implement autonomous response systems.
+
+\section{Enhanced GraphSAGE for Multi-Class Intrusion Detection \cite{paper6}}
+This paper proposes an enhanced GraphSAGE model for classifying multiple types of cyberattacks.
+
+\subsection{Brief Findings of Article 6}
+The research shows that graph-based learning improves multi-class intrusion classification compared to traditional machine learning models.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 6}
+The system was implemented using GraphSAGE, PyTorch, and PyTorch Geometric for graph-based intrusion classification.
+
+\subsection{Results Achieved in Article 6}
+The framework achieved improved classification accuracy for multiple attack categories but lacked real-time mitigation and forensic capabilities.
+
+\section{GNN-Based Self-Healing for Detection and Recovery of Compromised Nodes in Supply Chains \cite{paper7}}
+This paper proposes a Graph Neural Network-based self-healing framework for detecting compromised nodes within supply chain environments.
+
+\subsection{Brief Findings of Article 7}
+The research demonstrates that graph-based relational analysis can effectively identify compromised nodes and maintain operational continuity.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 7}
+The framework used Graph Neural Networks, graph analytics, and routing optimization algorithms implemented using Python.
+
+\subsection{Results Achieved in Article 7}
+The system successfully maintained network operations through self-healing mechanisms. However, the framework was mainly focused on supply-chain environments and lacked blockchain-based forensic logging.
+
+\section{GNN-Enhanced Traffic Anomaly Detection for SDN-Enabled Consumer Electronics \cite{paper8}}
+This research focuses on detecting traffic anomalies in SDN-enabled IoT and consumer electronic networks using Graph Neural Networks.
+
+\subsection{Brief Findings of Article 8}
+The study highlights that graph-based analysis improves anomaly detection accuracy within large-scale IoT environments.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 8}
+The authors implemented Graph Neural Networks with Software Defined Networking using Python-based frameworks.
+
+\subsection{Results Achieved in Article 8}
+The system achieved scalable and accurate anomaly detection performance. However, the graph structures used were static and lacked autonomous mitigation capabilities.
+
+\section{GraphSAGE-Based SDN Anomaly Detection Using GNN \cite{paper9}}
+This paper presents a GraphSAGE-based anomaly detection system for Software Defined Networking environments.
+
+\subsection{Brief Findings of Article 9}
+The study explains that GraphSAGE improves intrusion detection efficiency by learning communication patterns between connected network devices.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 9}
+The framework utilized GraphSAGE, Graph Neural Networks, Software Defined Networking, and Python-based implementations.
+
+\subsection{Results Achieved in Article 9}
+The proposed model achieved fast and accurate intrusion detection performance but lacked active mitigation and blockchain-based evidence preservation.
+
+\section{RSAGEL: A Hybrid GNN-Based Intrusion Detection Model for SDN \cite{paper10}}
+This paper proposes a hybrid intrusion detection system combining Graph Neural Networks and temporal learning methods.
+
+\subsection{Brief Findings of Article 10}
+The study demonstrates that combining spatial and temporal analysis improves intrusion detection accuracy in Software Defined Networking environments.
+
+\subsection{Design/Methodology/Techniques Adopted in Article 10}
+The implementation used RSAGEL, GraphSAGE, LSTM networks, and SDN-based traffic analysis using Python.
+
+\subsection{Results Achieved in Article 10}
+The hybrid framework achieved higher detection accuracy compared to traditional models. However, the work focused only on intrusion detection without implementing autonomous response or blockchain-based logging.
+
+\newpage
+\section{Comparison Table}
+
+\begin{table}[htbp]
+\caption{Comparison of Existing Work and Gap Identification}
+\label{tab:comparison}
+\centering
+\footnotesize
+\renewcommand{\arraystretch}{1.0}
+
+\begin{tabular}{|m{3.4cm}|m{3.4cm}|m{3.4cm}|m{3.4cm}|}
+\hline
+\textbf{Project Title and Author} &
+\textbf{Problem Addressed} &
+\textbf{Implementation and Results} &
+\textbf{Limitations/Future Scope}
+\\
+\hline
+
+A Comprehensive Investigation of Blockchain Technology's Role in Cyber Security
+&
+Centralized systems are vulnerable to tampering and forensic manipulation.
+&
+Blockchain and smart contracts improved log security and integrity.
+&
+Focused only on secure storage without real-time threat detection.
+\\
+\hline
+
+GNN-Based Framework for Network Anomaly Detection
+&
+Traditional IDS fails to identify relational attack patterns.
+&
+Graph Neural Networks improved anomaly detection accuracy.
+&
+Detection-only system without autonomous response.
+\\
+\hline
+
+AI Driven Self-Healing Cybersecurity Systems with Agentic AI
+&
+Manual response delays increase cyberattack damage.
+&
+AI-driven autonomous recovery reduced downtime and response time.
+&
+High computational overhead and no forensic logging.
+\\
+\hline
+
+Cyber Risks and Blockchain Security for Digital Forensics
+&
+Attackers can alter or delete forensic evidence.
+&
+Blockchain enabled tamper-proof forensic logging.
+&
+No active intrusion detection or mitigation system.
+\\
+\hline
+
+Dynamic Residual Graph Attention Network for NIDS
+&
+Traditional models struggle in noisy traffic environments.
+&
+Graph Attention Networks improved detection accuracy and reduced false alarms.
+&
+Focused only on anomaly detection.
+\\
+\hline
+
+Enhanced GraphSAGE for Multi-Class Intrusion Detection
+&
+Difficulty in classifying multiple cyberattack categories.
+&
+GraphSAGE improved multi-class intrusion detection performance.
+&
+No real-time mitigation or forensic storage.
+\\
+\hline
+
+GNN-Based Self-Healing for Detection and Recovery of Compromised Nodes in Supply Chains
+&
+Compromised nodes disrupt supply-chain communication.
+&
+GNN-based self-healing improved network continuity.
+&
+Limited to supply-chain environments and lacked blockchain logging.
+\\
+\hline
+
+GNN-Enhanced Traffic Anomaly Detection for SDN-Enabled Consumer Electronics
+&
+IoT and SDN networks face botnet and DDoS attacks.
+&
+Graph-based anomaly detection improved scalability and accuracy.
+&
+Static graph implementation and no autonomous mitigation.
+\\
+\hline
+
+GraphSAGE-Based SDN Anomaly Detection Using GNN
+&
+Large-scale SDN networks face complex attacks.
+&
+GraphSAGE enabled fast and accurate intrusion detection.
+&
+Monitoring-only system without active defense mechanisms.
+\\
+\hline
+
+RSAGEL: A Hybrid GNN-Based Intrusion Detection Model for SDN
+&
+Complex SDN attacks require spatial and temporal analysis.
+&
+Hybrid GNN-LSTM architecture improved detection accuracy.
+&
+No autonomous response or blockchain forensic system.
+\\
+\hline
+
+\end{tabular}
+
+\end{table}
+
+\section{Gap's Identified and Addressed}
+From the literature survey, it was observed that existing cybersecurity systems mainly focus on isolated functionalities such as anomaly detection, attack classification, self-healing mechanisms, or blockchain-based logging individually. Very few systems integrate all these functionalities into a unified framework.
+
+Traditional intrusion detection systems fail to understand relational communication patterns between devices and therefore cannot effectively detect lateral movement attacks. Although Graph Neural Networks improve relational anomaly detection, most existing GNN-based systems only generate alerts without performing automatic mitigation.
+
+Similarly, blockchain-based forensic systems provide tamper-proof evidence storage but do not actively participate in threat detection or response processes. Autonomous self-healing systems improve mitigation speed but often lack secure and immutable forensic mechanisms.
+
+To overcome these limitations, the proposed system integrates Graph Neural Network-based detection, autonomous node isolation, and blockchain-backed forensic logging into a single closed-loop cybersecurity framework.
+
+In the implemented system, these gaps are addressed as follows:
+\begin{itemize}
+    \item \textbf{Relational detection.} Communication is modelled as a graph and scored by a GNN: a GraphSAGE baseline, and an upgraded GATv2 model that classifies individual flows as well as hosts.
+    \item \textbf{Automatic mitigation.} Hosts whose score reaches the threshold are isolated by OVS drop rules installed through an authenticated enforcement daemon, and a reconciliation worker keeps the switch consistent with the database.
+    \item \textbf{Forensic integrity.} Every incident is recorded in SQLite and fingerprinted on a local blockchain through the \texttt{IncidentLogger} smart contract, whose stored hash can be re-verified.
+\end{itemize}
+
+
+\section{Summary}
+This chapter presented the literature survey of various research works related to Graph Neural Networks, blockchain-based forensic systems, intrusion detection frameworks, and autonomous cybersecurity solutions. The analysis of existing systems helped identify important research gaps such as the absence of integrated detection, mitigation, and forensic logging mechanisms. These gaps motivated the development of the proposed closed-loop cybersecurity framework discussed in the next chapter.
+
+
+%%%%%%%%% Chapter 3: Software Requirements Specification %%%%%%%%%%%%
+
+\chapter{Software Requirements Specification}
+
+\section{Functional requirements}
+The functional requirements below correspond to functionality implemented in the codebase (backend package \texttt{backend/\allowbreak{}app}, machine-learning package \texttt{ML/\allowbreak{}graphsentinel\_\allowbreak{}v2}, smart contract \texttt{blockchain/\allowbreak{}contracts/\allowbreak{}IncidentLogger.\allowbreak{}sol} and frontend \texttt{frontend/\allowbreak{}src}).
+
+\begin{itemize}
+    \item {FR-01: The system shall collect flow records from the Open vSwitch switch every 5 seconds (\texttt{poll\_interval\_seconds}) through the enforcement daemon (\texttt{ovs-ofctl dump-flows}), and shall report whether each poll succeeded, returned no flows, or failed.}
+
+    \item {FR-02: The system shall score submitted flows with a graph neural network, either automatically on each poll or on request through \texttt{POST /api/v1/analyze}. A single analyze request is limited to 5{,}000 flows (\texttt{max\_analyze\_flows}). When the model cannot be loaded it shall fall back to a documented heuristic score and report the degraded mode.}
+
+    \item {FR-03: The system shall create an incident for every source host whose score is at or above the configured threat threshold (0.75 by default in \texttt{config.py} and in the Docker environment file \texttt{.env.docker}; the local development file \texttt{backend/.env} overrides it to 0.40), assign an attack label and severity (1--10), and avoid duplicate incidents through an idempotency key.}
+
+    \item {FR-04: The system shall isolate an offending host by installing an OVS drop rule for its source address (enforcement mode \texttt{ovs}) or record a simulated isolation (mode \texttt{simulated}). It shall also allow an administrator to block and unblock hosts manually.}
+
+    \item {FR-05: The system shall record each incident on the local blockchain through \texttt{IncidentLogger.logIncident}, store the transaction reference with the incident, and retry unwritten or pending transactions through an outbox.}
+
+    \item {FR-06: The system shall present the network graph, statistics, timeline, alerts, blocked hosts, self-healing events, forensic records, enforcement actions and audit logs through authenticated REST endpoints and real-time Socket.IO events.}
+
+    \item {FR-07: The machine-learning package shall build training graphs from CICIDS2017, train and evaluate the GraphSentinel v2 model, and export the weights, a TorchScript model and a model card. It shall also serve per-flow verdicts over HTTP (\texttt{/flows}, \texttt{/flush}, \texttt{/contract}, \texttt{/health}, \texttt{/stats}).}
+
+    \item {FR-08: The system shall reconcile enforcement state every 10 seconds. It shall reapply drop rules that are recorded in SQLite but missing on the switch, and remove GraphSentinel drop rules that have no corresponding database record.}
+\end{itemize}
+
+\subsection*{a) Detection and Self-Healing Module}
+
+A background monitor thread (\texttt{MininetMonitor}) polls the switch and passes the flows to the analysis pipeline. The pipeline builds a graph, runs inference, and hands the per-host scores to the \texttt{ThreatAnalyzer}. For every host above the threshold, the analyzer creates an incident, labels its attack type, and calls the \texttt{SelfHealingEngine} to isolate the host. It then submits the incident to the blockchain and logs the enforcement action with telemetry: the enforcement duration, the edges severed and the network stability before and after. Graph updates, alerts and healing events are pushed to connected dashboards over Socket.IO. When the v2 inference service is enabled (\texttt{gs2\_enabled}), the same poll is also submitted to it, but only if every flow in the poll came from OVS. The per-flow verdicts are reported and do not raise alerts.
+
+\subsection*{b) Forensics, Audit and Administration Module}
+
+Incidents, blocked hosts, enforcement actions, flow snapshots and administrative audit entries are persisted in SQLite. The forensics endpoint combines database records with blockchain records. Operators can change the triage status of an incident (open, acknowledged, resolved). Administrators can change runtime settings, reload the model, and read the audit log. Flow snapshots are removed after a retention period (default 24 hours).
+
+%-----------------------------------------------------------------%
+
+\section{Non-Functional Requirements}
+
+The following non-functional requirements are reflected in the implementation. They are stated as design properties of the code, not as measured guarantees.
+
+\begin{itemize}
+    \item {Security: every data endpoint except \texttt{/health} and \texttt{/api/v1/auth/login} requires either a session bearer token or an API key, and mutating control-plane endpoints require the administrator role (Section~4.1.4).}
+
+    \item {Reliability: the backend starts in a degraded mode when the model, the blockchain or the switch is unavailable, and reports each component's state through \texttt{/health}. Blockchain writes that time out are retried by the reconciliation worker.}
+
+    \item {Maintainability: the database schema is versioned with Alembic migrations (nine revision files), and the model's feature order, class list and version are published in a machine-readable model card (contract version 2.0.0) that the backend validates at start-up.}
+
+    \item {Portability: the complete stack is described in a Docker Compose file with four services (blockchain, inference, backend, frontend), each with a health check.}
+
+    \item {Observability: every request receives a correlation identifier (\texttt{X-Request-ID}), and all control-plane mutations are written to an append-only audit log table.}
+\end{itemize}
+
+\subsection{Safety Requirements}
+
+\begin{itemize}
+    \item {Enforcement shall only act on validated IPv4 host addresses inside the Mininet subnet (default \texttt{10.0.0.0/24}). Loopback, multicast, link-local, network, broadcast and protected infrastructure addresses are rejected (\texttt{validate\_mininet\_ip}).}
+
+    \item {Enforcement shall be simulated by default (\texttt{enforcement\_mode = "simulated"}). Real OVS rules are only installed when the mode is explicitly set to \texttt{ovs}, and then only through the enforcement daemon.}
+    \item {The enforcement daemon shall refuse to start without a shared secret (\texttt{DAEMON\_TOKEN}) and shall reject any request that does not carry it. It re-validates every IP address and runs \texttt{ovs-ofctl} with an argument list rather than a shell command string, so an address cannot inject additional commands.}
+
+    \item {Rules generated by the v2 SDN translator shall remain in dry-run mode (\texttt{dry\_run = True}), with per-class confidence floors, an allowlist, a cap of 50 rules per window and finite rule timeouts.}
+
+    \item {The v2 path shall not create incidents or isolate hosts, and shall refuse to score input that did not originate from OVS (provenance gate).}
+\end{itemize}
+
+\subsection{Performance Requirements}
+
+\begin{itemize}
+    \item {Flow collection shall run every 5 seconds (configured \texttt{poll\_interval\_seconds}).}
+
+    \item {The analyze endpoint shall accept at most 30 requests per minute per client IP (configured \texttt{analyze\_rate\_limit\_per\_minute}) and at most 5{,}000 flows per request. Request bodies larger than 2 MB shall be rejected by every endpoint.}
+
+    \item {Blockchain transactions shall not block incident handling. A transaction that exceeds the configured timeout (\texttt{blockchain\_tx\_timeout\_seconds}, 5 seconds) is recorded as pending and completed later by the outbox worker.}
+
+    \item {The daemon calls shall be time-bounded: the backend's socket calls to the enforcement daemon time out after 3 seconds, and so do the daemon's \texttt{ovs-ofctl} invocations.}
+
+    \item {The v2 inference engine processes traffic in 60-second windows. Windows with fewer than 8 flows are reported as unscored rather than as clean. [END-TO-END LATENCY REQUIREMENT TO BE PROVIDED]}
+\end{itemize}
+
+\section{User interface design}
+\par
+The frontend is a single-page React application with client-side routing (React Router). Unauthenticated visitors see a landing page and a login page. After login, the authenticated layout exposes ten pages: Dashboard, Network Topology, Threat Feed, Forensics, Blockchain Ledger, Timeline Analytics, Self-Healing, Alert Centre, Audit Log and Settings (\texttt{frontend/src/App.jsx}). Data is fetched from the REST API with Axios, which attaches the session token as a bearer header. Live updates arrive over a Socket.IO connection authenticated with the same token.
+\subsection{Pages and their data sources}
+Each page reads from the corresponding backend endpoint:
+\begin{itemize}
+    \item Network Topology, from \texttt{/api/v1/graph} and the \texttt{graph\_update} event. It is rendered with Cytoscape and a 3-D force-directed graph (react-force-graph-3d / three.js).
+    \item Alert Centre and Threat Feed, from \texttt{/api/v1/alerts} and the \texttt{alert} event.
+    \item Forensics, from \texttt{/api/v1/forensics}.
+    \item Self-Healing, from \texttt{/api/v1/healing} and the \texttt{healing\_triggered} event.
+    \item Timeline Analytics, from \texttt{/api/v1/timeline}, charted with Recharts.
+    \item Audit Log, from \texttt{/api/v1/audit-logs}.
+    \item Settings, from \texttt{/api/v1/settings}.
+\end{itemize}
+Client state is held in a Zustand store (\texttt{useGraphStore}); the signed-in user and role come from the Clerk session (\texttt{useSessionUser}).
+
+\section{Hardware and Software requirements}
+\par \textbf{Hardware.} The model in the repository was trained on a Google Colab runtime with an NVIDIA T4 GPU (recorded in the training notebook's metadata and output). The inference container runs on CPU. The Mininet emulation requires a Linux environment with root privileges; the code is annotated for WSL2 Ubuntu. The team specified the following minimum configuration for development and demonstration: an Intel Core i5/i7 or equivalent multi-core processor, at least 8 GB of RAM, at least 256 GB of SSD storage, and internet connectivity for dataset access and package installation. A GPU is optional and is only needed to accelerate model training.
+\par \textbf{Software.}
+\begin{itemize}
+    \item Backend: Python 3.10, FastAPI 0.115.6, Uvicorn 0.35.0, python-socketio 5.11.0, SQLAlchemy 2.0.36, Alembic 1.18.4, Pydantic 2.10.4, Web3.py 7.4.0, NetworkX 3.3, PyTorch ($\geq$2.4.1) and PyTorch Geometric 2.5.0 (\texttt{backend/\allowbreak{}requirements.txt}).
+    \item Machine learning: PyTorch, PyTorch Geometric, pandas, NumPy, scikit-learn and pyarrow (\texttt{ML/\allowbreak{}graphsentinel\_\allowbreak{}v2/\allowbreak{}requirements*.\allowbreak{}txt}). The delivered model card records PyTorch 2.11.0+cu128 and Python 3.13.15 for training. The inference container pins PyTorch 2.4.0 (CPU), PyTorch Geometric 2.5.0, pandas 2.3.3 and NumPy 2.2.6.
+    \item Blockchain: Solidity $\hat{}$0.8.19, Hardhat 2.22, Ganache 7.9, ethers 6 (\texttt{blockchain/\allowbreak{}package.json}).
+    \item Frontend: React 18.3, Vite 8, Tailwind CSS 4, three.js 0.179, react-force-graph-3d, Cytoscape, Recharts, Zustand, Axios and socket.io-client (\texttt{frontend/\allowbreak{}package.json}).
+    \item Network emulation: Mininet with Open vSwitch (\texttt{mininet/\allowbreak{}topologies}).
+    \item Deployment: Docker and Docker Compose.
+\end{itemize}
+
+\section{Performance Requirements}
+\par The configured operating parameters are the ones listed in Section~3.2.2. The only measured performance figure in the repository is the per-window inference latency of the v2 model: a median of 6.4 ms and a 95th percentile of 9.5 ms over 120 cached test windows on a T4 GPU. This measurement excludes flow parsing, feature extraction and rule installation, so it is not an end-to-end latency. [END-TO-END PERFORMANCE REQUIREMENTS TO BE PROVIDED]
+
+
+\section{Any Other Requirements }
+\par Runtime configuration is supplied through environment variables (\texttt{backend/\allowbreak{}.env.example}, \texttt{.env.docker}). These include the API tokens, operator credentials, blockchain RPC URL and contract address, enforcement mode and switch, threat threshold, and v2 inference service URL. The v2 weights file (\texttt{ML/\allowbreak{}weights.pt}, about 73 MiB) is not committed to version control and must be provided to the inference container through a read-only bind mount. The CICIDS2017 CSV files (TrafficLabelling export) are required for training and are not included in the repository.
+
+\section{Summary}
+\par This chapter specified eight functional requirements, grouped into a detection and self-healing module and a forensics and administration module. It also described the security, reliability, maintainability, portability and observability properties reflected in the code, the safety constraints on enforcement, the configured performance parameters, the user interface, and the software stack.
+
+%%%%%%%%%%%%%%%%%%%%%%% Chapter 4: System Design %%%%%%%%%%%%%%%%%
+
+ \newpage
+ \chapter{System Design}
+
+
+ \section{Abstract Design}
+
+ \subsection{Architectural diagram}
+ \par The system consists of five cooperating parts:
+ \begin{enumerate}
+     \item the Mininet network with an OVS switch, together with a privileged enforcement daemon that runs \texttt{ovs-ofctl} commands on the backend's behalf;
+     \item the FastAPI backend, which contains the monitor, the analysis pipelines, the self-healing engine, the reconciliation worker, the SQLite database and the REST/Socket.IO interfaces;
+     \item the v2 inference service, a separate FastAPI process that loads the GraphSentinel v2 model;
+     \item the Ganache blockchain with the \texttt{IncidentLogger} contract;
+     \item the React dashboard.
+ \end{enumerate}
+ The backend is the only component that communicates with all the others.
+ \begin{figure}[hbtp]
+\centering
+
+       \templategraphic{scale=0.5}{./pic/architecture.png}{5in}{3in}
+
+ \caption{[ARCHITECTURE DIAGRAM CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+\par The main data path is: OVS flow table $\rightarrow$ enforcement daemon (\texttt{dump-flows}) $\rightarrow$ backend monitor $\rightarrow$ v1 analysis pipeline (graph construction, GraphSAGE or heuristic scoring, threat analysis) $\rightarrow$ incident in SQLite, drop rule on OVS, transaction on Ganache $\rightarrow$ Socket.IO events $\rightarrow$ dashboard. In parallel, when enabled, the v2 path runs: backend monitor $\rightarrow$ flow mapping $\rightarrow$ HTTP \texttt{POST /\allowbreak{}flows} on the inference service $\rightarrow$ per-flow verdicts, which are returned and reported only.
+
+\subsection{Database design}
+The backend uses SQLite through SQLAlchemy 2.0. Its schema is created and upgraded with Alembic migrations (\texttt{backend/\allowbreak{}migrations/\allowbreak{}versions}). The ORM models are defined in \texttt{backend/\allowbreak{}app/\allowbreak{}models/\allowbreak{}incident.\allowbreak{}py}:
+\begin{itemize}
+    \item \textbf{incidents}: one row per detected incident: source IP, attack type, threat score, severity, blocked flag, raw flow JSON, triage status (open/acknowledged/resolved with timestamps), data source (ovs, demo, manual or simulation), enforcement status, a unique idempotency key, and blockchain outbox fields (transaction hash, chain ID, contract address, block number, on-chain incident ID, status, retry count, last error, claim and pending timestamps).
+    \item \textbf{blocked\_ips}: the current set of isolated hosts (unique IP address, reason, attack type, threat score, blockchain transaction, enforcement status, time blocked).
+    \item \textbf{enforcement\_actions}: an append-only history of every block and unblock attempt, including reconciliation actions, with status, error, incident reference and healing telemetry (duration, edges severed, network stability before and after).
+    \item \textbf{flow\_snapshots}: stored flow records (addresses, ports, protocol, packet and byte counts, duration, TCP flags, score, data source, capture time), subject to retention clean-up.
+    \item \textbf{audit\_logs}: an append-only log of control-plane actions (actor identity and role, action, target, details, status, request ID, timestamp).
+\end{itemize}
+The tables are related by value rather than by declared foreign keys: \texttt{enforcement\_\allowbreak{}actions.\allowbreak{}incident\_\allowbreak{}id} refers to \texttt{incidents.id}, and IP addresses link incidents, blocked hosts and enforcement actions. Indexes are declared on IP addresses, timestamps and the alert status.
+% [ER DIAGRAM TO BE INSERTED]
+
+\subsection{API design}
+The backend routes are defined in \texttt{backend/\allowbreak{}app/\allowbreak{}api/\allowbreak{}v1} and mounted under \texttt{/\allowbreak{}api/\allowbreak{}v1} (Table~\ref{tab:api}). The inference service (\texttt{ML/\allowbreak{}graphsentinel\_\allowbreak{}v2/\allowbreak{}graphsentinel/\allowbreak{}inference/\allowbreak{}service.\allowbreak{}py}) exposes \texttt{GET /\allowbreak{}health}, \texttt{GET /\allowbreak{}contract}, \texttt{POST /\allowbreak{}flows}, \texttt{POST /\allowbreak{}flush} and \texttt{GET /\allowbreak{}stats}.
+
+\begin{table}[htbp]
+\caption{Backend REST endpoints}
+\label{tab:api}
+\centering
+\begin{tabularx}{\textwidth}{|l|l|X|X|}
+\hline
+\textbf{Method} & \textbf{Endpoint} & \textbf{Purpose} & \textbf{Access} \\
+\hline
+POST & /auth/login & Create a session & Public, rate-limited \\
+POST & /auth/logout & End the session & Bearer token \\
+GET & /auth/me & Current user and role & Bearer token \\
+POST & /analyze & Score a batch of flows & Session or API key, rate-limited \\
+POST & /ml/reload & Reload the model & Administrator \\
+GET & /graph & Current network graph & Session or API key \\
+GET & /stats & Dashboard counters & Session or API key \\
+GET & /timeline & Threat/block timeline & Session or API key \\
+GET & /alerts & Recent alerts & Session or API key \\
+PATCH & /incidents/\{id\}/status & Change triage status & Authenticated identity \\
+GET & /blocked & Currently blocked hosts & Session or API key \\
+POST & /block & Manual block/unblock & Administrator \\
+GET & /healing & Self-healing events & Session or API key \\
+GET & /enforcement-actions & Enforcement history & Session or API key \\
+GET & /forensics & SQLite and blockchain records & Session or API key \\
+POST & /blockchain/store & Write an incident on-chain & Session or API key \\
+GET/PATCH & /settings & Read / change settings & Session or key / Administrator \\
+GET & /audit-logs & Administrative audit log & Administrator \\
+\hline
+\end{tabularx}
+\end{table}
+
+The service-level \texttt{GET /health} endpoint (outside \texttt{/api/v1}) reports the state of the model, the v2 service, the blockchain, the monitor and the reconciliation worker. Real-time events are emitted over Socket.IO: \texttt{connected}, \texttt{graph\_update}, \texttt{alert} and \texttt{healing\_triggered}.
+
+\subsection{Security design}
+\textbf{Implemented mechanisms:}
+\begin{itemize}
+    \item Session authentication with random 32-byte URL-safe tokens held in memory with an 8-hour expiry, and passwords verified against PBKDF2-HMAC-SHA256 hashes (100{,}000 iterations, 16-byte salt).
+    \item API-key authentication through the \texttt{X-API-Key} header, compared in constant time.
+    \item Three roles (administrator, operator, read-only), with administrator-only access to control-plane mutations.
+    \item Per-client rate limiting of the analyze endpoint (30 per minute) and of login attempts (10 per 5 minutes).
+    \item A 2 MB request-body limit, a CORS allow-list, request correlation IDs and an append-only audit log.
+    \item Authentication of Socket.IO connections.
+    \item Strict IP validation before any enforcement action, and a shared token between the backend and the enforcement daemon.
+    \item On the contract side, an \texttt{onlyDeployer} modifier on state-changing contract functions.
+\end{itemize}
+\textbf{Considerations not established by the codebase:} transport encryption (HTTPS/TLS) is not configured in the application, sessions are not persisted across restarts, and the plaintext password comparison path remains available as a development fallback. No penetration test or security audit results are present in the repository.
+
+\newpage
+\section{Proposed system}
+\par The proposed system is the complete closed loop of Section~4.1, whose detection component evolves from a baseline to an upgraded graph-learning model:
+\begin{itemize}
+    \item \textbf{Baseline (Phase 1).} The GraphSAGE detector runs in-process in the backend. It scores each flow in a flow-as-node graph with a binary malicious probability, and drives incident creation and host isolation.
+    \item \textbf{Upgraded model (Phase 2).} GraphSentinel v2 builds IP-as-node / flow-as-edge graphs, encodes them with GATv2 attention using both node and edge information, and outputs five-class verdicts per host and per flow through a versioned HTTP contract.
+\end{itemize}
+The remaining stages of the loop are shared by both models: OVS telemetry collection, incident management, authenticated enforcement, persistence, blockchain logging and the dashboard. In the current integration the upgraded model runs as an observational scorer alongside the baseline path. Connecting its verdicts to incident creation and enforcement is the remaining integration step. It depends on the validation work described in Chapters 6 and 7.
+\vspace{1in}
+\begin{figure}[htbp]
+       \centering
+       \templategraphic{scale=0.5}{./pic/proposed-system.png}{5in}{4in}
+\caption{[PROPOSED SYSTEM CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+\newpage
+
+\newpage
+
+\section{Functional Design}
+
+\subsection{Modular design diagram}
+\begin{figure}[hbtp]
+\centering
+\templategraphic{width=5in,height=4in}{./pic/modular.png}{5in}{4in}
+\caption{[MODULAR DESIGN DIAGRAM CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+\par The codebase is organised into the following modules:
+\begin{itemize}
+    \item \textbf{Mininet} (\texttt{mininet/topologies}): the topology and the attack scripts.
+    \item \textbf{Backend} (\texttt{backend/app}): configuration, database, API routers, Socket.IO server, OVS monitor and flow parser, and services. The services are inference (v1 and v2 clients), graph construction, threat analysis, self-healing, enforcement, reconciliation, blockchain adapter, authentication, audit, retention and timeline.
+    \item \textbf{Enforcement daemon} (\texttt{backend/scripts/enforcement\_daemon.py}): the only component that runs \texttt{ovs-ofctl}.
+    \item \textbf{Machine learning} (\texttt{ML/graphsentinel\_v2/graphsentinel}): \texttt{data} (schema, preprocessing, graph builder, port vocabulary), \texttt{models} (network, layers, memory, reconstruction heads, v1 compatibility), \texttt{losses}, \texttt{train}, \texttt{evaluate}, \texttt{export}, \texttt{baseline}, \texttt{ood}, and \texttt{inference} (engine, service, SDN translator, capture sources, EMA scaler).
+    \item \textbf{Blockchain} (\texttt{blockchain}): the contract, the deployment script and the Web3.py client.
+    \item \textbf{Frontend} (\texttt{frontend/src}): pages, components, hooks, stores and the API service.
+\end{itemize}
+\par The modules interact only through the interfaces described in Section~4.1: HTTP/JSON, Socket.IO, a TCP socket to the daemon, and JSON-RPC to the chain.
+
+\newpage
+\subsection{ Sequence diagram}
+\begin{figure}[hbtp]
+\centering
+\templategraphic{width=5in,height=4.7in}{./pic/sequence.png}{5in}{4.7in}
+\caption{[SEQUENCE DIAGRAM CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+\par The automated detection-and-response sequence, as implemented, is:
+\begin{enumerate}
+    \item The monitor asks the daemon for \texttt{dump-flows} and parses the returned flow table.
+    \item The analysis pipeline builds a graph and calls the inference service (v1 model or heuristic), obtaining a score per flow and per source host.
+    \item For each host at or above the threshold, the threat analyzer creates (or re-uses) an incident and asks the self-healing engine to block the host.
+    \item The engine asks the enforcement agent to install a drop rule through the daemon, or records a simulated block.
+    \item The blockchain adapter calls \texttt{logIncident}. The transaction hash, or a pending status if the call timed out, is stored on the incident.
+    \item The enforcement action is logged.
+    \item \texttt{graph\_update}, \texttt{alert} and \texttt{healing\_triggered} events are emitted to the dashboards.
+\end{enumerate}
+Separately, the reconciliation worker compares the switch with the \texttt{blocked\_ips} table every 10 seconds and processes the blockchain outbox.
+
+\newpage
+\subsection{Use case diagram}
+\begin{figure}[hbtp]
+\centering
+\centering
+\templategraphic{width=5in,height=5in}{./pic/usecase.png}{5in}{5in}
+\caption{[USE CASE DIAGRAM CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+\par The implemented roles are the \emph{administrator}, the \emph{operator} and the \emph{read-only user}.
+\begin{itemize}
+    \item All authenticated users can view the graph, statistics, timeline, alerts, blocked hosts, healing events, enforcement actions and forensics.
+    \item Operators and administrators can change the triage status of incidents.
+    \item Administrators can additionally block and unblock hosts manually, change settings, reload the model and read the audit log.
+    \item External API clients authenticate with an API key, which carries the administrator or operator role.
+\end{itemize}
+The system itself acts as an automated actor that detects, isolates and records incidents.
+
+\newpage
+\section{ Control Flow Design}
+\subsection{ Activity diagram for use cases}
+
+\begin{figure}[hbtp]
+\centering
+\templategraphic{width=5in,height=5in}{./pic/activity.png}{5in}{5in}
+\caption{[ACTIVITY DIAGRAM CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+\par For each poll, the monitor's control flow branches on the poll result:
+\begin{itemize}
+    \item \textbf{Poll failed.} The failure is recorded. Demo flows are substituted only if \texttt{demo\_fallback\_flows} is enabled (it is disabled by default).
+    \item \textbf{Poll returned no flows.} Nothing is scored.
+    \item \textbf{Poll returned flows.} They are analysed by the v1 pipeline. If v2 is enabled, the batch is checked by the provenance gate: a batch in which every flow is tagged as OVS data is submitted to the inference service, and any other batch is refused as a whole.
+\end{itemize}
+Inside threat analysis, each host follows the path threshold check $\rightarrow$ IP validation $\rightarrow$ incident creation or de-duplication $\rightarrow$ block (enforced, simulated or pending) $\rightarrow$ blockchain write (confirmed, pending or offline) $\rightarrow$ logging.
+
+\newpage
+\section{Data Flow Diagram}
+\subsection{Zero-Level Data Flow Diagram}
+\begin{figure}[hbtp]
+\centering
+\templategraphic{width=5in,height=3in}{./pic/level0dfd.png}{5in}{3in}
+\caption{[LEVEL-0 DFD CAPTION]}
+\label{fig:level0dfd}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+Figure \ref{fig:level0dfd} is reserved for the context-level view. In the implementation, the system receives flow records from the OVS switch and requests from dashboard users. It sends drop rules back to the switch, incident records to the blockchain, and graph, alert and forensic data to the users.
+
+\subsection{First-Level Data Flow Diagram}
+\begin{figure}[hbtp]
+\centering
+\templategraphic{width=5in,height=3in}{./pic/level1dfd.png}{5in}{3in}
+\caption{[LEVEL-1 DFD CAPTION]}
+\label{fig:level1dfd}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+Figure \ref{fig:level1dfd} is reserved for the first-level decomposition. The implemented processes are:
+\begin{enumerate}
+    \item flow collection (monitor and parser);
+    \item threat scoring (inference service and v2 client);
+    \item incident management (threat analyzer);
+    \item enforcement (self-healing engine, enforcement agent, daemon and reconciliation);
+    \item ledger recording (blockchain adapter and contract);
+    \item presentation (REST API and Socket.IO).
+\end{enumerate}
+The data stores are the five SQLite tables of Section~4.1.2 and the on-chain incident mapping.
+\newpage
+\subsection{Second-Level Data Flow Diagram}
+\begin{figure}[hbtp]
+\centering
+\templategraphic{width=5.5in,height=3in}{./pic/level2dfd.png}{5.5in}{3in}
+\caption{[LEVEL-2 DFD CAPTION]}
+\label{fig:level2dfd}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+Figure \ref{fig:level2dfd} is reserved for the decomposition of threat scoring in the v2 path. The steps are:
+\begin{enumerate}
+    \item Flow records are mapped to CICFlowMeter-style fields (\texttt{flow\_mapping.py}).
+    \item The records are buffered into 60-second windows.
+    \item For each window, a graph is built: nodes are unique IP addresses, and edges are flows plus their reverse mirrors. The 16 node features, the 20 edge features and the port and protocol tokens are computed.
+    \item The per-host memory is read, the GATv2 encoder and the node and edge heads are applied, and the memory is written back.
+    \item Softmax probabilities are converted into per-flow verdicts: class, confidence and threat score $1 - P(\mathrm{BENIGN})$.
+    \item The verdicts are returned to the backend.
+\end{enumerate}
+
+%%%%%%%%%%%%%%%%%%%%%%% Chapter 5: Implementation %%%%%%%%%%%%%%%%%%
+
+\chapter{Implementation}
+
+\section{Software used with justification}
+\label{sec:software}
+
+\subsection{Frontend Development:}
+\label{subsec:frontend}
+\par The dashboard is built with React 18 and bundled with Vite. Tailwind CSS provides styling. The network graph is rendered in two ways: with Cytoscape (react-cytoscapejs) and as a 3-D force-directed graph (react-force-graph-3d on three.js). Time series are charted with Recharts, and animations use Framer Motion. Application state is kept in Zustand stores. REST calls use Axios, and live updates use socket.io-client, which matches the backend's python-socketio server. Routing uses React Router 6. An end-to-end regression script is kept under \texttt{frontend/tests/e2e}.
+
+\subsection{Backend Development:}
+\label{subsec:backend}
+
+\par The backend is written in Python on FastAPI and served by Uvicorn. A python-socketio ASGI application wraps the FastAPI app so that REST and Socket.IO share one server. Pydantic models validate requests and responses (\texttt{backend/app/models/schemas.py}), and pydantic-settings loads configuration from the environment. Persistence uses SQLAlchemy 2.0 over SQLite, with schema changes managed by Alembic. The blockchain is accessed through Web3.py. v1 inference runs in-process with PyTorch and PyTorch Geometric. v2 inference is reached over HTTP, so the backend does not need to import the v2 model code.
+
+\subsection{Framework Used:}
+\label{subsec:framework}
+
+\par The frameworks used are:
+\begin{itemize}
+    \item FastAPI for the backend and for the v2 inference service;
+    \item PyTorch with PyTorch Geometric for graph neural networks (\texttt{GATv2Conv} and \texttt{SAGEConv});
+    \item scikit-learn for evaluation metrics and the (unexecuted) Random Forest baseline;
+    \item Hardhat with Ganache for compiling, deploying and testing the Solidity contract;
+    \item React for the user interface;
+    \item Mininet with Open vSwitch for network emulation;
+    \item Docker Compose to run the four services together.
+\end{itemize}
+
+\subsection{Coding Languages used for Development :}
+\label{subsec:languages}
+
+    \begin{itemize}
+        \item {Python}:
+        \par Used for the backend, the enforcement daemon, the Mininet topology and attack scripts, the Web3.py bridge, and the complete machine-learning package (data processing, training, evaluation, export and inference).
+        \item {JavaScript (JSX)}:
+        \par Used for the React frontend, and for the Hardhat configuration, deployment scripts and contract tests.
+        \item {Solidity}:
+        \par Used for the \texttt{IncidentLogger} smart contract (compiler version $\hat{}$0.8.19).
+    \end{itemize}
+\subsection{Operating System:}
+\par The Mininet network and the enforcement daemon require Linux with root privileges. The code is annotated for WSL2 Ubuntu (\texttt{[WSL2]} markers in the backend and Mininet sources). The blockchain and frontend development instructions target Windows. Model training was carried out on Google Colab (Linux). The Docker images are based on Linux (\texttt{python:3.12-slim} for the inference service).
+
+\section{Hardware Used with justification}
+\par Model training used a Google Colab runtime with an NVIDIA T4 GPU. A GPU was used because training replays roughly 1{,}077 window graphs per epoch for 40 epochs, taking about 35 seconds per epoch according to the recorded training history. The inference container is configured for CPU only. [DETAILS OF THE DEVELOPMENT AND DEMONSTRATION MACHINES TO BE PROVIDED]
+
+\section{Algorithm/procedures used in the project in different modules }
+\par This section describes the algorithms as they are implemented.
+
+\subsection*{A. Dataset preparation (ML package, \texttt{data/preprocess.py})}
+\begin{itemize}
+    \item \textbf{Source.} Five CICIDS2017 TrafficLabelling CSV files are loaded: Tuesday, Wednesday, Friday morning, Friday afternoon DDoS and Friday afternoon PortScan. Only the required columns are read.
+    \item \textbf{Validation.} \texttt{data/schema.py} confirms that the files contain source and destination IPs and timestamps, and rejects the IP-less MachineLearningCVE export.
+    \item \textbf{Labels.} Raw labels are mapped to the five-class \texttt{flood4} taxonomy:
+    \begin{itemize}
+        \item DDoS and the four DoS variants $\rightarrow$ Volumetric\_Flood;
+        \item FTP-Patator and SSH-Patator $\rightarrow$ BruteForce;
+        \item Bot $\rightarrow$ Botnet.
+    \end{itemize}
+    Unmapped labels (Web Attack, Infiltration, Heartbleed) are dropped.
+    \item \textbf{Cleaning.} Rows are sorted by timestamp. Non-numeric and infinite feature values are removed, as are empty IPs, self-loops and exact duplicates keyed on (source, destination, ports, protocol, time).
+    \item \textbf{Split.} The data is divided with the \emph{episode} protocol:
+    \begin{itemize}
+        \item BENIGN rows are cut 70/15/15 by row rank.
+        \item Each attack class is split by whole episodes (bursts separated by more than 120 s) when it has at least three episodes. Otherwise it falls back to a rank cut with a dead zone of up to 300 s.
+    \end{itemize}
+    \item \textbf{Outliers.} Values are clipped to the 0.1st and 99.9th percentiles, computed separately within each split.
+    \item Four other split protocols (temporal, day hold-out, host hold-out, attack hold-out) are implemented but were not used for the delivered model.
+\end{itemize}
+
+\subsection*{B. Graph construction (\texttt{data/graph\_builder.py})}
+\begin{itemize}
+    \item \textbf{Windows.} Each split is cut into non-overlapping 60-second windows. Windows with fewer than 8 flows are discarded; windows with more than 200{,}000 flows are randomly subsampled.
+    \item \textbf{Nodes and edges.} In each window the nodes are the unique IPv4 addresses, and each flow is a directed edge from source to destination. A reverse copy of every edge, marked by a direction flag, is added so that messages can travel both ways.
+    \item \textbf{Edge features (20).}
+    \begin{itemize}
+        \item log-scaled duration, packet count and byte count;
+        \item forward packet ratio, byte asymmetry and average packet size;
+        \item log maximum forward and backward packet length;
+        \item SYN, RST, ACK and PSH ratios;
+        \item log mean inter-arrival time and inter-arrival burstiness;
+        \item log time since the same host pair, and since the same source, last communicated;
+        \item position within the window and the direction flag;
+        \item log bytes per second and packets per second.
+    \end{itemize}
+    \item \textbf{Node features (16).}
+    \begin{itemize}
+        \item log out-degree, log in-degree and degree ratio;
+        \item log counts of distinct destination IPs, source IPs and destination ports;
+        \item destination-port entropy and peer entropy;
+        \item reciprocity;
+        \item log bytes out and in;
+        \item mean and standard deviation of inter-flow time;
+        \item private-address flag;
+        \item log number of windows seen, and burst score. These two are kept across windows in a bounded host history.
+    \end{itemize}
+    \item \textbf{Categorical fields.} Ports are mapped to a 101-token vocabulary: padding, out-of-vocabulary, 89 named service ports and 10 port-range buckets. Protocols are mapped to 8 tokens.
+    \item \textbf{Labels.} An edge takes its flow's class. A node takes the most frequent attack class among its incident flows, or BENIGN if it has none.
+\end{itemize}
+
+\subsection*{C. Upgraded model: GraphSentinel v2 with GATv2 (\texttt{models/\allowbreak{}net.\allowbreak{}py}, \texttt{models/\allowbreak{}layers.\allowbreak{}py})}
+\begin{itemize}
+    \item \textbf{Purpose.} Classify each host and each flow of a window into BENIGN, Volumetric\_Flood, PortScan, BruteForce or Botnet.
+    \item \textbf{Input.} Node features ($16$), edge features ($20$), port and protocol tokens, the edge index, and IP identifiers used to key the memory.
+    \item \textbf{Architecture.}
+    \begin{enumerate}
+        \item \emph{Edge encoder.} Port embeddings ($2\times16$) and a protocol embedding ($4$) are concatenated with the 20 edge features. A two-layer MLP maps the result to 64 dimensions, using LayerNorm, GELU and dropout 0.1.
+        \item \emph{Node encoder.} A linear layer, LayerNorm and GELU map the 16 node features plus a 64-dimensional memory vector to 128 dimensions.
+        \item \emph{Message passing.} Two residual blocks follow. Each applies a \texttt{GATv2Conv} layer (4 heads of 32 channels, using edge embeddings in the attention, attention dropout 0.1, no self-loops), then LayerNorm, GELU, dropout 0.3 and a residual addition.
+        \item \emph{Jumping knowledge.} The input and both block outputs are concatenated into a 384-dimensional node embedding.
+        \item \emph{Node head.} An MLP ($384\rightarrow128\rightarrow5$).
+        \item \emph{Edge head.} An MLP over the concatenation of the source embedding, the destination embedding and the edge embedding ($832\rightarrow128\rightarrow5$).
+        \item \emph{Memory.} A per-host GRU cell updates a 64-dimensional memory vector after every window. It is stored in a fixed-size slot table with dedicated, hashed and /24-subnet tiers. Because the stored state is detached from the computation graph and no loss term uses it, the GRU parameters receive no gradient. In the delivered weights they remain at their initial values.
+    \end{enumerate}
+    \item \textbf{Size.} The model has 654{,}851 parameters. Of these, 305{,}465 belong to self-supervised reconstruction heads used only during training.
+    \item \textbf{Output.} Softmax class probabilities per node and per flow, the predicted class, and a threat score $1-P(\mathrm{BENIGN})$.
+\end{itemize}
+
+\subsection*{D. Training (\texttt{train.py}, \texttt{losses.py}, \texttt{models/recon.py})}
+\begin{itemize}
+    \item \textbf{Loss.} The total loss is
+    \[
+    L = L_{node} + 2.0\,L_{edge} + 0.05\,L_{cons} + \lambda(t)\,(1.0\,L_{mask} + 0.5\,L_{link} + 0.2\,L_{prof}).
+    \]
+    \begin{itemize}
+        \item $L_{node}$ and $L_{edge}$ are focal losses ($\gamma=2$, label smoothing 0.02) with class weights from the effective-number formula ($\beta=0.9999$). The node loss is additionally reweighted by node degree.
+        \item $L_{cons}$ penalises flows whose threat exceeds their source host's threat.
+        \item The three reconstruction terms are masked edge-attribute reconstruction (15\% of edges masked), degree-matched link prediction and node-profile reconstruction.
+        \item $\lambda$ rises to 0.3 over the first 3 epochs and then decays to a floor of 0.06.
+    \end{itemize}
+    \item \textbf{Optimisation.} AdamW with learning rate $2\times10^{-3}$ and weight decay $10^{-4}$, and a learning-rate schedule with 3 warm-up epochs followed by cosine decay. Windows are presented one at a time in chronological order, with gradient accumulation over 8 windows and gradient-norm clipping at 1.0.
+    \item \textbf{Run settings.} 40 epochs in 32-bit precision with seed 42. The memory is reset at the start of every epoch.
+    \item \textbf{Checkpoint selection.} The checkpoint with the highest validation edge macro F1 is kept (patience 12). In the delivered run (retrained after the timestamp correction) this was epoch 18 of 30; early stopping ended training at epoch 30 of the 40 configured. The training loss kept falling after epoch 18 while the validation score did not improve.
+\end{itemize}
+
+\subsection*{E. Evaluation and export (\texttt{evaluate.py}, \texttt{export.py})}
+\begin{itemize}
+    \item \textbf{Metrics.} For both heads: macro and per-class F1, weighted F1, accuracy, binary PR-AUC and ROC-AUC, recall at 1\% and 0.1\% false-positive rate, per-class PR-AUC and confusion matrices.
+    \item \textbf{Volumetric ablation.} The two volumetric edge features are zeroed and the metrics are recomputed.
+    \item \textbf{Export.} The weights, a TorchScript trace and a model card (feature names and order, class list, port vocabulary, configuration, validation metrics and artifact SHA-256 hashes) are written out. ONNX export is implemented, but was skipped in the delivered run because a dependency was missing.
+\end{itemize}
+
+\subsection*{F. Baseline model: GraphSAGE detection path in the backend (\texttt{services/graph\_builder.py}, \texttt{services/inference\_service.py}, \texttt{services/threat\_analyzer.py})}
+\begin{itemize}
+    \item \textbf{Graph and features.} Each flow is a node with 7 features: forward packet ratio, average packet size, log connection rate, destination port / 65535, byte asymmetry, SYN ratio and normalised log byte rate. The features are standardised with fixed statistics. Edges link consecutive flows and flows sharing a destination port.
+    \item \textbf{Scoring.} A three-layer mean-aggregation GraphSAGE model (256 hidden units, BatchNorm, two classes) scores each flow. A host's score is the maximum score over the flows it sends.
+    \item \textbf{Fallback.} If the model is unavailable, a heuristic score is used instead, built from packet volume, byte rate, well-known ports, the SYN flag and short high-volume bursts.
+    \item \textbf{Attack label.} Hosts above the threshold are labelled by rules, checked in order:
+    \begin{itemize}
+        \item SSHBrute if port 22 is contacted with more than 250 packets;
+        \item PortScan if 5 or more distinct ports are contacted;
+        \item DoSHulk if HTTP traffic exceeds 1\,MB;
+        \item DDoS if there are more than 5{,}000 packets or the score is at least 0.90;
+        \item otherwise Botnet.
+    \end{itemize}
+    \item \textbf{Determinism.} Preprocessing standardises features with fixed global statistics (loaded from \texttt{inference\_\allowbreak{}stats.pt}, with built-in defaults as fallback) instead of per-batch statistics. A flow's features therefore do not depend on the other flows in the same request. The backend tests \texttt{test\_\allowbreak{}single\_\allowbreak{}flow\_\allowbreak{}n1\_\allowbreak{}normalization\_\allowbreak{}non\_\allowbreak{}zero}, \texttt{test\_\allowbreak{}batch\_\allowbreak{}context\_\allowbreak{}independence} and \texttt{test\_\allowbreak{}batch\_\allowbreak{}permutation\_\allowbreak{}stability} verify this: a single flow produces a non-degenerate feature vector, and results are stable when flows are batched or reordered.
+\end{itemize}
+
+\subsection*{G. Self-healing, enforcement and reconciliation}
+\begin{itemize}
+    \item \textbf{Block.} After validating the IP, the enforcement agent sends a JSON request with a shared token over TCP to the enforcement daemon. The daemon runs \texttt{ovs-ofctl add-flow <switch> priority=1000,ip,nw\_\allowbreak{}src=<ip>,actions=drop}, and \texttt{del-flows} to unblock.
+    \item \textbf{Daemon hardening} (\texttt{backend/\allowbreak{}scripts/\allowbreak{}enforcement\_\allowbreak{}daemon.\allowbreak{}py}).
+    \begin{itemize}
+        \item The daemon refuses to start without the \texttt{DAEMON\_TOKEN} shared secret and rejects requests with a wrong token.
+        \item It validates the IP address again on its own side.
+        \item It invokes \texttt{ovs-ofctl} through an argument list with no shell, and every command has a 3-second timeout.
+        \item On the backend side, a daemon that is unreachable or times out moves the block to \texttt{pending\_enforcement}, and the block is retried rather than lost.
+    \end{itemize}
+    \item \textbf{Record.} The blocked host is upserted into \texttt{blocked\_ips}.
+    \item \textbf{Reconcile.} Every 10 seconds the reconciliation worker parses the switch's drop rules and compares them with \texttt{blocked\_ips}. Missing rules are reapplied and orphaned GraphSentinel rules are removed. The same worker processes the blockchain outbox with bounded retries.
+\end{itemize}
+
+\subsection*{G2. Database migration handling (\texttt{backend/app/database.py})}
+The schema is created and upgraded by Alembic at start-up. Databases created before Alembic was introduced already contain the application tables but no \texttt{alembic\_version} table. Such a database must not be stamped at the latest (head) revision, because the migrations added after the baseline would then never run. \texttt{init\_db} therefore stamps it at the \emph{baseline} revision (\texttt{96d6eba3e436}) and then runs \texttt{upgrade head}, applying every later migration. New databases are simply upgraded to head.
+
+\subsection*{H. Blockchain incident ledger (\texttt{IncidentLogger.sol})}
+\begin{itemize}
+    \item \textbf{Logging.} \texttt{logIncident} checks its inputs (a non-empty IP and label, and severity between 1 and 10) and assigns a sequential ID. It computes
+    \[
+    h = \mathrm{keccak256}(\mathrm{IP} \,\|\, \mathrm{block.timestamp} \,\|\, \mathrm{label} \,\|\, \mathrm{severity} \,\|\, \mathrm{id}),
+    \]
+    stores the incident, updates the blocked-IP map and per-IP history, and emits \texttt{IncidentLogged} (and \texttt{NodeIsolated} if the host was blocked).
+    \item \textbf{Verification.} \texttt{verifyIncident} recomputes the hash from supplied values and compares it with the stored one.
+    \item \textbf{Release.} \texttt{releaseNode} clears the blocked flag.
+    \item \textbf{Access control.} State-changing functions are restricted to the deploying account.
+\end{itemize}
+
+ \section{Coding/pseudocodes}
+% ---- Department boilerplate carried over from the reference template (Sections 5.4.1-5.4.2).
+% ---- Keep, edit or replace as your department requires; fill each "(... According to your coding)" note.
+\subsection{Introduction}
+The goal of coding or programming phase is to translate the design of the system produced during the design phase into code in a given programming language, which can be executed by a computer and that performs the computation specified by the design.
+
+There are many different criteria for judging a program, including readability, size of the program, execution time and required memory. Having readability and understanding as a clear objective of the coding activity can itself help in producing software that is more maintainability.
+
+\subsection{Programming Style}
+It is impossible to provide an exhaustive list of what to do and what not to do produce simple readable code. Being able to do this will amount to providing an algorithm for writing good code. Next we will list some general rules that usually apply.
+\begin{itemize}
+\item NAMES:
+Selecting module and variable names often not considered important by novice programmers. In this project, Python modules and functions use snake\_case names that state their role. Examples are \texttt{graph\_builder}, \texttt{threat\_analyzer}, \texttt{compute\_edge\_features}, \texttt{validate\_mininet\_ip} and \texttt{reconcile\_once}. Classes use CamelCase: \texttt{GraphSentinelNet}, \texttt{InferenceEngine}, \texttt{SelfHealingEngine}, \texttt{BlockchainAdapter}. React components and pages use PascalCase (\texttt{AlertCentre}, \texttt{NetworkTopology}), and hooks use the \texttt{use} prefix (\texttt{useWebSocket}, \texttt{useGraphData}).
+
+\item CONTROL CONSTRUCTS:
+It is desirable that as much as possible single-entry, single exit constructs be used. The code mainly uses early-return guard clauses, which reject invalid input or unavailable services at the top of a function. It also uses bounded loops over windows and flows, and try/except blocks that convert failures into explicit status values such as \texttt{pending\_enforcement}, \texttt{offline} or \texttt{degraded}, rather than propagating them.
+
+\item  INFORMATION HIDING:
+Information hiding should be supported where possible. Only the access function for the data structures should be made visible while hiding the data structure behind these functions. Singleton services (\texttt{InferenceService.get\_instance()}, \texttt{BlockchainAdapter.get\_instance()}, \texttt{InferenceClient.get\_instance()}) hide model and connection state behind accessor methods. The in-memory session store is reached only through \texttt{create\_session}, \texttt{validate\_session} and \texttt{destroy\_session}. In the v2 package, the memory slot table is private to \texttt{NodeMemory} and exposed only through \texttt{read}, \texttt{write} and \texttt{occupancy}.
+
+  \item   USER-DEFINED TYPES:
+Modern languages allow users to define types like the Enumerated type. When such facilities are available, they should be exploited where applicable. For example, when working with dates, the type can be defined for the day of the week. The project defines:
+\begin{itemize}
+    \item SQLAlchemy ORM classes (\texttt{Incident}, \texttt{BlockedIP}, \texttt{EnforcementAction}, \texttt{FlowSnapshot}, \texttt{AuditLog});
+    \item Pydantic request/response schemas;
+    \item dataclasses such as \texttt{Config}, \texttt{DataConfig}, \texttt{ModelConfig}, \texttt{WindowResult}, \texttt{FlowVerdict}, \texttt{FlowRule} and \texttt{PollResult};
+    \item a Solidity \texttt{struct Incident}.
+\end{itemize}
+
+ \item    NESTING:
+The different control constructs, the if-then-else, can be nested. If the nesting becomes too deep, the programs become harder to understand. Nesting is generally limited to a loop over hosts or windows containing a small number of guard conditions, as in \texttt{ThreatAnalyzer.evaluate} and the training loop's per-window retry. Feature computation is vectorised with NumPy rather than written as nested per-row loops.
+
+  \item   MODULE SIZE:
+This issue is related to system design. Large modules often will not be functionally cohesive and too small modules might incur unnecessary overhead. There can be no hard-and-fast rule about module sizes the guiding principle should cohesion and coupling. Backend modules are mostly between 15 and 440 lines, with one router per resource and one service per responsibility. The largest ML modules are \texttt{train.py} (846 lines), \texttt{graph\_builder.py} (733 lines) and \texttt{ood.py} (630 lines).
+
+\item  MODULE INTERFACE:
+ As a rule of thumb, any module whose interface has more than five parameters should be carefully examined and broken into multiple modules with simpler interface if possible. The modules interact through narrow interfaces:
+ \begin{itemize}
+     \item the REST API and Socket.IO events between frontend and backend;
+     \item a JSON-over-TCP protocol with a shared token between the backend and the enforcement daemon;
+     \item HTTP/JSON between the backend and the v2 inference service, governed by the model card contract (version 2.0.0), which the backend checks at start-up;
+     \item JSON-RPC between the backend and the blockchain, using the contract ABI in \texttt{blockchain/web3\_bridge/contract\_abi.json}.
+ \end{itemize}
+
+  \item   PROGRAM LAYOUT:
+How the program is organized and presented can have great effect on the readability of it. Proper indentation, blank spaces, and parentheses should be used to enhance the readability of programs. Python code follows PEP 8 indentation, with module-level docstrings explaining the purpose and history of each module. The frontend is organised into \texttt{pages}, \texttt{components}, \texttt{hooks}, \texttt{store}, \texttt{services} and \texttt{utils} directories and is linted with ESLint.
+
+\end{itemize}
+
+\subsection{Pseudocode of the main procedures}
+The following pseudocode is derived from the implementation. It is simplified and does not reproduce the source code.
+
+\begin{verbatim}
+Algorithm 1: Window graph construction (GraphBuilder.build)
+Input : chronologically ordered flow table of one split
+Output: list of graphs (one per 60 s window)
+ 1. compute dt_pair, dt_src for every flow (time since the same
+    pair / same source last appeared)
+ 2. for each non-empty 60 s window W:
+ 3.     if |W| < 8: skip
+ 4.     nodes <- unique IPs among sources and destinations of W
+ 5.     compute 16 node features on all flows of W
+ 6.     node label <- most frequent attack class of incident flows,
+                      else BENIGN
+ 7.     update host history (windows seen, flow totals)
+ 8.     if |W| > 200000: randomly subsample flows
+ 9.     compute 20 edge features; tokenise ports and protocol
+10.     add a reversed copy of each edge with direction_flag = 0
+11.     emit graph (x, edge_index, edge_attr, tokens, labels, IPs)
+
+Algorithm 2: Training (train.train)
+Input : train / validation graphs, configuration
+Output: best model state, test report
+ 1. for epoch = 1..40:
+ 2.     reset host memory
+ 3.     for each training window in time order:
+ 4.         mask 15% of edge attributes; forward pass
+ 5.         loss <- focal(node) + 2*focal(edge) + 0.05*consistency
+                    + lambda(epoch) * reconstruction losses
+ 6.         backpropagate; every 8 windows: clip, AdamW step
+ 7.     step the learning-rate schedule
+ 8.     evaluate on validation windows
+ 9.     if validation edge macro F1 improved: keep this state
+10.     stop if no improvement for 12 epochs
+11. evaluate kept state on test windows; write test report
+
+Algorithm 3: Automated detection and response (v1 path)
+Input : flows from one OVS poll
+Output: incidents, isolation actions, ledger entries
+ 1. graph <- flow-as-node graph with 7 standardised features
+ 2. score each flow (GraphSAGE, or heuristic if unavailable)
+ 3. host score <- max score of flows sent by the host
+ 4. for each host with score >= threshold:
+ 5.     validate IP (inside Mininet subnet, not infrastructure)
+ 6.     create incident unless an identical one exists
+ 7.     block host: OVS drop rule via daemon, or simulated
+ 8.     logIncident on blockchain (confirmed / pending / offline)
+ 9.     log enforcement action; emit alert and healing events
+
+Algorithm 4: Reconciliation (every 10 s)
+ 1. blocked_db  <- IPs in blocked_ips table
+ 2. blocked_ovs <- IPs with a GraphSentinel drop rule on the switch
+ 3. for ip in blocked_db - blocked_ovs: reapply drop rule
+ 4. for ip in blocked_ovs - blocked_db: remove drop rule
+ 5. retry pending / unwritten blockchain transactions (bounded)
+\end{verbatim}
+
+\section{Summary}
+This chapter described the software stack, the languages and frameworks, and the algorithms implemented in each module:
+\begin{itemize}
+    \item dataset preparation and the episode split;
+    \item window graph construction;
+    \item the GATv2-based GraphSentinel v2 model and its training and evaluation procedures;
+    \item the v1 detection path used by the backend;
+    \item self-healing and reconciliation;
+    \item the blockchain incident ledger.
+\end{itemize}
+
+%%%%%%%%%%%%%% Chapter 6: Results and Discussion %%%%%%%%%%%%%%%%%%
+
+\chapter{Results and Discussion}
+\section{Results}
+% Present results using suitable figures, graphs and charts with proper explanations.
+\par All numerical results in this section are taken from artifacts in the repository: \texttt{ML/test\_report.json}, \texttt{ML/model\_card.json}, \texttt{ML/threshold\_study.json}, \texttt{ML/probes.json}, \texttt{ML/split\_composition.json} and \texttt{ML/PROVENANCE.json}. They come from a single training run (seed 42) of the model retrained after the timestamp correction described below. The earlier model's artifacts are kept in \texttt{ML/prefix\_epoch31/}. The model was evaluated under the \emph{episode} split protocol, in which the test data of most attack families comes from the same attack burst as the training data. The results therefore describe within-burst generalisation and must not be read as detection of new or unseen attacks.
+
+\par\textbf{Dataset used.} Before cleaning, the five training files contain 1{,}841{,}846 labelled rows under the five-class taxonomy: BENIGN 1{,}286{,}427; Volumetric\_Flood 380{,}688; PortScan 158{,}930; BruteForce 13{,}835; Botnet 1{,}966. After graph construction, the training split contains 1{,}074 window graphs with 1{,}116{,}576 flow edges, the validation split 249 graphs (207{,}856 flows), and the test split 207 graphs (226{,}342 flows). The test split contains no Botnet flows: its 266 Botnet rows fall in windows with fewer than the 8 flows needed to build a graph.
+
+\par\textbf{Timestamp correction.} The CICIDS2017 TrafficLabelling files record afternoon times on a 12-hour clock without an AM/PM marker. An audit of all eight files (2{,}830{,}743 rows) found no hour of 13 or later and no AM/PM token. After the correction, each capture day forms one contiguous working day (for example, Friday's three files run 08:59--12:59, 13:00--15:29 and 15:30--17:02), whereas under the original parse the afternoon captures fell between 01:00 and 05:04, before the morning capture of the same day. The correction moves 960{,}315 of 1{,}841{,}857 training rows (52.1\%).
+
+\begin{table}[htbp]
+\caption{Test-split performance of the GraphSentinel v2 model (retrained, epoch 18)}
+\label{tab:ml_overall}
+\centering
+\begin{tabular}{|l|c|c|}
+\hline
+\textbf{Metric} & \textbf{Edge (flow) head} & \textbf{Node (host) head} \\
+\hline
+Macro F1-score (all five classes) & 0.4441 & 0.3045 \\
+Weighted F1-score & 0.9126 & 0.9951 \\
+Accuracy & 0.9055 & 0.9941 \\
+Binary F1 (attack vs. benign) & 0.9961 & 0.4475 \\
+Binary PR-AUC & 0.9997 & 0.6596 \\
+Binary ROC-AUC & 0.9999 & 0.9899 \\
+Recall at 0.1\% FPR & 0.9847 & 0.6571 \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Per-class F1-score on the test split}
+\label{tab:ml_perclass}
+\centering
+\begin{tabular}{|l|r|c|r|c|}
+\hline
+\textbf{Class} & \textbf{Test flows} & \textbf{Edge F1} & \textbf{Test hosts} & \textbf{Node F1} \\
+\hline
+BENIGN & 174{,}421 & 0.9988 & 24{,}669 & 0.9975 \\
+Volumetric\_Flood & 27{,}191 & 0.9617 & 14 & 0.2979 \\
+PortScan & 23{,}812 & 0.2598 & 22 & 0.2273 \\
+BruteForce & 918 & 0.0000 & 34 & 0.0000 \\
+Botnet & 0 & -- & 0 & -- \\
+\hline
+\end{tabular}
+\end{table}
+
+\begin{table}[htbp]
+\caption{Edge-head confusion matrix on the test split (rows: true class, columns: predicted class)}
+\label{tab:ml_confusion}
+\centering
+\begin{tabular}{|l|r|r|r|r|r|}
+\hline
+ & \textbf{BENIGN} & \textbf{Vol.\_Flood} & \textbf{PortScan} & \textbf{BruteForce} & \textbf{Botnet} \\
+\hline
+BENIGN & 174{,}032 & 2 & 299 & 20 & 68 \\
+Volumetric\_Flood & 0 & 27{,}191 & 0 & 0 & 0 \\
+PortScan & 5 & 2{,}163 & 3{,}735 & 17{,}909 & 0 \\
+BruteForce & 14 & 0 & 904 & 0 & 0 \\
+Botnet & 0 & 0 & 0 & 0 & 0 \\
+\hline
+\end{tabular}
+\end{table}
+
+\par\textbf{Held-out capture days.} A binary threshold of 0.5 on the threat score was fitted on validation data and applied unchanged to other data (Table~\ref{tab:ml_heldout}). Monday contains only benign traffic. Thursday contains benign traffic plus attack families that were never used in training (Web Attack, Infiltration).
+
+\begin{table}[htbp]
+\caption{Flow-level binary detection on held-out data (threshold 0.5)}
+\label{tab:ml_heldout}
+\centering
+\begin{tabular}{|l|r|r|c|c|c|}
+\hline
+\textbf{Data} & \textbf{Flows} & \textbf{Attacks} & \textbf{Precision} & \textbf{Recall} & \textbf{FPR} \\
+\hline
+Test split & 226{,}342 & 51{,}921 & 0.9921 & 0.9997 & $2.4\times10^{-3}$ \\
+Monday (benign only) & 500{,}531 & 0 & -- & -- & $1.2\times10^{-4}$ \\
+Thursday (unseen families) & 426{,}958 & 2{,}111 & 0.0669 & 0.9730 & 0.0674 \\
+\hline
+\end{tabular}
+\end{table}
+
+\par\textbf{Other measured results.}
+\begin{itemize}
+    \item \textbf{Validation.} At the selected epoch the validation edge macro F1 is 0.5565 and the node macro F1 is 0.2307.
+    \item \textbf{Volumetric ablation.} Zeroing the two volumetric edge features changes the test edge macro F1 (four classes present) by $-0.0024$.
+    \item \textbf{Composition of the splits.} Under the original parse, 266 of 52{,}062 test attack flows (0.51\%) shared a 60-second window with benign traffic; after the correction, 51{,}003 of 52{,}187 (97.73\%) do. This was predicted before it was measured. The original test task was therefore easier than the deployed one: its attack windows could be classified from their graph structure alone.
+    \item \textbf{Mitigation confidence floors.} With the confidence floors of the backend's mitigation policy (0.90 for Volumetric\_Flood, 0.85 for PortScan and BruteForce; Botnet disabled), 22{,}268 of 27{,}191 Volumetric\_Flood test flows (81.9\%) would trigger a rule, at most 2 of 174{,}421 benign test flows would trigger a wrong rule, and at most 118 of 20{,}976 attack flows predicted as the wrong attack class would. None of the 17{,}909 PortScan flows predicted as BruteForce reaches its floor. On the test split, Volumetric\_Flood is therefore the only class with an enforceable path. The policy is connected to rule generation in dry-run mode (no rule is installed): on the 18{,}264-flow Phase~2b sample, sent through the inference service, 12 rules were admitted, all on correctly classified flows (8 BruteForce, 4 Volumetric\_Flood), none on benign or wrong-class flows, and no correct PortScan prediction reached its floor (\texttt{ML/\allowbreak{}live\_\allowbreak{}rule\_\allowbreak{}check.\allowbreak{}json}).
+    \item \textbf{Calibration and latency.} Measured on the earlier (epoch-31) model only and not repeated for the retrained model. [TO BE MEASURED FOR THE RETRAINED MODEL]
+    \item \textbf{Baseline model (GraphSAGE).} The baseline model reported accuracy 0.9957, weighted F1 0.9957 and ROC-AUC 0.9975 (\texttt{ML/\allowbreak{}GraphSage-model/\allowbreak{}test\_\allowbreak{}results.\allowbreak{}json}). This was a binary task on a different graph construction and a per-file split, so it is not comparable with the v2 figures.
+\end{itemize}
+
+\par\textbf{Results to be added.}
+\begin{itemize}
+    \item comparison with a non-graph baseline (implemented in \texttt{baseline.py} but not executed);
+    \item repeated runs with different seeds;
+    \item results under the attack hold-out and host hold-out protocols on real data;
+    \item retrained ablations;
+    \item end-to-end latency on the live path;
+    \item detection results on real Mininet/OVS traffic.
+\end{itemize}
+[RESULTS TO BE INSERTED AFTER EXPERIMENT EXECUTION]
+
+\begin{figure}[htp]
+\centering
+\templategraphic{width=5in,height=2in}{./pic/result1.png}{5in}{2in}
+\caption{[RESULT FIGURE 1 CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+
+\begin{figure}[htp]
+\centering
+\templategraphic{width=5in,height=2in}{./pic/result2.png}{5in}{2in}
+\caption{[RESULT FIGURE 2 CAPTION]}
+\end{figure}
+% [IMAGE TO BE INSERTED]
+
+\par\textbf{Discussion.} The following observations are drawn from the measured results; interpretations are marked as such.
+\begin{enumerate}
+    \item \textbf{Binary detection versus class identification.} The edge head separates attacks from benign traffic reliably (binary F1 0.9961) but identifies the attack class poorly (five-class macro F1 0.4441). It is stronger than the node head (binary F1 0.4475).
+    \item \textbf{Effect of the timestamp correction.} Before the correction the same model design reached a five-class macro F1 of 0.7042. The decrease to 0.4441 is accounted for by what the correction changed in the splits; the two figures measure different tasks and do not show whether the model itself became better or worse: the test attack windows changed from almost pure attack traffic to traffic mixed with benign flows (see the composition result above), and inside the Monday-to-Wednesday files the correction restored the time order, which the original BruteForce split had violated (its training data contained afternoon flows while its test data contained morning flows). The post-correction figures measure the harder and correct task.
+    \item \textbf{Class confusions.} Volumetric flood flows are all recognised. PortScan and BruteForce are confused with each other in both directions (Table~\ref{tab:ml_confusion}); which of the two appears to fail depends on the composition of the split, so their individual F1-scores should not be read as properties of the model.
+    \item \textbf{Inference-time ablation.}
+    \begin{itemize}
+        \item Zeroing the 16 node features drops the binary edge F1 to 0. The model depends heavily on host-level structural features.
+        \item Zeroing the 20 numeric edge features lowers the test macro F1 ($-0.0265$) but raises the validation macro F1 ($+0.0397$); the effect is split-specific. Before the correction it raised both (test $+0.0956$), so that earlier finding does not survive the correction.
+        \item Before the correction, removing \texttt{log\_total\_bytes} or \texttt{iat\_burstiness} individually improved the test macro F1 ($+0.0723$, $+0.0451$); after it, removing them degrades it ($-0.0158$, $-0.0024$). The largest gain from removing any single feature fell from $+0.0723$ to $+0.0192$. These probes have no variance estimate, so effects of this size cannot be distinguished from run-to-run noise; the conclusion rests on the change of direction and the disappearance of the large effect, not on the individual values.
+        \item Resetting the host memory before every window raises the macro F1 slightly (test $+0.0188$, validation $+0.0444$; before the correction, test $+0.1270$). This is consistent with the untrained GRU memory described in Chapter~5.
+        \item These probes perturb an already-trained model and are not retrained ablations.
+    \end{itemize}
+    \item \textbf{Generalisation.} On an entirely benign unseen day (Monday) the flow-level false-positive rate is $1.2\times10^{-4}$, but on Thursday it rises to 6.74\%. Detection quality outside the training capture conditions is therefore not established.
+\end{enumerate}
+
+% ---- Department boilerplate carried over from the reference template (Sections 6.2-6.4).
+% ---- Replace each "(EXPLAIN AS PER YOUR PROJECT)" with your project's testing details.
+\section{TESTING:}
+ \par Software testing is the process used to help identify the correctness, completeness, security and quality of developed computer software. This includes the process of executing the program or application with the intent of finding errors.
+
+\par During testing, the program to be tested is executed with a set of test cases and the output of the program for the test cases is evaluated to determine if the program is performing as expected.
+
+\par The success of testing in revealing errors in programs depends critically on the test cases.
+
+\par A test case is a software testing document, which consists of event, action, input, output, expected result and actual result. Clinically defined a test case is an input and an expected result. This can be pragmatic as `for condition x your derived result is y'; where as other test cases described in more detail the input scenario and what results might be expected. It can occasionally be a series of steps but one with expected results or expected outcome. A test case should also contain a place for the actual result.
+
+\section {TYPES OF SOFTWARE TESTING:}
+\begin{itemize}
+    \item Black Box Testing: Internal system design is not considered in this type of testing. Tests are based on requirements and functionality.
+\item White box testing: This testing is based on knowledge of the internal logic of an application's code. Also known as glass box testing. Internal software and code working should be known for this type of testing. Tests are based on coverage of code statements, branches, paths and conditions.
+\end{itemize}
+
+
+
+\section{TESTING METHODOLOGY}
+	The different types of testing are as follows:
+\subsection{ Unit Testing:}
+
+Unit testing focuses efforts on the smallest unit of software design this is known as module testing or white box testing, the modules are tested separately. The test is carried out during the programming stage itself. In this step, each module is found to be working satisfactorily as regards to the expected output from the module. The project has three automated unit test suites:
+\begin{itemize}
+    \item \textbf{ML package} (\texttt{ML/graphsentinel\_v2/tests}, pytest): 105 tests collected, covering schema validation, port tokenisation, split protocols, graph topology signatures, the loss functions, memory bounds, the EMA scaler, SDN rule generation, open-set scoring, the reconstruction heads, checkpoint and export I/O, and the inference engine. These tests use synthetic CICIDS2017-shaped data generated by \texttt{tests/make\_synthetic.py}.
+    \item \textbf{Backend} (\texttt{backend/tests}, pytest): 18 test files covering security hardening, input validation, ML-path correctness, blockchain gas, signer, timeout and outbox behaviour, reconciliation resilience, enforcement recovery, observability, schema validation, and the v2 provenance gate and service contract.
+    \item \textbf{Smart contract} (\texttt{blockchain/test}, Hardhat/Mocha): three test files covering incident logging, input validation, events, tamper detection, node release and persistence.
+\end{itemize}
+
+\subsection{Integration Testing}
+
+In integration testing the different units of the system are integrated together to form the complete system. This type of testing checks the system as a whole to ensure that it is doing what it's supposed to do the testing of an integrated system can be carried out top-down, bottom-up or Big-Bang. In this type of testing some parts are tested with white box testing and some with black box testing techniques. This type of testing plays a very important role in increasing systems productivity. Integration is exercised in three places:
+\begin{itemize}
+    \item The ML export tests build, export and reload a model, then stream flows through the inference engine.
+    \item The backend service-contract tests check the backend against the inference service's \texttt{/contract} response.
+    \item The project's runbook (\texttt{RUNNING.md}) records a Docker Compose run on 2026-09-14 in which all four containers started, the inference service reported healthy and served contract version 2.0.0, and the backend refused demo (non-OVS) input on the v2 path as designed.
+\end{itemize}
+
+\subsection{Phase-2 validation stages and failure/recovery testing}
+The repository history records Phase-2 validation as a sequence of named stages. Each is backed by test files in \texttt{backend/tests}:
+\begin{itemize}
+    \item \textbf{Phase K: enforcement-daemon security.} Daemon policy validation, shared-token authentication and IP/CIDR checks, including rejection of command-injection strings and of addresses outside \texttt{10.0.0.0/24}.
+    \item \textbf{Phase N: blockchain validation and hardening} (\texttt{test\_n03} to \texttt{test\_n06}). The tests cover:
+    \begin{itemize}
+        \item the \texttt{onlyDeployer} authorization;
+        \item transaction and receipt correlation (the on-chain incident ID is extracted from the \texttt{IncidentLogged} event);
+        \item chain/database reconciliation of stored transaction hashes;
+        \item gas estimation, signer modes and 5-second timeouts that return a pending transaction;
+        \item bounded retries through the outbox;
+        \item concurrent submissions with distinct nonces (up to ten threads) and outbox claim leases that prevent two workers from submitting the same incident;
+        \item chain-ID validation.
+    \end{itemize}
+    \item \textbf{Phase O: backend API quality} (\texttt{test\_o03\_forensics\_optimization}). The forensics endpoint previously queried the blockchain once per incident (an N+1 pattern). It now returns the persisted blockchain state. \texttt{test\_forensics\_does\_not\_call\_rpc\_per\_incident} verifies that no per-incident RPC call is made.
+    \item \textbf{Phase L: reconciliation resilience and daemon authentication} (\texttt{test\_l12}). The reconciliation worker remains alive through a daemon outage and recovers afterwards. Connection failures, unauthorized responses and socket timeouts become explicit enforcement errors.
+    \item \textbf{Phase M and the R-series: remediation and recovery} (\texttt{test\_r02} to \texttt{test\_r07}). The tests cover:
+    \begin{itemize}
+        \item a crash between incident creation and enforcement, which is retried on the next detection;
+        \item idempotent handling of duplicate detections;
+        \item a daemon timeout, which moves the host to \texttt{pending\_enforcement};
+        \item priority alignment between enforcement and reconciliation rules;
+        \item model reload with missing weights;
+        \item bounded rate-limiter memory;
+        \item audit logging, retention, and schema and broadcast bounding.
+    \end{itemize}
+\end{itemize}
+The failure conditions covered by these automated tests are:
+\begin{itemize}
+    \item enforcement-daemon outage, timeout and unauthorized responses;
+    \item blockchain unavailability, timeout, reverted and missing transactions, and nonce conflicts;
+    \item concurrent SQLite access (\texttt{test\_sqlite\_concurrency\_locking});
+    \item missing model weights;
+    \item divergence between the database and the OVS rule set, repaired by reconciliation.
+\end{itemize}
+Network-connectivity failures, compound failures, dependency flapping and explicit database-integrity checks are not represented by tests in the repository. [RESULTS OF ANY MANUAL FAULT-INJECTION EXERCISES TO BE PROVIDED]
+
+\par\textbf{Regression results.} The full backend suite was run locally on 2026-10-04: 233 passed and 3 skipped (environment-dependent). An earlier run (2026-09-28) had one failure, a threshold test that read the machine's local, untracked configuration instead of the declared default; the test now checks the declared default.
+\begin{itemize}
+    \item \texttt{INTEGRATION.md} records the same outcome for 2026-09-14.
+    \item The project team also recorded earlier results at separate validation stages: 209 passed, 3 skipped and 0 failed at Phase M; 128 passed, 3 skipped and 0 failed at an earlier stage; and 122 passed, 3 skipped and 0 failed at the backend/API validation stage.
+    \item Those earlier results are not stored in the repository and could not be reproduced for this report. They belong to different stages and must not be combined into a single figure. [VALIDATION LOGS FOR THESE RUNS TO BE ATTACHED]
+\end{itemize}
+
+\subsection{System Testing:}
+
+Apart from testing the system to validate the functionality of software against the requirements. It is also necessary to test the non functional aspect of the system, some examples of non functional tools include tests to check the performance data security usability volume load and stress that we have used in a project to test the various module. System testing consists of the following steps:
+\begin{itemize}
+ \item Program(s) testing
+\item String testing
+\item System Testing
+\item System Documentation
+\item User Acceptance test
+\end{itemize}
+The full system with real OVS traffic (Tier 3 in \texttt{RUNNING.md}) requires a Linux host with root access for Mininet. It is recorded in the repository as not yet executed. No load or stress test results are present in the repository. [SYSTEM TEST RESULTS TO BE INSERTED]
+ \subsection{Field Testing:}
+
+The special type of testing may be very important in some projects. Here the system is tested in actual operational surroundings the interfaces with other systems and the real world are checked. The system has not been tested on a physical network; the operational environment used is the Mininet emulation. [FIELD TEST RESULTS, IF ANY, TO BE PROVIDED]
+
+ \subsection{Acceptance Testing:}
+
+After the developer has completed all rounds of testing and he is satisfied with the system, then the user takes over and retest system from his point of view to judge whether it is acceptable according to some previously identified criteria. This is almost always a tricky situation in the project because of the inherent conflict between the developer and the user in this project. It is the job of the developer of the planner to check the system that whether the system fulfills the goals or not. [ACCEPTANCE TEST DETAILS TO BE PROVIDED]
+
+ \section{TESTING CRITERIA}
+The test cases below are existing automated tests in the repository. For the ML package, the results column reflects a local run on 2026-10-04 (165 passed, 0 skipped). For the backend, it reflects a local run on the same date: 233 passed and 3 skipped. The test \texttt{test\_production\_default\_threshold\_is\_conservative\_075} previously failed on this machine because it read the local \texttt{backend/.env} file (threshold 0.40) rather than the declared default (0.75); it now checks the declared default and the tracked configuration templates. The contract tests were not executed in this environment.
+ \subsection{Machine-learning data pipeline}
+\begin{table}[htbp]
+ \caption{Testing criteria for the machine-learning data pipeline}
+    \label{tab:test_cases}
+    \centering
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
+        \hline
+        Test Case & Input & Test Description & Output \\
+        \hline
+        1 & CSV header of the TrafficLabelling export & \texttt{test\_schema\_accepts\_traffic\_labelling}: variant is detected as supporting an IP graph & Accepted (passed) \\
+        \hline
+        2 & CSV header of the MachineLearningCVE export & \texttt{test\_schema\_rejects\_machine\_learning\_cve}: IP-less variant is refused & SchemaError raised (passed) \\
+        \hline
+        3 & Synthetic capture with a port scan & \texttt{test\_portscan\_shows\_high\_port\_entropy}: scanner's destination-port entropy exceeds the 99th percentile of other hosts & Condition holds (passed) \\
+        \hline
+        4 & Synthetic capture with a DDoS & \texttt{test\_ddos\_victim\_shows\_high\_fan\_in}: victim's unique-source count exceeds the 99th percentile & Condition holds (passed) \\
+        \hline
+        5 & Ports 22, 23, 80, 8080 & \texttt{test\_ports\_are\_categorical\_not\_continuous}: ports map to discrete tokens & Tokens assigned (passed) \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+\newpage
+\subsection{Model, training and inference}
+\begin{table}[htbp]
+   \caption{Testing criteria for the model, training and inference}
+    \label{tab:test_insertion}
+    \centering
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
+        \hline
+        Test Case & Input & Test Description & Output \\
+        \hline
+        1 & Easy and hard examples & \texttt{test\_focal\_downweights\_easy\_examples}: focal loss suppresses the easy example relative to the hard one & Passed \\
+        2 & 100{,}000 distinct IPs & \texttt{test\_memory\_is\_bounded\_under\_ip\_churn}: memory tensor size does not grow & Passed \\
+        3 & Exported model and dummy inputs & \texttt{test\_torchscript\_matches\_eager}: TorchScript output equals eager output & Passed \\
+        4 & Streamed synthetic flows & \texttt{test\_engine\_streams\_and\_emits\_rules}: engine closes windows and emits rules & Passed \\
+        5 & Window with fewer than 8 flows & \texttt{test\_small\_window\_reports\_unscored\_not\_clean}: result flagged as unscored & Passed \\
+        6 & Model card with a different class list & \texttt{test\_engine\_refuses\_a\_card\_whose\_class\_list\_does\_not\_match} & Error raised (passed) \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+\subsection{Backend security and validation}
+\begin{table}[htbp]
+\caption{Testing criteria for backend security and validation}
+    \label{tab:test_deletion}
+    \centering
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
+        \hline
+        Test Case & Input & Test Description & Output \\
+        \hline
+        1 & Request without credentials & \texttt{test\_unauthenticated\_request\_rejected\_401} & HTTP 401 (passed) \\
+        \hline
+        2 & Operator attempts a mutation & \texttt{test\_operator\_read\_allowed\_mutation\_forbidden\_403} & HTTP 403 (passed) \\
+        \hline
+        3 & Manual block with a shell-injection string as IP & \texttt{test\_manual\_block\_rejects\_command\_injection} & Request rejected (passed) \\
+        \hline
+        4 & Manual block of an IP outside 10.0.0.0/24 & \texttt{test\_manual\_block\_rejects\_outside\_cidr} & Request rejected (passed) \\
+        \hline
+        5 & Plaintext password & \texttt{test\_pbkdf2\_password\_hashing\_and\_verification} & Hash verifies; wrong password fails (passed) \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+
+\newpage
+\subsection{Blockchain, enforcement and the v2 integration}
+\begin{table}[htbp]
+ \caption{Testing criteria for blockchain, enforcement and the v2 integration}
+    \label{tab:test_duration}
+    \centering
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
+        \hline
+        Test Case & Input & Test Description & Output \\
+        \hline
+        1 & Stored incident with altered data & Contract test ``should detect tampered data via hash mismatch'' (\texttt{IncidentLogger.\allowbreak{}test.\allowbreak{}js}) & \texttt{verifyIncident} returns false (not executed in this environment) \\
+        \hline
+        2 & Severity 0 and 11 & Contract test ``should reject severity 0 and 11'' & Transaction reverts (not executed in this environment) \\
+        \hline
+        3 & Blockchain call exceeding the timeout & \texttt{test\_\allowbreak{}t7\_\allowbreak{}timeout\_\allowbreak{}returns\_\allowbreak{}pending\_\allowbreak{}with\_\allowbreak{}broadcast\_\allowbreak{}tx\_\allowbreak{}hash} & Status pending with transaction hash (passed) \\
+        \hline
+        4 & Daemon unreachable during reconciliation & \texttt{test\_\allowbreak{}t6\_\allowbreak{}worker\_\allowbreak{}liveness\_\allowbreak{}survives\_\allowbreak{}daemon\_\allowbreak{}outage\_\allowbreak{}and\_\allowbreak{}recovers} & Worker keeps running and recovers (passed) \\
+        \hline
+        5 & Poll of demo (non-OVS) flows with v2 enabled & \texttt{test\_\allowbreak{}demo\_\allowbreak{}batch\_\allowbreak{}produces\_\allowbreak{}no\_\allowbreak{}v2\_\allowbreak{}submission\_\allowbreak{}and\_\allowbreak{}is\_\allowbreak{}counted} & Nothing submitted; refusal counted (passed) \\
+        \hline
+    \end{tabularx}
+\end{table}
+
+
+\subsection{Other test cases}
+\begin{table}[htbp]
+ \caption{Testing criteria for other test cases}
+    \label{tab:other_test_cases}
+    \centering
+    \renewcommand{\_}{\textunderscore\allowbreak}\begin{tabularx}{\textwidth}{|c|X|X|X|}
+        \hline
+        Test Case & Input & Test Description & Output \\
+        \hline
+        1 & Model weights unavailable & \texttt{test\_degraded\_mode\_heuristic\_fallback} (backend) & Heuristic scores returned in degraded mode (passed) \\
+        \hline
+        2 & Analyze request above the flow limit & \texttt{test\_analyze\_rejects\_max\_flows} (backend) & Request rejected (passed) \\
+        \hline
+        3 & Production settings with default secrets & \texttt{test\_production\_environment\_rejects\_insecure\_defaults} (backend) & Start-up refused (passed) \\
+        \hline
+        4 & Resume with a changed loss weight & \texttt{test\_resume\_refuses\_when\_the\_objective\_changed} (ML) & Error raised (passed) \\
+        \hline
+        5 & OpenFlow rule generation & \texttt{test\_sdn\_allowlist\_blocks\_enforcement} (ML) & No drop rule for allowlisted host (passed) \\
+        \hline
+        6 & Failing checkpoint destination & \texttt{test\_checkpoint\_save\_survives\_a\_failing\_destination} (ML) & Write lands on the remaining destination (passed) \\
+        \hline
+    \end{tabularx}
+\end{table}
+\section{Comparative Analysis}
+% Include a table comparing the results obtained with existing results, and discuss it.
+\par Table~\ref{tab:model_evolution} compares the baseline GraphSAGE model with the upgraded GATv2 model along the dimensions available in the repository.
+
+\begin{table}[htbp]
+\caption{Baseline GraphSAGE model versus upgraded GATv2 model}
+\label{tab:model_evolution}
+\centering
+\begin{tabularx}{\textwidth}{|l|X|X|}
+\hline
+\textbf{Dimension} & \textbf{GraphSAGE (baseline)} & \textbf{GATv2 (upgraded, GraphSentinel v2)} \\
+\hline
+Graph representation & Flow = node; edges link consecutive flows and flows sharing a destination port & IP address = node; flow = directed edge (with reverse mirror), 60 s windows \\
+\hline
+Input features & 7 node features; port normalised as port/65535 & 16 node features, 20 edge features, learned port (101-token) and protocol embeddings \\
+\hline
+Aggregation & Mean aggregation, 3 SAGEConv layers, 256 hidden units & GATv2 attention (4 heads), 2 residual layers, jumping knowledge (384-d) \\
+\hline
+Output & Binary malicious probability per flow & 5-class probabilities per host and per flow \\
+\hline
+Training data & CICIDS2017 MachineLearningCVE export (no IP addresses) & CICIDS2017 TrafficLabelling export (with IP addresses and timestamps) \\
+\hline
+Split protocol & Per-file 70/15/15 chronological & Episode protocol (within-burst fallback for most families) \\
+\hline
+Loss & Cross-entropy with inverse-frequency class weights (benign 0.7281, malicious 1.5962); Adam optimiser & Focal loss with effective-number class weights, plus auxiliary losses \\
+\hline
+Parameters & 137{,}218 (counted from \texttt{graphsage\_weights.pt}) & 654{,}851 (349{,}386 used at inference) \\
+\hline
+Reported test results & Accuracy 0.9957, weighted F1 0.9957, ROC-AUC 0.9975 & Edge binary F1 0.9961, five-class macro F1 0.4441, accuracy 0.9055; node binary F1 0.4475 \\
+\hline
+Integration status & Drives incident creation and enforcement in the backend & Separate inference service; verdicts reported only \\
+\hline
+\end{tabularx}
+\end{table}
+
+\par The two models differ in task (binary versus five-class), graph construction, dataset export and split protocol. The baseline's higher headline accuracy therefore cannot be taken as evidence that it detects attacks better, and the upgraded model's figures cannot be taken as an improvement over it. A like-for-like comparison is possible within the v2 package, which can train GraphSAGE layers with median or max aggregation (\texttt{--conv sage\_median} or \texttt{sage\_max}) under the same features and split. It has not yet been run. [LIKE-FOR-LIKE GRAPHSAGE VS. GATV2 RESULTS TO BE INSERTED] A like-for-like comparison with a non-graph baseline (Random Forest on the same features and split) is implemented but has not been run. A comparison with published results requires the literature survey.
+Relative to the surveyed works (Table~\ref{tab:comparison}), GraphSentinel is distinguished by scope rather than by measured accuracy. It implements detection, automated host isolation and blockchain forensic logging in one pipeline, whereas each surveyed work covers one or two of these functions. A numerical comparison with those works is not possible from the repository, because their results were obtained on different datasets, tasks and evaluation protocols. [NUMERICAL COMPARISON WITH PUBLISHED RESULTS, IF REQUIRED, TO BE ADDED FROM THE CITED PAPERS]
+\section{Summary}
+\par This chapter reported the verified results of the GraphSentinel v2 model:
+\begin{itemize}
+    \item a 12-hour timestamp defect in the CICIDS2017 files, its correction, and its measured effect on the evaluation splits;
+    \item test edge binary F1 0.9961 and five-class macro F1 0.4441, with PortScan and BruteForce confused with each other and Botnet not detected;
+    \item that the confidence floors of the mitigation policy would suppress almost all wrong-class predictions, leaving Volumetric\_Flood as the only enforceable class;
+    \item a 6.74\% false-positive rate on an unseen day.
+\end{itemize}
+It also described the automated unit and integration tests and recorded which experiments and system-level tests remain to be carried out.
+
+%%%%%%%%%%%% Chapter 7: Conclusions and Future work %%%%%%%%%%%%%%%%%
+
+\chapter{Conclusions and Future work}
+% Assess the success of the work carried out: comparison tables of results obtained and a statement of
+% conclusion. If the expected results were not obtained, identify the reason.
+\begin{justify}
+GraphSentinel implements a complete local defence loop:
+\begin{itemize}
+    \item flow collection from an Open vSwitch switch in a Mininet network;
+    \item graph-based threat scoring;
+    \item automated and manual host isolation through OVS drop rules, with continuous reconciliation;
+    \item incident persistence in SQLite and fingerprinting on a local blockchain through the \texttt{IncidentLogger} contract;
+    \item a role-based real-time dashboard.
+\end{itemize}
+The detection component evolved from the Phase-1 GraphSAGE baseline, which remains the model that drives incident creation and enforcement, to the Phase-2 upgraded model. Phase 2 also hardened and validated the surrounding system:
+\begin{itemize}
+    \item an authenticated and time-bounded enforcement daemon with strict IP and CIDR validation;
+    \item blockchain authorization, receipt correlation, retry, outbox and concurrency safeguards;
+    \item removal of the N+1 blockchain query in the forensics API;
+    \item corrected Alembic migration handling;
+    \item reconciliation that recovers from daemon and blockchain outages.
+\end{itemize}
+The upgraded model is the GraphSentinel v2 package. It builds IP-as-node / flow-as-edge window graphs from CICIDS2017 and trains a two-layer GATv2 model with node and per-flow heads. The model is exported with a versioned contract and served over HTTP.
+
+An audit of the dataset found that its afternoon timestamps use a 12-hour clock without an AM/PM marker; 52.1\% of the training rows had been placed at the wrong time of day. After correcting the timestamps and retraining, the per-flow head achieved a binary F1-score of 0.9961 and a five-class macro F1-score of 0.4441 on the test split in a single run. The earlier figure of 0.7042 came from a test split whose attack windows contained almost no benign traffic, which the correction removed. PortScan and BruteForce are not separated from each other, the Botnet class is not detected, and the false-positive rate on an unseen day with new attack families was 6.74\%. The confidence floors of the mitigation policy would keep almost all wrong-class predictions from producing a rule, leaving Volumetric\_Flood as the only class with an enforceable path; binary detection is unaffected by this.
+
+These results show that the per-flow formulation detects attack traffic reliably in this dataset but does not reliably identify the attack class. They do not establish detection of new attacks, generalisation to other networks, or an advantage over non-graph methods.
+
+The automated test suites of the ML package (165 tests passing) and of the backend (233 passed, 3 skipped) verify the implemented behaviour on synthetic and unit-level inputs. Testing with real OVS traffic has not yet been carried out.
+
+In the current integration, v2 verdicts are reported but not acted on: automated isolation is still driven by the v1 model or its heuristic fallback. Neither the system as a whole nor the v2 model should be regarded as production-ready.
+\end{justify}
+
+% Suggest scope for future work: value addition, a different design, a different test scenario,
+% or implementation on a different platform.
+\begin{justify}
+Future work arising directly from the identified limitations:
+\begin{enumerate}
+    \item Change the split so that it cuts on window boundaries and every split's attack windows keep their co-temporal benign traffic, so that validation and test describe the same task and share no window; then retrain and refit the operating points.
+    \item Make the host memory trainable, for example by adding a loss term that depends on the memory state, or remove it. Then repeat the ablation with retrained models.
+    \item Compare the GraphSAGE baseline and the GATv2 model like-for-like: train the v2 package with GraphSAGE layers (\texttt{sage\_median} or \texttt{sage\_max}) on the same features and split.
+    \item Run the implemented Random Forest baseline and several random seeds to establish whether message passing adds value, and with what variance.
+    \item Report results under the implemented attack hold-out, host hold-out and day hold-out protocols.
+    \item Measure the model on real OVS traffic in the Mininet environment (Tier 3), including end-to-end latency. Reduce the gap between the features available on the live path and those used in training.
+    \item Validate the dry-run rules generated under the mitigation policy against an SDN controller, and extend the never-block list to gateways, DNS and the controller, before any rule is installed; consider a single conservative action gated on the binary decision once a binary operating point has been fitted.
+    \item Evaluate on additional datasets.
+\end{enumerate}
+\end{justify}
+
+
+
+%%%%%%%%%%%%%%%%%%%%%%% References %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+% Not printed in the source PDF (its bibliography was never processed, so citations
+% showed as [paper1] ... [paper10]). Added so the \cite commands resolve. Complete
+% the author/venue details in reference.bib.
+\newpage
+\pagestyle{plain}
+\renewcommand{\bibname}{References}
+\addcontentsline{toc}{chapter}{References}
+\printbibliography
+
+%%%%%%%%%%%%%%%%%%%%%%% Appendices %%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%%
+\appendix
+\chapter{Drill-bit/Turnitin Plagiarism Report}
+This section contains the Drill-bit/Turnitin plagiarism report of the Project Phase-I report. The plagiarism percentage should be maintained within the permissible academic limits prescribed by the institution.
+
+The generated plagiarism report validates the originality of the project documentation and confirms that appropriate references and citations have been provided for all external research materials used in this work.
+
+\chapter{Patent/Publication}
+This section includes the details of patents, research paper publications, conference publications, or journal submissions related to the proposed project work.
+
+If the project is patentable or a patent has been filed, the Patent Non-Disclosure Report and related supporting documents can be attached in this section.
+
+If the project team has published or submitted a research paper in any Scopus indexed, Web of Science indexed, National, or International conference/journal, the publication details can be included below.
+
+\vspace{0.3in}
+\begin{itemize}
+ \item Title of the Paper :
+
+ \item Conference/Journal Details :
+
+ \item Authors Details :
+
+ \item Published/DOI Link :
+\end{itemize}
+\vspace{0.3in}
+
+\noindent If the paper has not yet been published but has been accepted, the acceptance mail or confirmation letter screenshot may also be included in this section as supporting evidence.
+
+\end{document}

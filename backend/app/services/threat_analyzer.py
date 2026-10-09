@@ -2,6 +2,7 @@
 from __future__ import annotations
 
 import json
+import logging
 from datetime import datetime, timezone
 from hashlib import sha256
 from typing import Any
@@ -15,6 +16,8 @@ from app.services.blockchain_adapter import BlockchainAdapter
 from app.services.enforcement_agent import validate_mininet_ip
 from app.services.enforcement_log import capture_network_stability, count_host_edges, log_enforcement_action
 from app.services.self_healing import SelfHealingEngine
+
+_logger = logging.getLogger("graphsentinel.threat_analyzer")
 
 
 def score_to_severity_label(score: float) -> str:
@@ -76,6 +79,9 @@ class ThreatAnalyzer:
         self.threshold = settings.threat_threshold
         self.healer = SelfHealingEngine()
         self.blockchain = BlockchainAdapter.get_instance()
+        # Sources over the threshold that evaluate() did not act on, and why.
+        # Returned by /analyze so a skip is never silent.
+        self.skipped: list[dict[str, Any]] = []
 
     def evaluate(self, prediction: dict[str, Any], flows: list[Any]) -> tuple[list[dict], list[dict]]:
         flow_dicts = [flow.model_dump() if hasattr(flow, "model_dump") else dict(flow) for flow in flows]
@@ -88,7 +94,21 @@ class ThreatAnalyzer:
             if score < self.threshold:
                 continue
 
-            clean_ip = validate_mininet_ip(ip)
+            # One source outside the Mininet range must not abort the batch:
+            # hosts earlier in this loop are already blocked, and the caller
+            # still has a graph update and socket pushes to make.
+            try:
+                clean_ip = validate_mininet_ip(ip)
+            except ValueError as exc:
+                _logger.warning("Skipping source %s (score %.2f): %s", ip, score, exc)
+                self.skipped.append({"source_ip": str(ip), "score": round(score, 4), "reason": "outside_mininet_range"})
+                continue
+            # A host that is already blocked is not a new incident. Without
+            # this, each new minute (the idempotency bucket) produced another
+            # incident, block call and chain transaction for the same host.
+            if self._already_blocked(clean_ip):
+                self.skipped.append({"source_ip": clean_ip, "score": round(score, 4), "reason": "already_blocked"})
+                continue
             related_flows = [flow for flow in flow_dicts if str(flow["src_ip"]) == ip]
             attack_type = infer_attack_type(clean_ip, score, related_flows)
             incident, is_new = self._create_incident(clean_ip, attack_type, score, related_flows)
@@ -102,7 +122,7 @@ class ThreatAnalyzer:
             if not is_new and incident.enforcement_status not in ("not_requested", "pending_enforcement", "failed"):
                 continue
 
-            detection_reason = "HEURISTIC_DEGRADED" if prediction.get("ml_mode") == "degraded" else "GNN_DETECTED"
+            detection_reason = "HEURISTIC_DEGRADED" if prediction.get("mode") == "degraded" else "GNN_DETECTED"
             # Error.md N2/H1 — capture real healing telemetry around the block.
             stability_before = capture_network_stability()
             edges_severed = count_host_edges(clean_ip)
@@ -143,6 +163,14 @@ class ThreatAnalyzer:
 
 
         return alerts, healing_events
+
+    @staticmethod
+    def _already_blocked(ip: str) -> bool:
+        db = SessionLocal()
+        try:
+            return db.query(BlockedIP.id).filter(BlockedIP.ip_address == ip).first() is not None
+        finally:
+            db.close()
 
     def _create_incident(
         self, ip: str, attack_type: str, score: float, flows: list[dict]

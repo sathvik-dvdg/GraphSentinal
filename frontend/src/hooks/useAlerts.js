@@ -2,8 +2,13 @@
 // useAlerts — aggregates threats + healing events into a unified alert feed
 import { useMemo } from 'react'
 import useGraphStore from '../store/useGraphStore'
-import { loadAlertStatuses } from '../utils/alertStatus'
+import { loadAlertStatuses, dropAllAlertStatuses } from '../utils/alertStatus'
 import { parseTimestamp } from '../utils/formatTimestamp'
+import { alertStatusOf } from '../utils/triage'
+
+// Once per page load: optimistic entries from an earlier session are stale
+// (their requests are long settled), so the server's status is shown (FE-24).
+dropAllAlertStatuses()
 
 const ms = (ts) => { const d = parseTimestamp(ts); return d ? d.getTime() : 0 }
 
@@ -18,11 +23,10 @@ function incidentIdOf(rawId) {
 }
 
 function mapThreatToAlert(alert) {
-  // Server-authoritative triage state (Error.md H5). A blocked host with no
-  // explicit triage still reads as "resolved" — the threat was contained.
-  const serverStatus = alert.alert_status && alert.alert_status !== 'open'
-    ? alert.alert_status
-    : (alert.is_blocked ? 'resolved' : 'open')
+  // Server-authoritative triage state (Error.md H5). Audit B17: blocking is an
+  // enforcement state, not a triage state, so a blocked host with no triage is
+  // still open; `isBlocked` below is its own indicator.
+  const serverStatus = alertStatusOf(alert)
   return {
     id: `threat-${alert.id}`,
     incidentId: incidentIdOf(alert.id),
@@ -30,6 +34,7 @@ function mapThreatToAlert(alert) {
     severity: alert.severity === 'critical' ? 'critical' : alert.severity === 'warning' ? 'warning' : 'info',
     source: 'threat_feed',
     status: serverStatus,
+    isBlocked: Boolean(alert.is_blocked),
     nodeIp: alert.source_ip,
     relatedRoute: '/threats',
     assignee: null,

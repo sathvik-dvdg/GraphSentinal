@@ -7,6 +7,7 @@ import { STATUS_COLORS } from './pyramidConfig'
 import NodeInspector from './NodeInspector'
 import { useNodeHierarchy } from '../../hooks/useNodeHierarchy'
 import useGraphStore from '../../store/useGraphStore'
+import { GS } from '../../constants/colors'
 
 const NODE_W = 130
 const NODE_H = 52
@@ -48,7 +49,7 @@ export default function PyramidHierarchy() {
   if (!enrichedHierarchy) {
     return (
       <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: 'rgba(27,31,39,0.55)', fontFamily: "'DM Mono', monospace" }}>Loading hierarchy...</span>
+        <span style={{ color: 'rgba(43,42,40,0.55)', fontFamily: "var(--font-mono)" }}>Loading hierarchy...</span>
       </div>
     )
   }
@@ -77,7 +78,7 @@ export default function PyramidHierarchy() {
                 background: colors.bg,
               }}
             />
-            <span style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'capitalize' }}>
+            <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'capitalize' }}>
               {status}
             </span>
           </div>
@@ -94,7 +95,7 @@ export default function PyramidHierarchy() {
         {/* Defs for attack path arrow marker + dashMove animation */}
         <defs>
           <marker id="arrow-red" markerWidth="8" markerHeight="8" refX="4" refY="4" orient="auto">
-            <path d="M0,0 L0,8 L8,4 Z" fill="#E03C3C" opacity="0.8" />
+            <path d="M0,0 L0,8 L8,4 Z" fill={GS.danger} opacity="0.8" />
           </marker>
           <style>{`
             @keyframes dashMove {
@@ -126,7 +127,7 @@ export default function PyramidHierarchy() {
                    ${link.target.x + NODE_W / 2},${(link.source.y + link.target.y) / 2 + NODE_H / 2}
                    ${link.target.x + NODE_W / 2},${link.target.y}`}
               fill="none"
-              stroke="rgba(17,20,26,0.12)"
+              stroke="rgba(43,42,40,0.12)"
               strokeWidth={1}
             />
           ))}
@@ -148,7 +149,7 @@ export default function PyramidHierarchy() {
                   d={`M${n.x + NODE_W / 2},${n.y}
                       L${next.x + NODE_W / 2},${next.y + NODE_H}`}
                   fill="none"
-                  stroke="#E03C3C"
+                  stroke={GS.danger}
                   strokeWidth={2}
                   strokeOpacity={0.75}
                   markerEnd="url(#arrow-red)"
@@ -196,7 +197,7 @@ export default function PyramidHierarchy() {
                   dominantBaseline="central"
                   fontSize={12}
                   fontWeight={600}
-                  fontFamily="'DM Mono', monospace"
+                  fontFamily="var(--font-mono)"
                   fill={colors.text}
                 >
                   {d.label}
@@ -209,15 +210,15 @@ export default function PyramidHierarchy() {
                   textAnchor="middle"
                   dominantBaseline="central"
                   fontSize={9}
-                  fontFamily="'DM Mono', monospace"
-                  fill="rgba(27,31,39,0.40)"
+                  fontFamily="var(--font-mono)"
+                  fill="rgba(43,42,40,0.40)"
                 >
                   {d.sublabel}
                 </text>
 
                 {/* Level badge — top left */}
-                <rect x={2} y={2} width={24} height={13} rx={4} fill="rgba(79,110,247,0.15)" />
-                <text x={14} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill="#3b56d9" fontWeight={700}>
+                <rect x={2} y={2} width={24} height={13} rx={4} fill="rgba(43,42,40,0.15)" />
+                <text x={14} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="var(--font-mono)" fill={GS.primary} fontWeight={700}>
                   L{d.level}
                 </text>
 
@@ -225,7 +226,7 @@ export default function PyramidHierarchy() {
                 {(d.status === 'isolated' || d.status === 'blocked') && (
                   <>
                     <rect x={NODE_W - 52} y={3} width={48} height={13} rx={4} fill={colors.border} />
-                    <text x={NODE_W - 28} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill="#fff" fontWeight={700}>
+                    <text x={NODE_W - 28} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="var(--font-mono)" fill={GS.surface} fontWeight={700}>
                       {d.status === 'isolated' ? 'ISOLATED' : 'BLOCKED'}
                     </text>
                   </>
@@ -233,8 +234,8 @@ export default function PyramidHierarchy() {
 
                 {d.status === 'attacking' && (
                   <>
-                    <rect x={NODE_W - 62} y={3} width={60} height={13} rx={4} fill="rgba(224,60,60,0.25)" />
-                    <text x={NODE_W - 32} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill="#E03C3C" fontWeight={700}>
+                    <rect x={NODE_W - 62} y={3} width={60} height={13} rx={4} fill="rgba(180,19,46,0.25)" />
+                    <text x={NODE_W - 32} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="var(--font-mono)" fill={GS.danger} fontWeight={700}>
                       ESCALATING
                     </text>
                   </>
@@ -242,7 +243,7 @@ export default function PyramidHierarchy() {
 
                 {/* Infected pulsing dot */}
                 {isInfected && (
-                  <circle cx={NODE_W - 8} cy={8} r={4} fill="#b7791f">
+                  <circle cx={NODE_W - 8} cy={8} r={4} fill={GS.warn}>
                     <animate attributeName="opacity" values="1;0.2;1" dur="1.4s" repeatCount="indefinite" />
                   </circle>
                 )}

@@ -32,33 +32,9 @@ const api = axios.create({
 // exclusively; the API token is no longer shipped to the browser at all
 // (previously VITE_BACKEND_API_TOKEN was embedded in the frontend bundle —
 // "Keep service API keys server-side only" was the explicit required fix).
-let sessionToken = null
-export const setSessionToken = (token) => { sessionToken = token }
-export const clearSessionToken = () => { sessionToken = null }
 
-// Registered by useAuthStore so a 401 from any call (session expired,
-// revoked, or backend restarted and forgot in-memory sessions) immediately
-// reflects in the UI instead of the app silently failing every poll.
-let unauthorizedHandler = null
-export const setUnauthorizedHandler = (fn) => { unauthorizedHandler = fn }
-
-api.interceptors.request.use(async (config) => {
-  console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
-  
-  let token = sessionToken
-  if (window.Clerk?.session) {
-    try {
-      token = await window.Clerk.session.getToken()
-    } catch (e) {
-      console.warn("Failed to get Clerk token", e)
-    }
-  }
-
-  if (token && !config.headers?.Authorization) {
-    config.headers = { ...config.headers, Authorization: `Bearer ${token}` }
-  }
-  return config
-})
+// The Authorization header is Clerk's: App.jsx (AxiosInterceptorSetter) adds the
+// session token to every request. Nothing here stores or restores a token.
 
 api.interceptors.response.use(
   (r) => r.data,
@@ -71,16 +47,11 @@ api.interceptors.response.use(
       throw err
     }
     console.error(`[API] Error: ${err.response?.status} ${err.config?.url}`)
-    if (err.response?.status === 401 && !err.config?.url?.includes('/auth/login')) {
-      unauthorizedHandler?.()
-    }
     throw err
   }
 )
 
-export const login = (username, password) => api.post('/api/v1/auth/login', { username, password })
-export const logout = () => api.post('/api/v1/auth/logout').catch(() => {})
-export const getMe = () => api.get('/api/v1/auth/me')
+
 
 export const getGraph = () => api.get('/api/v1/graph')
 export const getStats = () => api.get('/api/v1/stats')
@@ -109,6 +80,12 @@ export const getForensicsPage = (limit = 500, offset = 0) =>
   api.get('/api/v1/forensics', { params: { limit, offset } })
 
 export const analyzeFlows = (flows) => api.post('/api/v1/analyze', { flows })
+
+// The Simulate button: runs mininet/demo/attacks on the live topology (admin).
+export const getSimulations = () => api.get('/api/v1/simulations')
+export const startSimulation = (attack, control = false) =>
+  api.post('/api/v1/simulations', { attack, control })
+export const stopSimulation = () => api.post('/api/v1/simulations/stop')
 
 export const getSettings = () => api.get('/api/v1/settings')
 export const updateThreatThreshold = (threat_threshold) =>

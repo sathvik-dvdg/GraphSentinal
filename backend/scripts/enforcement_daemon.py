@@ -28,6 +28,26 @@ except ValueError as exc:
 
 ALLOWED_SWITCHES = {"s1", "s2", "s3"}
 
+# Optional. When set, every dump_flows answer is appended to this file exactly
+# as it is returned to the caller, under a timestamp. This is the input the
+# backend's parser saw, byte for byte -- not a second reading of the table taken
+# beside it. Off by default: at one poll every 5 s it grows without bound.
+DUMP_LOG = os.environ.get("DAEMON_DUMP_LOG")
+
+
+def record_dump(switch: str, output: str) -> None:
+    if not DUMP_LOG:
+        return
+    try:
+        from datetime import datetime, timezone
+        stamp = datetime.now(timezone.utc).strftime("%Y-%m-%dT%H:%M:%S.%fZ")
+        with open(DUMP_LOG, "a", encoding="utf-8") as fh:
+            fh.write(f"=== {stamp} dump_flows {switch} (returned to caller)\n{output}")
+            if not output.endswith("\n"):
+                fh.write("\n")
+    except OSError as exc:
+        logging.error("could not record dump to %s: %s", DUMP_LOG, exc)
+
 logging.basicConfig(level=logging.INFO, format="[%(asctime)s] [DAEMON] %(message)s")
 
 
@@ -84,6 +104,7 @@ def handle_request(payload: dict) -> dict:
                 text=True,
                 timeout=3
             )
+            record_dump(switch, result.stdout)
             return {"status": "success", "action": action, "output": result.stdout}
         except subprocess.CalledProcessError as exc:
             logging.error("OVS command failed: %s", exc.stderr)

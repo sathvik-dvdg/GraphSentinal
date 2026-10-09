@@ -4,6 +4,8 @@
 // StatBadge, ThreatFeed's StatRow) collapsed into one, covering the two
 // layouts actually used: a panel with the label above the value ('block'),
 // and a row with the label and value side by side ('row').
+import { GS } from '../../constants/colors'
+
 export default function StatTile({ label, value, color, icon, layout = 'block', panel = true, valueFontSize }) {
   const wrapperStyle = panel ? { padding: layout === 'row' ? '12px 16px' : '14px 16px' } : {}
   const wrapperClass = panel ? 'gs-panel' : undefined
@@ -14,11 +16,11 @@ export default function StatTile({ label, value, color, icon, layout = 'block', 
         className={wrapperClass}
         style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: panel ? 0 : 8, ...wrapperStyle }}
       >
-        <span style={{ color: '#727a86', fontSize: 11, fontFamily: "'DM Mono', monospace" }}>{label}</span>
+        <span style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)" }}>{label}</span>
         <span
           style={{
             color,
-            fontFamily: panel ? "'Plus Jakarta Sans', sans-serif" : "'DM Mono', monospace",
+            fontFamily: panel ? "var(--font-display)" : "var(--font-mono)",
             fontWeight: 700,
             fontSize: valueFontSize ?? (panel ? 22 : 13),
           }}
@@ -37,7 +39,7 @@ export default function StatTile({ label, value, color, icon, layout = 'block', 
         background: `${color}08`, filter: 'blur(20px)', pointerEvents: 'none',
       }} />
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: 8 }}>
-        <div style={{ color: '#727a86', fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+        <div style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)" }}>
           {label}
         </div>
         {icon && (
@@ -50,7 +52,7 @@ export default function StatTile({ label, value, color, icon, layout = 'block', 
           </div>
         )}
       </div>
-      <div style={{ color, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: valueFontSize ?? 24 }}>
+      <div style={{ color, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: valueFontSize ?? 24 }}>
         {value}
       </div>
     </div>

@@ -1,7 +1,7 @@
 # [WSL2]
 from fastapi import APIRouter, Depends
 
-from app.api.v1.deps import require_session_or_api_key
+from app.api.v1.deps import require_write_privilege
 from app.models.schemas import BlockchainStoreRequest, BlockchainStoreResponse
 from app.services.blockchain_adapter import BlockchainAdapter
 
@@ -12,7 +12,7 @@ router = APIRouter()
 @router.post("/blockchain/store", response_model=BlockchainStoreResponse)
 async def store_incident_on_chain(
     request: BlockchainStoreRequest,
-    _: None = Depends(require_session_or_api_key),
+    _: dict = Depends(require_write_privilege),
 ):
     adapter = BlockchainAdapter.get_instance()
     return adapter.store_incident(

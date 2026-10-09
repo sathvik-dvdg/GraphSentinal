@@ -2,7 +2,8 @@
 // App.jsx — routing root with ProtectedRoute wrapping AppShell + all sub-routes
 import { useEffect } from 'react'
 import { BrowserRouter, Routes, Route, Navigate } from 'react-router-dom'
-import { Show } from '@clerk/react'
+import { Show, useAuth } from '@clerk/react'
+import api from './services/api'
 import SimulationProvider from './providers/SimulationProvider'
 import LandingPage from './pages/LandingPage'
 import LoginPage from './pages/LoginPage'
@@ -18,11 +19,41 @@ import SelfHealing from './pages/SelfHealing'
 import AlertCentre from './pages/AlertCentre'
 import AuditLog from './pages/AuditLog'
 import Settings from './pages/Settings'
+import AttackSimulation from './pages/AttackSimulation'
+
+function AxiosInterceptorSetter({ children }) {
+  const { getToken } = useAuth()
+  
+  useEffect(() => {
+    const interceptor = api.interceptors.request.use(async (config) => {
+      console.debug(`[API] ${config.method?.toUpperCase()} ${config.url}`)
+      try {
+        const token = await getToken()
+        if (token && !config.headers.Authorization) {
+          config.headers = { ...config.headers, Authorization: `Bearer ${token}` }
+        }
+      } catch (e) {
+        console.warn("Failed to get Clerk token", e)
+      }
+      return config
+    })
+    
+    return () => {
+      api.interceptors.request.eject(interceptor)
+    }
+  }, [getToken])
+
+  return <>{children}</>
+}
 
 function ProtectedRoute({ children }) {
   return (
     <>
-      <Show when="signed-in">{children}</Show>
+      <Show when="signed-in">
+        <AxiosInterceptorSetter>
+          {children}
+        </AxiosInterceptorSetter>
+      </Show>
       <Show when="signed-out">
         <Navigate to="/login" replace />
       </Show>
@@ -43,7 +74,8 @@ export default function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login/*" element={<LoginPage />} />
+          <Route path="/register/*" element={<LoginPage mode="sign-up" />} />
 
           {/* Protected app shell wraps all dashboard sub-routes */}
           <Route
@@ -70,6 +102,7 @@ export default function App() {
             <Route path="alerts"      element={<AlertCentre />} />
             <Route path="audit"       element={<AuditLog />} />
             <Route path="settings"    element={<Settings />} />
+            <Route path="simulation"  element={<AttackSimulation />} />
           </Route>
 
           {/* Catch-all → landing */}

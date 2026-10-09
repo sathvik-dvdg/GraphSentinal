@@ -5,8 +5,10 @@ import { motion } from 'framer-motion'
 import { X, Shield, ShieldOff } from 'lucide-react'
 import StatusBadge from '../ui/StatusBadge'
 import ThreatBar from '../ui/ThreatBar'
+import { ENFORCE_DENIED_REASON } from '../../utils/triage'
+import { GS } from '../../constants/colors'
 
-export default function NodeDetailPanel({ node, onClose, onBlock }) {
+export default function NodeDetailPanel({ node, onClose, onBlock, canEnforce = true, actionError = null }) {
   if (!node) return null
 
   // ── Original helper — untouched ──
@@ -21,7 +23,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
     <>
       {/* Backdrop — onClick original handler preserved */}
       <div
-        className="fixed inset-0 z-30 bg-black/20 backdrop-blur-[2px]"
+        className="fixed inset-0 z-30 bg-gs-text/20 backdrop-blur-[2px]"
         onClick={onClose}
         aria-hidden="true"
       />
@@ -34,18 +36,18 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
         transition={{ type: 'spring', damping: 26, stiffness: 220 }}
         className="fixed top-0 right-0 w-72 h-full z-40 overflow-auto"
         style={{
-          background: 'rgba(255, 255, 255, 0.5)',
+          background: 'rgba(247,244,238, 0.5)',
           backdropFilter: 'blur(24px) saturate(150%)',
           WebkitBackdropFilter: 'blur(24px) saturate(150%)',
-          borderLeft: '1px solid rgba(255, 255, 255, 0.8)',
-          boxShadow: '-16px 0 48px rgba(15, 23, 42, 0.12)',
+          borderLeft: '1px solid rgba(247,244,238, 0.8)',
+          boxShadow: '-16px 0 48px rgba(43,42,40, 0.12)',
         }}
         role="dialog"
         aria-label={`Node details: ${node.label}`}
         aria-modal="true"
       >
         {/* Top accent line */}
-        <div className="h-px w-full" style={{ background: 'linear-gradient(90deg, transparent, #4F6EF740, transparent)' }} />
+        <div className="h-px w-full" style={{ background: `linear-gradient(90deg, transparent, ${GS.primaryGlow}, transparent)` }} />
 
         <div className="p-5">
           {/* Close button — onClick original handler preserved */}
@@ -60,7 +62,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
 
           {/* Header */}
           <div className="mb-5 pr-8">
-            <p className="text-[9px] text-gs-faint font-mono uppercase tracking-widest mb-1">
+            <p className="text-[11px] text-gs-faint font-sans mb-1">
               Node Details
             </p>
             <h2 className="text-sm font-heading font-semibold text-gs-text mb-2">
@@ -78,24 +80,24 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
             <Field label="Total Bytes"  value={formatBytes(node.bytes_total)} mono />
             {node.attack_type && (
               <div>
-                <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1.5">
+                <span className="text-[11px] text-gs-faint font-sans block mb-1.5">
                   Attack Type
                 </span>
                 <span
                   className="text-[11px] font-mono px-2 py-0.5 rounded-md border"
-                  style={{ color: '#E03C3C', borderColor: '#E03C3C25', background: '#E03C3C08' }}
+                  style={{ color: GS.danger, borderColor: GS.dangerBorderSoft, background: GS.dangerWash }}
                 >
                   {node.attack_type}
                 </span>
               </div>
             )}
             <div>
-              <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1.5">
+              <span className="text-[11px] text-gs-faint font-sans block mb-1.5">
                 Status
               </span>
               <span
                 className="text-[11px] font-mono"
-                style={{ color: node.is_blocked ? '#3b56d9' : '#12a672' }}
+                style={{ color: node.is_blocked ? GS.primary : GS.success }}
               >
                 {node.is_blocked
                   ? '⬡ Isolated — blocked'
@@ -106,12 +108,12 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
                 appeared in a flow are otherwise indistinguishable in the UI */}
             {node.source && (
               <div>
-                <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1.5">
+                <span className="text-[11px] text-gs-faint font-sans block mb-1.5">
                   Data Source
                 </span>
                 <span
                   className="text-[11px] font-mono"
-                  style={{ color: node.source === 'observed' ? '#12a672' : '#727a86' }}
+                  style={{ color: node.source === 'observed' ? GS.success : GS.textSubtle }}
                   title={node.source === 'observed'
                     ? 'This host appeared in real captured traffic'
                     : 'Configured topology baseline — no traffic seen from this host yet'}
@@ -131,7 +133,9 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
               <button
                 id="node-detail-block"
                 onClick={() => onBlock && onBlock(node.id, 'block')}
-                className="tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-threat-soft text-gs-threat border border-gs-threat/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-threat/15 hover:border-gs-threat/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-threat"
+                disabled={!canEnforce}
+                title={canEnforce ? undefined : ENFORCE_DENIED_REASON}
+                className="gs-btn gs-btn-danger w-full"
               >
                 <ShieldOff size={12} aria-hidden="true" />
                 Block Node
@@ -140,11 +144,20 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
               <button
                 id="node-detail-unblock"
                 onClick={() => onBlock && onBlock(node.id, 'unblock')}
-                className="tac-btn w-full flex items-center justify-center gap-2 py-2.5 bg-gs-heal-soft text-gs-heal border border-gs-heal/25 rounded-lg font-mono text-[11px] uppercase tracking-wider hover:bg-gs-heal/15 hover:border-gs-heal/50 transition-all duration-200 focus-visible:ring-2 focus-visible:ring-gs-heal"
+                disabled={!canEnforce}
+                title={canEnforce ? undefined : ENFORCE_DENIED_REASON}
+                className="gs-btn gs-btn-secondary w-full"
               >
                 <Shield size={12} aria-hidden="true" />
                 Unblock Node
               </button>
+            )}
+            {/* Audit B20 — the reason in text, not only a tooltip, and a refusal shown, not logged */}
+            {!canEnforce && (
+              <p role="note" className="font-mono text-[10px] text-gs-muted">{ENFORCE_DENIED_REASON}</p>
+            )}
+            {actionError && (
+              <p role="alert" className="font-mono text-[10px] text-gs-threat">{actionError}</p>
             )}
           </div>
         </div>
@@ -157,7 +170,7 @@ export default function NodeDetailPanel({ node, onClose, onBlock }) {
 function Field({ label, value, mono = false }) {
   return (
     <div>
-      <span className="text-[9px] text-gs-faint font-mono uppercase tracking-widest block mb-1">
+      <span className="text-[11px] text-gs-faint font-sans block mb-1">
         {label}
       </span>
       <span className={`text-[12px] text-gs-text ${mono ? 'font-mono tabular-nums' : 'font-body'}`}>
