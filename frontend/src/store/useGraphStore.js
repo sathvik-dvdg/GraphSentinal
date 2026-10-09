@@ -12,7 +12,10 @@ import { overlayAfterFetch } from '../utils/triage'
 //   'connecting'  — app just started, trying to reach backend
 //   'live'        — WebSocket/REST returning real data from backend
 //   'mock'        — backend unreachable; UI shows an explicit empty/offline state (never fabricated data)
-//   'simulating'  — a real attack burst was sent to POST /api/v1/analyze and results are loading
+//   'offline'     — the backend was answering and has stopped
+//
+// An attack run (the Simulate console) is not a connection mode: it is `simulationRun`,
+// and the dashboard keeps updating live while it runs.
 
 const EMPTY_STATE = {
   // demo_fallback_flows is null until /api/v1/stats says otherwise: the demo
@@ -78,7 +81,7 @@ const useGraphStore = create((set, get) => ({
     set((state) => ({ dataErrors: { ...state.dataErrors, [resource]: error } })),
 
   // ── Connection state machine ───────────────────────────────
-  // 'connecting' | 'live' | 'offline' | 'mock' | 'simulating'
+  // 'connecting' | 'live' | 'offline' | 'mock'
   //   mock    — the backend was never reached: panels are blanked, never faked
   //   offline — it was answering and has stopped (audit B21): the last data
   //             stays on screen, marked stale per panel by dataErrors
@@ -100,8 +103,6 @@ const useGraphStore = create((set, get) => ({
   graphTruncatedDismissed: false,
   dismissGraphTruncated: () => set({ graphTruncatedDismissed: true }),
   setSocketStatus: (socketStatus) => set({ socketStatus }),
-  // The mode a simulation interrupted, restored when it ends.
-  modeBeforeSimulation: null,
 
   // ── UI state ──────────────────────────────────────────────
   use3D: true,
@@ -110,13 +111,10 @@ const useGraphStore = create((set, get) => ({
   isConnected: false,
 
   // ── Derived booleans — backward-compat aliases ─────────────
-  // Components that consumed isMockMode / isSimulating still work
+  // Components that consumed isMockMode still work
   get isMockMode() {
     const mode = get().connectionMode
     return mode === 'mock' || mode === 'connecting'
-  },
-  get isSimulating() {
-    return get().connectionMode === 'simulating'
   },
 
   // ── Connection mode setter ─────────────────────────────────
@@ -125,11 +123,10 @@ const useGraphStore = create((set, get) => ({
   // fabricated numbers. See Error.md #1.
   setConnectionMode: (mode) => {
     const current = get().connectionMode
-    if (mode === 'simulating' && current !== 'simulating') set({ modeBeforeSimulation: current })
     set({ connectionMode: mode })
     // Blank the panels on ENTERING 'mock' only. It used to run on every call,
     // and a mock build calls this on every poll tick, so whatever was on screen
-    // (a simulation's results included) was wiped every 10 s (FE-21).
+    // was wiped every 10 s (FE-21).
     if (mode === 'mock' && current !== 'mock') {
       set(EMPTY_STATE)
     }
@@ -138,18 +135,6 @@ const useGraphStore = create((set, get) => ({
   // Legacy setters — kept for backward compat, mapped to connectionMode
   setMockMode: (isMock) =>
     get().setConnectionMode(isMock ? 'mock' : get().connectionMode === 'mock' ? 'live' : get().connectionMode),
-  
-  setSimulating: (isSimulating) =>
-    isSimulating ? get().setConnectionMode('simulating') : get().endSimulation(),
-
-  // Leave the simulating state for the mode it interrupted. It used to guess
-  // from the socket ('live' if connected, else 'mock'), which blanked every
-  // panel after a simulation run with the socket down and REST answering.
-  endSimulation: () => {
-    if (get().connectionMode !== 'simulating') return
-    const before = get().modeBeforeSimulation
-    set({ connectionMode: before && before !== 'simulating' ? before : 'connecting', modeBeforeSimulation: null })
-  },
 
   // ── Data setters ──────────────────────────────────────────
   setGraphData: (newData) =>

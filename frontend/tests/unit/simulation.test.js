@@ -40,8 +40,9 @@ test('steps follow the run: current phase, then done or failed', () => {
 test('a result says what happened, including the expected silence of a control', () => {
   const hit = { source_ip: '10.0.0.2', exit_code: 0, incident: { id: 7, threat_score: 0.861, is_blocked: true, enforcement_status: 'simulated', attack_type: 'DDoS' } }
   assert.match(describeResult(hit), /Incident #7: 10\.0\.0\.2 scored 0\.86, blocked \(simulated\)\. Label DDoS\*/)
-  assert.match(describeResult({ source_ip: '10.0.0.2', exit_code: 0, control: true, incident: null }), /as expected/)
-  assert.match(describeResult({ source_ip: '10.0.0.3', exit_code: 0, control: false, incident: null }), /did not score/)
+  assert.match(describeResult({ source_ip: '10.0.0.2', exit_code: 0, control: true, incident: null, score: 0.021 }), /as expected.*Latest v1 score 0\.02/)
+  assert.match(describeResult({ source_ip: '10.0.0.3', exit_code: 0, control: false, incident: null, score: 0.7 }), /Latest v1 score 0\.70.*below the threshold/)
+  assert.match(describeResult({ source_ip: '10.0.0.3', exit_code: 0, control: false, incident: null, score: null }), /never appeared in a scored batch/)
   assert.match(describeResult({ exit_code: 2 }), /code 2/)
 })
 

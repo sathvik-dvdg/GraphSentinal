@@ -123,6 +123,12 @@ class GraphState:
         self._persist_snapshots(flow_dicts, prediction)
         return self.graph_response()
 
+    def ip_score(self, ip: str) -> float | None:
+        """v1's score for one source in the last batch, None if it was not in it."""
+        with self._lock:
+            score = (self._prediction.get("ip_scores") or {}).get(ip)
+        return None if score is None else float(score)
+
     def graph_response(self) -> dict:
         with self._lock:
             flows = list(self._flows)

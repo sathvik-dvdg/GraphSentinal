@@ -8,7 +8,11 @@ normally do.
 
 1. Free WSL memory, as root in WSL: `sync; echo 3 > /proc/sys/vm/drop_caches`
 2. Start Open vSwitch if it is not running: `sudo service openvswitch-switch start`
-   (and `sudo systemctl stop openvswitch-testcontroller`: Mininet starts its own)
+   (and `sudo systemctl stop openvswitch-testcontroller`: Mininet starts its own).
+   Mininet needs that controller installed: `sudo apt-get install -y openvswitch-testcontroller`.
+   Without it the topology stops at "Cannot find required executable ovs-controller"
+   and switch `s1` never exists.
+   `./run_dev.ps1 -WithMininet` does steps 2 to 5 for you and checks the controller and `s1`.
 3. Start the long-lived topology and keep its terminal open:
    `sudo python3 mininet/topologies/base_topology_headless.py`
 4. Start the enforcement daemon, as root in WSL, with the backend's token:
@@ -26,6 +30,13 @@ normally do.
   headless topology is up. They try to create the switch `s1` again.
 - Set `ENFORCEMENT_MODE=ovs`. That installs real drop rules instead of
   simulated ones.
+- Run `pingall` in the Mininet CLI. Replaying its flows (one echo for each of the
+  90 host pairs) through v1 scored all ten hosts 0.89 and blocked every one of them
+  as "Botnet": many hosts, many peers, one tiny flow each is what v1 reads as a
+  threat. The same replay suggests a single `h1 ping h7` should stay below the
+  threshold (h1 0.11, h7 0.03, no incident; a finished `ping -c 4` creeps toward 0.6
+  over a minute as its rule ages, still under 0.75). Both are replay results, not
+  observed on a live topology: verify with `h1 ping -c 10 h7` and watch the dashboard.
 
 ## Running the attacks
 
@@ -89,9 +100,17 @@ shape or the full sequence, optionally its negative control (`--mode icmp` /
 - It refuses to start, and says why, unless the backend's last poll of the switch
   succeeded, `ENFORCEMENT_MODE=simulated`, and the scripts are where it expects
   them. One run at a time.
+- It also refuses an attack whose source host is **already blocked** (h2 for the
+  flood, h3 for the scan, h4 for the brute-force shape): v1 skips a blocked host, so
+  a second run would score high and record nothing. Unblock the node first. A
+  negative control is never held up by this.
 - The script's output streams into the page, then it watches for the incident for
-  up to `SIMULATION_SCORE_WAIT_SECONDS` (default 20) and shows what v1 recorded,
-  or that nothing was recorded.
+  up to `SIMULATION_SCORE_WAIT_SECONDS` (default 45; a control looks for 20) and
+  shows what v1 recorded. v1's score for a source keeps rising for a minute after
+  the traffic stops, because OVS counts a rule's duration from when it was
+  installed. If nothing is recorded it says the latest score and whether it was
+  still rising, or that the host never appeared in a scored batch (the switch did
+  not show the traffic).
 - On Windows the scripts send their commands into WSL as root themselves
   (`GS_WSL_DISTRO`). A backend running on Linux/WSL as a normal user runs them with
   `sudo -n`, so it needs a passwordless sudo rule for its Python, or run it as root.

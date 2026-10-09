@@ -29,7 +29,7 @@ export default function DetectionPathBadge({ mlV2 = null, className = '' }) {
       title={title}
       aria-label={title}
     >
-      BLOCKS: v1 MODEL · {v2.label}
+      Model : Gatv2
     </span>
   )
 }

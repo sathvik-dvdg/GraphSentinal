@@ -11,6 +11,9 @@ from app.config import settings
 
 
 _audit_log = logging.getLogger('graphsentinel.enforcement')
+# SelfHealing builds an EnforcementAgent for every analysis, so the simulated-mode
+# warning is said once per process: said every poll (5 s) it buried the log.
+_simulated_warned = False
 _audit_log.setLevel(logging.INFO)
 if not _audit_log.handlers:
     handler = logging.StreamHandler()
@@ -68,7 +71,9 @@ class EnforcementAgent:
         # being applied. A stronger `require_real_enforcement` guard is
         # deferred until a real-network production deployment is an actual
         # goal (there isn't one defined yet).
-        if self.mode != 'ovs':
+        global _simulated_warned
+        if self.mode != 'ovs' and not _simulated_warned:
+            _simulated_warned = True
             _audit_log.warning('Enforcement mode is SIMULATED — no OVS flow rules will be applied.')
 
     def _send_to_daemon(self, payload: dict) -> dict:

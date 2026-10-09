@@ -57,7 +57,7 @@ class _BlockingStream(io.BytesIO):
         return b""
 
 
-def _runner(procs, incident=None):
+def _runner(procs, incident=None, score=None, blocked=()):
     def popen(argv, **kw):
         p = procs.pop(0)(argv) if procs and callable(procs[0]) else FakeProc(argv)
         started.append(p)
@@ -65,7 +65,9 @@ def _runner(procs, incident=None):
 
     started: list = []
     r = sim.SimulationRunner(popen=popen, incident_lookup=lambda ip, since: incident(ip) if incident else None,
-                             sleep=lambda s: time.sleep(0.01))
+                             sleep=lambda s: time.sleep(0.01),
+                             score_lookup=score or (lambda ip: None),
+                             blocked_lookup=lambda ips: {ip for ip in ips if ip in blocked})
     r.started = started
     return r
 
@@ -214,3 +216,65 @@ def test_find_incident_reads_only_switch_traffic_since_the_attack():
         assert sim.find_incident("10.0.0.9", datetime.now(timezone.utc) + timedelta(minutes=1)) is None
     finally:
         db.close()
+
+
+def test_preflight_explains_a_missing_switch():
+    health = {"status": "running", "last_poll_status": "failed", "last_flow_count": 2,
+              "last_error": "RuntimeError: Command failed: ovs-ofctl: s1 is not a bridge or a socket"}
+    poll = next(c for c in sim.preflight(health) if c["key"] == "switch_poll")
+    assert poll["ok"] is False
+    assert "topology is not running" in poll["detail"]
+    assert "-WithMininet" in poll["detail"]
+
+
+def test_a_source_that_is_already_blocked_is_refused_before_any_traffic():
+    """ThreatAnalyzer skips a blocked source, so a second flood from h2 would score
+    high and record nothing -- which the console used to report as "v1 did not
+    score it". Refused up front, naming the host and the fix."""
+    r = _runner([], blocked={"10.0.0.2"})
+    with pytest.raises(sim.SimulationRefused) as exc:
+        r.start("flood", False, "admin", HEALTHY)
+    assert exc.value.code == "source_blocked"
+    assert "10.0.0.2" in exc.value.message and "Unblock" in exc.value.message
+    assert r.started == []
+    with pytest.raises(sim.SimulationRefused):          # one held host holds the sequence
+        r.start("sequence", False, "admin", HEALTHY)
+    r.start("portscan", False, "admin", HEALTHY)         # another host is fine
+    _wait_done(r)
+
+
+def test_a_control_is_not_held_up_by_a_blocked_source():
+    r = _runner([], blocked={"10.0.0.2"})
+    r.start("flood", True, "admin", HEALTHY)
+    assert _wait_done(r).status == "finished"
+
+
+def test_no_incident_reports_the_latest_score_and_whether_it_is_still_rising(monkeypatch):
+    monkeypatch.setattr(settings, "simulation_score_wait_seconds", 0.3)
+    scores = iter([0.30, 0.45, 0.62, 0.70] + [0.70] * 100)
+    r = _runner([], score=lambda ip: next(scores))
+    r.start("flood", False, "admin", HEALTHY)
+    run = _wait_done(r)
+    lines = [e["line"] for e in run.log]
+    assert any(line.startswith("v1 score for 10.0.0.2: 0.30") for line in lines)
+    assert run.results[0]["score"] is not None
+    assert any("Latest v1 score" in line and "threshold" in line for line in lines)
+    assert not any("did not score it over" in line for line in lines)
+
+
+def test_no_incident_and_no_score_says_the_switch_did_not_show_the_traffic():
+    r = _runner([], score=lambda ip: None)
+    r.start("flood", False, "admin", HEALTHY)
+    run = _wait_done(r)
+    assert any("never appeared in a scored batch" in e["line"] for e in run.log)
+
+
+def test_an_attack_waits_longer_than_a_control(monkeypatch):
+    monkeypatch.setattr(settings, "simulation_score_wait_seconds", 45.0)
+    assert sim.wait_seconds(False) == 45.0
+    assert sim.wait_seconds(True) == 20.0
+
+
+def test_api_reports_why_an_attack_is_blocked(client, admin_headers):
+    body = client.get("/api/v1/simulations", headers=admin_headers).json()
+    assert set(body["blockers"]) == {"flood", "portscan", "bruteforce", "sequence"}

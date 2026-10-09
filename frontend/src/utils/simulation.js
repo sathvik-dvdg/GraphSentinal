@@ -58,9 +58,15 @@ export function describeResult(result) {
     return `Incident #${inc.id}: ${result.source_ip} scored ${score}, ${inc.is_blocked ? 'blocked' : 'not blocked'} (${inc.enforcement_status}). Label ${inc.attack_type}*.`
   }
   if (result.exit_code === null) return 'Not finished.'
-  return result.control
-    ? `No incident for ${result.source_ip}, as expected for this control: v1 scores completed TCP conversations.`
-    : `No incident for ${result.source_ip}: v1 did not score it over the threshold in the wait.`
+  const score = typeof result.score === 'number' ? result.score.toFixed(2) : null
+  if (result.control) {
+    return `No incident for ${result.source_ip}, as expected for this control: v1 scores completed TCP conversations.`
+      + (score ? ` Latest v1 score ${score}.` : '')
+  }
+  if (score === null) {
+    return `No incident for ${result.source_ip}, and it never appeared in a scored batch: the switch did not show this traffic.`
+  }
+  return `No incident for ${result.source_ip} in the wait. Latest v1 score ${score}: it is still below the threshold, and may cross a little later.`
 }
 
 /** Seconds left of the scoring wait, or null outside it. `now` in ms. */

@@ -38,9 +38,6 @@ export function useGraphData() {
   // change fired an immediate extra fetch of all nine endpoints.
   const fetchAll = useCallback(async () => {
     const { setConnectionMode, connectionMode } = useGraphStore.getState()
-    // Don't overwrite data during an active simulation. Checked first: in a
-    // mock build the check below used to cut a simulation short (FE-21).
-    if (connectionMode === 'simulating') return
     if (USE_MOCK) {
       if (connectionMode !== 'mock') setConnectionMode('mock')
       return
@@ -50,7 +47,6 @@ export function useGraphData() {
     const results = await Promise.allSettled(entries.map(([, r]) => r.fetch()))
 
     const store = useGraphStore.getState()
-    if (store.connectionMode === 'simulating') return // may have started mid-fetch
 
     // Audit B21 — the mode follows whether the backend answered THIS poll.
     const graphIndex = entries.findIndex(([name]) => name === 'graph')

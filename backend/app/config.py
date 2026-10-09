@@ -64,6 +64,9 @@ class Settings(BaseSettings):
     # every /api/v1 route answered 500.
     clerk_secret_key: str = ""
     max_analyze_flows: int = 5000
+    # The switch monitor's own ceiling (see analysis_pipeline.analyze_flows). Beyond
+    # it the monitor keeps the flows with the most packets and says so.
+    monitor_max_flows: int = 50000
     analyze_rate_limit_per_minute: int = 30
 
     # Operator & Administrative session auth (R-03: M13-F01, M13-F02, M15-F03)
@@ -87,9 +90,11 @@ class Settings(BaseSettings):
     # Empty = the repository's own folder / this interpreter.
     simulation_scripts_dir: str = ""
     simulation_python: str = ""
-    # How long to watch for the incident after an attack: v1's score for a
-    # source rises over the first polls after it (run_demo.py --wait).
-    simulation_score_wait_seconds: float = 20.0
+    # How long to watch for the incident after an attack. v1's score for a source
+    # keeps rising for a minute after the traffic stops: OVS counts a flow's
+    # duration from when its rule was installed, so an idle rule just gets older.
+    # A control run (no incident expected) waits at most 20 s of this.
+    simulation_score_wait_seconds: float = 45.0
 
     flow_snapshot_retention_hours: int = 24
 

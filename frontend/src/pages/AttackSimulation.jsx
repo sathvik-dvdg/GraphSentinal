@@ -24,6 +24,8 @@ export default function AttackSimulation() {
 
   const [attacks, setAttacks] = useState([])
   const [preflight, setPreflight] = useState(null)
+  // Per attack: why a real (non-control) run could not record its incident.
+  const [blockers, setBlockers] = useState({})
   const [loadError, setLoadError] = useState(null)
   const [picked, setPicked] = useState('flood')
   const [control, setControl] = useState(false)
@@ -38,6 +40,7 @@ export default function AttackSimulation() {
       .then((res) => {
         setAttacks(res.attacks || [])
         setPreflight(res.preflight || null)
+        setBlockers(res.blockers || {})
         if (res.current) setSimulationRun(res.current)
         setLoadError(null)
       })
@@ -64,7 +67,8 @@ export default function AttackSimulation() {
   const selected = attacks.find((a) => a.key === picked)
   const controlAvailable = Boolean(selected?.control_flag)
   const useControl = control && controlAvailable
-  const startDisabled = sending || active || Boolean(blocked) || failedChecks.length > 0 || !selected
+  const heldBy = useControl ? [] : (blockers[picked] || [])
+  const startDisabled = sending || active || Boolean(blocked) || failedChecks.length > 0 || heldBy.length > 0 || !selected
 
   const start = async () => {
     setStartError(null)
@@ -199,6 +203,7 @@ export default function AttackSimulation() {
                 {blocked || 'Fix the failed preflight checks above to start a run.'}
               </div>
             )}
+            {heldBy.length > 0 && !active && heldBy.map((msg) => <Notice key={msg} color={GS.warn}>{msg}</Notice>)}
             {startError && <Notice color={GS.danger}>{String(startError)}</Notice>}
           </section>
         </div>

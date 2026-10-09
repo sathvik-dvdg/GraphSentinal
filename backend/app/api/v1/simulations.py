@@ -53,6 +53,8 @@ async def get_simulations(request: Request, _: dict = Depends(require_session_or
     return {
         "attacks": sim.catalog(),
         "preflight": {"ok": all(c["ok"] for c in checks), "checks": checks},
+        # Per attack, why a real (non-control) run could not record its incident.
+        "blockers": {a: sim.blockers(a, False) for a in sim.RUNNABLE},
         "current": run.snapshot() if run else None,
     }
 
