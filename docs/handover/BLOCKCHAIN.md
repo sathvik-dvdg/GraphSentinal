@@ -292,14 +292,14 @@ If you would rather close it in the contract, a `mapping(string => uint256)` fro
 **What done / what remains:** Documented as a warning, not changed. If `GANACHE_URL` in `backend/.env` is not the loopback address on the presentation machine, put it back after deploying.
 
 ### BUG BC-08: Housekeeping in the bridge and the Hardhat project
-**File:** `blockchain/web3_bridge/web3_client.py:54-58`, `:207`, `:273`, `:301-303`, `:328-331`; `backend/app/services/blockchain_adapter.py:192-254`; `blockchain/README.md`; `blockchain/ignition/modules/Lock.js`; `blockchain/package.json:6`
+**File:** `blockchain/web3_bridge/web3_client.py:54-58`, `:207`, `:273`, `:301-303`, `:328-331`; `backend/app/services/blockchain_adapter.py:192-254`; `blockchain/package.json:6`
 **What is wrong:** Smaller things, none of which stops the demo:
 
 - **The signer must be the deployer.** `logIncident` and `releaseNode` are `onlyDeployer`. With no key configured the client uses Ganache's first account, which is also what `deploy.js` deploys from, so it works. But the client takes a key from `BLOCKCHAIN_PRIVATE_KEY`, `DEPLOYER_PRIVATE_KEY` **or a bare `PRIVATE_KEY`** environment variable. If any of those is set to a different account, every write reverts as "Unauthorized" at gas estimation, retries five times, and ends in `permanent_failure`.
 - **The integrity check is never used.** `verifyIncident` exists in the contract and `verify_incident` in the client, and nothing in the backend or the dashboard calls either. `BlockchainAdapter.reconcile_tx`, which classifies a stored hash against the live chain, is not called either. The audit trail is written and displayed; it is not verified anywhere in the running system.
 - `get_all_incidents` wraps its whole event path in `except Exception` and silently falls back to reading by count, which returns records with no transaction hash. A real error on the first path is invisible.
 - A helper, `hex0x`, exists because hash formatting differs between `hexbytes` versions; the two places that format `incident_hash` do not use it and prefix `"0x"` by hand. Correct with the pinned `web3==7.4.0`; fragile if that changes.
-- `blockchain/README.md` is the stock Hardhat sample text, and `ignition/modules/Lock.js` deploys a `Lock` contract that is not in `contracts/`. `npm test` prints "no test specified"; the tests run with `npx hardhat test`.
+- `blockchain/README.md` (stock Hardhat sample text) and `ignition/modules/Lock.js` (it deployed a `Lock` contract that is not in `contracts/`) were removed in the repo cleanup. `npm test` prints "no test specified"; the tests run with `npx hardhat test`.
 
 **How to reproduce:** Read the cited lines.
 **What done / what remains:** Not recorded before. Open, low priority. The first bullet is worth one check before the demo: make sure none of the three key variables is set in the shell that starts the backend.

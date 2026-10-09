@@ -37,7 +37,6 @@ graphsentinel.db-wal
 # Docs and scripts not needed in the image
 *.md
 check_env.py
-test_torch.sh
 # Note: docker-entrypoint.sh IS needed — it is explicitly COPY'd in Dockerfile
 # and must NOT be excluded. Shell scripts not named docker-entrypoint.sh are fine to exclude.
 scripts/

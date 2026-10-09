@@ -43,7 +43,7 @@ Routes are in `src/App.jsx:49-76`. Everything except the first two sits inside
 | Page (file) | Route | What it shows | Own hook / own API calls |
 |---|---|---|---|
 | `LandingPage.jsx` | `/` | Marketing page. Redirects a signed-in user to `/dashboard` (`:108-111`). | None. |
-| `LoginPage.jsx` | `/login` | Login form beside a decorative, hard-coded "terminal". | `POST /api/v1/auth/login` through `useAuthStore.login`. |
+| `LoginPage.jsx` | `/login` | Clerk's `<SignIn>` beside a decorative, hard-coded "terminal". | None: sign-in is Clerk's. |
 | `DashboardPage.jsx` | `/dashboard` | Four stat cards, five recent threats, three recent healing events, a mini timeline. | None; reads the store. |
 | `NetworkTopology.jsx` | `/network` | 3D or 2D graph plus the pyramid hierarchy. Adds a configured controller and switch around the hosts (`utils/topologyScaffold.js`). | None for data. The pyramid's `NodeInspector` calls `POST /api/v1/block`. |
 | `ThreatFeed.jsx` | `/threats` | The alert list with severity, type, IP and time filters. | None; reads `alerts` from the store. |
@@ -86,8 +86,7 @@ resources together with `Promise.allSettled`, at mount and then every 10 s
 | `healing` | `GET /api/v1/healing?limit=50` | `setHealingEvents` |
 
 **Socket.** `useWebSocket` (`src/hooks/useWebSocket.js`) opens one Socket.IO
-connection, authenticated with the session token from `sessionStorage`
-(`:51-56`). Three events arrive, all produced by v1's pipeline
+connection, authenticated with the Clerk session token. Three events arrive, all produced by v1's pipeline
 (`backend/app/websocket/events.py:73`, `:79`, `:85`):
 
 | Event | Handler (`SimulationProvider.jsx`) | Store slices updated |
@@ -194,29 +193,28 @@ reads them. `simulateAttack` (`:240-329`) posts synthetic flows tagged
 `data_source: 'simulation'` to `POST /api/v1/analyze` and then re-fetches seven
 resources.
 
-### `useAuthStore` (`src/store/useAuthStore.js`)
+### Session and role (Clerk)
 
-Stores `isAuthenticated`, `user` (`{ username, role }`), `authStatus`
-(`'checking' | 'authenticated' | 'unauthenticated'`), `loginError` and
-`sessionExpired`. The session token itself is in `sessionStorage` under
-`gs_session_token` and in a module variable in `api.js`, which adds it as a
-`Bearer` header to every request.
+The session is Clerk's. `App.jsx` (`AxiosInterceptorSetter`) adds the Clerk token
+as a `Bearer` header to every request, and `useSessionUser`
+(`src/hooks/useSessionUser.js`) reads the role from `publicMetadata.role`. The
+old `useAuthStore` and its operator login were removed in the repo cleanup:
+nothing used them after the move to Clerk.
 
 Role enforcement is in two places and you need both in mind:
 
-- **The backend decides.** Sessions carry a role: `admin` for the operator
-  login, `readonly` for the read-only login
-  (`backend/app/api/v1/auth.py:30`). Block, unblock, the threshold, model reload
-  and the audit log require `admin`. Triage and `/analyze` refuse `readonly`
-  only (`backend/app/api/v1/deps.py:63-87`).
+- **The backend decides.** The role comes from the Clerk session
+  (`publicMetadata.role`, `backend/app/api/v1/deps.py`). Block, unblock, the
+  threshold, model reload and the audit log require `admin`. Triage and
+  `/analyze` refuse `readonly` only (`deps.py:63-87`).
 - **The frontend shows it.** `canEnforce(role)` is `role === 'admin'`
-  (`src/utils/triage.js:28-30`). `AppShell.jsx:27` and `NodeInspector.jsx:24`
-  read `user.role` and disable Block / Unblock / Isolate with the reason in
-  text; `Settings.jsx:32` does the same for the threshold and Reload Model.
+  (`src/utils/triage.js:28-30`). `AppShell.jsx` and `NodeInspector.jsx` read the
+  role from `useSessionUser()` and disable Block / Unblock / Isolate with the
+  reason in text; `Settings.jsx` does the same for the threshold and Reload Model.
 
-Any 401 on any call logs the user out and sets `sessionExpired`
-(`useAuthStore.js:79-90`). Backend sessions are held in memory, so **restarting
-the backend logs everyone out**. That matters for BUG FE-02.
+A 401 is only logged to the console by the axios response interceptor: there is
+no app-level logout. BUG FE-02 (restarting the backend logs everyone out) was
+about the old in-memory sessions and no longer applies.
 
 ---
 
@@ -303,7 +301,7 @@ simulate gate; `ae34631` did the colour module and removed dead CSS.
 **File:** `src/components/dashboard/NodeDetailPanel.jsx:130-159`; `src/components/pyramid/NodeInspector.jsx:285-295`; `src/pages/Settings.jsx:224-236`, `:462-479`; `src/components/layout/AppShell.jsx:27`, `:147`
 **What is wrong:** The client used to throw the role away, leave the buttons enabled, and log the backend's 403 to the console, so an operator believed a block had happened. Now five controls are disabled for anyone who is not `admin`, each with a line of text saying an admin is required: Block Node, Unblock Node, Isolate / Deisolate Node (pyramid inspector), the threshold Save, and Reload Model. A refused request is shown in the panel.
 **How to reproduce:** Sign in as the read-only user: `readonly` / `readonly-for-demo` unless `backend/.env` sets `READONLY_USERNAME` / `READONLY_PASSWORD` (`backend/app/config.py:68-69`). Click a host on Network Topology and check Block is greyed with the sentence under it. Open the pyramid inspector and check Isolate. Open Settings → Detection Thresholds and check the slider, Save and Reload Model.
-**What done / what remains:** Done in `72601c1`, two unit tests. Not seen. Three gaps the fix did not reach: triage and Mark Resolved are not gated (FE-24); Simulate Attack is not gated by role (FE-24); and the login form still says "No per-user accounts or roles yet" (`src/components/auth/LoginForm.jsx:57`), which is no longer true.
+**What done / what remains:** Done in `72601c1`, two unit tests. Not seen. Three gaps the fix did not reach: triage and Mark Resolved are not gated (FE-24); Simulate Attack is not gated by role (FE-24); and the old login form (the dead `LoginForm.jsx`) said "No per-user accounts or roles yet", which was no longer true; it was removed in the repo cleanup.
 
 ### BUG FE-08: Simulate Attack hidden on three pages and disabled on a live backend
 **File:** `src/utils/connection.js:64-77`; `src/components/layout/Topbar.jsx:61-62`, `:227-256`; `src/pages/Settings.jsx:29`, `:192-205`
