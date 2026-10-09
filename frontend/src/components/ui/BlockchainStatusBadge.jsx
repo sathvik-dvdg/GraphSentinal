@@ -62,21 +62,21 @@ const STATUS_CONFIG = {
   },
   unavailable: {
     label: 'Unavailable',
-    colorClass: 'bg-white/5 text-gs-faint border-white/10',
+    colorClass: 'bg-gs-accent-soft text-gs-faint border-gs-accent/20',
     dotClass: 'bg-gs-faint',
     pulse: false,
     ariaLabel: 'Blockchain status: Ledger unavailable',
   },
   offline: {
     label: 'Offline',
-    colorClass: 'bg-white/5 text-gs-faint border-white/10',
+    colorClass: 'bg-gs-accent-soft text-gs-faint border-gs-accent/20',
     dotClass: 'bg-gs-faint',
     pulse: false,
     ariaLabel: 'Blockchain status: Offline',
   },
   no_tx: {
     label: 'No TX',
-    colorClass: 'bg-white/5 text-gs-faint border-white/10',
+    colorClass: 'bg-gs-accent-soft text-gs-faint border-gs-accent/20',
     dotClass: null,
     pulse: false,
     ariaLabel: 'Blockchain status: No transaction',
@@ -111,7 +111,7 @@ export default function BlockchainStatusBadge({ status, className = '' }) {
     <span
       role="status"
       aria-label={`Blockchain status: ${displayLabel}`}
-      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-white/5 text-gs-faint border-white/10 text-[10px] font-mono font-medium ${className}`}
+      className={`inline-flex items-center gap-1 px-1.5 py-0.5 rounded-md border bg-gs-accent-soft text-gs-faint border-gs-accent/20 text-[10px] font-mono font-medium ${className}`}
     >
       <span className="w-1 h-1 rounded-full bg-gs-faint" aria-hidden="true" />
       {displayLabel}

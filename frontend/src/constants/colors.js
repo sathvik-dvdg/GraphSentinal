@@ -8,51 +8,55 @@
 // single source is a JS module. tailwind.config.js imports it and exposes the
 // same values as `gs-*` utilities, so a class and an inline style cannot drift.
 //
-// Values are exactly the ones the components already used. Two palettes are
-// visible here (`danger` beside `threat`, `textSubtle` beside `textMuted`):
-// merging them changes what the app looks like and is a design decision, not a
-// refactor. It has not been made.
+// The app wears the landing page's palette: a warm bone ground, charcoal ink and
+// one crimson accent (which is also what marks a threat), with muted moss, ochre,
+// slate and plum kept only where a status has to be told apart. Text colours were
+// checked against the bone ground and the surface tint for WCAG contrast
+// (textMuted 6.3:1, textSubtle 4.9:1, danger 5.5:1, warn and success above 4.5:1);
+// textFaint is for placeholders and disabled text only.
+// `danger` and `threat` are the same crimson and `primary` is ink, so the two
+// older palettes this file used to carry are now one.
 
 export const GS = {
   // ── text ──────────────────────────────────────────────────────────────────
-  text: '#1b1f27',
-  textMuted: '#5a616e',
-  textSubtle: '#727a86',
-  textFaint: '#9aa1ad',
-  inkSoft: '#41474f',
+  text: '#2b2a28',
+  textMuted: '#55524d',
+  textSubtle: '#66625b',
+  textFaint: '#7d786f',
+  inkSoft: '#413f3b',
 
   // ── surfaces and lines ────────────────────────────────────────────────────
-  base: '#f4f6f8',
-  surface: '#ffffff',
-  surfaceRaised: '#f0f2f5',
-  surfaceHeader: '#eef1f5',
-  border: '#e2e5ea',
-  borderStrong: '#c7cbd2',
+  base: '#ebe7df',
+  surface: '#f6f3ed',
+  surfaceRaised: '#e3ded4',
+  surfaceHeader: '#ddd8cd',
+  border: '#d3cec3',
+  borderStrong: '#b4aea1',
 
   // ── semantic ──────────────────────────────────────────────────────────────
-  danger: '#e03c3c',            // alerts, malicious, destructive actions
-  dangerDeep: '#a32d2d',
-  dangerOrange: '#c2410c',
-  dangerBorderSoft: '#e03c3c25',
-  dangerWash: '#e03c3c08',
-  threat: '#d92d2d',            // the Tailwind `gs-threat` red
-  warn: '#b7791f',
-  success: '#12a672',
-  successDeep: '#1d9e75',
-  primary: '#3b56d9',
-  primaryDeep: '#2c40a8',
-  primaryGlow: '#4f6ef740',
-  heal: '#5e5ce6',              // isolated / blocked
-  chain: '#7c3aed',             // blockchain
-  chainGlow: '#8b5cf660',
+  danger: '#b4132e',            // alerts, malicious, destructive actions: the landing crimson
+  dangerDeep: '#7f0f20',
+  dangerOrange: '#9a4a14',
+  dangerBorderSoft: '#b4132e25',
+  dangerWash: '#b4132e0a',
+  threat: '#b4132e',            // the Tailwind `gs-threat` red (same crimson as `danger`)
+  warn: '#855808',
+  success: '#346348',
+  successDeep: '#2c5640',
+  primary: '#2b2a28',           // ink: links, active states, the quiet emphasis
+  primaryDeep: '#1a1917',
+  primaryGlow: '#2b2a2830',
+  heal: '#4b5578',              // isolated / blocked
+  chain: '#6b4a82',             // blockchain
+  chainGlow: '#6b4a8260',
 
   // ── node status and attack types, as drawn on the graphs ──────────────────
-  statusMalicious: '#e5484d',
-  statusSuspicious: '#e8922a',
-  attackPortScan: '#c99a0b',
-  attackSshBrute: '#a16207',
-  attackDosHulk: '#db2777',
-  attackDosHulkLight: '#ec4899',
+  statusMalicious: '#b4132e',
+  statusSuspicious: '#c27a1a',
+  attackPortScan: '#7f6409',
+  attackSshBrute: '#9a4a14',
+  attackDosHulk: '#9b2c5a',
+  attackDosHulkLight: '#b8527f',
 
   // Landing page: its own warm palette (pages/LandingPage, components/landing)
   landingBone: '#ebe7df',

@@ -1,27 +1,66 @@
-@import url('https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@500;600;700&family=Inter:wght@400;500;600&family=DM+Mono:wght@400;500&display=swap');
-
 @import "tailwindcss";
 @config "../../tailwind.config.js";
 
+/* The landing page's three faces, for the whole app. They used to be declared in
+   landing.css, while the app loaded Plus Jakarta Sans, Inter and DM Mono from
+   Google Fonts; now there is one set, served from /fonts/landing. */
+@font-face {
+  font-family: 'Newsreader';
+  src: url('/fonts/landing/newsreader-var.woff2') format('woff2');
+  font-weight: 200 800;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'Hanken Grotesk';
+  src: url('/fonts/landing/hanken-grotesk-var.woff2') format('woff2');
+  font-weight: 300 700;
+  font-style: normal;
+  font-display: swap;
+}
+@font-face {
+  font-family: 'JetBrains Mono';
+  src: url('/fonts/landing/jetbrains-mono-var.woff2') format('woff2');
+  font-weight: 400 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+/* The app wears the landing page's palette (constants/colors.js holds the same
+   values for code): bone ground, charcoal ink, one crimson accent. Surfaces are
+   the landing's glass: a bone tint, a hairline, a rim of light and a soft shadow. */
 :root {
-  --color-primary: #3b82f6;
-  --color-success: #10b981;
-  --color-warning: #f59e0b;
-  --color-danger: #ef4444;
-  --color-brand: #6366f1;
+  --font-display: 'Newsreader', 'Iowan Old Style', Georgia, serif;
+  --font-sans: 'Hanken Grotesk', system-ui, -apple-system, 'Segoe UI', sans-serif;
+  --font-mono: 'JetBrains Mono', ui-monospace, 'Cascadia Mono', Consolas, monospace;
 
-  /* Liquid Glass surfaces */
-  --bg-main: #f8fafc;
-  --bg-panel: rgba(255, 255, 255, 0.5);
-  --bg-panel-raised: rgba(255, 255, 255, 0.65);
-  --bg-glass: rgba(255, 255, 255, 0.5);
+  --bone: #ebe7df;
+  --ink: #2b2a28;
+  --crimson: #b4132e;
 
-  --border-subtle: rgba(255, 255, 255, 0.8);
-  --border-panel: rgba(255, 255, 255, 0.9);
+  --color-primary: #2b2a28;
+  --color-success: #346348;
+  --color-warning: #855808;
+  --color-danger: #b4132e;
+  --color-brand: #b4132e;
 
-  --text-primary: #0f172a;
-  --text-secondary: #64748b;
-  --text-muted: #94a3b8;
+  --bg-main: var(--bone);
+  --bg-panel: color-mix(in srgb, #f6f3ed 62%, transparent);
+  --bg-panel-raised: color-mix(in srgb, #f6f3ed 82%, transparent);
+  --bg-glass: color-mix(in srgb, #f6f3ed 62%, transparent);
+
+  --border-subtle: color-mix(in srgb, var(--ink) 10%, transparent);
+  --border-panel: color-mix(in srgb, var(--ink) 14%, transparent);
+  --glass-edge:
+    inset 0 1px 0 color-mix(in srgb, white 70%, transparent),
+    inset 0 -1px 0 color-mix(in srgb, var(--ink) 10%, transparent),
+    inset 0 0 0 1px color-mix(in srgb, var(--ink) 8%, transparent);
+  --glass-shadow: 0 10px 24px -18px color-mix(in srgb, var(--ink) 34%, transparent);
+  --glass-filter: blur(14px) saturate(1.15);
+
+  --text-primary: #2b2a28;
+  --text-secondary: #55524d;
+  --text-muted: #7d786f;
 }
 
 * {
@@ -30,17 +69,25 @@
   padding: 0;
 }
 
+html {
+  background-color: var(--bone);
+}
+
 body {
   background-color: var(--bg-main);
-  background-image:
-    radial-gradient(ellipse 80% 50% at 20% 10%, rgba(56, 189, 248, 0.25) 0%, transparent 60%),
-    radial-gradient(ellipse 60% 40% at 80% 80%, rgba(167, 139, 250, 0.25) 0%, transparent 55%);
-  background-attachment: fixed;
   color: var(--text-primary);
-  font-family: 'Inter', sans-serif;
+  font-family: var(--font-sans);
   overflow-x: hidden;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+}
+
+/* App page titles are the landing's serif, set light like its wordmark. The landing
+   page sets its own (html.ld-active), so this leaves it alone. */
+html:not(.ld-active) h1 {
+  font-family: var(--font-display);
+  font-weight: 500 !important;
+  letter-spacing: -0.012em;
 }
 
 #root {
@@ -143,43 +190,42 @@ body {
 
 ::-webkit-scrollbar { width: 8px; height: 8px; }
 ::-webkit-scrollbar-track { background: transparent; }
-::-webkit-scrollbar-thumb { background: rgba(17,20,26,0.18); border-radius: 99px; }
-::-webkit-scrollbar-thumb:hover { background: rgba(17,20,26,0.30); }
+::-webkit-scrollbar-thumb { background: rgba(43,42,40,0.22); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: rgba(43,42,40,0.36); }
 
-.font-heading { font-family: 'Plus Jakarta Sans', Inter, sans-serif; }
+.font-heading { font-family: var(--font-display); }
 
+/* Glass, as on the landing page */
 .gs-panel {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 0.75rem;
-  box-shadow: 0 12px 40px -10px rgba(15, 23, 42, 0.12);
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+  border-radius: 0.625rem;
+  box-shadow: var(--glass-edge), var(--glass-shadow);
 }
 
 .glass-card {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.8);
-  border-radius: 0.75rem;
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
+  border-radius: 0.625rem;
+  box-shadow: var(--glass-edge);
 }
 
 .gs-panel-raised {
-  background: rgba(255, 255, 255, 0.65);
-  backdrop-filter: blur(30px) saturate(160%);
-  -webkit-backdrop-filter: blur(30px) saturate(160%);
-  border: 1px solid rgba(255, 255, 255, 0.9);
-  border-radius: 0.75rem;
-  box-shadow: 0 20px 50px -15px rgba(15, 23, 42, 0.16);
+  background: var(--bg-panel-raised);
+  backdrop-filter: blur(18px) saturate(1.2);
+  -webkit-backdrop-filter: blur(18px) saturate(1.2);
+  border-radius: 0.625rem;
+  box-shadow: var(--glass-edge), 0 18px 36px -22px color-mix(in srgb, var(--ink) 46%, transparent);
 }
 
 .glass-panel {
-  background: rgba(255, 255, 255, 0.5);
-  backdrop-filter: blur(24px) saturate(150%);
-  -webkit-backdrop-filter: blur(24px) saturate(150%);
-  border: 1px solid rgba(255, 255, 255, 0.8);
+  background: var(--bg-panel);
+  backdrop-filter: var(--glass-filter);
+  -webkit-backdrop-filter: var(--glass-filter);
   border-radius: 0.375rem;
+  box-shadow: var(--glass-edge);
 }
 
 .tac-btn {
@@ -189,47 +235,69 @@ body {
   transition: all 0.15s ease;
 }
 .tac-btn:focus-visible {
-  outline: 2px solid #3b56d9;
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
 }
 
 :focus-visible {
-  outline: 2px solid #3b56d9;
+  outline: 2px solid var(--ink);
   outline-offset: 2px;
   border-radius: 4px;
 }
 
-.alert-card-critical { border-left: 2px solid #d92d2d !important; }
-.alert-card-warning  { border-left: 2px solid #b7791f !important; }
-.alert-card-info     { border-left: 2px solid #3b56d9 !important; }
+.alert-card-critical { border-left: 2px solid #b4132e !important; }
+.alert-card-warning  { border-left: 2px solid #855808 !important; }
+.alert-card-info     { border-left: 2px solid #2b2a28 !important; }
 
 .gs-mesh-bg {
   background-image:
-    linear-gradient(rgba(59,86,217,0.06) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59,86,217,0.06) 1px, transparent 1px);
+    linear-gradient(rgba(43,42,40,0.05) 1px, transparent 1px),
+    linear-gradient(90deg, rgba(43,42,40,0.05) 1px, transparent 1px);
   background-size: 32px 32px;
 }
 
-.badge-live {
-  background: rgba(18,166,114,0.10);
-  border: 1px solid rgba(18,166,114,0.30);
-  color: #12a672;
+/* Status pills: one quiet shape, tone carried by the dot and the text. */
+.gs-pill {
+  display: inline-flex; align-items: center; gap: 6px;
+  padding: 3px 10px 3px 8px; border-radius: 999px;
+  font-family: var(--font-sans); font-size: 12px; font-weight: 500; line-height: 16px;
+  white-space: nowrap; color: var(--pill-fg, #2b2a28);
+  background: color-mix(in srgb, var(--pill-fg, #2b2a28) 8%, transparent);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--pill-fg, #2b2a28) 22%, transparent);
 }
-.badge-sim {
-  background: rgba(183,121,31,0.10);
-  border: 1px solid rgba(183,121,31,0.35);
-  color: #b7791f;
+.gs-pill .gs-pill-dot { width: 6px; height: 6px; border-radius: 999px; background: currentColor; flex-shrink: 0; }
+.badge-live { --pill-fg: #346348; }
+.badge-sim { --pill-fg: #855808; }
+.badge-mock { --pill-fg: #55524d; }
+.badge-connecting { --pill-fg: #2b2a28; }
+
+/* Buttons: the landing page's two shapes, plus a quiet text button. */
+.gs-btn {
+  display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+  height: 32px; padding: 0 14px; border-radius: 999px; border: 0;
+  font-family: var(--font-sans); font-size: 13px; font-weight: 500; letter-spacing: 0;
+  white-space: nowrap; cursor: pointer; text-decoration: none;
+  transition: background-color 160ms, box-shadow 160ms, color 160ms, opacity 160ms;
 }
-.badge-mock {
-  background: rgba(114,122,134,0.12);
-  border: 1px solid rgba(114,122,134,0.28);
-  color: #5a616e;
+.gs-btn:focus-visible { outline: 2px solid var(--crimson); outline-offset: 2px; }
+.gs-btn:disabled { opacity: 0.45; cursor: not-allowed; }
+.gs-btn-sm { height: 28px; padding: 0 11px; font-size: 12px; }
+.gs-btn-primary {
+  background: var(--ink); color: #f6f3ed;
 }
-.badge-connecting {
-  background: rgba(59,86,217,0.08);
-  border: 1px solid rgba(59,86,217,0.22);
-  color: #3b56d9;
+.gs-btn-primary:hover:not(:disabled) { background: #3d3b38; }
+.gs-btn-accent { background: var(--crimson); color: #f6f3ed; }
+.gs-btn-accent:hover:not(:disabled) { background: #9c1027; }
+.gs-btn-secondary {
+  background: transparent; color: var(--ink);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 28%, transparent);
 }
+.gs-btn-secondary:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 6%, transparent); }
+.gs-btn-ghost { background: transparent; color: #55524d; padding: 0 10px; }
+.gs-btn-ghost:hover:not(:disabled) { background: color-mix(in srgb, var(--ink) 7%, transparent); color: var(--ink); }
+.gs-btn-danger { background: transparent; color: #b4132e; box-shadow: inset 0 0 0 1px color-mix(in srgb, #b4132e 40%, transparent); }
+.gs-btn-danger:hover:not(:disabled) { background: color-mix(in srgb, #b4132e 8%, transparent); }
+.gs-btn-active { background: color-mix(in srgb, var(--ink) 9%, transparent); color: var(--ink); box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--ink) 30%, transparent); }
 
 @keyframes pulse-threat {
   0%, 100% { opacity: 1; }
@@ -277,23 +345,23 @@ body {
   font-variant-numeric: tabular-nums;
 }
 
-.gs-table { width: 100%; font-family: 'DM Mono', monospace; }
+.gs-table { width: 100%; font-family: var(--font-mono); }
 .gs-table th {
   padding: 8px 12px;
   text-align: left;
   font-size: 10px;
-  color: #727a86;
+  color: #66625b;
   text-transform: uppercase;
   letter-spacing: 0.1em;
   font-weight: 400;
-  border-bottom: 1px solid #e2e5ea;
+  border-bottom: 1px solid #d3cec3;
 }
 .gs-table td {
   padding: 8px 12px;
   font-size: 11px;
-  border-bottom: 1px solid rgba(226,229,234,0.7);
+  border-bottom: 1px solid rgba(211,206,195,0.7);
 }
-.gs-table tr:hover td { background: rgba(59,86,217,0.04); }
+.gs-table tr:hover td { background: rgba(43,42,40,0.04); }
 
 /* ── Pyramid hierarchy animations ── */
 @keyframes dashMove {
@@ -306,7 +374,7 @@ body {
 }
 
 /* ═══════════════════════════════════════════════════
-   LOGIN PAGE — clean white
+   LOGIN PAGE — the landing page's bone and ink
    ═══════════════════════════════════════════════════ */
 
 .login-page {
@@ -314,28 +382,9 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  background-color: #f4f6f8;
+  background-color: var(--bone);
   position: relative;
   overflow: hidden;
-}
-
-.login-grid-bg {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background-image:
-    linear-gradient(rgba(59,86,217,0.05) 1px, transparent 1px),
-    linear-gradient(90deg, rgba(59,86,217,0.05) 1px, transparent 1px);
-  background-size: 40px 40px;
-  z-index: 0;
-}
-
-.login-radial-glow {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  background: radial-gradient(ellipse at 60% 40%, rgba(59,86,217,0.06) 0%, transparent 60%);
-  z-index: 0;
 }
 
 .login-layout {
@@ -344,96 +393,62 @@ body {
   display: flex;
   align-items: center;
   justify-content: center;
-  gap: 4rem;
+  gap: 5rem;
   padding: 2rem;
   width: 100%;
-  max-width: 56rem;
+  max-width: 64rem;
 }
 
-/* ── Terminal Panel (left side) ── */
-.login-terminal-panel {
+/* ── Intro (left side): the landing page's wordmark and voice ── */
+.login-intro {
   display: none;
-  max-width: 22rem;
+  max-width: 26rem;
   width: 100%;
   flex-shrink: 0;
 }
 
 @media (min-width: 1024px) {
-  .login-terminal-panel {
+  .login-intro {
     display: block;
   }
 }
 
-.terminal-window {
-  background: #ffffff;
-  border: 1px solid #e2e5ea;
-  border-radius: 0.75rem;
-  box-shadow: 0 1px 2px rgba(17,20,26,0.04), 0 12px 32px rgba(17,20,26,0.08);
-  overflow: hidden;
+.login-wordmark {
+  display: block;
+  font-family: var(--font-display);
+  font-weight: 400;
+  font-size: clamp(2.5rem, 5vw, 3.75rem);
+  line-height: 1.05;
+  letter-spacing: -0.02em;
+  color: var(--ink);
+  text-decoration: none;
 }
 
-.terminal-title-bar {
-  display: flex;
-  align-items: center;
-  gap: 0.5rem;
-  padding: 0.625rem 1rem;
-  border-bottom: 1px solid #e2e5ea;
-}
-
-.terminal-dots {
-  display: flex;
-  gap: 0.375rem;
-}
-
-.terminal-dots .dot {
-  width: 0.625rem;
-  height: 0.625rem;
-  border-radius: 50%;
-}
-
-.terminal-dots .dot-red    { background-color: #f0a3a0; }
-.terminal-dots .dot-yellow { background-color: #f0cf9a; }
-.terminal-dots .dot-green  { background-color: #a7a5f0; }
-
-.terminal-title-text {
-  font-size: 10px;
-  color: #a0a6b0;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
-  margin-left: 0.5rem;
-}
-
-.terminal-body {
-  padding: 1.25rem;
-  display: flex;
-  flex-direction: column;
-  gap: 0.25rem;
-}
-
-.terminal-line {
-  font-size: 12px;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
+.login-lede {
+  margin-top: 1.25rem;
+  font-size: 1.0625rem;
   line-height: 1.6;
+  color: var(--text-secondary);
 }
 
-.terminal-heading { color: #1b1f27; font-weight: 600; }
-.terminal-divider { color: #d4d8df; }
-.terminal-ok      { color: #12a672; }
-.terminal-dim     { color: #5a616e; }
-.terminal-warn    { color: #b7791f; }
-.terminal-faint   { color: #a0a6b0; }
-
-.terminal-cursor {
-  color: #5e5ce6;
-  font-size: 14px;
-  font-family: 'DM Mono', monospace;
+.login-points {
+  margin-top: 1.75rem;
+  list-style: none;
+  border-top: 1px solid var(--border-panel);
 }
 
-.terminal-footer {
-  text-align: center;
-  font-size: 10px;
-  color: #a0a6b0;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
+.login-points li {
+  padding: 0.7rem 0;
+  border-bottom: 1px solid var(--border-panel);
+  font-family: var(--font-sans);
+  font-size: 15px;
+  color: var(--ink);
+}
+
+.login-note {
   margin-top: 1rem;
+  font-size: 0.875rem;
+  color: var(--text-muted);
 }
 
 /* ── Login Form Panel (right side) ── */
@@ -468,8 +483,8 @@ body {
   width: 2rem;
   height: 2rem;
   border-radius: 0.5rem;
-  background: rgba(94,92,230,0.10);
-  border: 1px solid rgba(94,92,230,0.25);
+  background: rgba(75,85,120,0.10);
+  border: 1px solid rgba(75,85,120,0.25);
   display: flex;
   align-items: center;
   justify-content: center;
@@ -478,34 +493,34 @@ body {
 .login-brand-icon svg {
   width: 1rem;
   height: 1rem;
-  color: #5e5ce6;
+  color: #4b5578;
 }
 
 .login-brand-name {
-  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-family: var(--font-display);
   font-size: 14px;
   font-weight: 600;
-  color: #1b1f27;
+  color: #2b2a28;
   letter-spacing: 0.02em;
 }
 
 .login-brand-sub {
   font-size: 10px;
-  color: #5a616e;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
+  color: #55524d;
+  font-family: var(--font-mono);
 }
 
 .login-title {
-  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-family: var(--font-display);
   font-size: 1.25rem;
   font-weight: 600;
-  color: #1b1f27;
+  color: #2b2a28;
   margin-bottom: 0.25rem;
 }
 
 .login-subtitle {
   font-size: 14px;
-  color: #5a616e;
+  color: #55524d;
 }
 
 /* Demo notice */
@@ -513,15 +528,15 @@ body {
   margin-bottom: 1.25rem;
   padding: 0.625rem 0.75rem;
   border-radius: 0.5rem;
-  background: rgba(183,121,31,0.08);
-  border: 1px solid rgba(183,121,31,0.20);
+  background: rgba(133,88,8,0.08);
+  border: 1px solid rgba(133,88,8,0.20);
   display: flex;
   align-items: flex-start;
   gap: 0.5rem;
 }
 
 .login-demo-icon {
-  color: #b7791f;
+  color: #855808;
   font-size: 12px;
   margin-top: 0.125rem;
   flex-shrink: 0;
@@ -529,14 +544,14 @@ body {
 
 .login-demo-text {
   font-size: 11px;
-  color: #8a6a2e;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
+  color: #855808;
+  font-family: var(--font-mono);
   line-height: 1.6;
 }
 
 .login-demo-label {
   font-weight: 600;
-  color: #b7791f;
+  color: #855808;
 }
 
 /* Form */
@@ -553,8 +568,8 @@ body {
 
 .login-label {
   font-size: 11px;
-  color: #5a616e;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
+  color: #55524d;
+  font-family: var(--font-mono);
   text-transform: uppercase;
   letter-spacing: 0.08em;
   margin-bottom: 0.375rem;
@@ -562,24 +577,24 @@ body {
 
 .login-input {
   width: 100%;
-  background: #ffffff;
-  border: 1px solid #d4d8df;
+  background: #f6f3ed;
+  border: 1px solid #d3cec3;
   border-radius: 0.5rem;
   padding: 0.625rem 0.75rem;
   font-size: 14px;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
-  color: #1b1f27;
+  font-family: var(--font-mono);
+  color: #2b2a28;
   outline: none;
   transition: border-color 0.2s ease, box-shadow 0.2s ease;
 }
 
 .login-input::placeholder {
-  color: #a0a6b0;
+  color: #7d786f;
 }
 
 .login-input:focus {
-  border-color: rgba(94,92,230,0.6);
-  box-shadow: 0 0 0 3px rgba(94,92,230,0.12);
+  border-color: rgba(75,85,120,0.6);
+  box-shadow: 0 0 0 3px rgba(75,85,120,0.12);
 }
 
 .login-input:disabled {
@@ -590,8 +605,8 @@ body {
 /* Error */
 .login-error {
   font-size: 12px;
-  color: #d92d2d;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
+  color: #b4132e;
+  font-family: var(--font-mono);
   display: flex;
   align-items: center;
   gap: 0.375rem;
@@ -602,20 +617,20 @@ body {
   width: 100%;
   padding: 0.625rem 1rem;
   border-radius: 0.5rem;
-  font-family: 'Plus Jakarta Sans', Inter, sans-serif;
+  font-family: var(--font-display);
   font-weight: 600;
   font-size: 14px;
   border: none;
   cursor: pointer;
   transition: all 0.2s ease;
 
-  background-color: #5e5ce6;
-  color: #ffffff;
+  background-color: #4b5578;
+  color: #f6f3ed;
 }
 
 .login-submit-btn:hover:not(:disabled) {
-  background-color: rgba(94,92,230,0.92);
-  box-shadow: 0 8px 20px rgba(94,92,230,0.25);
+  background-color: rgba(75,85,120,0.92);
+  box-shadow: 0 8px 20px rgba(75,85,120,0.25);
 }
 
 .login-submit-btn:active:not(:disabled) {
@@ -623,7 +638,7 @@ body {
 }
 
 .login-submit-btn:focus-visible {
-  outline: 2px solid #5e5ce6;
+  outline: 2px solid #4b5578;
   outline-offset: 2px;
 }
 
@@ -647,19 +662,21 @@ body {
 /* Back link */
 .login-back-link-wrapper {
   text-align: center;
+  width: 100%;
   margin-top: 1.5rem;
 }
 
 .login-back-link {
-  font-size: 11px;
-  color: #5a616e;
-  font-family: 'DM Mono', 'JetBrains Mono', Courier New, monospace;
+  font-size: 13px;
+  color: #55524d;
+  font-family: var(--font-sans);
   text-decoration: none;
   transition: color 0.2s ease;
 }
+.login-back-sep { margin: 0 10px; color: #7d786f; }
 
 .login-back-link:hover {
-  color: #5e5ce6;
+  color: #4b5578;
 }
 
 /* Error.md U9 — topbar responsive behaviour: hide the centre telemetry on
@@ -668,6 +685,15 @@ body {
 @media (max-width: 1280px) {
   .gs-topbar-telemetry { display: none !important; }
 }
+/* The top bar's figures drop out whole, last first, instead of being clipped. */
+.gs-topbar-telemetry { container: tel / inline-size; }
+.gs-tel { display: flex; align-items: center; flex-shrink: 0; }
+@container tel (max-width: 560px) { .gs-tel-5 { display: none; } }
+@container tel (max-width: 450px) { .gs-tel-4 { display: none; } }
+@container tel (max-width: 340px) { .gs-tel-3 { display: none; } }
+@container tel (max-width: 230px) { .gs-tel-2 { display: none; } }
+@container tel (max-width: 120px) { .gs-tel-1 { display: none; } }
+
 .gs-no-scrollbar { scrollbar-width: none; -ms-overflow-style: none; }
 .gs-no-scrollbar::-webkit-scrollbar { display: none; }
 

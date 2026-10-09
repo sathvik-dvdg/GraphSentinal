@@ -74,7 +74,8 @@ export default function App() {
         <Routes>
           {/* Public routes */}
           <Route path="/" element={<LandingPage />} />
-          <Route path="/login" element={<LoginPage />} />
+          <Route path="/login/*" element={<LoginPage />} />
+          <Route path="/register/*" element={<LoginPage mode="sign-up" />} />
 
           {/* Protected app shell wraps all dashboard sub-routes */}
           <Route

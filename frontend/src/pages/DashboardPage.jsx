@@ -29,7 +29,7 @@ function LastUpdated({ ts }) {
   const label = secs < 60 ? `${secs}s ago` : `${Math.round(secs / 60)}m ago`
   const stale = secs > 15
   return (
-    <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: stale ? GS.warn : GS.success, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+    <span style={{ display: 'flex', alignItems: 'center', gap: 5, color: stale ? GS.warn : GS.success, fontSize: 11, fontFamily: "var(--font-mono)" }}>
       <span style={{ width: 6, height: 6, borderRadius: '50%', background: 'currentColor', animation: stale ? 'none' : 'pulse-threat 2s infinite' }} />
       Updated {label}
     </span>
@@ -50,11 +50,11 @@ export default function DashboardPage() {
     <div style={{ display: 'flex', flexDirection: 'column', gap: 20 }}>
       {/* Page header */}
       <div>
-        <h1 style={{ color: GS.text, fontFamily: "'Plus Jakarta Sans', sans-serif", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
+        <h1 style={{ color: GS.text, fontFamily: "var(--font-display)", fontWeight: 700, fontSize: 22, marginBottom: 4 }}>
           Dashboard
         </h1>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
-          <p style={{ color: GS.textSubtle, fontFamily: "'DM Mono', monospace", fontSize: 12 }}>
+          <p style={{ color: GS.textSubtle, fontFamily: "var(--font-sans)", fontSize: 14 }}>
             Network overview · Real-time threat summary
           </p>
           <LastUpdated ts={lastDataAt} />
@@ -108,7 +108,7 @@ export default function DashboardPage() {
           <div
             style={{
               padding: '14px 16px',
-              borderBottom: '1px solid rgba(17,20,26,0.08)',
+              borderBottom: '1px solid rgba(43,42,40,0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -116,20 +116,20 @@ export default function DashboardPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <ShieldAlert size={14} style={{ color: GS.danger }} />
-              <span style={{ color: GS.danger, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <span style={{ color: GS.danger, fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600 }}>
                 Recent Threats
               </span>
             </div>
             <Link
               to="/threats"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)", textDecoration: 'none' }}
             >
               View all <ChevronRight size={12} />
             </Link>
           </div>
           <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentThreats.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-mono)" }}>
                 No threats detected. Network secure.
               </div>
             ) : (
@@ -146,24 +146,24 @@ export default function DashboardPage() {
                     padding: '8px 10px',
                     borderRadius: 8,
                     background: GS.surfaceRaised,
-                    border: `1px solid ${alert.severity === 'critical' ? 'rgba(224,60,60,0.2)' : 'rgba(232,146,42,0.15)'}`,
+                    border: `1px solid ${alert.severity === 'critical' ? 'rgba(180,19,46,0.2)' : 'rgba(133,88,8,0.15)'}`,
                     borderLeft: `2px solid ${alert.severity === 'critical' ? GS.danger : GS.warn}`,
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: alert.severity === 'critical' ? GS.danger : GS.warn, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "var(--font-sans)", color: alert.severity === 'critical' ? GS.danger : GS.warn }}>
                         {alert.severity}
                       </span>
-                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textMuted }}>
+                      <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: GS.textMuted }}>
                         {alert.attack_type}
                       </span>
                     </div>
-                    <div style={{ color: GS.text, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: GS.text, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                       {alert.source_ip}
                     </div>
                   </div>
-                  <div style={{ color: GS.textFaint, fontSize: 10, fontFamily: "'DM Mono', monospace", whiteSpace: 'nowrap' }}>
+                  <div style={{ color: GS.textFaint, fontSize: 10, fontFamily: "var(--font-mono)", whiteSpace: 'nowrap' }}>
                     {formatEventTimestamp(alert.timestamp)}
                   </div>
                   {/* Threat score */}
@@ -173,7 +173,7 @@ export default function DashboardPage() {
                       textAlign: 'right',
                       color: (alert.threat_score ?? 0) >= 0.75 ? GS.danger : GS.warn,
                       fontSize: 11,
-                      fontFamily: "'DM Mono', monospace",
+                      fontFamily: "var(--font-mono)",
                       fontWeight: 700,
                     }}
                   >
@@ -192,7 +192,7 @@ export default function DashboardPage() {
           <div
             style={{
               padding: '14px 16px',
-              borderBottom: '1px solid rgba(17,20,26,0.08)',
+              borderBottom: '1px solid rgba(43,42,40,0.08)',
               display: 'flex',
               alignItems: 'center',
               justifyContent: 'space-between',
@@ -200,20 +200,20 @@ export default function DashboardPage() {
           >
             <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
               <Cpu size={14} style={{ color: GS.success }} />
-              <span style={{ color: GS.success, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+              <span style={{ color: GS.success, fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600 }}>
                 Self-Healing Activity
               </span>
             </div>
             <Link
               to="/healing"
-              style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+              style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)", textDecoration: 'none' }}
             >
               View all <ChevronRight size={12} />
             </Link>
           </div>
           <div style={{ padding: '8px 12px', display: 'flex', flexDirection: 'column', gap: 6 }}>
             {recentHealing.length === 0 ? (
-              <div style={{ padding: '24px 0', textAlign: 'center', color: GS.textFaint, fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ padding: '24px 0', textAlign: 'center', color: GS.textFaint, fontSize: 12, fontFamily: "var(--font-mono)" }}>
                 No healing events. System stable.
               </div>
             ) : (
@@ -230,30 +230,30 @@ export default function DashboardPage() {
                     padding: '8px 10px',
                     borderRadius: 8,
                     background: GS.surfaceRaised,
-                    border: '1px solid rgba(46,204,138,0.15)',
-                    borderLeft: '2px solid rgba(46,204,138,0.5)',
+                    border: '1px solid rgba(52,99,72,0.15)',
+                    borderLeft: '2px solid rgba(52,99,72,0.5)',
                   }}
                 >
                   <div style={{ flex: 1, minWidth: 0 }}>
                     <div style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 2 }}>
-                      <span style={{ fontSize: 9, fontWeight: 700, fontFamily: "'DM Mono', monospace", color: GS.success, textTransform: 'uppercase', letterSpacing: '0.08em' }}>
+                      <span style={{ fontSize: 12, fontWeight: 700, fontFamily: "var(--font-sans)", color: GS.success }}>
                         {ev.action}
                       </span>
-                      <span style={{ fontSize: 10, fontFamily: "'DM Mono', monospace", color: GS.textSubtle }}>
+                      <span style={{ fontSize: 10, fontFamily: "var(--font-mono)", color: GS.textSubtle }}>
                         {ev.edges_severed || 0} edges cut
                       </span>
                     </div>
-                    <div style={{ color: GS.text, fontSize: 12, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: GS.text, fontSize: 12, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                       {ev.ip}
                     </div>
                   </div>
                   <div style={{ textAlign: 'right' }}>
-                    <div style={{ color: GS.success, fontSize: 11, fontFamily: "'DM Mono', monospace", fontWeight: 600 }}>
+                    <div style={{ color: GS.success, fontSize: 11, fontFamily: "var(--font-mono)", fontWeight: 600 }}>
                       {ev.network_stability_before != null && ev.network_stability_after != null
                         ? `${ev.network_stability_before}%→${ev.network_stability_after}%`
                         : (ev.network_stability_after != null ? `${ev.network_stability_after}%` : '—')}
                     </div>
-                    <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }}>
+                    <div style={{ color: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)" }}>
                       {ev.duration_ms != null ? `${ev.duration_ms}ms` : (ev.responseTimeMs != null ? `${ev.responseTimeMs}ms` : '—')}
                     </div>
                   </div>
@@ -269,7 +269,7 @@ export default function DashboardPage() {
         <div
           style={{
             padding: '12px 16px',
-            borderBottom: '1px solid rgba(17,20,26,0.08)',
+            borderBottom: '1px solid rgba(43,42,40,0.08)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'space-between',
@@ -277,13 +277,13 @@ export default function DashboardPage() {
         >
           <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
             <TrendingUp size={14} style={{ color: GS.primary }} />
-            <span style={{ color: GS.primary, fontFamily: "'DM Mono', monospace", fontSize: 11, fontWeight: 600, letterSpacing: '0.1em', textTransform: 'uppercase' }}>
+            <span style={{ color: GS.primary, fontFamily: "var(--font-sans)", fontSize: 11, fontWeight: 600 }}>
               Threat Timeline
             </span>
           </div>
           <Link
             to="/timeline"
-            style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "'DM Mono', monospace", textDecoration: 'none' }}
+            style={{ display: 'flex', alignItems: 'center', gap: 4, color: GS.primary, fontSize: 11, fontFamily: "var(--font-mono)", textDecoration: 'none' }}
           >
             View full timeline <ChevronRight size={12} />
           </Link>
@@ -301,12 +301,12 @@ export default function DashboardPage() {
                   <stop offset="95%" stopColor={GS.success} stopOpacity={0} />
                 </linearGradient>
               </defs>
-              <CartesianGrid strokeDasharray="3 3" stroke="rgba(226,229,234,0.9)" vertical={false} />
-              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
-              <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "'DM Mono', monospace" }} axisLine={false} tickLine={false} />
+              <CartesianGrid strokeDasharray="3 3" stroke="rgba(211,206,195,0.9)" vertical={false} />
+              <XAxis dataKey="time" tickFormatter={formatTimelineTick} tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false} />
+              <YAxis tick={{ fill: GS.textFaint, fontSize: 9, fontFamily: "var(--font-mono)" }} axisLine={false} tickLine={false} />
               <Tooltip
                 labelFormatter={formatTimelineTick}
-                contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "'DM Mono', monospace", fontSize: 10, color: GS.text }}
+                contentStyle={{ background: GS.surfaceRaised, border: `1px solid ${GS.border}`, borderRadius: 8, fontFamily: "var(--font-mono)", fontSize: 10, color: GS.text }}
                 itemStyle={{ color: GS.textMuted }}
               />
               <Area type="monotone" dataKey="threats" stroke={GS.danger} fill="url(#dash-threats-grad)" strokeWidth={1.5} dot={false} name="Threats" />
@@ -343,7 +343,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
         }}
       />
       <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', marginBottom: 12 }}>
-        <span style={{ color: GS.textSubtle, fontSize: 11, fontFamily: "'DM Mono', monospace", letterSpacing: '0.08em', textTransform: 'uppercase' }}>
+        <span style={{ color: GS.textSubtle, fontSize: 12, fontFamily: "var(--font-sans)" }}>
           {title}
         </span>
         <div
@@ -364,7 +364,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
       <div
         style={{
           color: accent,
-          fontFamily: "'Plus Jakarta Sans', sans-serif",
+          fontFamily: "var(--font-display)",
           fontWeight: 700,
           fontSize: 28,
           lineHeight: 1,
@@ -374,7 +374,7 @@ function StatCard({ title, value, sub, icon, accent, pulse = false, delay = 0 })
       >
         {value}
       </div>
-      <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "'DM Mono', monospace" }}>
+      <div style={{ color: GS.textFaint, fontSize: 11, fontFamily: "var(--font-mono)" }}>
         {sub}
       </div>
     </motion.div>

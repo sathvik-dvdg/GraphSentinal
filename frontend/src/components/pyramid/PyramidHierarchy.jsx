@@ -49,7 +49,7 @@ export default function PyramidHierarchy() {
   if (!enrichedHierarchy) {
     return (
       <div style={{ display: 'flex', width: '100%', height: '100%', alignItems: 'center', justifyContent: 'center' }}>
-        <span style={{ color: 'rgba(27,31,39,0.55)', fontFamily: "'DM Mono', monospace" }}>Loading hierarchy...</span>
+        <span style={{ color: 'rgba(43,42,40,0.55)', fontFamily: "var(--font-mono)" }}>Loading hierarchy...</span>
       </div>
     )
   }
@@ -78,7 +78,7 @@ export default function PyramidHierarchy() {
                 background: colors.bg,
               }}
             />
-            <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "'DM Mono', monospace", textTransform: 'capitalize' }}>
+            <span style={{ color: GS.textSubtle, fontSize: 10, fontFamily: "var(--font-mono)", textTransform: 'capitalize' }}>
               {status}
             </span>
           </div>
@@ -127,7 +127,7 @@ export default function PyramidHierarchy() {
                    ${link.target.x + NODE_W / 2},${(link.source.y + link.target.y) / 2 + NODE_H / 2}
                    ${link.target.x + NODE_W / 2},${link.target.y}`}
               fill="none"
-              stroke="rgba(17,20,26,0.12)"
+              stroke="rgba(43,42,40,0.12)"
               strokeWidth={1}
             />
           ))}
@@ -197,7 +197,7 @@ export default function PyramidHierarchy() {
                   dominantBaseline="central"
                   fontSize={12}
                   fontWeight={600}
-                  fontFamily="'DM Mono', monospace"
+                  fontFamily="var(--font-mono)"
                   fill={colors.text}
                 >
                   {d.label}
@@ -210,15 +210,15 @@ export default function PyramidHierarchy() {
                   textAnchor="middle"
                   dominantBaseline="central"
                   fontSize={9}
-                  fontFamily="'DM Mono', monospace"
-                  fill="rgba(27,31,39,0.40)"
+                  fontFamily="var(--font-mono)"
+                  fill="rgba(43,42,40,0.40)"
                 >
                   {d.sublabel}
                 </text>
 
                 {/* Level badge — top left */}
-                <rect x={2} y={2} width={24} height={13} rx={4} fill="rgba(79,110,247,0.15)" />
-                <text x={14} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill={GS.primary} fontWeight={700}>
+                <rect x={2} y={2} width={24} height={13} rx={4} fill="rgba(43,42,40,0.15)" />
+                <text x={14} y={8.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="var(--font-mono)" fill={GS.primary} fontWeight={700}>
                   L{d.level}
                 </text>
 
@@ -226,7 +226,7 @@ export default function PyramidHierarchy() {
                 {(d.status === 'isolated' || d.status === 'blocked') && (
                   <>
                     <rect x={NODE_W - 52} y={3} width={48} height={13} rx={4} fill={colors.border} />
-                    <text x={NODE_W - 28} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill={GS.surface} fontWeight={700}>
+                    <text x={NODE_W - 28} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="var(--font-mono)" fill={GS.surface} fontWeight={700}>
                       {d.status === 'isolated' ? 'ISOLATED' : 'BLOCKED'}
                     </text>
                   </>
@@ -234,8 +234,8 @@ export default function PyramidHierarchy() {
 
                 {d.status === 'attacking' && (
                   <>
-                    <rect x={NODE_W - 62} y={3} width={60} height={13} rx={4} fill="rgba(224,60,60,0.25)" />
-                    <text x={NODE_W - 32} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="'DM Mono', monospace" fill={GS.danger} fontWeight={700}>
+                    <rect x={NODE_W - 62} y={3} width={60} height={13} rx={4} fill="rgba(180,19,46,0.25)" />
+                    <text x={NODE_W - 32} y={9.5} textAnchor="middle" dominantBaseline="central" fontSize={8} fontFamily="var(--font-mono)" fill={GS.danger} fontWeight={700}>
                       ESCALATING
                     </text>
                   </>

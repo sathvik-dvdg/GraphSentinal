@@ -35,7 +35,7 @@ export function GraphTruncatedBanner({ onDismiss }) {
         type="button"
         onClick={onDismiss}
         aria-label="Dismiss"
-        className="rounded border border-gs-warn/30 px-2 py-0.5 text-[10px] uppercase tracking-wider"
+        className="rounded border border-gs-warn/30 px-2 py-0.5 text-xs"
       >
         Dismiss
       </button>

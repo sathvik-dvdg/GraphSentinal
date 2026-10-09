@@ -39,11 +39,11 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
     <aside
       style={{
         height: '100%',
-        background: 'rgba(255, 255, 255, 0.5)',
-        backdropFilter: 'blur(24px) saturate(150%)',
-        WebkitBackdropFilter: 'blur(24px) saturate(150%)',
-        borderRight: '1px solid rgba(255, 255, 255, 0.8)',
-        boxShadow: '4px 0 24px rgba(15, 23, 42, 0.08)',
+        background: 'var(--bg-panel)',
+        backdropFilter: 'var(--glass-filter)',
+        WebkitBackdropFilter: 'var(--glass-filter)',
+        borderRight: '1px solid var(--border-panel)',
+        boxShadow: '10px 0 24px -18px color-mix(in srgb, var(--ink) 34%, transparent)',
         display: 'flex',
         flexDirection: 'column',
         overflow: 'hidden',
@@ -60,7 +60,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
           alignItems: 'center',
           padding: '0 16px',
           gap: 10,
-          borderBottom: '1px solid rgba(17,20,26,0.08)',
+          borderBottom: '1px solid rgba(43,42,40,0.08)',
           flexShrink: 0,
         }}
       >
@@ -70,8 +70,8 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             width: 28,
             height: 28,
             borderRadius: 8,
-            background: 'rgba(79,110,247,0.12)',
-            border: '1px solid rgba(79,110,247,0.25)',
+            background: 'rgba(43,42,40,0.12)',
+            border: '1px solid rgba(43,42,40,0.25)',
             display: 'flex',
             alignItems: 'center',
             justifyContent: 'center',
@@ -87,11 +87,11 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
           <span
             style={{
               color: GS.text,
-              fontFamily: "'Plus Jakarta Sans', Inter, sans-serif",
-              fontWeight: 600,
-              fontSize: 13,
+              fontFamily: "var(--font-display)",
+              fontWeight: 500,
+              fontSize: 18,
               whiteSpace: 'nowrap',
-              letterSpacing: '0.02em',
+              letterSpacing: '-0.01em',
               flex: 1,
             }}
           >
@@ -105,9 +105,9 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
           title={pinned ? 'Unpin sidebar' : 'Pin sidebar'}
           style={{
             marginLeft: expanded ? 0 : 'auto',
-            background: pinned ? 'rgba(79,110,247,0.12)' : 'none',
+            background: pinned ? 'rgba(43,42,40,0.12)' : 'none',
             border: 'none',
-            color: pinned ? GS.primary : 'rgba(27,31,39,0.32)',
+            color: pinned ? GS.primary : 'rgba(43,42,40,0.32)',
             cursor: 'pointer',
             padding: 4,
             borderRadius: 6,
@@ -121,7 +121,7 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
 
       {/* Main nav */}
       <nav style={{ flex: 1, paddingTop: 6, overflowY: 'auto', overflowX: 'hidden' }}>
-        {NAV_ITEMS.map(({ path, Icon, label, color }) => (
+        {NAV_ITEMS.map(({ path, Icon, label }) => (
           <NavLink
             key={path}
             to={path}
@@ -132,59 +132,67 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
               gap: 12,
               padding: '9px 16px',
               textDecoration: 'none',
-              borderLeft: isActive ? `3px solid ${color}` : '3px solid transparent',
-              background: isActive ? 'rgba(17,20,26,0.08)' : 'transparent',
+              // The landing page has one accent. The active page gets a crimson
+              // marker; the icons stay ink instead of one colour per page.
+              borderLeft: isActive ? `3px solid ${GS.danger}` : '3px solid transparent',
+              background: isActive ? 'color-mix(in srgb, var(--ink) 7%, transparent)' : 'transparent',
               transition: 'background 150ms, border-color 150ms',
               position: 'relative',
               overflow: 'hidden',
             })}
           >
-            <Icon
-              size={18}
-              style={{ color, flexShrink: 0, minWidth: 18 }}
-            />
+            {({ isActive }) => (
+              <>
+                <Icon
+                  size={18}
+                  strokeWidth={isActive ? 2.2 : 1.8}
+                  style={{ color: isActive ? GS.text : GS.textMuted, flexShrink: 0, minWidth: 18 }}
+                />
 
-            {expanded && (
-              <span
-                style={{
-                  color: 'rgba(27,31,39,0.80)',
-                  fontSize: 12,
-                  fontFamily: "'DM Mono', monospace",
-                  whiteSpace: 'nowrap',
-                  opacity: expanded ? 1 : 0,
-                  transition: 'opacity 150ms 60ms',
-                  flex: 1,
-                }}
-              >
-                {label}
-              </span>
-            )}
+                {expanded && (
+                  <span
+                    style={{
+                      color: isActive ? GS.text : GS.textMuted,
+                      fontSize: 13,
+                      fontWeight: isActive ? 600 : 500,
+                      fontFamily: "var(--font-sans)",
+                      whiteSpace: 'nowrap',
+                      opacity: expanded ? 1 : 0,
+                      transition: 'opacity 150ms 60ms',
+                      flex: 1,
+                    }}
+                  >
+                    {label}
+                  </span>
+                )}
 
-            {/* Unread badge — alerts only */}
-            {path === '/alerts' && unread > 0 && (
-              <span
-                style={{
-                  marginLeft: 'auto',
-                  background: GS.warn,
-                  color: GS.surface,
-                  borderRadius: 999,
-                  fontSize: 9,
-                  fontWeight: 700,
-                  padding: '1px 5px',
-                  minWidth: 16,
-                  textAlign: 'center',
-                  fontFamily: "'DM Mono', monospace",
-                }}
-              >
-                {unread > 99 ? '99+' : unread}
-              </span>
+                {/* Unread badge — alerts only */}
+                {path === '/alerts' && unread > 0 && (
+                  <span
+                    style={{
+                      marginLeft: 'auto',
+                      background: GS.danger,
+                      color: GS.surface,
+                      borderRadius: 999,
+                      fontSize: 9,
+                      fontWeight: 700,
+                      padding: '1px 5px',
+                      minWidth: 16,
+                      textAlign: 'center',
+                      fontFamily: "var(--font-mono)",
+                    }}
+                  >
+                    {unread > 99 ? '99+' : unread}
+                  </span>
+                )}
+              </>
             )}
           </NavLink>
         ))}
       </nav>
 
       {/* Bottom: Settings + user strip */}
-      <div style={{ borderTop: '1px solid rgba(17,20,26,0.08)', flexShrink: 0 }}>
+      <div style={{ borderTop: '1px solid rgba(43,42,40,0.08)', flexShrink: 0 }}>
         <NavLink
           to="/settings"
           title={!expanded ? 'Settings' : undefined}
@@ -194,14 +202,14 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             gap: 12,
             padding: '9px 16px',
             textDecoration: 'none',
-            borderLeft: isActive ? `3px solid ${GS.textMuted}` : '3px solid transparent',
-            background: isActive ? 'rgba(17,20,26,0.08)' : 'transparent',
+            borderLeft: isActive ? `3px solid ${GS.danger}` : '3px solid transparent',
+            background: isActive ? 'color-mix(in srgb, var(--ink) 7%, transparent)' : 'transparent',
             transition: 'background 150ms',
           })}
         >
           <Settings size={18} style={{ color: GS.textMuted, flexShrink: 0 }} />
           {expanded && (
-            <span style={{ color: 'rgba(27,31,39,0.80)', fontSize: 12, fontFamily: "'DM Mono', monospace" }}>
+            <span style={{ color: 'rgba(43,42,40,0.80)', fontSize: 12, fontFamily: "var(--font-mono)" }}>
               Settings
             </span>
           )}
@@ -213,9 +221,9 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
             style={{
               margin: '6px 10px 10px',
               padding: '8px 10px',
-              background: 'rgba(17,20,26,0.05)',
+              background: 'rgba(43,42,40,0.05)',
               borderRadius: 8,
-              border: '1px solid rgba(17,20,26,0.08)',
+              border: '1px solid rgba(43,42,40,0.08)',
               display: 'flex',
               alignItems: 'center',
               gap: 10,
@@ -233,17 +241,17 @@ export default function Sidebar({ expanded, pinned, onPinToggle, onHoverChange }
                 fontSize: 11,
                 fontWeight: 700,
                 color: GS.surface,
-                fontFamily: "'Plus Jakarta Sans', sans-serif",
+                fontFamily: "var(--font-display)",
                 flexShrink: 0,
               }}
             >
               {initials}
             </div>
             <div>
-              <div style={{ color: GS.text, fontSize: 11, fontWeight: 600, fontFamily: "'Plus Jakarta Sans', sans-serif" }}>
+              <div style={{ color: GS.text, fontSize: 11, fontWeight: 600, fontFamily: "var(--font-display)" }}>
                 {username || 'operator'}
               </div>
-              <div style={{ color: 'rgba(27,31,39,0.45)', fontSize: 10, fontFamily: "'DM Mono', monospace" }}>
+              <div style={{ color: 'rgba(43,42,40,0.45)', fontSize: 10, fontFamily: "var(--font-mono)" }}>
                 Admin
               </div>
             </div>

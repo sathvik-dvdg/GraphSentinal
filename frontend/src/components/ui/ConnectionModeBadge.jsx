@@ -2,27 +2,29 @@
 // ui/ConnectionModeBadge — LIVE / OFFLINE / CONNECTING, and the
 // socket's reconnection states. What it says is decided in utils/connection.
 // Safety-critical: operator must always know which mode they're looking at
-import { motion } from 'framer-motion'
+import StatusPill from './StatusPill'
 import { connectionDisplay } from '../../utils/connection'
 import { GS } from '../../constants/colors'
 
+const TONE = { 'badge-live': 'live', 'badge-sim': 'warn', 'badge-mock': 'muted', 'badge-connecting': 'neutral' }
+
 const MODES = {
   live: {
-    label: 'LIVE',
+    label: 'Live',
     dot: GS.success,
     cls: 'badge-live',
     icon: '●',
     pulse: true,
   },
   mock: {
-    label: 'OFFLINE',
+    label: 'Offline',
     dot: GS.textSubtle,
     cls: 'badge-mock',
     icon: '○',
     pulse: false,
   },
   connecting: {
-    label: 'CONNECTING',
+    label: 'Connecting',
     dot: GS.primary,
     cls: 'badge-connecting',
     icon: '◌',
@@ -58,26 +60,15 @@ export default function ConnectionModeBadge({ mode, socketStatus = 'idle', class
   const cfg = { ...(MODES[display.key] ?? MODES.connecting), label: display.label }
 
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 px-2.5 py-1 rounded-md font-mono text-[10px] font-medium tracking-wider whitespace-nowrap ${cfg.cls} ${className}`}
+    <StatusPill
+      tone={TONE[cfg.cls]}
+      pulse={cfg.pulse}
+      className={className}
       role="status"
       aria-label={`Data source: ${cfg.label}`}
       aria-live="polite"
     >
-      {cfg.pulse ? (
-        <motion.span
-          className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-          style={{ backgroundColor: cfg.dot }}
-          animate={{ opacity: [1, 0.3, 1], scale: [1, 1.3, 1] }}
-          transition={{ duration: 1.5, repeat: Infinity }}
-        />
-      ) : (
-        <span
-          className="w-1.5 h-1.5 rounded-full flex-shrink-0 bg-gs-muted"
-          aria-hidden="true"
-        />
-      )}
       {cfg.label}
-    </span>
+    </StatusPill>
   )
 }

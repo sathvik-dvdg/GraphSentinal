@@ -27,7 +27,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
         animate={{ opacity: 1 }}
         exit={{ opacity: 0 }}
         className="fixed inset-0 z-50 flex justify-end"
-        style={{ background: 'rgba(17,20,26,0.12)', backdropFilter: 'blur(2px)' }}
+        style={{ background: 'rgba(43,42,40,0.12)', backdropFilter: 'blur(2px)' }}
         onClick={onClose}
         role="dialog"
         aria-label="Forensics Report"
@@ -42,7 +42,7 @@ export default function ForensicsModal({ isOpen, onClose }) {
           className="w-full max-w-2xl h-screen flex flex-col border-l border-gs-border"
           style={{
             background: GS.surface,
-            boxShadow: '-10px 0 30px rgba(17,20,26,0.10)',
+            boxShadow: '-10px 0 30px rgba(43,42,40,0.10)',
           }}
           onClick={(e) => e.stopPropagation()}
         >
@@ -110,11 +110,11 @@ export default function ForensicsModal({ isOpen, onClose }) {
           <div className="flex items-center border-b border-gs-border shrink-0">
             <div className="flex items-center gap-3 px-5 py-2 border-r border-gs-border">
               <span className="text-sm font-heading font-bold text-gs-text tabular-nums">{data.total_incidents}</span>
-              <span className="text-[10px] text-gs-muted font-mono uppercase tracking-wider">Total Incidents</span>
+              <span className="text-xs text-gs-muted font-sans">Total Incidents</span>
             </div>
             <div className="flex items-center gap-3 px-5 py-2">
               <span className="text-sm font-heading font-bold text-gs-heal tabular-nums">{data.total_on_chain}</span>
-              <span className="text-[10px] text-gs-muted font-mono uppercase tracking-wider">On-Chain Records</span>
+              <span className="text-xs text-gs-muted font-sans">On-Chain Records</span>
             </div>
           </div>
 

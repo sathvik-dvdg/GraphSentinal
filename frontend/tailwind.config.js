@@ -9,46 +9,46 @@ export default {
   theme: {
     extend: {
       colors: {
-        // ── Clean White Design System Tokens ──────────────────────
+        // ── Landing-page design tokens (bone, ink, crimson) ───────────
         // Base surfaces
-        'gs-base':    '#F4F6F8',   // App background
-        'gs-surface': '#FFFFFF',   // Panel surface
-        'gs-surface-raised': '#F0F2F5', // Raised panel
-        'gs-border':  '#E2E5EA',   // Default 1px border
-        'gs-border-subtle': '#ECEEF1', // Hairline separator
+        'gs-base':    '#ebe7df',   // App background
+        'gs-surface': '#f6f3ed',   // Panel surface
+        'gs-surface-raised': '#e3ded4', // Raised panel
+        'gs-border':  '#d3cec3',   // Default 1px border
+        'gs-border-subtle': '#dcd7cc', // Hairline separator
 
         // Text
-        'gs-text':     '#1B1F27',  // Primary text
-        'gs-muted':    '#5A616E',  // Labels, timestamps
-        'gs-faint':    '#9AA1AD',  // Disabled, placeholder
+        'gs-text':     '#2b2a28',  // Primary text
+        'gs-muted':    '#55524d',  // Labels, timestamps
+        'gs-faint':    '#7d786f',  // Disabled, placeholder
 
         // Accent (now a dark ink so it reads on white)
-        'gs-accent':      '#1B1F27',
-        'gs-accent-dim':  '#E2E5EA',
+        'gs-accent':      '#2b2a28',
+        'gs-accent-dim':  '#d3cec3',
         'gs-accent-soft': 'rgba(27,31,39,0.06)',
 
         // Semantic: Threat
-        'gs-threat':      '#D92D2D',
-        'gs-threat-dim':  '#F6C6C6',
-        'gs-threat-soft': 'rgba(217,45,45,0.10)',
+        'gs-threat':      '#b4132e',
+        'gs-threat-dim':  '#e3b4bb',
+        'gs-threat-soft': 'rgba(180,19,46,0.10)',
 
         // Semantic: Warning
-        'gs-warn':        '#B7791F',
-        'gs-warn-dim':    '#EFD9B4',
-        'gs-warn-soft':   'rgba(183,121,31,0.12)',
+        'gs-warn':        '#855808',
+        'gs-warn-dim':    '#dfc9a0',
+        'gs-warn-soft':   'rgba(133,88,8,0.12)',
 
         // Semantic: Heal/Safe/Blocked
-        'gs-heal':        '#5E5CE6', // Indigo for isolated/blocked
-        'gs-heal-dim':    '#C7C6F5',
-        'gs-heal-soft':   'rgba(94,92,230,0.10)',
+        'gs-heal':        '#4b5578', // Indigo for isolated/blocked
+        'gs-heal-dim':    '#c3c8dc',
+        'gs-heal-soft':   'rgba(75,85,120,0.10)',
 
         // Semantic: Normal
-        'gs-normal':      '#5A616E',
+        'gs-normal':      '#55524d',
         'gs-normal-soft': 'rgba(90,97,110,0.10)',
 
         // Semantic: Chain
-        'gs-chain':       '#7C3AED',
-        'gs-chain-dim':   '#D9C7F5',
+        'gs-chain':       '#6b4a82',
+        'gs-chain-dim':   '#d4c5de',
         'gs-chain-soft':  'rgba(124,58,237,0.10)',
 
         // ── In-use colours that had no token (2026-10-05) ─────────
@@ -62,83 +62,84 @@ export default {
         'gs-surface-header': GS.surfaceHeader,
         'gs-border-strong':  GS.borderStrong,
 
-        // ── Legacy tokens — remapped to the light palette ─────────
-        background: '#F4F6F8',
-        'on-background': '#1B1F27',
-        surface: '#FFFFFF',
-        'surface-dim': '#F4F6F8',
-        'surface-bright': '#FFFFFF',
-        'surface-container-lowest': '#F4F6F8',
-        'surface-container-low': '#F7F8FA',
-        'surface-container': '#FFFFFF',
-        'surface-container-high': '#F0F2F5',
-        'surface-container-highest': '#E7EAF0',
-        'on-surface': '#1B1F27',
-        'on-surface-variant': '#5A616E',
-        'inverse-surface': '#1B1F27',
-        'inverse-on-surface': '#FFFFFF',
-        outline: '#9AA1AD',
-        'outline-variant': '#E2E5EA',
-        'surface-tint': '#3B56D9',
-        primary: '#3B56D9',
-        'on-primary': '#FFFFFF',
-        'primary-container': '#3B56D9',
-        'on-primary-container': '#FFFFFF',
-        'inverse-primary': '#C5D0FF',
-        secondary: '#5A616E',
-        'on-secondary': '#FFFFFF',
-        'secondary-container': '#EEF1F5',
-        'on-secondary-container': '#1B1F27',
-        tertiary: '#5A616E',
-        'on-tertiary': '#FFFFFF',
-        'tertiary-container': '#EEF1F5',
-        'on-tertiary-container': '#1B1F27',
-        error: '#D92D2D',
-        'on-error': '#FFFFFF',
-        'error-container': '#F6C6C6',
-        'on-error-container': '#5A0A0A',
-        'primary-fixed': '#B7791F',
-        'primary-fixed-dim': '#EFD9B4',
+        // ── Legacy tokens — remapped to the landing palette ───────
+        background: '#ebe7df',
+        'on-background': '#2b2a28',
+        surface: '#f6f3ed',
+        'surface-dim': '#ebe7df',
+        'surface-bright': '#f6f3ed',
+        'surface-container-lowest': '#ebe7df',
+        'surface-container-low': '#f1eee7',
+        'surface-container': '#f6f3ed',
+        'surface-container-high': '#e3ded4',
+        'surface-container-highest': '#d9d4c9',
+        'on-surface': '#2b2a28',
+        'on-surface-variant': '#55524d',
+        'inverse-surface': '#2b2a28',
+        'inverse-on-surface': '#f6f3ed',
+        outline: '#7d786f',
+        'outline-variant': '#d3cec3',
+        'surface-tint': '#2b2a28',
+        primary: '#2b2a28',
+        'on-primary': '#f6f3ed',
+        'primary-container': '#2b2a28',
+        'on-primary-container': '#f6f3ed',
+        'inverse-primary': '#d3cec3',
+        secondary: '#55524d',
+        'on-secondary': '#f6f3ed',
+        'secondary-container': '#e3ded4',
+        'on-secondary-container': '#2b2a28',
+        tertiary: '#55524d',
+        'on-tertiary': '#f6f3ed',
+        'tertiary-container': '#e3ded4',
+        'on-tertiary-container': '#2b2a28',
+        error: '#b4132e',
+        'on-error': '#f6f3ed',
+        'error-container': '#e3b4bb',
+        'on-error-container': '#4a0a14',
+        'primary-fixed': '#855808',
+        'primary-fixed-dim': '#dfc9a0',
 
         // Kept legacy gs-* for any untouched components
-        'gs-bg':     '#F4F6F8',
-        'gs-card':   '#FFFFFF',
-        'gs-mid':    '#F0F2F5',
-        'gs-alert':  '#D92D2D',
-        'gs-info':   '#3B56D9',
+        'gs-bg':     '#ebe7df',
+        'gs-card':   '#f6f3ed',
+        'gs-mid':    '#e3ded4',
+        'gs-alert':  '#b4132e',
+        'gs-info':   '#2b2a28',
       },
       fontFamily: {
         // New design system
-        heading: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'],
-        body:    ['Inter', 'sans-serif'],
-        mono:    ['"DM Mono"', '"JetBrains Mono"', 'Courier New', 'monospace'],
+        // The landing page's three faces (loaded in styles/globals.css)
+        heading: ['Newsreader', '"Iowan Old Style"', 'Georgia', 'serif'],
+        body:    ['"Hanken Grotesk"', 'system-ui', '"Segoe UI"', 'sans-serif'],
+        mono:    ['"JetBrains Mono"', 'ui-monospace', '"Cascadia Mono"', 'Consolas', 'monospace'],
         // Legacy aliases
-        geist:    ['Inter', 'sans-serif'],
-        inter:    ['Inter', 'sans-serif'],
-        orbitron: ['"Plus Jakarta Sans"', 'Inter', 'sans-serif'], // Orbitron removed, redirected
+        geist:    ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
+        inter:    ['"Hanken Grotesk"', 'system-ui', 'sans-serif'],
+        orbitron: ['Newsreader', 'Georgia', 'serif'], // Orbitron removed, redirected
       },
       boxShadow: {
-        // Soft, functional shadows for the white theme
-        'threat': '0 4px 16px rgba(217,45,45,0.12)',
-        'heal':   '0 4px 16px rgba(94,92,230,0.12)',
-        'accent': '0 4px 16px rgba(59,86,217,0.12)',
-        'panel':  '0 1px 2px rgba(17,20,26,0.04), 0 8px 24px rgba(17,20,26,0.06)',
-        'modal':  '0 24px 64px rgba(17,20,26,0.14)',
+        // Soft, functional shadows for the bone ground
+        'threat': '0 4px 16px rgba(180,19,46,0.12)',
+        'heal':   '0 4px 16px rgba(75,85,120,0.12)',
+        'accent': '0 4px 16px rgba(43,42,40,0.12)',
+        'panel':  '0 1px 2px rgba(43,42,40,0.04), 0 8px 24px rgba(43,42,40,0.06)',
+        'modal':  '0 24px 64px rgba(43,42,40,0.14)',
         // Legacy aliases
-        'glow-cyan':    '0 4px 16px rgba(59,86,217,0.12)',
-        'glow-emerald': '0 4px 16px rgba(18,166,114,0.12)',
-        'glow-rose':    '0 4px 16px rgba(217,45,45,0.12)',
-        'glow-amber':   '0 4px 16px rgba(183,121,31,0.12)',
-        'glow-primary': '0 4px 16px rgba(59,86,217,0.12)',
-        'deep':         '0 25px 50px rgba(17,20,26,0.16)',
+        'glow-cyan':    '0 4px 16px rgba(43,42,40,0.12)',
+        'glow-emerald': '0 4px 16px rgba(52,99,72,0.12)',
+        'glow-rose':    '0 4px 16px rgba(180,19,46,0.12)',
+        'glow-amber':   '0 4px 16px rgba(133,88,8,0.12)',
+        'glow-primary': '0 4px 16px rgba(43,42,40,0.12)',
+        'deep':         '0 25px 50px rgba(43,42,40,0.16)',
       },
       backgroundImage: {
         // Minimal mesh — only used in dashboard graph canvas area
-        'gs-mesh': 'linear-gradient(rgba(59,86,217,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(59,86,217,0.05) 1px, transparent 1px)',
+        'gs-mesh': 'linear-gradient(rgba(43,42,40,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(43,42,40,0.05) 1px, transparent 1px)',
         // Legacy
-        'void-radial': 'radial-gradient(ellipse at 50% 0%, rgba(59,86,217,0.05) 0%, transparent 70%)',
-        'cyber-mesh':  'linear-gradient(rgba(59,86,217,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(59,86,217,0.06) 1px, transparent 1px)',
-        'digital-fortress-grid': 'linear-gradient(rgba(59,86,217,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(59,86,217,0.05) 1px, transparent 1px)',
+        'void-radial': 'radial-gradient(ellipse at 50% 0%, rgba(43,42,40,0.05) 0%, transparent 70%)',
+        'cyber-mesh':  'linear-gradient(rgba(43,42,40,0.06) 1px, transparent 1px), linear-gradient(90deg, rgba(43,42,40,0.06) 1px, transparent 1px)',
+        'digital-fortress-grid': 'linear-gradient(rgba(43,42,40,0.05) 1px, transparent 1px), linear-gradient(90deg, rgba(43,42,40,0.05) 1px, transparent 1px)',
       },
       backgroundSize: {
         'mesh-48': '48px 48px',
